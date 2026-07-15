@@ -1,0 +1,104 @@
+name: SIMBA-UI-DEV
+
+trigger:
+  branches:
+    include:
+      - Development
+
+pool:
+  name: Default # Replace with your self-hosted agent pool name if needed
+
+variables:
+  - group: my-ui-env
+  - name: node_version
+    value: "20.x"
+
+stages:
+  # =====================
+  # BUILD (on agent, optional if you want to build artifact separately)
+  # =====================
+  - stage: Build
+    jobs:
+      - job: BuildJob
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: $(node_version)
+
+          - script: |
+              npm install -g pnpm
+            displayName: Install pnpm
+
+          - script: |
+              pnpm install
+            displayName: Install dependencies
+
+          - script: |
+              echo NEXTAUTH_URL=$(NEXTAUTH_URL) >> .env
+              echo NEXTAUTH_SECRET=$(NEXTAUTH_SECRET) >> .env
+              echo API_BASE_URL=$(API_BASE_URL) >> .env
+            displayName: Create env file
+
+          - script: |
+              pnpm build
+            displayName: Build Next.js
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: "$(Build.SourcesDirectory)"
+              ArtifactName: "ui"
+
+  # =====================
+  # DEPLOY (full manual replication)
+  # =====================
+  - stage: Deploy
+    dependsOn: Build
+    jobs:
+      - job: DeployJob
+        pool:
+          name: YourSelfHostedAgentPool # MUST point to the server SVHQDTS01
+        steps:
+          # Step 1: Download artifact
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: current
+              downloadType: single
+              artifactName: ui
+              downloadPath: $(System.ArtifactsDirectory)
+
+          # Step 2: Copy only selected files (matches your manual copy)
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: "$(System.ArtifactsDirectory)/ui"
+              Contents: |
+                app/**
+                components/**
+                hooks/**
+                lib/**
+                public/**
+                styles/**
+                types/**
+                components.json
+                middleware.ts
+                next.config.mjs
+                package.json
+                package-lock.json
+                pnpm-lock.yaml
+                postcss.config.mjs
+                server.js
+                tsconfig.json
+                web.config
+              TargetFolder: '\\svhqdts01\mrcisplus_ui'
+              OverWrite: true
+
+          # Step 3: Run install + build on server
+          - script: |
+              cd \\svhqdts01\mrcisplus_ui
+              pnpm install
+              pnpm build
+            displayName: Install dependencies & Build on server
+
+          # Step 4: Restart IIS
+          - script: |
+              iisreset
+            displayName: Restart IIS

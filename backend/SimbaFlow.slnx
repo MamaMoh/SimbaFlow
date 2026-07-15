@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SimbaFlow.API/SimbaFlow.API.csproj" />
+    <Project Path="src/SimbaFlow.Application/SimbaFlow.Application.csproj" />
+    <Project Path="src/SimbaFlow.Domain/SimbaFlow.Domain.csproj" />
+    <Project Path="src/SimbaFlow.Infrastructure/SimbaFlow.Infrastructure.csproj" />
+    <Project Path="src/SimbaFlow.Shared/SimbaFlow.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SimbaFlow.API.Tests/SimbaFlow.API.Tests.csproj" />
+  </Folder>
+</Solution>

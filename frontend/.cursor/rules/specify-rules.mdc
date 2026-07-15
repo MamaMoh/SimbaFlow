@@ -1,0 +1,33 @@
+﻿# ET Medical system Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2026-02-18
+
+## Active Technologies
+- [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION] (minorfixes)
+- [if applicable, e.g., PostgreSQL, CoreData, files or N/A] (minorfixes)
+
+- TypeScript 5, Node (from package.json) + Next.js 15.2.4, React 19, next/navigation (notFound, redirect) (minorfixes)
+
+## Project Structure
+
+```text
+backend/
+frontend/
+tests/
+```
+
+## Commands
+
+npm test; npm run lint
+
+## Code Style
+
+TypeScript 5, Node (from package.json): Follow standard conventions
+
+## Recent Changes
+- minorfixes: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+
+- minorfixes: Added TypeScript 5, Node (from package.json) + Next.js 15.2.4, React 19, next/navigation (notFound, redirect)
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->

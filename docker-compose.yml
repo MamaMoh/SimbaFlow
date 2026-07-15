@@ -1,0 +1,91 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    container_name: simbaflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: simbaflow
+      POSTGRES_USER: simbaflow
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - simbaflow-db:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U simbaflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - simbaflow-net
+
+  api:
+    image: simbaflow-api:${VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: simbaflow-api
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=simbaflow;Username=simbaflow;Password=${DB_PASSWORD};SSL Mode=Prefer"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: SimbaFlow
+      Jwt__Audience: SimbaFlowApp
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      WhatsApp__ApiUrl: ${WHATSAPP_API_URL:-}
+      WhatsApp__ApiToken: ${WHATSAPP_API_TOKEN:-}
+      FileStorage__BasePath: /data
+      Cors__Origins__0: http://localhost:3000
+    volumes:
+      - simbaflow-files:/data
+      - simbaflow-logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - simbaflow-net
+
+  frontend:
+    image: simbaflow-frontend:${VERSION:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: simbaflow-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXT_PUBLIC_API_URL: http://localhost:5000
+      BACKEND_URL: http://api:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - simbaflow-net
+
+volumes:
+  simbaflow-db:
+    driver: local
+  simbaflow-files:
+    driver: local
+  simbaflow-logs:
+    driver: local
+
+networks:
+  simbaflow-net:
+    driver: bridge

@@ -1,0 +1,413 @@
+# Azure DevOps Multi-Branch CI/CD Pipeline for Next.js UI
+
+trigger:
+  branches:
+    include:
+      - development
+      - staging
+      - production
+
+pr:
+  branches:
+    include:
+      - development
+      - staging
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  nodeVersion: '20.x'
+  artifactName: 'MRCIS-Plus-UI'
+  buildConfiguration: 'production'
+  # Environment variables - Set these in Azure DevOps Pipeline Variables
+  # NEXTAUTH_SECRET: '$(NEXTAUTH_SECRET)' # Required - Set as secret variable
+  # NEXTAUTH_URL: '$(NEXTAUTH_URL)' # Optional - defaults based on FORCE_HTTPS
+  # FORCE_HTTPS: '$(FORCE_HTTPS)' # Optional - defaults to 'false'
+  # API_BASE_URL: '$(API_BASE_URL)' # Optional - your backend API URL
+
+stages:
+# =========================
+# Stage 1: Build & Test
+# =========================
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+    - job: Build
+      displayName: 'Build and Test Job'
+      steps:
+        # Copy source code for deployment (NO BUILD - will build on server)
+        # This makes pipeline much faster - build happens on deployment server
+        - task: CopyFiles@2
+          displayName: 'Copy source code for deployment'
+          inputs:
+            SourceFolder: '$(System.DefaultWorkingDirectory)'
+            Contents: |
+              **/*
+            TargetFolder: '$(build.artifactStagingDirectory)/deploy'
+            OverWrite: true
+
+        # Remove unnecessary files to reduce artifact size
+        - powershell: |
+            $deployPath = "$(build.artifactStagingDirectory)/deploy"
+            # Remove node_modules if it exists (will be installed on server)
+            if (Test-Path "$deployPath/node_modules") {
+              Remove-Item -Path "$deployPath/node_modules" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            # Remove .next if it exists (will be built on server)
+            if (Test-Path "$deployPath/.next") {
+              Remove-Item -Path "$deployPath/.next" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            # Remove .git if it exists
+            if (Test-Path "$deployPath/.git") {
+              Remove-Item -Path "$deployPath/.git" -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Write-Host "Cleaned up unnecessary files from deployment package"
+          displayName: 'Clean up deployment package'
+
+        # Create deployment package (compressed)
+        - task: ArchiveFiles@2
+          displayName: 'Create deployment package'
+          inputs:
+            rootFolderOrFile: '$(build.artifactStagingDirectory)/deploy'
+            includeRootFolder: false
+            archiveType: 'zip'
+            archiveFile: '$(build.artifactStagingDirectory)/$(artifactName).zip'
+            replaceExistingArchive: true
+            compressionLevel: 'optimal'
+
+        # Publish build artifacts
+        - task: PublishBuildArtifacts@1
+          displayName: 'Publish build artifacts'
+          inputs:
+            PathtoPublish: '$(build.artifactStagingDirectory)'
+            ArtifactName: '$(artifactName)'
+            publishLocation: 'Container'
+
+# =========================
+# Stage 2: Deploy to Development
+# =========================
+- stage: Deploy_Development
+  displayName: 'Deploy to Development'
+  condition: eq(variables['Build.SourceBranchName'], 'development')
+  dependsOn: Build
+  jobs:
+    - job: DeployDevelopment
+      displayName: 'Development Deployment'
+      steps:
+              - download: current
+                artifact: $(artifactName)
+                displayName: 'Download artifacts'
+
+              # Extract deployment package directly to IIS directory
+              - task: ExtractFiles@1
+                displayName: 'Extract to IIS directory'
+                inputs:
+                  archiveFilePatterns: '$(Pipeline.Workspace)/$(artifactName)/$(artifactName).zip'
+                  destinationFolder: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Dev'
+                  cleanDestinationFolder: true
+
+              # Install Node.js on server
+              - task: NodeTool@0
+                displayName: 'Install Node.js'
+                inputs:
+                  versionSpec: '$(nodeVersion)'
+                  checkLatest: false
+
+              # Install ALL dependencies (needed for build)
+              - task: Npm@1
+                displayName: 'Install dependencies'
+                inputs:
+                  command: 'ci'
+                  workingDir: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Dev'
+                  arguments: '--prefer-offline --no-audit'
+                env:
+                  NODE_OPTIONS: '--max-old-space-size=4096'
+
+              # Build Next.js application on server
+              - task: Npm@1
+                displayName: 'Build Next.js on server'
+                inputs:
+                  command: 'custom'
+                  customCommand: 'run build'
+                  workingDir: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Dev'
+                env:
+                  NODE_OPTIONS: '--max-old-space-size=4096'
+                  NODE_ENV: 'production'
+                  NEXTAUTH_SECRET: '$(NEXTAUTH_SECRET)'
+                  NEXTAUTH_URL: '$(NEXTAUTH_URL)'
+                  FORCE_HTTPS: '$(FORCE_HTTPS)'
+                  API_BASE_URL: '$(API_BASE_URL)'
+
+              # Deploy to IIS (Development)
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: 'Deploy to IIS (Development)'
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'CreateOrUpdateWebsite'
+                  WebsiteName: 'MRCIS-Plus-UI-Dev'
+                  WebsitePhysicalPath: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Dev'
+                  AppPoolName: 'MRCIS-Plus-UI-Dev-AppPool'
+                  AppPoolDotNetVersion: 'No Managed Code'
+                  AppPoolIdentity: 'ApplicationPoolIdentity'
+                  StartStopRecycleAppPool: true
+                  CreateOrUpdateAppPoolForWebsite: true
+                continueOnError: true
+
+              # Set environment variables and restart (optimized)
+              - powershell: |
+                  $webConfigPath = "C:\inetpub\wwwroot\MRCIS-Plus-UI-Dev\web.config"
+                  $appPoolName = "MRCIS-Plus-UI-Dev-AppPool"
+                  
+                  if (Test-Path $webConfigPath) {
+                    [xml]$config = Get-Content $webConfigPath
+                    $webServer = $config.configuration.system.webServer
+                    
+                    if (-not $webServer.environmentVariables) {
+                      $envVars = $config.CreateElement("environmentVariables")
+                      $webServer.AppendChild($envVars) | Out-Null
+                    }
+                    $envVars = $webServer.environmentVariables
+                    
+                    # Helper function to set env var
+                    function Set-EnvVar($name, $value) {
+                      if ($value) {
+                        $var = $envVars.SelectSingleNode("add[@name='$name']")
+                        if ($var) { $var.value = $value }
+                        else {
+                          $add = $config.CreateElement("add")
+                          $add.SetAttribute("name", $name)
+                          $add.SetAttribute("value", $value)
+                          $envVars.AppendChild($add) | Out-Null
+                        }
+                      }
+                    }
+                    
+                    Set-EnvVar "NEXTAUTH_SECRET" "$(NEXTAUTH_SECRET)"
+                    Set-EnvVar "NEXTAUTH_URL" "$(NEXTAUTH_URL)"
+                    Set-EnvVar "FORCE_HTTPS" "$(if ($(FORCE_HTTPS)) { $(FORCE_HTTPS) } else { 'false' })"
+                    Set-EnvVar "API_BASE_URL" "$(API_BASE_URL)"
+                    
+                    $config.Save($webConfigPath)
+                    Restart-WebAppPool -Name $appPoolName
+                    Write-Host "Updated environment variables and restarted app pool"
+                  }
+                displayName: 'Set environment variables (Development)'
+
+# =========================
+# Stage 3: Deploy to Staging
+# =========================
+- stage: Deploy_Staging
+  displayName: 'Deploy to Staging'
+  condition: eq(variables['Build.SourceBranchName'], 'staging')
+  dependsOn: Build
+  jobs:
+    - job: DeployStaging
+      displayName: 'Staging Deployment'
+      steps:
+              - download: current
+                artifact: $(artifactName)
+                displayName: 'Download artifacts'
+
+              # Extract deployment package directly to IIS directory
+              - task: ExtractFiles@1
+                displayName: 'Extract to IIS directory'
+                inputs:
+                  archiveFilePatterns: '$(Pipeline.Workspace)/$(artifactName)/$(artifactName).zip'
+                  destinationFolder: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Staging'
+                  cleanDestinationFolder: true
+
+              # Install Node.js on server
+              - task: NodeTool@0
+                displayName: 'Install Node.js'
+                inputs:
+                  versionSpec: '$(nodeVersion)'
+                  checkLatest: false
+
+              # Install ALL dependencies (needed for build)
+              - task: Npm@1
+                displayName: 'Install dependencies'
+                inputs:
+                  command: 'ci'
+                  workingDir: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Staging'
+                  arguments: '--prefer-offline --no-audit'
+                env:
+                  NODE_OPTIONS: '--max-old-space-size=4096'
+
+              # Build Next.js application on server
+              - task: Npm@1
+                displayName: 'Build Next.js on server'
+                inputs:
+                  command: 'custom'
+                  customCommand: 'run build'
+                  workingDir: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Staging'
+                env:
+                  NODE_OPTIONS: '--max-old-space-size=4096'
+                  NODE_ENV: 'production'
+                  NEXTAUTH_SECRET: '$(NEXTAUTH_SECRET)'
+                  NEXTAUTH_URL: '$(NEXTAUTH_URL)'
+                  FORCE_HTTPS: '$(FORCE_HTTPS)'
+                  API_BASE_URL: '$(API_BASE_URL)'
+
+              # Deploy to IIS (Staging)
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: 'Deploy to IIS (Staging)'
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'CreateOrUpdateWebsite'
+                  WebsiteName: 'MRCIS-Plus-UI-Staging'
+                  WebsitePhysicalPath: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Staging'
+                  AppPoolName: 'MRCIS-Plus-UI-Staging-AppPool'
+                  AppPoolDotNetVersion: 'No Managed Code'
+                  AppPoolIdentity: 'ApplicationPoolIdentity'
+                  StartStopRecycleAppPool: true
+                  CreateOrUpdateAppPoolForWebsite: true
+                continueOnError: true
+
+              # Set environment variables and restart (optimized)
+              - powershell: |
+                  $webConfigPath = "C:\inetpub\wwwroot\MRCIS-Plus-UI-Staging\web.config"
+                  $appPoolName = "MRCIS-Plus-UI-Staging-AppPool"
+                  
+                  if (Test-Path $webConfigPath) {
+                    [xml]$config = Get-Content $webConfigPath
+                    $webServer = $config.configuration.system.webServer
+                    
+                    if (-not $webServer.environmentVariables) {
+                      $envVars = $config.CreateElement("environmentVariables")
+                      $webServer.AppendChild($envVars) | Out-Null
+                    }
+                    $envVars = $webServer.environmentVariables
+                    
+                    function Set-EnvVar($name, $value) {
+                      if ($value) {
+                        $var = $envVars.SelectSingleNode("add[@name='$name']")
+                        if ($var) { $var.value = $value }
+                        else {
+                          $add = $config.CreateElement("add")
+                          $add.SetAttribute("name", $name)
+                          $add.SetAttribute("value", $value)
+                          $envVars.AppendChild($add) | Out-Null
+                        }
+                      }
+                    }
+                    
+                    Set-EnvVar "NEXTAUTH_SECRET" "$(NEXTAUTH_SECRET)"
+                    Set-EnvVar "NEXTAUTH_URL" "$(NEXTAUTH_URL)"
+                    Set-EnvVar "FORCE_HTTPS" "$(if ($(FORCE_HTTPS)) { $(FORCE_HTTPS) } else { 'false' })"
+                    Set-EnvVar "API_BASE_URL" "$(API_BASE_URL)"
+                    
+                    $config.Save($webConfigPath)
+                    Restart-WebAppPool -Name $appPoolName
+                    Write-Host "Updated environment variables and restarted app pool"
+                  }
+                displayName: 'Set environment variables (Staging)'
+
+# =========================
+# Stage 4: Deploy to Production
+# =========================
+- stage: Deploy_Production
+  displayName: 'Deploy to Production'
+  condition: eq(variables['Build.SourceBranchName'], 'production')
+  dependsOn: Build
+  jobs:
+    - job: DeployProduction
+      displayName: 'Production Deployment'
+      steps:
+              - download: current
+                artifact: $(artifactName)
+                displayName: 'Download artifacts'
+
+              # Extract deployment package directly to IIS directory
+              - task: ExtractFiles@1
+                displayName: 'Extract to IIS directory'
+                inputs:
+                  archiveFilePatterns: '$(Pipeline.Workspace)/$(artifactName)/$(artifactName).zip'
+                  destinationFolder: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Prod'
+                  cleanDestinationFolder: true
+
+              # Install Node.js on server
+              - task: NodeTool@0
+                displayName: 'Install Node.js'
+                inputs:
+                  versionSpec: '$(nodeVersion)'
+                  checkLatest: false
+
+              # Install ALL dependencies (needed for build)
+              - task: Npm@1
+                displayName: 'Install dependencies'
+                inputs:
+                  command: 'ci'
+                  workingDir: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Prod'
+                  arguments: '--prefer-offline --no-audit'
+                env:
+                  NODE_OPTIONS: '--max-old-space-size=4096'
+
+              # Build Next.js application on server
+              - task: Npm@1
+                displayName: 'Build Next.js on server'
+                inputs:
+                  command: 'custom'
+                  customCommand: 'run build'
+                  workingDir: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Prod'
+                env:
+                  NODE_OPTIONS: '--max-old-space-size=4096'
+                  NODE_ENV: 'production'
+                  NEXTAUTH_SECRET: '$(NEXTAUTH_SECRET)'
+                  NEXTAUTH_URL: '$(NEXTAUTH_URL)'
+                  FORCE_HTTPS: '$(FORCE_HTTPS)'
+                  API_BASE_URL: '$(API_BASE_URL)'
+
+              # Deploy to IIS (Production)
+              - task: IISWebAppManagementOnMachineGroup@0
+                displayName: 'Deploy to IIS (Production)'
+                inputs:
+                  IISDeploymentType: 'IISWebsite'
+                  ActionIISWebsite: 'CreateOrUpdateWebsite'
+                  WebsiteName: 'MRCIS-Plus-UI-Prod'
+                  WebsitePhysicalPath: 'C:\inetpub\wwwroot\MRCIS-Plus-UI-Prod'
+                  AppPoolName: 'MRCIS-Plus-UI-Prod-AppPool'
+                  AppPoolDotNetVersion: 'No Managed Code'
+                  AppPoolIdentity: 'ApplicationPoolIdentity'
+                  StartStopRecycleAppPool: true
+                  CreateOrUpdateAppPoolForWebsite: true
+                continueOnError: true
+
+              # Set environment variables and restart (optimized)
+              - powershell: |
+                  $webConfigPath = "C:\inetpub\wwwroot\MRCIS-Plus-UI-Prod\web.config"
+                  $appPoolName = "MRCIS-Plus-UI-Prod-AppPool"
+                  
+                  if (Test-Path $webConfigPath) {
+                    [xml]$config = Get-Content $webConfigPath
+                    $webServer = $config.configuration.system.webServer
+                    
+                    if (-not $webServer.environmentVariables) {
+                      $envVars = $config.CreateElement("environmentVariables")
+                      $webServer.AppendChild($envVars) | Out-Null
+                    }
+                    $envVars = $webServer.environmentVariables
+                    
+                    function Set-EnvVar($name, $value) {
+                      if ($value) {
+                        $var = $envVars.SelectSingleNode("add[@name='$name']")
+                        if ($var) { $var.value = $value }
+                        else {
+                          $add = $config.CreateElement("add")
+                          $add.SetAttribute("name", $name)
+                          $add.SetAttribute("value", $value)
+                          $envVars.AppendChild($add) | Out-Null
+                        }
+                      }
+                    }
+                    
+                    Set-EnvVar "NEXTAUTH_SECRET" "$(NEXTAUTH_SECRET)"
+                    Set-EnvVar "NEXTAUTH_URL" "$(NEXTAUTH_URL)"
+                    Set-EnvVar "FORCE_HTTPS" "$(if ($(FORCE_HTTPS)) { $(FORCE_HTTPS) } else { 'false' })"
+                    Set-EnvVar "API_BASE_URL" "$(API_BASE_URL)"
+                    
+                    $config.Save($webConfigPath)
+                    Restart-WebAppPool -Name $appPoolName
+                    Write-Host "Updated environment variables and restarted app pool"
+                  }
+                displayName: 'Set environment variables (Production)'

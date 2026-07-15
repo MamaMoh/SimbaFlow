@@ -1,0 +1,974 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --toast-error-bg: rgba(200, 0, 0, 0.2);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-et-primary: #006633; /* Ethiopian Airlines green */
+  --sidebar-et-primary-foreground: #ffc107; /* Ethiopian Airlines yellow */
+  --sidebar-et-ring: #c30f16; /* Ethiopian Airlines red */
+
+  /* Gradient variables for the logo */
+  --logo-gradient-start: #006633; /* green */
+  --logo-gradient-middle: #f8c318; /* yellow */
+  --logo-gradient-end: #c30f16; /* red */
+
+  /*current date highlights*/
+  --fc-today-bg: #f5f5f5;
+  --fc-today-text: var(--primary);
+  --fc-today-border: var(--primary);
+  --fc-today-dot: var(--primary);
+  --fc-today-number: var(--background);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+  --sidebar-et-primary: #006633; /* Ethiopian Airlines green */
+  --sidebar-et-primary-foreground: #f8c318; /* Lighter yellow for dark mode */
+  --sidebar-et-ring: #c30f16; /* Ethiopian Airlines red */
+
+  /* Gradient variables for the logo's dark-mode */
+  --logo-gradient-start: #00703c;
+  --logo-gradient-middle: #f8c318;
+  --logo-gradient-end: #c30f16;
+
+  /*current date highlights*/
+  --fc-today-bg: #333333;
+  --fc-today-text: #f5f5f5;
+  --fc-today-border: var(--primary);
+  --fc-today-dot: var(--primary);
+  --fc-today-number: var(--background);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --color-primary: #2563eb;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f1f5f9;
+  --color-secondary-foreground: #0f172a;
+  --color-muted: #f8fafc;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #2563eb;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+
+  --color-dark-primary: #3b82f6;
+  --color-dark-primary-foreground: #ffffff;
+  --color-dark-secondary: #1e293b;
+  --color-dark-secondary-foreground: #f8fafc;
+  --color-dark-muted: #0f172a;
+  --color-dark-muted-foreground: #94a3b8;
+  --color-dark-accent: #1e293b;
+  --color-dark-accent-foreground: #f8fafc;
+  --color-dark-destructive: #ef4444;
+  --color-dark-destructive-foreground: #ffffff;
+  --color-dark-border: #334155;
+  --color-dark-input: #334155;
+  --color-dark-ring: #3b82f6;
+  --color-dark-background: #020617;
+  --color-dark-foreground: #f8fafc;
+  --color-dark-card: #0f172a;
+  --color-dark-card-foreground: #f8fafc;
+  --color-dark-popover: #0f172a;
+  --color-dark-popover-foreground: #f8fafc;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ========================
+   Ethiopian / Company Theme
+   ======================== */
+
+/* ========================
+   Ethiopian Color Palette Tokens
+   ======================== */
+.ethiopian {
+  /* Core palette */
+  --et-green: #006633;
+  --et-yellow: #f8c318;
+  --et-red: #c30f16;
+
+  /* Core surfaces / text */
+
+  --foreground: #07211a;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+
+  /* Brand - primary */
+  --primary: var(--et-green);
+  --primary-foreground: #ffffff;
+
+  /* Accent - highlight / badges */
+  --secondary: var(--et-yellow);
+  --secondary-foreground: var(--foreground);
+
+  /* Destructive / alerts */
+  --destructive: var(--et-red);
+  --destructive-foreground: #ffffff;
+
+  /* Helpers / neutrals */
+  --muted: #f4f7f3;
+  --muted-foreground: #6b7973;
+  --accent: #e9f4ec;
+  --accent-foreground: var(--foreground);
+
+  --border: oklch(0.922 0 0); /* Match light theme border color */
+  --input: oklch(0.922 0 0); /* Match light theme input border color */
+  --ring: rgba(0, 82, 50, 0.24);
+
+  /* Chart palette */
+  --chart-1: var(--et-green);
+  --chart-2: var(--et-yellow);
+  --chart-3: var(--et-red);
+  --chart-4: #7aa77d;
+  --chart-5: #8b8f85;
+
+  /* Radius / sidebar */
+  --radius: 0.625rem;
+  --sidebar: #f6faf8;
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: #004d2e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--secondary-foreground);
+  --sidebar-border: #e1ebe6;
+  --sidebar-ring: rgba(195, 15, 22, 0.18);
+
+  /* Small helper token variants */
+  --et-primary-50: rgba(0, 82, 50, 0.08);
+  --et-secondary-50: rgba(248, 195, 24, 0.12);
+  --et-destructive-50: rgba(195, 15, 22, 0.08);
+
+  /* Logo gradient */
+  --logo-gradient-start: #006633;
+  --logo-gradient-middle: #f8c318;
+  --logo-gradient-end: #c30f16;
+}
+
+/* ========================
+   Ethiopian Dark Mode Overrides
+   ======================== */
+.dark.ethiopian {
+  /* Core surfaces – consistent dark background across all areas */
+  --background: #0f1612;
+  --foreground: #e8ede9;
+  --card: #151d18;
+  --card-foreground: #e8ede9;
+  --popover: #151d18;
+  --popover-foreground: #e8ede9;
+
+  /* Brand - primary (slightly lighter green for dark mode legibility) */
+  --primary: #00994d;
+  --primary-foreground: #ffffff;
+
+  /* Secondary (dimmed yellow) */
+  --secondary: #a38310;
+  --secondary-foreground: #f8f0d4;
+
+  /* Destructive */
+  --destructive: #e0363d;
+  --destructive-foreground: #ffffff;
+
+  /* Helpers / neutrals */
+  --muted: #1c2720;
+  --muted-foreground: #8fa898;
+  --accent: #1c2720;
+  --accent-foreground: #e8ede9;
+
+  --border: #263830;
+  --input: #263830;
+  --ring: rgba(0, 153, 77, 0.35);
+
+  /* Chart palette */
+  --chart-1: #00b359;
+  --chart-2: #d4a017;
+  --chart-3: #e04040;
+  --chart-4: #5ea864;
+  --chart-5: #7a8a7f;
+
+  /* Sidebar */
+  --sidebar: #121a15;
+  --sidebar-foreground: #e8ede9;
+  --sidebar-primary: #00804a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1c2720;
+  --sidebar-accent-foreground: #d5ddd7;
+  --sidebar-border: #263830;
+  --sidebar-ring: rgba(195, 15, 22, 0.25);
+
+  /* Small helper token variants */
+  --et-primary-50: rgba(0, 153, 77, 0.12);
+  --et-secondary-50: rgba(248, 195, 24, 0.10);
+  --et-destructive-50: rgba(224, 54, 61, 0.12);
+
+  /* Logo gradient */
+  --logo-gradient-start: #00b359;
+  --logo-gradient-middle: #f8c318;
+  --logo-gradient-end: #e04040;
+}
+
+/* ========================
+   Ethiopian Semantic Components
+   ======================== */
+@layer components {
+  .et-btn {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold shadow-sm focus:outline-none transition-colors duration-200;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border: 1px solid transparent;
+  }
+
+  .et-btn-outline {
+    @apply inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold transition-colors duration-200;
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--border);
+  }
+
+  .et-badge {
+    @apply inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full;
+    background: var(--muted);
+    color: var(--muted-foreground);
+  }
+
+  .et-badge--yellow {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+  }
+
+  .et-alert {
+    @apply rounded-md p-3 text-sm;
+    background: var(--et-primary-50);
+    color: var(--foreground);
+    border-left: 4px solid var(--primary);
+  }
+
+  .et-alert--danger {
+    background: var(--et-destructive-50);
+    color: var(--destructive-foreground);
+    border-left: 4px solid var(--destructive);
+  }
+
+  /* Checkbox visibility in ET theme */
+  .ethiopian [data-slot="checkbox"] {
+    border-color: rgb(156 163 175) !important; /* gray-400 */
+  }
+  
+  .ethiopian [data-slot="checkbox"]:not([data-state="checked"]) {
+    background-color: transparent;
+  }
+
+  /* Input field visibility in ET theme - using border shorthand for maximum specificity */
+  .ethiopian [data-slot="input"],
+  .ethiopian input[data-slot="input"],
+  .ethiopian input.border-input,
+  .ethiopian input.border,
+  .ethiopian form input[type="text"],
+  .ethiopian form input[type="email"],
+  .ethiopian form input[type="date"],
+  .ethiopian form input[type="number"],
+  .ethiopian form input[type="tel"],
+  .ethiopian input[type="text"],
+  .ethiopian input[type="email"],
+  .ethiopian input[type="date"],
+  .ethiopian input[type="number"],
+  .ethiopian input[type="tel"] {
+    background-color: var(--background) !important;
+    background: var(--background) !important;
+    color: var(--foreground) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* Match light theme shadow-xs */
+  }
+  
+  /* Override any transparent backgrounds - more specific */
+  .ethiopian [data-slot="input"].bg-transparent,
+  .ethiopian input.bg-transparent,
+  .ethiopian input[data-slot="input"].bg-transparent {
+    background-color: var(--background) !important;
+    background: var(--background) !important;
+  }
+  
+  /* Ensure border-input class uses visible border color */
+  .ethiopian .border-input,
+  .ethiopian input.border-input {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* Match light theme shadow-xs */
+  }
+  
+  .ethiopian [data-slot="input"]::placeholder {
+    color: rgb(107 114 128) !important; /* gray-500 for better visibility */
+  }
+
+  /* Textarea visibility in ET theme */
+  .ethiopian [data-slot="textarea"] {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* Match light theme shadow-xs */
+  }
+
+  .ethiopian [data-slot="textarea"]::placeholder {
+    color: rgb(107 114 128) !important; /* gray-500 for better visibility */
+  }
+
+  /* Select/Dropdown trigger visibility in ET theme */
+  .ethiopian [data-slot="select-trigger"] {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* Match light theme shadow-xs */
+  }
+  
+  .ethiopian [data-slot="select-trigger"] [data-slot="select-value"] {
+    color: var(--foreground) !important;
+  }
+  
+  .ethiopian [data-slot="select-trigger"] svg {
+    color: rgb(107 114 128) !important; /* gray-500 for icons */
+  }
+
+  /* Combobox button visibility in ET theme */
+  .ethiopian button[role="combobox"] {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* Match light theme shadow-xs */
+  }
+  
+  .ethiopian button[role="combobox"] svg {
+    color: rgb(107 114 128) !important; /* gray-500 for icons */
+  }
+
+  /* Command input (used in Combobox) visibility in ET theme */
+  .ethiopian [data-slot="command-input"] {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important; /* Match light theme shadow-xs */
+  }
+  
+  .ethiopian [data-slot="command-input"]::placeholder {
+    color: rgb(107 114 128) !important; /* gray-500 for better visibility */
+  }
+
+  /* Search icon visibility in ET theme - target icons within input containers */
+  .ethiopian .relative .text-muted-foreground {
+    color: rgb(107 114 128) !important; /* gray-500 for better visibility */
+  }
+
+  /* Ensure asterisk in FormLabel is visible in ET theme */
+  .ethiopian [data-slot="form-label"] span.text-destructive,
+  .ethiopian [data-slot="label"] span.text-destructive,
+  .ethiopian label span.text-destructive {
+    color: var(--destructive) !important;
+    display: inline !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure icons inside input containers are visible */
+  .ethiopian .relative svg.text-muted-foreground,
+  .ethiopian .relative .text-muted-foreground {
+    color: rgb(107 114 128) !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ========================
+   Ethiopian Logo Gradient
+   ======================== */
+.logo {
+  background: linear-gradient(
+    90deg,
+    var(--logo-gradient-start) 0%,
+    var(--logo-gradient-middle) 50%,
+    var(--logo-gradient-end) 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-move 8s ease-in-out infinite;
+  background-size: 200% auto;
+}
+
+@keyframes gradient-move {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: -200% 0%;
+  }
+}
+/* ========================
+   FullCalendar Modern Styling
+   ======================== */
+
+/* Base grid & header */
+.fc {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: var(--card);
+}
+
+.fc-timegrid-axis {
+  background-color: var(--muted);
+}
+
+/* Header toolbar */
+.fc-header-toolbar {
+  padding: 0.5rem 1rem;
+  background-color: var(--background);
+}
+
+.fc .fc-toolbar-title {
+  font-weight: 700;
+  color: var(--foreground);
+  font-size: 1.25rem;
+}
+
+/* Buttons */
+.fc .fc-button {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.75rem;
+  font-weight: 600;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease-in-out;
+}
+
+.fc .fc-button:hover {
+  filter: brightness(0.9);
+}
+
+.fc .fc-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Column headers */
+.fc-col-header-cell-cushion {
+  color: var(--foreground);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+/* Scrollgrid background */
+.fc-scrollgrid-sync-inner {
+  background-color: var(--background);
+}
+
+/* Time slots */
+.fc-timegrid-slot,
+.fc-daygrid-day {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* Event styling */
+.fc-event {
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.fc-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+/* Status colors with gradients */
+.fc-event.status-scheduled {
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    var(--primary-foreground) 100%
+  );
+  color: var(--primary-foreground);
+}
+
+.fc-event.status-completed {
+  background: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    var(--accent-foreground) 100%
+  );
+  color: var(--accent-foreground);
+}
+
+.fc-event.status-cancelled {
+  background: linear-gradient(
+    135deg,
+    var(--destructive) 0%,
+    var(--destructive-foreground) 100%
+  );
+  color: var(--destructive-foreground);
+}
+
+.fc-event.status-pending {
+  background: linear-gradient(
+    135deg,
+    var(--muted) 0%,
+    var(--muted-foreground) 100%
+  );
+  color: var(--muted-foreground);
+}
+
+/* Today styling */
+.fc-day-today {
+  background-color: var(--fc-today-bg) !important;
+  color: var(--fc-today-text, #333333) !important;
+}
+
+.fc-day-today.fc-day {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.fc-timegrid-col.fc-day-today,
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-frame {
+  background-color: var(--fc-today-bg) !important;
+}
+
+.fc-daygrid-day.fc-day-today {
+  background-color: var(--fc-today-bg, #e0f7fa) !important;
+  border: 2px solid var(--fc-today-border) !important;
+  font-weight: bold;
+}
+
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background-color: var(--fc-today-dot) !important;
+  color: var(--fc-today-number, #ffffff) !important;
+  border-radius: 50%;
+  padding: 0.25rem;
+  display: inline-block;
+  font-weight: 700;
+}
+
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-top {
+  position: relative;
+}
+
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-top::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  background-color: var(--fc-today-dot, #00acc1);
+  border-radius: 50%;
+}
+
+/* Dark mode overrides */
+.dark .fc {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  border-color: var(--border);
+}
+
+.dark .fc-header-toolbar {
+  background-color: var(--card);
+}
+
+.dark .fc .fc-toolbar-title,
+.dark .fc-col-header-cell-cushion {
+  color: var(--card-foreground);
+}
+
+.dark .fc-scrollgrid-sync-inner {
+  background-color: var(--card);
+}
+
+.dark .fc .fc-button {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Scrollgrid & table borders */
+.dark .fc .fc-scrollgrid,
+.dark .fc .fc-scrollgrid-section > td,
+.dark .fc .fc-scrollgrid-section > th {
+  border-color: var(--border);
+}
+
+.dark .fc td,
+.dark .fc th {
+  border-color: var(--border);
+}
+
+/* Day grid cells */
+.dark .fc .fc-daygrid-day {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.dark .fc .fc-daygrid-day-number {
+  color: var(--card-foreground);
+}
+
+.dark .fc .fc-daygrid-day.fc-day-other {
+  background-color: var(--background);
+}
+
+.dark .fc .fc-daygrid-day.fc-day-other .fc-daygrid-day-number {
+  color: var(--muted-foreground);
+}
+
+/* Column header row */
+.dark .fc .fc-col-header-cell {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+/* Time grid */
+.dark .fc .fc-timegrid-slot {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.dark .fc .fc-timegrid-col {
+  background-color: var(--card);
+}
+
+.dark .fc .fc-timegrid-axis {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  border-color: var(--border);
+}
+
+.dark .fc .fc-timegrid-slot-label,
+.dark .fc .fc-timegrid-slot-label-cushion {
+  color: oklch(0.7 0 0);
+}
+
+.dark .fc .fc-timegrid-now-indicator-line {
+  border-color: var(--destructive);
+}
+
+/* Day / timegrid background frame */
+.dark .fc .fc-daygrid-day-frame {
+  background-color: var(--card);
+}
+
+/* "more" links in month view */
+.dark .fc .fc-daygrid-more-link {
+  color: var(--primary);
+}
+
+/* List view */
+.dark .fc .fc-list {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.dark .fc .fc-list-day-cushion {
+  background-color: var(--muted);
+  color: var(--card-foreground);
+}
+
+.dark .fc .fc-list-event:hover td {
+  background-color: var(--accent);
+}
+
+.dark .fc .fc-list-event td {
+  border-color: var(--border);
+}
+
+/* Popover (when clicking "+2 more") */
+.dark .fc .fc-popover {
+  background-color: var(--card);
+  border-color: var(--border);
+}
+
+.dark .fc .fc-popover-header {
+  background-color: var(--muted);
+  color: var(--card-foreground);
+}
+
+/* Button active / pressed states */
+.dark .fc .fc-button-active,
+.dark .fc .fc-button:active {
+  background-color: var(--primary);
+  filter: brightness(0.8);
+}
+
+/* Today highlight — use the dark-mode today-bg variable */
+.dark .fc .fc-day-today {
+  background-color: var(--fc-today-bg) !important;
+}
+
+/* Today column highlight in week/day timegrid view (dark mode) */
+.dark .fc .fc-timegrid-col.fc-day-today {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: inset 0 3px 0 0 var(--primary);
+}
+
+.dark .fc .fc-col-header-cell.fc-day-today {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .fc .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* Daygrid header / col-header borders */
+.dark .fc-daygrid-header,
+.dark .fc-timegrid-header,
+.dark .fc-col-header {
+  border-color: var(--border);
+}
+
+/* Event text for dark mode */
+.dark .fc-event-line2 {
+  color: var(--muted-foreground);
+}
+
+.dark .fc-event-line3 {
+  color: var(--accent-foreground);
+}
+
+/* Dark mode hover & highlight states for calendar cells/rows */
+.dark .fc .fc-highlight {
+  background-color: var(--accent) !important;
+}
+
+.dark .fc .fc-daygrid-day:hover .fc-daygrid-day-frame {
+  background-color: var(--accent);
+}
+
+.dark .fc .fc-timegrid-col:hover {
+  background-color: var(--accent);
+}
+
+.dark .fc .fc-timegrid-slot:hover {
+  background-color: var(--accent);
+}
+
+.dark .fc .fc-cell-shaded,
+.dark .fc .fc-day-disabled {
+  background-color: var(--muted) !important;
+}
+
+/* Table row hover for data tables in dark mode */
+.dark [data-slot="table-row"]:hover {
+  background-color: var(--accent) !important;
+}
+
+.dark [data-slot="table-row"][data-state="selected"] {
+  background-color: var(--muted) !important;
+}
+
+.fc-event-custom {
+  white-space: normal;
+  line-height: 1.4;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary-foreground);
+}
+
+.fc-event-line1 {
+  font-weight: 700;
+}
+
+.fc-event-line2 {
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+
+.fc-event-line3 {
+  font-size: 0.75rem;
+  color: var(--accent-foreground);
+}
+.fc .fc-media-screen .fc-direction-ltr .fc-theme-standard {
+  border: none !important;
+}
+.fc-daygrid-header,
+.fc-timegrid-header,
+.fc-col-header {
+  border-bottom: 1px solid var(--border);
+}
+
+/* I added this class to overwrite the default time-grid height */
+.fc .fc-timegrid-slot {
+  height: 50px !important;
+}
+
+/* ========================
+   Heartbeat Loading Animation
+   ======================== */
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  10%, 30% {
+    transform: scale(1.1);
+  }
+  20%, 40% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+/* ========================
+   Modern Scrollbar Utility
+   ======================== */
+.modern-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.modern-scrollbar::-webkit-scrollbar {
+  width: 4px; /* Even thinner for a cleaner look */
+}
+
+.modern-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.modern-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
