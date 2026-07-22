@@ -9,6 +9,14 @@ import { getToken } from "next-auth/jwt";
  */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Mock-data mode: allow browsing the UI without a live API/session
+  if (process.env.NEXT_PUBLIC_USE_MOCKS === "true" || process.env.NEXT_PUBLIC_USE_MOCKS === "1") {
+    if (pathname === "/login" || pathname.startsWith("/login")) {
+      return NextResponse.redirect(new URL("/candidates", request.url));
+    }
+    return NextResponse.next();
+  }
   
   // Bypass middleware for Next.js internal routes, static assets, and authentication endpoints
   if (

@@ -27,6 +27,11 @@ const guardedRoutes = collectRoutes(navigation, []).sort(
 export function RouteGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isLoading, getPermissions, isSuperAdmin } = useAuth();
+  const useMocks =
+    process.env.NEXT_PUBLIC_USE_MOCKS === "true" ||
+    process.env.NEXT_PUBLIC_USE_MOCKS === "1";
+
+  if (useMocks) return <>{children}</>;
 
   // Wait for the session before deciding; avoids a false 403 flash.
   if (isLoading) return <>{children}</>;

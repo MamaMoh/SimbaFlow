@@ -1,0 +1,26 @@
+{
+  "stageId": "stage-lmis",
+  "stageName": "LMIS",
+  "items": [
+    {
+      "id": "c-0003",
+      "applicationNo": "E820465599",
+      "fullName": "Hawulet Muhammed Assen",
+      "passportNumber": "EQ2014542",
+      "labourId": "EF10002",
+      "countryOfTravel": "KSA",
+      "sponsorName": "Etenaa Resources",
+      "officeName": "Head Office — Addis Ababa",
+      "currentStatusValues": { "medical": "Fit", "tasheer": "Done", "embassy": "Issued" },
+      "tracks": [],
+      "enteredAt": "2026-06-28T09:00:00Z",
+      "daysInStage": 24,
+      "isOverdue": false,
+      "isPreview": true,
+      "lastActionLabel": "Embassy → Issued",
+      "availableActions": [
+        { "transitionRuleId": "tr-to-lmis", "buttonLabel": "Transfer to LMIS", "isEnabled": true }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 "use client";
+
 import * as React from "react";
-import { flexRender } from "@tanstack/react-table";
+import { flexRender, type Table as TanStackTable } from "@tanstack/react-table";
 import {
   Table,
   TableBody,
@@ -13,13 +14,10 @@ import { DataTablePagination } from "@/components/data-table/data-table-paginati
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { cn } from "@/lib/utils";
 
-type PaginationProps = Omit<
-  React.ComponentProps<typeof DataTablePagination>,
-  "table"
->;
+type PaginationProps = Omit<React.ComponentProps<typeof DataTablePagination>, "table">;
 
 export interface DataTableProps<TData, TValue> {
-  table: any;
+  table: TanStackTable<TData>;
   filterableColumns?: any[];
   searchableColumns?: any[];
   enableGlobalFilter?: boolean;
@@ -34,11 +32,11 @@ export interface DataTableProps<TData, TValue> {
   onPrint?: (allData: any[], selectedRows: any[]) => void;
   searchPlaceholder?: string;
   useFilterPopover?: boolean;
+  dense?: boolean;
+  emptyMessage?: string;
 }
 
-export function DataTable<TData, TValue>(
-  props: DataTableProps<TData, TValue>
-) {
+export function DataTable<TData, TValue>(props: DataTableProps<TData, TValue>) {
   const {
     table,
     filterableColumns = [],
@@ -55,12 +53,15 @@ export function DataTable<TData, TValue>(
     onPrint,
     searchPlaceholder,
     useFilterPopover = false,
+    dense = false,
+    emptyMessage = "No results.",
   } = props;
+
   return (
     <div
       className={cn(
-        "w-full space-y-2",
-        isFullscreen ? "fixed inset-0 z-50 bg-background p-3 overflow-auto" : ""
+        "w-full space-y-3",
+        isFullscreen ? "fixed inset-0 z-50 bg-background p-3 overflow-auto" : "",
       )}
     >
       {!viewHidden && (
@@ -86,19 +87,22 @@ export function DataTable<TData, TValue>(
           }}
         />
       )}
-      <div className="w-full overflow-x-auto">
+      <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
         <Table>
           <TableHeader>
-            {table.getHeaderGroups().map((headerGroup: any) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header: any) => (
-                  <TableHead key={header.id} className="whitespace-nowrap">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id} className="bg-muted/40 hover:bg-muted/40">
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      "whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+                      dense && "h-9 px-2",
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -106,17 +110,15 @@ export function DataTable<TData, TValue>(
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row: any) => (
+              table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="hover:bg-muted/30"
                 >
-                  {row.getVisibleCells().map((cell: any) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className={cn(dense && "py-2 px-2 text-[13px]")}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -124,10 +126,10 @@ export function DataTable<TData, TValue>(
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={table.getAllColumns().length}
-                  className="h-24 text-center"
+                  colSpan={table.getVisibleLeafColumns().length}
+                  className="h-28 text-center text-muted-foreground"
                 >
-                  No results.
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
             )}

@@ -3,10 +3,13 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Common;
+using SimbaFlow.Domain.Entities.Agency;
+using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Locations;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Entities.Tenancy;
+using SimbaFlow.Domain.Entities.Workflow;
 using SimbaFlow.Infrastructure.Audit;
 
 namespace SimbaFlow.Infrastructure.Persistence;
@@ -57,6 +60,10 @@ public class ApplicationDbContext
     // Locations
     public DbSet<Location> Locations => Set<Location>();
 
+    // Agency
+    public DbSet<Office> Offices => Set<Office>();
+    public DbSet<Partner> Partners => Set<Partner>();
+
     // Staff
     public DbSet<StaffProfile> StaffProfiles => Set<StaffProfile>();
     public DbSet<StaffLocationMapping> StaffLocationMappings => Set<StaffLocationMapping>();
@@ -64,23 +71,39 @@ public class ApplicationDbContext
     public DbSet<StaffDepartmentAffiliation> StaffDepartmentAffiliations => Set<StaffDepartmentAffiliation>();
 
     // Candidates
-    public DbSet<Domain.Entities.Candidates.Candidate> Candidates => Set<Domain.Entities.Candidates.Candidate>();
-    public DbSet<Domain.Entities.Candidates.CandidateDocument> CandidateDocuments => Set<Domain.Entities.Candidates.CandidateDocument>();
+    public DbSet<Candidate> Candidates => Set<Candidate>();
+    public DbSet<CandidateDocument> CandidateDocuments => Set<CandidateDocument>();
+    public DbSet<CandidatePlacement> CandidatePlacements => Set<CandidatePlacement>();
+    public DbSet<CandidateRelative> CandidateRelatives => Set<CandidateRelative>();
+    public DbSet<CandidateSkills> CandidateSkills => Set<CandidateSkills>();
+    public DbSet<CandidateStageStay> CandidateStageStays => Set<CandidateStageStay>();
+    public DbSet<CandidateStepStay> CandidateStepStays => Set<CandidateStepStay>();
+    public DbSet<CandidateReturned> CandidateReturnedRecords => Set<CandidateReturned>();
+    public DbSet<CandidateComplaint> CandidateComplaints => Set<CandidateComplaint>();
+    public DbSet<CandidateCommission> CandidateCommissions => Set<CandidateCommission>();
 
     // Workflow
-    public DbSet<Domain.Entities.Workflow.WorkflowDefinition> WorkflowDefinitions => Set<Domain.Entities.Workflow.WorkflowDefinition>();
-    public DbSet<Domain.Entities.Workflow.WorkflowStage> WorkflowStages => Set<Domain.Entities.Workflow.WorkflowStage>();
-    public DbSet<Domain.Entities.Workflow.WorkflowEvent> WorkflowEvents => Set<Domain.Entities.Workflow.WorkflowEvent>();
-    public DbSet<Domain.Entities.Workflow.WorkflowSnapshot> WorkflowSnapshots => Set<Domain.Entities.Workflow.WorkflowSnapshot>();
+    public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
+    public DbSet<WorkflowStage> WorkflowStages => Set<WorkflowStage>();
+    public DbSet<WorkflowEvent> WorkflowEvents => Set<WorkflowEvent>();
+    public DbSet<WorkflowSnapshot> WorkflowSnapshots => Set<WorkflowSnapshot>();
+    public DbSet<WorkflowTransitionRule> WorkflowTransitionRules => Set<WorkflowTransitionRule>();
+    public DbSet<WorkflowStageStatus> WorkflowStageStatuses => Set<WorkflowStageStatus>();
+    public DbSet<ParallelTrackDefinition> ParallelTrackDefinitions => Set<ParallelTrackDefinition>();
+    public DbSet<MirrorViewRule> MirrorViewRules => Set<MirrorViewRule>();
+    public DbSet<StageMandatoryField> StageMandatoryFields => Set<StageMandatoryField>();
+    public DbSet<TaskAssignment> TaskAssignments => Set<TaskAssignment>();
+    public DbSet<StatusTransitionPermission> StatusTransitionPermissions => Set<StatusTransitionPermission>();
 
     // Tenant Roles (per-agency custom roles)
-    public DbSet<Domain.Entities.Tenancy.TenantRole> TenantRoles => Set<Domain.Entities.Tenancy.TenantRole>();
-    public DbSet<Domain.Entities.Tenancy.TenantRolePermission> TenantRolePermissions => Set<Domain.Entities.Tenancy.TenantRolePermission>();
-    public DbSet<Domain.Entities.Tenancy.TenantUserRole> TenantUserRoles => Set<Domain.Entities.Tenancy.TenantUserRole>();
+    public DbSet<TenantRole> TenantRoles => Set<TenantRole>();
+    public DbSet<TenantRolePermission> TenantRolePermissions => Set<TenantRolePermission>();
+    public DbSet<TenantUserRole> TenantUserRoles => Set<TenantUserRole>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
         // JsonDocument value converter — enables InMemory provider for tests
         // and provides serialization for PostgreSQL JSONB columns
@@ -88,8 +111,7 @@ public class ApplicationDbContext
             v => v == null ? null : v.RootElement.GetRawText(),
             v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonDocument.Parse(v, default));
 
-        // Candidate
-        modelBuilder.Entity<Domain.Entities.Candidates.Candidate>(entity =>
+        modelBuilder.Entity<Candidate>(entity =>
         {
             entity.Property(c => c.CurrentStatusValues).HasConversion(jsonDocConverter);
             entity.Property(c => c.VisibleInStages)
@@ -98,14 +120,12 @@ public class ApplicationDbContext
                     v => string.IsNullOrEmpty(v) ? Array.Empty<Guid>() : System.Text.Json.JsonSerializer.Deserialize<Guid[]>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
         });
 
-        // WorkflowEvent
-        modelBuilder.Entity<Domain.Entities.Workflow.WorkflowEvent>(entity =>
+        modelBuilder.Entity<WorkflowEvent>(entity =>
         {
             entity.Property(e => e.Data).HasConversion(jsonDocConverter!);
         });
 
-        // WorkflowSnapshot
-        modelBuilder.Entity<Domain.Entities.Workflow.WorkflowSnapshot>(entity =>
+        modelBuilder.Entity<WorkflowSnapshot>(entity =>
         {
             entity.Property(s => s.StatusValues).HasConversion(jsonDocConverter!);
             entity.Property(s => s.VisibleInStages)
@@ -114,8 +134,7 @@ public class ApplicationDbContext
                     v => string.IsNullOrEmpty(v) ? Array.Empty<Guid>() : System.Text.Json.JsonSerializer.Deserialize<Guid[]>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
         });
 
-        // WorkflowTransitionRule
-        modelBuilder.Entity<Domain.Entities.Workflow.WorkflowTransitionRule>(entity =>
+        modelBuilder.Entity<WorkflowTransitionRule>(entity =>
         {
             entity.Property(r => r.Conditions).HasConversion(jsonDocConverter!);
             entity.Property(r => r.RequiredFields)
@@ -130,16 +149,15 @@ public class ApplicationDbContext
             entity.HasOne(r => r.SourceStage)
                 .WithMany()
                 .HasForeignKey(r => r.SourceStageId)
-                .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(r => r.TargetStage)
                 .WithMany()
                 .HasForeignKey(r => r.TargetStageId)
-                .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // MirrorViewRule
-        modelBuilder.Entity<Domain.Entities.Workflow.MirrorViewRule>(entity =>
+        modelBuilder.Entity<MirrorViewRule>(entity =>
         {
             entity.Property(r => r.Conditions).HasConversion(jsonDocConverter!);
 
@@ -150,20 +168,18 @@ public class ApplicationDbContext
             entity.HasOne(m => m.TargetStage)
                 .WithMany()
                 .HasForeignKey(m => m.TargetStageId)
-                .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // TenantInfo — TenantSettings as JSON
-        modelBuilder.Entity<Domain.Entities.Identity.TenantInfo>(entity =>
+        modelBuilder.Entity<TenantInfo>(entity =>
         {
             entity.Property(t => t.Settings)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => string.IsNullOrEmpty(v) ? new Domain.Entities.Tenancy.TenantSettings() : System.Text.Json.JsonSerializer.Deserialize<Domain.Entities.Tenancy.TenantSettings>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
+                    v => string.IsNullOrEmpty(v) ? new TenantSettings() : System.Text.Json.JsonSerializer.Deserialize<TenantSettings>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
         });
 
-        // ApplicationUser — relationships and conversions
-        modelBuilder.Entity<Domain.Entities.Identity.ApplicationUser>(entity =>
+        modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.Property(u => u.AllowedIpRanges)
                 .HasConversion(
@@ -177,7 +193,7 @@ public class ApplicationDbContext
 
             entity.HasOne(u => u.StaffProfile)
                 .WithOne()
-                .HasForeignKey<Domain.Entities.Staff.StaffProfile>("UserId")
+                .HasForeignKey<StaffProfile>("UserId")
                 .IsRequired(false);
 
             entity.Ignore(u => u.RefreshTokens);
@@ -185,7 +201,6 @@ public class ApplicationDbContext
             entity.Ignore(u => u.PasswordHistories);
         });
 
-        // Department
         modelBuilder.Entity<Department>(entity =>
         {
             entity.HasOne(d => d.HeadUser)
@@ -194,7 +209,6 @@ public class ApplicationDbContext
                 .IsRequired(false);
         });
 
-        // UserSession — navigations
         modelBuilder.Entity<UserSession>(entity =>
         {
             entity.HasOne(s => s.User)
@@ -208,20 +222,17 @@ public class ApplicationDbContext
                 .IsRequired(false);
         });
 
-        // RolePermission — composite key
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
         });
 
-        // TenantRolePermission — composite key
-        modelBuilder.Entity<Domain.Entities.Tenancy.TenantRolePermission>(entity =>
+        modelBuilder.Entity<TenantRolePermission>(entity =>
         {
             entity.HasKey(trp => new { trp.TenantRoleId, trp.PermissionCode });
         });
 
-        // TenantUserRole — composite key
-        modelBuilder.Entity<Domain.Entities.Tenancy.TenantUserRole>(entity =>
+        modelBuilder.Entity<TenantUserRole>(entity =>
         {
             entity.HasKey(tur => new { tur.UserId, tur.TenantRoleId });
         });
@@ -229,7 +240,6 @@ public class ApplicationDbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        // Set audit fields
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             switch (entry.State)
@@ -245,19 +255,16 @@ public class ApplicationDbContext
             }
         }
 
-        // Collect domain events before saving
         var domainEvents = ChangeTracker.Entries<BaseEntity>()
             .SelectMany(e => e.Entity.DomainEvents)
             .ToList();
 
         var result = await base.SaveChangesAsync(cancellationToken);
 
-        // Dispatch domain events after successful save
         if (_domainEventDispatcher is not null && domainEvents.Count > 0)
         {
             await _domainEventDispatcher.DispatchAsync(domainEvents, cancellationToken);
 
-            // Clear events from entities
             foreach (var entry in ChangeTracker.Entries<BaseEntity>())
             {
                 entry.Entity.ClearDomainEvents();

@@ -1,0 +1,76 @@
+{
+  "stageId": "stage-embassy",
+  "stageName": "Embassy",
+  "items": [
+    {
+      "id": "c-0001",
+      "applicationNo": "E821241832",
+      "fullName": "Mekiya Yimer Kebede",
+      "passportNumber": "EQ2623576",
+      "labourId": "EF10000",
+      "countryOfTravel": "KSA",
+      "sponsorName": "Amjad Khayat",
+      "officeName": "Head Office — Addis Ababa",
+      "currentStatusValues": { "medical": "Fit", "tasheer": "Done", "embassy": "" },
+      "tracks": [
+        { "trackKey": "medical", "status": "Fit", "since": "2026-07-14T11:03:00Z", "daysOnStep": 8 },
+        { "trackKey": "tasheer", "status": "Done", "since": "2026-07-14T09:30:00Z", "daysOnStep": 8 },
+        { "trackKey": "embassy", "status": "", "since": null, "daysOnStep": 0 }
+      ],
+      "enteredAt": "2026-07-10T09:12:00Z",
+      "daysInStage": 12,
+      "lastActionAt": "2026-07-14T11:03:00Z",
+      "lastActionLabel": "Medical → Fit",
+      "isOverdue": false,
+      "availableActions": [
+        { "transitionRuleId": "tr-to-lmis", "buttonLabel": "To LMIS", "isEnabled": false, "disabledReason": "Requires embassy=Issued" }
+      ]
+    },
+    {
+      "id": "c-0002",
+      "applicationNo": "E820921905",
+      "fullName": "Zeynaba Mohammed Aleye",
+      "passportNumber": "EP7420658",
+      "labourId": "EF10001",
+      "countryOfTravel": "KSA",
+      "sponsorName": "Etenaa Resources",
+      "officeName": "Bole Branch",
+      "currentStatusValues": { "medical": "OnProgress", "tasheer": "Booked", "embassy": "" },
+      "tracks": [
+        { "trackKey": "medical", "status": "OnProgress", "since": "2026-07-12T10:00:00Z", "daysOnStep": 10 },
+        { "trackKey": "tasheer", "status": "Booked", "since": "2026-07-11T14:00:00Z", "daysOnStep": 11 },
+        { "trackKey": "embassy", "status": "", "since": null, "daysOnStep": 0 }
+      ],
+      "enteredAt": "2026-07-08T10:00:00Z",
+      "daysInStage": 14,
+      "lastActionAt": "2026-07-12T10:00:00Z",
+      "lastActionLabel": "Medical → OnProgress",
+      "isOverdue": true,
+      "availableActions": []
+    },
+    {
+      "id": "c-0003",
+      "applicationNo": "E820465599",
+      "fullName": "Hawulet Muhammed Assen",
+      "passportNumber": "EQ2014542",
+      "labourId": "EF10002",
+      "countryOfTravel": "KSA",
+      "sponsorName": "Etenaa Resources",
+      "officeName": "Head Office — Addis Ababa",
+      "currentStatusValues": { "medical": "Fit", "tasheer": "Done", "embassy": "Issued" },
+      "tracks": [
+        { "trackKey": "medical", "status": "Fit", "since": "2026-07-01T10:00:00Z", "daysOnStep": 21 },
+        { "trackKey": "tasheer", "status": "Done", "since": "2026-07-01T10:00:00Z", "daysOnStep": 21 },
+        { "trackKey": "embassy", "status": "Issued", "since": "2026-07-15T14:00:00Z", "daysOnStep": 7 }
+      ],
+      "enteredAt": "2026-06-28T09:00:00Z",
+      "daysInStage": 24,
+      "lastActionAt": "2026-07-15T14:00:00Z",
+      "lastActionLabel": "Embassy → Issued",
+      "isOverdue": true,
+      "availableActions": [
+        { "transitionRuleId": "tr-to-lmis", "buttonLabel": "To LMIS", "isEnabled": true }
+      ]
+    }
+  ]
+}

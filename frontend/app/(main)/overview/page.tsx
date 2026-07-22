@@ -1,29 +1,105 @@
 "use client";
 
+import Link from "next/link";
+import { PipelineTracker } from "@/components/workflow/pipeline-tracker";
+import { getCandidateList, getPipelineCounts } from "@/lib/demo/demo-data";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { AlertTriangle, ArrowRight, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 export default function OverviewPage() {
+  const counts = USE_MOCKS ? getPipelineCounts() : [];
+  const candidates = USE_MOCKS ? getCandidateList() : [];
+  const overdue = candidates.filter((c) => c.isOverdue);
+  const total = candidates.length;
+  const inPipeline = candidates.filter((c) => c.currentStageName !== "Commissions").length;
+
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-lg border p-6">
-          <p className="text-sm text-muted-foreground">Total Candidates</p>
-          <p className="text-3xl font-bold">0</p>
-        </div>
-        <div className="rounded-lg border p-6">
-          <p className="text-sm text-muted-foreground">In Pipeline</p>
-          <p className="text-3xl font-bold">0</p>
-        </div>
-        <div className="rounded-lg border p-6">
-          <p className="text-sm text-muted-foreground">Departures This Month</p>
-          <p className="text-3xl font-bold">0</p>
-        </div>
-        <div className="rounded-lg border p-6">
-          <p className="text-sm text-muted-foreground">Revenue This Month</p>
-          <p className="text-3xl font-bold">ETB 0</p>
-        </div>
+    <div className="flex flex-col gap-6 p-4 md:p-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Operations dashboard</h1>
+        <p className="text-sm text-muted-foreground">
+          Live pipeline snapshot{USE_MOCKS ? " from demo data" : ""}
+        </p>
       </div>
-      <div className="rounded-md border p-8 text-center text-muted-foreground">
-        Pipeline funnel chart and analytics — coming with Unit 6 (Agency ERP)
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          { label: "Total candidates", value: total, icon: Users },
+          { label: "Active pipeline", value: inPipeline },
+          { label: "Overdue / stuck", value: overdue.length, danger: true },
+          { label: "Stages tracked", value: counts.length || 7 },
+        ].map((kpi) => (
+          <div
+            key={kpi.label}
+            className={cn(
+              "rounded-xl border bg-card p-4 shadow-sm",
+              kpi.danger && kpi.value > 0 && "border-rose-200 bg-rose-50/40",
+            )}
+          >
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{kpi.label}</p>
+            <p className={cn("mt-2 text-3xl font-bold tabular-nums", kpi.danger && kpi.value > 0 && "text-rose-700")}>
+              {kpi.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <PipelineTracker />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold">Stage load</h2>
+            <Link href="/candidates" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+              All candidates <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {counts.map((s) => (
+              <Link
+                key={s.id}
+                href={`/workflow/${s.slug}`}
+                className="flex items-center gap-3 rounded-lg border px-3 py-2 hover:bg-muted/40 transition-colors"
+              >
+                <div className="w-28 text-sm font-medium">{s.name}</div>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary/80 rounded-full" style={{ width: `${Math.min(100, s.count * 10)}%` }} />
+                </div>
+                <div className="w-10 text-right text-sm font-bold tabular-nums">{s.count}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-4 shadow-sm">
+          <div className="mb-3 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-rose-600" />
+            <h2 className="font-semibold">Needs attention</h2>
+          </div>
+          {overdue.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">No overdue candidates</p>
+          ) : (
+            <ul className="space-y-2">
+              {overdue.slice(0, 8).map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/candidates/${c.id}`}
+                    className="flex items-center justify-between rounded-lg border border-rose-100 bg-rose-50/50 px-3 py-2 hover:bg-rose-50"
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{c.fullName}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {c.currentStageName} · {c.daysInStage}d · {c.lastActionLabel}
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-rose-700">{c.passportNumber}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

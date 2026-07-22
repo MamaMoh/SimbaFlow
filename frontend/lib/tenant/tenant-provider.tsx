@@ -37,8 +37,39 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [currentOffice, setCurrentOffice] = useState<{ id: string; name: string } | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const useMocks =
+    process.env.NEXT_PUBLIC_USE_MOCKS === "true" ||
+    process.env.NEXT_PUBLIC_USE_MOCKS === "1";
 
   useEffect(() => {
+    if (useMocks) {
+      setPermissions([
+        "candidate.read",
+        "candidate.create",
+        "workflow.view",
+        "embassy.read",
+        "lmis.read",
+        "travel.read",
+        "arrival.read",
+        "commission.read",
+        "system.admin",
+      ]);
+      setTenant({
+        id: "mock-tenant",
+        name: "Demo Agency",
+        slug: "demo",
+        settings: {
+          defaultLanguage: "en",
+          supportedLanguages: ["en"],
+          defaultCurrency: "ETB",
+          supportedCurrencies: ["ETB", "USD"],
+        },
+      });
+      setCurrentOffice({ id: "11111111-1111-1111-1111-111111111001", name: "Head Office — Addis Ababa" });
+      setIsLoading(false);
+      return;
+    }
+
     if (!(session as any)?.accessToken) {
       setIsLoading(false);
       return;
@@ -57,9 +88,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
 
     setIsLoading(false);
-  }, [session]);
+  }, [session, useMocks]);
 
   const hasPermission = (permission: string): boolean => {
+    if (useMocks) return true;
     if ((session as any)?.isSuperAdmin) return true;
     if ((session as any)?.role === "AgencyOwner") return true;
     return permissions.includes(permission);

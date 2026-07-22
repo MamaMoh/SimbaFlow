@@ -54,6 +54,7 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 EF.Functions.ILike(c.FirstName, $"%{search}%") ||
                 EF.Functions.ILike(c.LastName, $"%{search}%") ||
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
+                EF.Functions.ILike(c.ApplicationNo, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
 

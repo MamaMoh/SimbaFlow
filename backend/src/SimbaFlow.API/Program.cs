@@ -54,6 +54,8 @@ using (var scope = app.Services.CreateScope())
     await DepartmentSeeder.SeedDepartmentsAsync(services);
     await LocationSeeder.SeedLocationsAsync(services);
     await RolePermissionSeeder.SeedRolePermissionsAsync(services);
+    await OfficeSeeder.SeedOfficesAsync(services);
+    await WorkflowSeeder.SeedDefaultWorkflowAsync(services);
 }
 
 if (app.Environment.IsDevelopment())

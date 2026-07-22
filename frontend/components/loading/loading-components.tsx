@@ -1,37 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
   text?: string;
+  className?: string;
 }
 
-export function LoadingSpinner({ size = "md", text = "Loading..." }: LoadingSpinnerProps) {
-  const sizeClasses = {
-    sm: "h-4 w-4",
-    md: "h-8 w-8", 
-    lg: "h-12 w-12"
-  };
+/** Shared spinner used across pages, tables, and route transitions. */
+export function LoadingSpinner({ size = "md", text = "Loading...", className }: LoadingSpinnerProps) {
+  const spinnerSize = size === "sm" ? "sm" : size === "lg" ? "lg" : "md";
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-4">
-      <div className={`animate-spin rounded-full border-2 border-primary border-t-transparent ${sizeClasses[size]}`} />
-      {text && <p className="text-sm text-muted-foreground">{text}</p>}
+    <div className={cn("flex flex-col items-center justify-center gap-3", className)}>
+      <Spinner size={spinnerSize === "md" ? 32 : spinnerSize} label={text || "Loading..."} />
+      {text ? <p className="text-sm text-muted-foreground">{text}</p> : null}
+    </div>
+  );
+}
+
+/** Centered content loader for page sections and data tables. */
+export function ContentLoading({ text = "Loading...", className }: { text?: string; className?: string }) {
+  return (
+    <div className={cn("flex min-h-[220px] w-full items-center justify-center p-10", className)}>
+      <LoadingSpinner size="lg" text={text} />
     </div>
   );
 }
 
 export function PageLoading() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mx-auto" />
-        <div>
-          <h3 className="text-lg font-semibold">Loading Application</h3>
-          <p className="text-sm text-muted-foreground">Please wait while we prepare everything...</p>
-        </div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <LoadingSpinner size="lg" text="Loading application…" />
     </div>
   );
 }

@@ -17,6 +17,11 @@ public class WorkflowStage : BaseEntity
     public bool IsInitialStage { get; set; }
     public bool IsFinalStage { get; set; }
 
+    /// <summary>Expected time in this stage before overdue (hours).</summary>
+    public int? ExpectedDurationHours { get; set; }
+    public int? WarningDurationHours { get; set; }
+    public int? CriticalDurationHours { get; set; }
+
     // Navigation
     public WorkflowDefinition? WorkflowDefinition { get; set; }
     public ICollection<WorkflowStageStatus> Statuses { get; set; } = [];

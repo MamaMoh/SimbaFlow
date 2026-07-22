@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ERP Prototype - Navigation Flow</title>
+<style>
+  :root{
+    --navy:#1b3a63; --navy-dark:#14304f; --gold:#f0ad4e; --linkblue:#2f6fb5;
+    --bg:#f4f6f8; --card:#ffffff; --border:#e1e5ea; --text:#26313f; --muted:#7c8798;
+    --green:#1d8a4e; --green-bg:#e3f6ec; --red:#c0392b; --red-bg:#fbe9e7;
+    --amber:#b8860b; --amber-bg:#fdf3dc; --blue:#1f6fb2; --blue-bg:#e7f2fb;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+  #app{display:flex;flex-direction:column;min-height:100vh;}
+  #topnav{background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 16px;height:54px;flex-shrink:0;}
+  #topnav .logo{font-weight:700;font-size:14px;letter-spacing:.02em;margin-right:24px;white-space:nowrap;}
+  #topnav .links{display:flex;gap:0;flex:1;overflow-x:auto;}
+  #topnav .navitem{padding:0 14px;height:54px;display:flex;align-items:center;color:#cdd8e6;cursor:pointer;font-size:13px;white-space:nowrap;border-bottom:3px solid transparent;}
+  #topnav .navitem:hover{color:#fff;}
+  #topnav .navitem.active{color:var(--gold);border-color:var(--gold);font-weight:600;}
+  #topnav .rolebox select{background:var(--navy-dark);color:#fff;border-radius:4px;font-size:12px;padding:5px 8px;border:1px solid #375a82;}
+
+  #main{flex:1;padding:16px 20px;overflow-x:auto;}
+  .pageheader{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .pageheader h1{font-size:16px;margin:0;font-weight:600;color:var(--navy);}
+  .pageheader .sub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .toolbar{display:flex;gap:8px;align-items:center;}
+  button.act{background:var(--gold);color:#553c00;border:none;padding:6px 14px;border-radius:4px;font-size:12px;cursor:pointer;font-weight:600;}
+  button.act:hover{background:#e39a35;}
+  button.ghost{background:#fff;border:1px solid var(--border);padding:5px 12px;border-radius:4px;font-size:12px;cursor:pointer;color:var(--navy);}
+  button.ghost:hover{border-color:var(--navy);}
+  button.act:disabled{opacity:.5;cursor:not-allowed;}
+  select.mini{padding:3px 5px;border-radius:3px;border:1px solid var(--border);font-size:11.5px;}
+  input.mini{padding:3px 5px;border-radius:3px;border:1px solid var(--border);font-size:11.5px;}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;font-size:12.3px;}
+  th{text-align:left;padding:8px 9px;background:#eef2f6;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;color:#4c5a6e;letter-spacing:.02em;white-space:nowrap;}
+  .filterrow td{padding:3px 6px;background:#f8f9fb;border-bottom:1px solid var(--border);}
+  .filterrow input{width:100%;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:3px;}
+  td{padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  tr:hover td{background:#fafbfd;}
+  .status{padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
+  .st-green{background:var(--green-bg);color:var(--green);}
+  .st-red{background:var(--red-bg);color:var(--red);}
+  .st-amber{background:var(--amber-bg);color:var(--amber);}
+  .st-blue{background:var(--blue-bg);color:var(--blue);}
+  .st-gray{background:#eceff2;color:#5b6472;}
+  .st-preview{background:#f3f0fb;color:#5b3fa0;}
+  .pencil{color:var(--blue);cursor:pointer;}
+
+  .banner{background:#fdf3dc;border:1px solid #f0d38f;color:#7a5314;padding:8px 12px;border-radius:4px;font-size:11.5px;margin-bottom:10px;}
+  .flow-note{font-size:10.5px;color:var(--muted);margin-top:10px;}
+
+  /* centered create-applicant form */
+  .form-wrap{display:flex;justify-content:center;}
+  .form-card{background:#fff;border:1px solid var(--border);padding:18px 22px;width:820px;max-width:100%;}
+  .form-toolbar{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+  .form-toolbar h2{font-size:14px;margin:0;color:var(--navy);text-transform:uppercase;letter-spacing:.03em;}
+  .form-toolbar .icon{color:var(--navy);cursor:pointer;font-size:15px;}
+
+  .mediatabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:12px;}
+  .mediatab{padding:8px 16px;font-size:12.5px;cursor:pointer;border:1px solid transparent;border-bottom:none;color:var(--muted);}
+  .mediatab.active{border-color:var(--border);background:#fff;color:var(--navy);font-weight:600;border-radius:4px 4px 0 0;}
+  .photobox{width:180px;height:180px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;margin-bottom:10px;}
+  .uploadrow{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--navy);font-weight:600;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed var(--border);}
+  .uploadrow input[type=file]{font-size:11.5px;}
+
+  .frow{display:grid;grid-template-columns:130px 1fr 130px 1fr;gap:6px 14px;align-items:center;margin-bottom:7px;}
+  .frow label{font-size:12px;font-weight:600;color:var(--text);}
+  .frow input,.frow select{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:3px;font-size:12.5px;background:#fbfbfc;}
+  .frow .empty-cell{visibility:hidden;}
+  .sectitle{font-size:13px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.02em;margin:16px 0 10px;padding-top:12px;border-top:1px dashed var(--border);}
+  .collapsible{display:flex;justify-content:space-between;align-items:center;background:#f3f4f6;padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--text);margin:14px 0 10px;cursor:pointer;}
+  .collapsible .chev{transition:transform .15s;}
+  .collapsible.collapsed .chev{transform:rotate(180deg);}
+  .collapse-body.collapsed{display:none;}
+  .checkrow{display:flex;gap:22px;flex-wrap:wrap;margin-top:8px;font-size:12px;}
+  .checkrow label{display:flex;align-items:center;gap:5px;font-weight:400;}
+  .checkrow input{width:auto;}
+
+  .empty{padding:26px;text-align:center;color:var(--muted);font-size:12.5px;}
+  .locknote{font-size:10.5px;color:var(--red);margin-top:3px;}
+  .previewnote{font-size:10.5px;color:#5b3fa0;margin-top:3px;}
+
+  .ctxmenu{position:absolute;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 4px 14px rgba(0,0,0,.15);z-index:100;min-width:160px;}
+  .ctxmenu div{padding:8px 14px;font-size:12.5px;cursor:pointer;}
+  .ctxmenu div:hover{background:#f2f4f7;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(10,15,25,.4);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal{background:#fff;border-radius:6px;width:640px;max-height:80vh;overflow-y:auto;padding:18px 20px;}
+  .modal .close{float:right;cursor:pointer;color:var(--muted);font-size:18px;}
+  .modal h3{margin:0 0 12px;font-size:14px;color:var(--navy);}
+
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);}
+  .statcell{background:#fff;padding:14px;cursor:pointer;}
+  .statcell:hover{background:#f7f9fb;}
+  .statcell .n{font-size:20px;font-weight:700;color:var(--navy);}
+  .statcell .l{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy);}
+  .login-card{background:#fff;border-radius:6px;padding:32px 34px;width:340px;}
+  .login-card h1{font-size:16px;color:var(--navy);margin:0 0 4px;}
+  .login-card .sub{font-size:12px;color:var(--muted);margin-bottom:18px;}
+  .login-card label{font-size:12px;font-weight:600;display:block;margin:10px 0 4px;}
+  .login-card input,.login-card select{width:100%;padding:8px 9px;border:1px solid var(--border);border-radius:4px;font-size:13px;}
+  .login-card button{width:100%;margin-top:16px;padding:9px;}
+
+  .searchbox{position:relative;margin-right:12px;}
+  .searchbox input{width:230px;padding:6px 10px;border-radius:4px;border:1px solid #375a82;background:var(--navy-dark);color:#fff;font-size:12px;}
+  .searchbox input::placeholder{color:#9fb0c6;}
+  .searchresults{position:absolute;top:32px;left:0;width:280px;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 6px 16px rgba(0,0,0,.18);z-index:150;max-height:280px;overflow-y:auto;}
+  .searchresults div{padding:8px 12px;font-size:12.5px;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);}
+  .searchresults div:hover{background:#f2f4f7;}
+  .searchresults .sr-empty{color:var(--muted);cursor:default;}
+
+  .bellwrap{position:relative;margin-right:10px;}
+  .bell{color:#cdd8e6;cursor:pointer;font-size:16px;padding:6px;}
+  .bell:hover{color:#fff;}
+  .bellbadge{position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;border-radius:8px;padding:0 4px;}
+  .activitypanel{position:absolute;top:38px;right:0;width:320px;background:#fff;border:1px solid var(--border);border-radius:4px;box-shadow:0 6px 16px rgba(0,0,0,.18);z-index:150;max-height:320px;overflow-y:auto;}
+  .activitypanel .ai{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text);}
+  .activitypanel .ai .t{color:var(--muted);font-size:10.5px;}
+  .logoutlink{color:#cdd8e6;cursor:pointer;font-size:12px;margin-left:12px;}
+  .logoutlink:hover{color:#fff;}
+
+  .errbanner{background:var(--red-bg);border:1px solid #f0b3ac;color:var(--red);padding:8px 12px;border-radius:4px;font-size:12px;margin-bottom:10px;}
+  .daterange{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);}
+  .daterange input{padding:4px 6px;border:1px solid var(--border);border-radius:3px;font-size:12px;}
+</style>
+</head>
+<body>
+<div id="loginScreen">
+  <div class="login-card">
+    <h1>Agency ERP</h1>
+    <div class="sub">Sign in to continue</div>
+    <label>Username</label><input id="loginUser" placeholder="e.g. sara.t">
+    <label>Password</label><input id="loginPass" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022">
+    <label>Role (demo only \u2014 normally inferred from account)</label>
+    <select id="loginRole"></select>
+    <button class="act" onclick="doLogin()">Log in</button>
+  </div>
+</div>
+<div id="app" style="display:none;">
+  <div id="topnav">
+    <div class="logo">AGENCY&nbsp;ERP</div>
+    <div class="links" id="navlinks"></div>
+    <div class="searchbox">
+      <input id="searchInput" placeholder="Search name, passport, labor ID..." oninput="onSearch(this.value)">
+      <div id="searchResults"></div>
+    </div>
+    <div class="bellwrap">
+      <span class="bell" onclick="toggleActivityPanel()">&#128276;<span class="bellbadge" id="bellBadge" style="display:none;"></span></span>
+      <div id="activityPanel"></div>
+    </div>
+    <div class="rolebox"><select id="roleSelect" onchange="setRole(this.value)"></select></div>
+    <span class="logoutlink" onclick="doLogout()">Log out</span>
+  </div>
+  <div id="main"></div>
+</div>
+<div id="ctxRoot"></div>
+<div id="modalRoot"></div>
+
+<script>
+const ROLES = {
+  receptionist: {label:"Receptionist / Data Clerk", nav:[{id:"new_app",label:"New application"},{id:"applicants",label:"Applicants"}]},
+  it: {label:"IT Personnel", nav:[{id:"applicants",label:"Applicants"},{id:"embassy",label:"Embassy"},{id:"lmis",label:"LMIS"},{id:"ticket",label:"Ticket"},{id:"depart",label:"Depart"}]},
+  case_exec: {label:"Case Executive", nav:[{id:"embassy_ready",label:"Embassy ready files"}]},
+  training: {label:"Training & Guidance", nav:[{id:"depart_view",label:"Depart"}]},
+  grievance: {label:"Citizen Grievance", nav:[{id:"complaints",label:"Complaints"}]},
+  manager: {label:"Manager", nav:[{id:"dashboard",label:"Dashboard"},{id:"arrival",label:"Arrival"},{id:"commission",label:"Commission"},{id:"returned",label:"Returned"}]},
+  deputy: {label:"Deputy Manager", nav:[{id:"arrival",label:"Arrival"},{id:"commission",label:"Commission"},{id:"purchasing",label:"Purchasing"},{id:"invoices",label:"Invoices"},{id:"payroll",label:"Payroll"}]},
+  admin: {label:"Office Admin", nav:[{id:"staff",label:"Staff & roles"},{id:"task_assign",label:"Task assignment"}]},
+  super_admin: {label:"Super Admin (platform)", nav:[{id:"register_office",label:"Register office"},{id:"offices_list",label:"Offices"}]}
+};
+
+let offices = [
+  {id:1, name:"Etenaa Resources Company", email:"info@etenaa.com", phone:"+251911000111", license:"LIC-4021", level:3, manager:"Daniel Tesfaye"},
+  {id:2, name:"Samood Al-khaleej Recruitment", email:"contact@samood.com", phone:"+251911000222", license:"LIC-3987", level:2, manager:"Hana Getachew"},
+];
+let activityLog = [];
+function logActivity(text){
+  activityLog.unshift({text, time:new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})});
+  if(activityLog.length>30) activityLog.pop();
+}
+
+// stage: unselected -> embassy -> lmis -> ticket -> depart -> arrived
+let candidates = [
+  {id:1, date:"17/07/2026", app:"E821241832", name:"Mekiya Yimer Kebede", passport:"EQ2623576", age:22, works:"KSA", sponsor:"Amjad Khayat", sponsorId:"1078324249", visaNo:"1907992593", agent:"Badawood...", stage:"embassy",
+    medical:"FIT", tasheer:"DONE", tasheerDateTime:"2026-07-14T09:30", embassy_status:"", insurance:"", lmis_status:"", lmisDate:"", ticket:"NOT_BOOKED", flightDest:"", flightDate:"", depart:"", checkin:"", arrival:"", commission:""},
+  {id:2, date:"13/07/2026", app:"E820921905", name:"Zeynaba Mohammed Aleye", passport:"EP7420658", age:33, works:"KSA", sponsor:"Etenaa Resources Com...", sponsorId:"46", visaNo:"1305635511", agent:"", stage:"embassy",
+    medical:"ON_PROGRESS", tasheer:"BOOKED", tasheerDateTime:"2026-07-25T14:00", embassy_status:"", insurance:"", lmis_status:"", lmisDate:"", ticket:"NOT_BOOKED", flightDest:"", flightDate:"", depart:"", checkin:"", arrival:"", commission:""},
+  {id:3, date:"06/07/2026", app:"E820465599", name:"Hawulet Muhammed Assen", passport:"EQ2014542", age:29, works:"KSA", sponsor:"Etenaa Resources Com...", sponsorId:"46", visaNo:"1306167510", agent:"Badawood...", stage:"embassy",
+    medical:"FIT", tasheer:"DONE", tasheerDateTime:"2026-07-01T10:00", embassy_status:"ISSUED", insurance:"", lmis_status:"", lmisDate:"", ticket:"NOT_BOOKED", flightDest:"", flightDate:"", depart:"", checkin:"", arrival:"", commission:""},
+  {id:4, date:"22/06/2026", app:"E819318816", name:"Eman Tariku Liben", passport:"EP9077840", age:21, works:"KSA", sponsor:"Etenaa Resources Com...", sponsorId:"46", visaNo:"1306167510", agent:"Badawood...", stage:"ticket",
+    medical:"FIT", tasheer:"DONE", tasheerDateTime:"2026-07-02T09:00", embassy_status:"ISSUED", insurance:"PAID", lmis_status:"ISSUED", lmisDate:"7/14/2026", ticket:"BOOKED", flightDest:"Riyadh", flightDate:"7/1/2026 8:15 PM", depart:"", checkin:"", arrival:"", commission:""},
+  {id:5, date:"17/06/2026", app:"E819159446", name:"Temire Arega Mekonnen", passport:"EQ1169658", age:21, works:"Kuwait", sponsor:"Samood Al-khaleej Re...", sponsorId:"", visaNo:"", agent:"", stage:"depart",
+    medical:"FIT", tasheer:"DONE", tasheerDateTime:"2026-06-24T11:00", embassy_status:"ISSUED", insurance:"PAID", lmis_status:"ISSUED", lmisDate:"", ticket:"BOOKED", flightDest:"Riyadh", flightDate:"6/30/2026 8:15 PM", depart:"NOTIFIED", checkin:"Tue, Jun 30", arrival:"", commission:""},
+  {id:6, date:"15/06/2026", app:"E819160357", name:"Worksew Kassahun", passport:"EP8594321", age:26, works:"KSA", sponsor:"Etenaa Resources Com...", sponsorId:"46", visaNo:"1306167510", agent:"Badawood...", stage:"arrived",
+    medical:"FIT", tasheer:"DONE", tasheerDateTime:"", embassy_status:"ISSUED", insurance:"PAID", lmis_status:"ISSUED", lmisDate:"", ticket:"BOOKED", flightDest:"Riyadh", flightDate:"6/30/2026 8:15 PM", depart:"DEPART", checkin:"Tue, Jun 30", arrival:"ON_DUTY", commission:""},
+  {id:7, date:"20/07/2026", app:"E821990011", name:"Selam Getachew Wolde", passport:"EQ3300221", age:25, works:"KSA", sponsor:"", sponsorId:"", visaNo:"", agent:"", stage:"unselected",
+    medical:"", tasheer:"", tasheerDateTime:"", embassy_status:"", insurance:"", lmis_status:"", lmisDate:"", ticket:"NOT_BOOKED", flightDest:"", flightDate:"", depart:"", checkin:"", arrival:"", commission:""},
+  {id:8, date:"19/07/2026", app:"E821887744", name:"Betelhem Assefa Girma", passport:"EP2244887", age:27, works:"Kuwait", sponsor:"", sponsorId:"", visaNo:"", agent:"", stage:"unselected",
+    medical:"", tasheer:"", tasheerDateTime:"", embassy_status:"", insurance:"", lmis_status:"", lmisDate:"", ticket:"NOT_BOOKED", flightDest:"", flightDate:"", depart:"", checkin:"", arrival:"", commission:""},
+];
+
+let loggedIn = false;
+let currentRole = "receptionist";
+let currentView = ROLES[currentRole].nav[0].id;
+let checkedRows = new Set();
+let formCollapse = {relative:false, other:false, skills:false};
+let activeMediaTab = "Photo";
+let dashFrom = "", dashTo = "";
+
+function setRole(r){ currentRole=r; currentView=ROLES[r].nav[0].id; checkedRows.clear(); render(); }
+function setView(v){ currentView=v; checkedRows.clear(); render(); }
+
+function initLoginRoleOptions(){
+  document.getElementById("loginRole").innerHTML = Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
+}
+function doLogin(){
+  const user = document.getElementById("loginUser").value.trim();
+  const role = document.getElementById("loginRole").value;
+  currentRole = role || "receptionist";
+  currentView = ROLES[currentRole].nav[0].id;
+  loggedIn = true;
+  logActivity(`${user || "Staff"} logged in as ${ROLES[currentRole].label}`);
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("app").style.display="flex";
+  render();
+}
+function doLogout(){
+  loggedIn = false;
+  document.getElementById("app").style.display="none";
+  document.getElementById("loginScreen").style.display="flex";
+  document.getElementById("loginUser").value="";
+  document.getElementById("loginPass").value="";
+}
+
+function onSearch(q){
+  const box = document.getElementById("searchResults");
+  if(!q){ box.innerHTML=""; return; }
+  const ql = q.toLowerCase();
+  const matches = candidates.filter(c=>
+    c.name.toLowerCase().includes(ql) || c.passport.toLowerCase().includes(ql) || (`EF${c.id}0000`).toLowerCase().includes(ql)
+  ).slice(0,8);
+  box.innerHTML = `<div class="searchresults">${
+    matches.length ? matches.map(c=>`<div onclick="openCandidateFromSearch(${c.id})">${c.name} \u2014 ${c.passport} <span style="color:var(--muted);">(${c.stage})</span></div>`).join("")
+    : `<div class="sr-empty">No matches</div>`
+  }</div>`;
+}
+function openCandidateFromSearch(id){
+  document.getElementById("searchResults").innerHTML="";
+  document.getElementById("searchInput").value="";
+  openCandidateDetail(id);
+}
+function openCandidateDetail(id){
+  const c = candidates.find(x=>x.id===id);
+  document.getElementById("modalRoot").innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h3>${c.name}</h3>
+      <table>
+        <tr><td>Passport</td><td>${c.passport}</td></tr>
+        <tr><td>Labor ID</td><td>EF${c.id}0000</td></tr>
+        <tr><td>Destination</td><td>${c.works}</td></tr>
+        <tr><td>Stage</td><td>${c.stage}</td></tr>
+        <tr><td>Medical</td><td>${c.medical||"\u2014"}</td></tr>
+        <tr><td>Tasheer</td><td>${c.tasheer||"\u2014"}</td></tr>
+        <tr><td>Embassy status</td><td>${c.embassy_status||"\u2014"}</td></tr>
+      </table>
+    </div>
+  </div>`;
+}
+
+function toggleActivityPanel(){
+  const panel = document.getElementById("activityPanel");
+  if(panel.innerHTML){ panel.innerHTML=""; return; }
+  panel.innerHTML = `<div class="activitypanel">${
+    activityLog.length ? activityLog.map(a=>`<div class="ai">${a.text}<div class="t">${a.time}</div></div>`).join("")
+    : `<div class="ai" style="color:var(--muted);">No recent activity</div>`
+  }</div>`;
+}
+
+function pill(val, map){
+  if(!val) return '<span class="status st-gray">\u2014</span>';
+  return `<span class="status ${map[val]||'st-gray'}">${val.replace(/_/g," ")}</span>`;
+}
+const MEDICAL_MAP={FIT:"st-green",UNFIT:"st-red",BOOKED:"st-blue",ON_PROGRESS:"st-amber"};
+const TASHEER_MAP={DONE:"st-green",EXPIRED:"st-red",BOOKED:"st-blue"};
+const EMBASSY_MAP={ISSUED:"st-green",REJECTED:"st-red",READY:"st-amber",SUBMITTED:"st-blue"};
+const LMIS_MAP={ISSUED:"st-green",SUBMITTED:"st-blue",CHECKED:"st-amber",VERIFIED:"st-amber",PAYMENT_VERIFIED:"st-amber"};
+const TICKET_MAP={BOOKED:"st-green",NOT_BOOKED:"st-red"};
+const DEPART_MAP={NOTIFIED:"st-blue",DEPART:"st-green",NOT_DEPART:"st-amber"};
+const ARRIVAL_MAP={ON_DUTY:"st-green",RETURNED:"st-red",RUNAWAY:"st-red"};
+const COMMISSION_MAP={PAID:"st-green",UNPAID:"st-red",REQUESTED:"st-amber"};
+const INS_MAP={PAID:"st-green",UNPAID:"st-red"};
+
+function renderTopnav(){
+  document.getElementById("roleSelect").innerHTML = Object.entries(ROLES).map(([k,v])=>
+    `<option value="${k}" ${k===currentRole?"selected":""}>${v.label}</option>`).join("");
+  document.getElementById("navlinks").innerHTML = ROLES[currentRole].nav.map(item=>
+    `<div class="navitem ${item.id===currentView?'active':''}" onclick="setView('${item.id}')">${item.label.toUpperCase()}</div>`).join("");
+}
+function pageheader(title, sub, toolbarHtml){
+  return `<div class="pageheader"><div><h1>${title}</h1><div class="sub">${sub||""}</div></div><div class="toolbar">${toolbarHtml||""}</div></div>`;
+}
+function filterCell(){ return `<td><input placeholder=""></td>`; }
+
+// ---------------- APPLICANTS LIST ----------------
+function view_applicants(){
+  const showSelectAction = currentRole==="it";
+  const rows = candidates.map(c=>{
+    const checked = checkedRows.has(c.id);
+    return `<tr oncontextmenu="showCtxMenu(event, ${c.id}); return false;">
+      ${showSelectAction ? `<td><input type="checkbox" ${checked?"checked":""} onchange="toggleCheck(${c.id})"></td>` : ""}
+      <td><span class="pencil" onclick="alert('Opens Create Applicant form pre-filled for ${c.name}')">&#9998;</span></td>
+      <td>${c.date}</td><td>${c.app}</td><td>${c.name}</td><td>${c.passport}</td><td>${c.age}</td>
+      <td>${c.works}</td><td>${c.sponsor}</td><td>${c.sponsorId}</td><td>${c.visaNo}</td><td>${c.agent}</td>
+      <td>${c.stage==="unselected" ? '<span class="status st-gray">NOT SELECTED</span>' : `<span class="status st-blue">${c.stage.toUpperCase()}</span>`}</td>
+    </tr>`;
+  }).join("");
+  return pageheader("Applicants", `Selected: ${checkedRows.size}  (${candidates.length} total)`,
+      (showSelectAction ? `<button class="act" onclick="markSelected()">Set status: Selected</button>` : "") +
+      `<button class="ghost">+ Complain</button><button class="ghost">+ Flight</button>`) + `
+  <div class="banner">Right-click a row for print options (CV, Summary, Enjaz).${showSelectAction ? ' Check rows and click "Set status: Selected" to send them to the Embassy tab.' : ''}</div>
+  <div class="card"><table>
+    <tr>${showSelectAction?"<th></th>":""}<th></th><th>Date</th><th>App#</th><th>Full name</th><th>Passport#</th><th>Age</th><th>Works in</th><th>Sponsor</th><th>Sponsor ID</th><th>Visa no</th><th>Agent</th><th>Status</th></tr>
+    <tr class="filterrow">${showSelectAction?"<td></td>":""}<td></td>${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}${filterCell()}</tr>
+    ${rows}
+  </table></div>`;
+}
+function toggleCheck(id){ checkedRows.has(id) ? checkedRows.delete(id) : checkedRows.add(id); render(); }
+function markSelected(){
+  candidates.forEach(c=>{ if(checkedRows.has(c.id) && c.stage==="unselected"){ c.stage="embassy"; logActivity(`${c.name} set to Selected \u2192 moved to Embassy`); } });
+  checkedRows.clear();
+  alert("Selected candidates moved to the Embassy tab.");
+  render();
+}
+function showCtxMenu(e, id){
+  const c = candidates.find(x=>x.id===id);
+  document.getElementById("ctxRoot").innerHTML = `
+  <div class="ctxmenu" style="top:${e.pageY}px;left:${e.pageX}px;">
+    <div onclick="doPrint('CV','${c.name}')">Print CV</div>
+    <div onclick="doPrint('Summary','${c.name}')">Print Summary</div>
+    <div onclick="doPrint('Enjaz','${c.name}')">Print Enjaz</div>
+  </div>`;
+  document.addEventListener("click", closeCtxMenu, {once:true});
+}
+function closeCtxMenu(){ document.getElementById("ctxRoot").innerHTML=""; }
+function doPrint(type, name){ closeCtxMenu(); alert(`Generating ${type} for ${name}...`); }
+
+// ---------------- CREATE APPLICANT FORM (centered, full field set) ----------------
+function mediaTab(name){ activeMediaTab=name; render(); }
+function toggleCollapse(key){ formCollapse[key] = !formCollapse[key]; render(); }
+let formError = "";
+function view_new_app(){
+  const tabs = ["Photo","Full Size","Passport","Video Interview"];
+  return pageheader("", "") + `
+  <div class="form-wrap"><div class="form-card">
+    <div class="form-toolbar">
+      <h2>Create applicant</h2>
+      <span class="icon" title="Save">&#128190;</span>
+      <span class="icon" title="Open">&#128257;</span>
+    </div>
+    ${formError ? `<div class="errbanner">${formError}</div>` : ""}
+    <div class="mediatabs">
+      ${tabs.map(t=>`<div class="mediatab ${t===activeMediaTab?'active':''}" onclick="mediaTab('${t}')">${t}</div>`).join("")}
+    </div>
+    <div class="photobox">No ${activeMediaTab.toLowerCase()} uploaded</div>
+    <div class="uploadrow">Upload ${activeMediaTab}: <input type="file"></div>
+
+    <div class="frow">
+      <label>Application No.</label><input>
+      <label>Date</label><input value="21/07/2026">
+    </div>
+    <div class="frow">
+      <label>Full Name</label><input id="fFullName">
+      <label>Active?</label><input type="checkbox" checked style="width:auto;">
+    </div>
+    <div class="frow">
+      <label>Passport No.</label><input>
+      <label>Passport Type</label><input value="Normal">
+    </div>
+    <div class="frow">
+      <label>Date of Birth</label><input placeholder="DD/MM/YYYY">
+      <label>Place of Birth</label><input>
+    </div>
+    <div class="frow">
+      <label>Date of Issue</label><input placeholder="DD/MM/YYYY">
+      <label>Date of Expiry</label><input placeholder="DD/MM/YYYY">
+    </div>
+    <div class="frow">
+      <label>Place of Issue</label><input value="Ethiopia">
+      <label>Phone No.</label><input>
+    </div>
+    <div class="frow">
+      <label>Religion</label><input>
+      <label>Marital Status</label><input>
+    </div>
+    <div class="frow">
+      <label>Gender</label><input>
+      <label>Occupation</label><input>
+    </div>
+    <div class="frow">
+      <label>Qualification</label><input>
+      <label>City</label><input>
+    </div>
+
+    <div class="sectitle">Sponsor & visa information</div>
+    <div class="frow">
+      <label>Visa Number</label><input>
+      <label>Sponsor Name</label><input>
+    </div>
+    <div class="frow">
+      <label>Sponsor ID</label><input>
+      <label>Sponsor Phone</label><input>
+    </div>
+    <div class="frow">
+      <label>Sponsor Address</label><input>
+      <label>Agent</label><input>
+    </div>
+    <div class="frow">
+      <label>National ID</label><input>
+      <label>Sponsor Arabic</label><input>
+    </div>
+    <div class="frow">
+      <label>Email</label><input>
+      <label>Visa Type</label><input value="Work">
+    </div>
+
+    <div class="collapsible ${formCollapse.relative?'collapsed':''}" onclick="toggleCollapse('relative')">Relative Information <span class="chev">&#9650;</span></div>
+    <div class="collapse-body ${formCollapse.relative?'collapsed':''}">
+      <div class="frow"><label>Relative Name</label><input><label>Address Region</label><input></div>
+      <div class="frow"><label>Relative Phone</label><input><label>Relative Kinship</label><input></div>
+      <div class="frow"><label>City</label><input><label>Subcity/Zone</label><input></div>
+      <div class="frow"><label>Relative Woreda</label><input><label>Relative House#</label><input></div>
+      <div class="frow"><label>Relative Gender</label><input><label>R-Birth Date</label><input placeholder="DD/MM/YYYY"></div>
+    </div>
+
+    <div class="collapsible ${formCollapse.other?'collapsed':''}" onclick="toggleCollapse('other')">Other Information <span class="chev">&#9650;</span></div>
+    <div class="collapse-body ${formCollapse.other?'collapsed':''}">
+      <div class="frow"><label>Region</label><input><label>Subcity</label><input></div>
+      <div class="frow"><label>Woreda</label><input><label>House No.</label><input></div>
+      <div class="frow"><label>File No.</label><input><label>Contract #</label><input></div>
+      <div class="frow"><label>Wakala #</label><input><label>Sticker Visa #</label><input></div>
+      <div class="frow"><label>Signed On</label><input placeholder="DD/MM/YYYY"><label>Nationality</label><input value="Ethiopia"></div>
+      <div class="frow"><label>Biometric ID</label><input><label>Labor ID</label><input></div>
+      <div class="frow"><label>Contact Person(2nd)</label><input><label>Contact Phone(2nd)</label><input></div>
+      <div class="frow"><label>Coc Center</label><input><label>Certified Date</label><input placeholder="DD/MM/YYYY"></div>
+      <div class="frow"><label>Certificate No.</label><input><label>Training Type</label><input></div>
+      <div class="checkrow">
+        <label><input type="checkbox"> Photos (2)</label>
+        <label><input type="checkbox"> IsIDFiled</label>
+        <label><input type="checkbox"> Relative ID Card</label>
+      </div>
+    </div>
+
+    <div class="collapsible ${formCollapse.skills?'collapsed':''}" onclick="toggleCollapse('skills')">Skills & Experience <span class="chev">&#9650;</span></div>
+    <div class="collapse-body ${formCollapse.skills?'collapsed':''}">
+      <div class="frow"><label>English</label><select><option>Select...</option></select><label>Arabic</label><select><option>Select...</option></select></div>
+      <div class="frow"><label>Experience Abroad</label><input><label>Salary</label><input value="0"></div>
+      <div class="frow"><label>Works In</label><input><label>Children</label><input></div>
+      <div class="frow"><label>Height</label><input><label>Weight</label><input></div>
+      <div class="frow"><label>Reference No.</label><input><label>Remark</label><input></div>
+      <div class="checkrow">
+        <label><input type="checkbox"> Ironing</label>
+        <label><input type="checkbox"> Sewing</label>
+        <label><input type="checkbox"> B.Sitting</label>
+        <label><input type="checkbox"> Ch.Care</label>
+        <label><input type="checkbox"> Ar.Cooking</label>
+        <label><input type="checkbox"> Cleaning</label>
+        <label><input type="checkbox"> Washing</label>
+      </div>
+      <div style="margin-top:8px;"><label style="font-size:12px;font-weight:600;">Cooking</label><input style="width:220px;margin-top:4px;"></div>
+    </div>
+
+    <div style="margin-top:18px;text-align:right;"><button class="act" onclick="addCandidate()">Save</button></div>
+  </div></div>`;
+}
+function addCandidate(){
+  const nameInput = document.getElementById("fFullName");
+  if(!nameInput.value.trim()){
+    formError = "Couldn't save \u2014 Full Name is required.";
+    render();
+    return;
+  }
+  formError = "";
+  const id = candidates.length+1;
+  candidates.push({id, date:"21/07/2026", app:"E82"+id+"00000", name:nameInput.value.trim(), passport:"EQ00000"+id, age:24, works:"KSA", sponsor:"", sponsorId:"", visaNo:"", agent:"", stage:"unselected",
+    medical:"", tasheer:"", tasheerDateTime:"", embassy_status:"", insurance:"", lmis_status:"", lmisDate:"", ticket:"NOT_BOOKED", flightDest:"", flightDate:"", depart:"", checkin:"", arrival:"", commission:""});
+  logActivity(`${nameInput.value.trim()} registered as new applicant`);
+  setView("applicants");
+}
+
+// ---------------- EMBASSY ----------------
+function view_embassy(){
+  const list = candidates.filter(c=>c.stage==="embassy");
+  const rows = list.map(c=>{
+    const gate = c.medical==="FIT" && c.tasheer==="DONE";
+    const tasheerBooked = c.tasheer==="BOOKED" || c.tasheer==="DONE";
+    return `<tr>
+      <td>${c.name}</td><td>${c.passport}</td><td>EF${c.id}0000</td><td>${c.works}</td><td>${c.sponsor||"\u2014"}</td>
+      <td>${pill(c.medical,MEDICAL_MAP)}<br><select class="mini" onchange="updateField(${c.id},'medical',this.value)">
+        <option value="">set...</option><option>BOOKED</option><option>FIT</option><option>ON_PROGRESS</option><option>UNFIT</option></select></td>
+      <td>${pill(c.tasheer,TASHEER_MAP)}<br><select class="mini" onchange="updateField(${c.id},'tasheer',this.value)">
+        <option value="">set...</option><option>BOOKED</option><option>DONE</option><option>EXPIRED</option></select></td>
+      <td>${tasheerBooked ? `<input class="mini" type="datetime-local" value="${c.tasheerDateTime||''}" onchange="updateField(${c.id},'tasheerDateTime',this.value)">` : `<span style="color:var(--muted);font-size:11px;">No appointment</span>`}</td>
+      <td>${pill(c.embassy_status,EMBASSY_MAP)}
+        ${gate ? `<br><select class="mini" onchange="setEmbassyStatus(${c.id},this.value)">
+          <option value="">set...</option><option>READY</option><option>ISSUED</option><option>REJECTED</option></select>`
+          : `<div class="locknote">Locked \u2013 needs FIT + DONE</div>`}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8" class="empty">No candidates selected into Embassy yet</td></tr>`;
+  return pageheader("Embassy", "Row stays here regardless of Embassy status changes \u2014 it only leaves once explicitly transferred to LMIS") + `
+  <div class="banner">Task columns are assigned per staff member by the Office Admin (see Task assignment screen).</div>
+  <div class="card"><table>
+    <tr><th>Name</th><th>Passport no</th><th>Labor ID</th><th>Destination</th><th>Office</th><th>Medical</th><th>Tasheer</th><th>Tasheer date/time</th><th>Embassy status</th></tr>
+    ${rows}
+  </table></div>`;
+}
+function updateField(id,f,v){ if(v==="")return; candidates.find(x=>x.id===id)[f]=v; render(); }
+function setEmbassyStatus(id,v){
+  if(!v) return;
+  const c = candidates.find(x=>x.id===id); c.embassy_status=v;
+  logActivity(`Embassy status for ${c.name} set to ${v}`);
+  render();
+}
+
+function view_embassy_ready(){
+  const rows = candidates.filter(c=>c.stage==="embassy" && c.embassy_status==="READY").map(c=>`
+    <tr><td>${c.name}</td><td>${c.passport}</td><td>${pill(c.embassy_status,EMBASSY_MAP)}</td>
+    <td><button class="act" onclick="caseExecSubmit(${c.id})">Mark submitted</button></td></tr>`).join("")
+    || `<tr><td colspan="4" class="empty">No files marked READY yet</td></tr>`;
+  return pageheader("Embassy ready files", "Case Executive \u2014 only role allowed to set SUBMITTED") + `
+  <div class="card"><table><tr><th>Name</th><th>Passport</th><th>Status</th><th></th></tr>${rows}</table></div>`;
+}
+function caseExecSubmit(id){ const c=candidates.find(x=>x.id===id); c.embassy_status="SUBMITTED"; logActivity(`Case Executive marked ${c.name} SUBMITTED`); render(); }
+
+// ---------------- LMIS (preview + transfer) ----------------
+function view_lmis(){
+  const preview = candidates.filter(c=>c.stage==="embassy" && c.medical==="FIT" && c.tasheer==="DONE");
+  const full = candidates.filter(c=>c.stage==="lmis");
+  const previewRows = preview.map(c=>{
+    const canTransfer = c.embassy_status==="ISSUED";
+    return `<tr>
+      <td>${c.name}</td><td>${c.passport}</td><td>EF${c.id}0000</td><td>${c.works}</td>
+      <td><span class="status st-preview">PREVIEW</span></td>
+      <td>${canTransfer
+        ? `<button class="act" onclick="transferToLmis(${c.id})">Transfer to LMIS</button>`
+        : `<span class="previewnote">Waiting on Embassy status: ISSUED (currently ${c.embassy_status||"not set"})</span>`}</td>
+    </tr>`;
+  }).join("");
+  const fullRows = full.map(c=>`
+    <tr><td>${c.name}</td><td>${c.passport}</td><td>EF${c.id}0000</td><td>${c.works}</td>
+    <td>${pill(c.insurance,INS_MAP)}<br><select class="mini" onchange="updateField(${c.id},'insurance',this.value)">
+      <option value="">set...</option><option>PAID</option><option>UNPAID</option></select></td>
+    <td>${pill(c.lmis_status,LMIS_MAP)}<br><select class="mini" onchange="setLmisStatus(${c.id},this.value)">
+      <option value="">set...</option><option>SUBMITTED</option><option>PAYMENT_VERIFIED</option><option>CHECKED</option><option>VERIFIED</option><option>ISSUED</option></select></td></tr>`).join("");
+  return pageheader("LMIS", "Preview rows appear once Medical=FIT and Tasheer=DONE; full transfer happens only when Embassy status=ISSUED") + `
+  ${preview.length ? `<div class="card" style="margin-bottom:14px;"><table>
+    <tr><th>Name</th><th>Passport no</th><th>Labor ID</th><th>Destination</th><th>Status</th><th></th></tr>${previewRows}
+  </table></div>` : ""}
+  <div class="card"><table>
+    <tr><th>Name</th><th>Passport no</th><th>Labor ID</th><th>Destination</th><th>Insurance</th><th>LMIS status</th></tr>
+    ${fullRows || `<tr><td colspan="6" class="empty">No candidates fully transferred to LMIS yet</td></tr>`}
+  </table></div>`;
+}
+function transferToLmis(id){
+  const c = candidates.find(x=>x.id===id); c.stage="lmis"; logActivity(`${c.name} transferred to LMIS`); render();
+}
+function setLmisStatus(id,v){
+  if(!v)return; const c=candidates.find(x=>x.id===id); c.lmis_status=v;
+  logActivity(`LMIS status for ${c.name} set to ${v}`);
+  if(v==="ISSUED" && confirm(`LMIS ISSUED for ${c.name}. Send to Ticket?`)){ c.stage="ticket"; logActivity(`${c.name} sent to Ticket`); }
+  render();
+}
+
+// ---------------- TICKET ----------------
+function view_ticket(){
+  const list = candidates.filter(c=>c.stage==="ticket");
+  const rows = list.map(c=>`
+    <tr><td>${c.name}</td><td>${c.passport}</td><td>EF${c.id}0000</td><td>${c.works}</td><td>${c.sponsor||"\u2014"}</td>
+    <td>${c.flightDest||"\u2014"}</td><td>${c.flightDate||"\u2014"}</td>
+    <td>${pill(c.ticket,TICKET_MAP)}</td>
+    <td><button class="ghost" onclick="bookTicket(${c.id})">Book</button></td></tr>`).join("")
+    || `<tr><td colspan="9" class="empty">No candidates in Ticket stage</td></tr>`;
+  return pageheader("Ticket info", "") + `
+  <div class="card"><table>
+    <tr><th>Name</th><th>Passport no</th><th>Labor ID</th><th>Destination</th><th>Office</th><th>Flight destination</th><th>Flight date</th><th>Ticket status</th><th></th></tr>
+    ${rows}
+  </table></div>`;
+}
+function bookTicket(id){
+  const c=candidates.find(x=>x.id===id); c.ticket="BOOKED"; c.flightDest=c.flightDest||"Riyadh"; c.flightDate=c.flightDate||"7/25/2026 8:15 PM";
+  logActivity(`Ticket booked for ${c.name}`);
+  if(confirm(`Ticket booked for ${c.name}. Send to Depart?`)){ c.stage="depart"; logActivity(`${c.name} sent to Depart`); }
+  render();
+}
+
+// ---------------- DEPART ----------------
+function view_depart(readonly){
+  const list = candidates.filter(c=>c.stage==="depart");
+  const rows = list.map(c=>`
+    <tr><td>${c.name}</td><td>${c.passport}</td><td>EF${c.id}0000</td><td>${c.works}</td><td>${c.sponsor||"\u2014"}</td>
+    <td>${pill(c.depart,DEPART_MAP)}</td><td>${pill(c.ticket,TICKET_MAP)}</td>
+    <td>${c.flightDest||"\u2014"}</td><td>${c.flightDate||"\u2014"}</td><td>${c.checkin||"\u2014"}</td>
+    <td>${readonly?"":`<select class="mini" onchange="setDepart(${c.id},this.value)">
+      <option value="">set...</option><option>NOTIFIED</option><option>DEPART</option><option>NOT_DEPART</option></select>`}</td></tr>`).join("")
+    || `<tr><td colspan="11" class="empty">No candidates in Depart stage</td></tr>`;
+  return pageheader("Departure status", readonly?"Training & Guidance \u2014 view only":"") + `
+  <div class="card"><table>
+    <tr><th>Name</th><th>Passport no</th><th>Labor ID</th><th>Destination</th><th>Office</th><th>Departure status</th><th>Ticket status</th><th>Flight destination</th><th>Flight date</th><th>Check in</th><th></th></tr>
+    ${rows}
+  </table></div>`;
+}
+function setDepart(id,v){
+  if(!v)return; const c=candidates.find(x=>x.id===id); c.depart=v; c.checkin=c.checkin||"Fri, "+new Date().toDateString().slice(4,10);
+  logActivity(`Departure status for ${c.name} set to ${v}`);
+  if(v==="DEPART" && confirm(`${c.name} marked departed. Send to Arrived?`)){ c.stage="arrived"; logActivity(`${c.name} sent to Arrived`); }
+  render();
+}
+
+// ---------------- ARRIVED / RETURNED / COMMISSION ----------------
+function view_arrival(){
+  const list = candidates.filter(c=>c.stage==="arrived");
+  const rows = list.map(c=>`
+    <tr><td>${c.name}</td><td>${c.passport}</td><td>EF${c.id}0000</td><td>${c.works}</td>
+    <td>${pill(c.arrival,ARRIVAL_MAP)}</td>
+    <td><select class="mini" onchange="setArrival(${c.id},this.value)">
+      <option value="">set...</option><option>ON_DUTY</option><option>RETURNED</option><option>RUNAWAY</option></select></td>
+    <td>${c.arrival==="RETURNED"?`<button class="ghost" onclick="setView('returned')">Open returned file</button>`:""}
+      <button class="ghost" onclick="sendToCommission(${c.id})">Send to commission</button></td></tr>`).join("")
+    || `<tr><td colspan="7" class="empty">No arrived candidates yet</td></tr>`;
+  return pageheader("Arrival", "Candidate stays here permanently \u2014 status change doesn't remove the row") + `
+  <div class="card"><table><tr><th>Name</th><th>Passport</th><th>Labor ID</th><th>Destination</th><th>Candidate status</th><th></th><th></th></tr>${rows}</table></div>`;
+}
+function setArrival(id,v){ if(!v)return; const c=candidates.find(x=>x.id===id); c.arrival=v; logActivity(`Candidate status for ${c.name} set to ${v}`); render(); }
+function sendToCommission(id){ const c=candidates.find(x=>x.id===id); c.commission="REQUESTED"; logActivity(`${c.name} sent to Commission`); alert(c.name+" sent to Commission."); render(); }
+
+function view_commission(){
+  const rows = candidates.filter(c=>c.commission).map(c=>`
+    <tr><td>${c.name}</td><td>${c.passport}</td><td>${pill(c.commission,COMMISSION_MAP)}</td>
+    <td><select class="mini" onchange="updateField(${c.id},'commission',this.value)">
+      <option value="">set...</option><option>PAID</option><option>UNPAID</option><option>REQUESTED</option></select></td></tr>`).join("")
+    || `<tr><td colspan="4" class="empty">No candidates sent to commission yet</td></tr>`;
+  return pageheader("Commission", "") + `<div class="card"><table><tr><th>Name</th><th>Passport</th><th>Status</th><th></th></tr>${rows}</table></div>`;
+}
+function view_returned(){
+  const c = candidates.find(x=>x.arrival==="RETURNED");
+  if(!c) return pageheader("Returned","") + `<div class="card empty">No returned candidates \u2014 set Arrival status to RETURNED first.</div>`;
+  return pageheader("Returned", "Candidate identity pulled through automatically") + `
+  <div class="form-wrap"><div class="form-card" style="width:640px;">
+    <div class="frow"><label>Name</label><input value="${c.name}" readonly><label>Passport</label><input value="${c.passport}" readonly></div>
+    <div class="frow"><label>Labor ID</label><input value="EF${c.id}0000" readonly><label>Office</label><input value="Etenaa Resources Com..." readonly></div>
+    <div class="frow"><label>Destination</label><input value="${c.works}" readonly><label>Sponsor</label><input value="${c.sponsor||''}" readonly></div>
+    <div class="sectitle">Return details</div>
+    <div class="frow"><label>Return reason</label><input><label>Return date</label><input placeholder="DD/MM/YYYY"></div>
+    <div class="frow"><label>Return ticket</label><input><span></span><span></span></div>
+    <div style="margin-top:12px;text-align:right;"><button class="act">Save</button></div>
+  </div></div>`;
+}
+
+function view_complaints(){
+  return pageheader("Complaints", "Citizen Grievance & Monitoring") + `
+  <div class="form-wrap"><div class="form-card" style="width:600px;">
+    <div class="frow"><label>Candidate</label><select>${candidates.map(c=>`<option>${c.name}</option>`).join("")}</select><span></span><span></span></div>
+    <label style="font-size:12px;font-weight:600;display:block;margin:10px 0 4px;">Complaint</label>
+    <textarea rows="4" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:3px;font-size:12.5px;"></textarea>
+    <div style="margin-top:12px;text-align:right;"><button class="act">File complaint</button></div>
+  </div></div>`;
+}
+
+// ---------------- MANAGER DASHBOARD (clickable stats, date-range filter) ----------------
+function parseDMY(s){
+  if(!s) return null;
+  const [d,m,y] = s.split("/").map(Number);
+  return new Date(y,m-1,d);
+}
+function inRange(c){
+  const d = parseDMY(c.date);
+  if(!d) return true;
+  if(dashFrom && d < new Date(dashFrom)) return false;
+  if(dashTo && d > new Date(dashTo)) return false;
+  return true;
+}
+function setDashRange(field, val){
+  if(field==="from") dashFrom=val; else dashTo=val;
+  render();
+}
+function statList(key){
+  const defs = {
+    total: {label:"Total candidates", filter:c=>true},
+    novisa: {label:"Without visa", filter:c=>!c.embassy_status},
+    medical: {label:"Medical passed", filter:c=>c.medical==="FIT"},
+    ready: {label:"Ready for embassy", filter:c=>c.embassy_status==="READY"},
+    submitted: {label:"Submitted", filter:c=>c.embassy_status==="SUBMITTED"},
+    arrived: {label:"Arrived", filter:c=>c.stage==="arrived"},
+    returned: {label:"Returned", filter:c=>c.arrival==="RETURNED"},
+    runaway: {label:"Runaway", filter:c=>c.arrival==="RUNAWAY"},
+  };
+  const d = defs[key];
+  const list = candidates.filter(c=>inRange(c) && d.filter(c));
+  document.getElementById("modalRoot").innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h3>${d.label} (${list.length})${(dashFrom||dashTo) ? ` \u2014 ${dashFrom||"\u2026"} to ${dashTo||"\u2026"}` : ""}</h3>
+      <table><tr><th>Name</th><th>Passport</th><th>Stage</th><th>Date</th></tr>
+      ${list.map(c=>`<tr><td>${c.name}</td><td>${c.passport}</td><td>${c.stage}</td><td>${c.date}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">No candidates in this range</td></tr>`}
+      </table>
+    </div>
+  </div>`;
+}
+function closeModal(){ document.getElementById("modalRoot").innerHTML=""; }
+
+function view_dashboard(){
+  const inR = candidates.filter(inRange);
+  const s = (f)=>inR.filter(f).length;
+  const stats = [
+    ["total","Total candidates", inR.length],
+    ["novisa","Without visa", s(c=>!c.embassy_status)],
+    ["medical","Medical passed", s(c=>c.medical==="FIT")],
+    ["ready","Ready for embassy", s(c=>c.embassy_status==="READY")],
+    ["submitted","Submitted", s(c=>c.embassy_status==="SUBMITTED")],
+    ["arrived","Arrived", s(c=>c.stage==="arrived")],
+    ["returned","Returned", s(c=>c.arrival==="RETURNED")],
+    ["runaway","Runaway", s(c=>c.arrival==="RUNAWAY")],
+  ];
+  return pageheader("Dashboard","Click any number to see the underlying list",
+    `<div class="daterange">From <input type="date" value="${dashFrom}" onchange="setDashRange('from',this.value)">
+     To <input type="date" value="${dashTo}" onchange="setDashRange('to',this.value)">
+     ${(dashFrom||dashTo) ? `<button class="ghost" onclick="setDashRange('from','');setDashRange('to','')">Clear</button>` : ""}</div>`) + `
+  <div class="card statgrid">
+    ${stats.map(([key,l,n])=>`<div class="statcell" onclick="statList('${key}')"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("")}
+  </div>`;
+}
+
+function financeTable(title, cols){
+  return pageheader(title,"") + `<div class="card"><table><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr>
+  <tr><td colspan="${cols.length}" class="empty">No records yet</td></tr></table></div>
+  <div style="margin-top:10px;"><button class="act">+ Add record</button></div>`;
+}
+function view_staff(){
+  return pageheader("Staff & roles","") + `<div class="card"><table>
+    <tr><th>Staff</th><th>Username</th><th>Roles</th><th></th></tr>
+    <tr><td>Sara T.</td><td>sara.t</td><td>Receptionist / Data Clerk</td><td><button class="ghost">Edit</button></td></tr>
+    <tr><td>Yonas B.</td><td>yonas.b</td><td>IT Personnel</td><td><button class="ghost">Edit</button></td></tr>
+  </table></div><div style="margin-top:10px;"><button class="act">+ Register staff</button></div>`;
+}
+function view_task_assign(){
+  return pageheader("Task assignment","") + `<div class="card"><table>
+    <tr><th>Task</th><th>Assigned staff</th></tr>
+    <tr><td>Medical</td><td><select class="mini"><option>Yonas B.</option><option>Selam K.</option></select></td></tr>
+    <tr><td>Tasheer</td><td><select class="mini"><option>Selam K.</option></select></td></tr>
+    <tr><td>Embassy status</td><td><select class="mini"><option>Yonas B.</option></select></td></tr>
+  </table></div>`;
+}
+
+// ---------------- SUPER ADMIN: OFFICE REGISTRATION ----------------
+let officeFormError = "";
+function view_register_office(){
+  return pageheader("Register office", "Super Admin \u2014 platform-level office onboarding") + `
+  ${officeFormError ? `<div class="errbanner">${officeFormError}</div>` : ""}
+  <div class="form-wrap"><div class="form-card" style="width:700px;">
+    <div class="frow"><label>Office name</label><input id="ofName"><label>Email</label><input id="ofEmail"></div>
+    <div class="frow"><label>Phone</label><input id="ofPhone"><label>License number</label><input id="ofLicense"></div>
+    <div class="frow"><label>Gov. system username</label><input id="ofGovUser"><label>Gov. system password</label><input type="password" id="ofGovPass"></div>
+    <div class="frow"><label>Logo</label><input type="file"><label>Office level (1\u20135)</label>
+      <select id="ofLevel"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+    <div class="frow"><label>Manager name</label><input id="ofManagerName"><label>Manager phone</label><input id="ofManagerPhone"></div>
+    <div class="frow"><label>Manager email</label><input id="ofManagerEmail"><span></span><span></span></div>
+    <div style="margin-top:14px;text-align:right;"><button class="act" onclick="saveOffice()">Save office</button></div>
+  </div></div>`;
+}
+function saveOffice(){
+  const name = document.getElementById("ofName").value.trim();
+  const license = document.getElementById("ofLicense").value.trim();
+  if(!name || !license){
+    officeFormError = "Couldn't save \u2014 Office name and License number are required.";
+    render(); return;
+  }
+  officeFormError = "";
+  offices.push({
+    id: offices.length+1, name,
+    email: document.getElementById("ofEmail").value,
+    phone: document.getElementById("ofPhone").value,
+    license,
+    level: parseInt(document.getElementById("ofLevel").value),
+    manager: document.getElementById("ofManagerName").value
+  });
+  logActivity(`Office "${name}" registered`);
+  setView("offices_list");
+}
+function view_offices_list(){
+  const rows = offices.map(o=>`
+    <tr><td>${o.name}</td><td>${o.email}</td><td>${o.phone}</td><td>${o.license}</td><td>Level ${o.level}</td><td>${o.manager}</td></tr>`).join("")
+    || `<tr><td colspan="6" class="empty">No offices registered yet</td></tr>`;
+  return pageheader("Offices", `${offices.length} total`, `<button class="act" onclick="setView('register_office')">+ Register office</button>`) + `
+  <div class="card"><table>
+    <tr><th>Name</th><th>Email</th><th>Phone</th><th>License</th><th>Level</th><th>Manager</th></tr>
+    ${rows}
+  </table></div>`;
+}
+
+function render(){
+  renderTopnav();
+  let html="";
+  switch(currentView){
+    case "new_app": html=view_new_app(); break;
+    case "applicants": html=view_applicants(); break;
+    case "embassy": html=view_embassy(); break;
+    case "embassy_ready": html=view_embassy_ready(); break;
+    case "lmis": html=view_lmis(); break;
+    case "ticket": html=view_ticket(); break;
+    case "depart": html=view_depart(false); break;
+    case "depart_view": html=view_depart(true); break;
+    case "arrival": html=view_arrival(); break;
+    case "commission": html=view_commission(); break;
+    case "returned": html=view_returned(); break;
+    case "complaints": html=view_complaints(); break;
+    case "dashboard": html=view_dashboard(); break;
+    case "purchasing": html=financeTable("Purchasing",["Item","Amount","Vendor","Status"]); break;
+    case "invoices": html=financeTable("Invoices",["Invoice #","Amount","Due date","Status"]); break;
+    case "payroll": html=financeTable("Payroll",["Staff","Period","Net pay","Status"]); break;
+    case "staff": html=view_staff(); break;
+    case "task_assign": html=view_task_assign(); break;
+    case "register_office": html=view_register_office(); break;
+    case "offices_list": html=view_offices_list(); break;
+    default: html=`<div class="empty">Screen not found</div>`;
+  }
+  document.getElementById("main").innerHTML = html + `<div class="flow-note">Prototype only \u2014 in-memory data, no database. Refreshing resets everything.</div>`;
+}
+initLoginRoleOptions();
+
+</script>
+</body>
+</html>

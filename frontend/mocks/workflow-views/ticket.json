@@ -1,0 +1,29 @@
+{
+  "stageId": "stage-ticket",
+  "stageName": "Ticket",
+  "items": [
+    {
+      "id": "c-0004",
+      "applicationNo": "E819318816",
+      "fullName": "Eman Tariku Liben",
+      "passportNumber": "EP9077840",
+      "labourId": "EF10003",
+      "countryOfTravel": "KSA",
+      "sponsorName": "Etenaa Resources",
+      "officeName": "Head Office — Addis Ababa",
+      "currentStatusValues": { "ticket": "Booked" },
+      "tracks": [
+        { "trackKey": "ticket", "status": "Booked", "since": "2026-07-16T09:00:00Z", "daysOnStep": 6 }
+      ],
+      "enteredAt": "2026-07-14T08:00:00Z",
+      "daysInStage": 8,
+      "flightDate": "2026-07-25T20:15:00Z",
+      "remainingDays": 3,
+      "isOverdue": false,
+      "lastActionLabel": "Ticket → Booked",
+      "availableActions": [
+        { "transitionRuleId": "tr-to-depart", "buttonLabel": "To Depart", "isEnabled": true }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,147 +15,125 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { PipelineTracker } from "@/components/workflow/pipeline-tracker";
+import { StatusPill } from "@/components/workflow/status-pill";
+import { ContentLoading } from "@/components/loading/loading-components";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CreateCandidateSheet } from "@/components/candidates/create-candidate-sheet";
-import { EditCandidateSheet } from "@/components/candidates/edit-candidate-sheet";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { candidatesApi, USE_MOCKS } from "@/lib/api/candidates-api";
+import type { CandidateListItem } from "@/types/candidate";
+import { DEMO_STAGES } from "@/lib/demo/demo-data";
+import { AlertTriangle, Clock3, Eye, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-interface CandidateRow {
-  id: string;
-  fullName: string;
-  passportNumber: string;
-  labourId: string | null;
-  currentStageName: string | null;
-  countryOfTravel: string | null;
-  officeName: string | null;
-  status: string;
-  registeredAt: string;
+function stageHref(stageName?: string | null) {
+  const match = DEMO_STAGES.find((s) => s.name === stageName);
+  return match ? `/workflow/${match.slug}` : "/candidates";
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
 export default function CandidatesPage() {
-  const { hasPermission } = usePermissions();
   const router = useRouter();
-  const [sorting, setSorting] = useState<SortingState>([]);
+  const [sorting, setSorting] = useState<SortingState>([{ id: "registeredAt", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editCandidate, setEditCandidate] = useState<CandidateRow | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data, isLoading, mutate } = useSWR(
-    `/api/proxy/candidates?page=1&pageSize=100${globalFilter ? `&search=${encodeURIComponent(globalFilter)}` : ""}`,
-    fetcher,
-    { revalidateOnFocus: false }
+  const { data, isLoading } = useSWR(
+    ["candidates-all"],
+    () => candidatesApi.list(),
+    { revalidateOnFocus: false },
   );
 
-  const candidates: CandidateRow[] = data?.data?.items || [];
+  const candidates: CandidateListItem[] = data?.data?.items ?? [];
 
-  const handleDelete = async (id: string, name: string) => {
-    setDeleteTarget({ id, name });
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    const res = await fetch(`/api/proxy/candidates/${deleteTarget.id}`, { method: "DELETE" });
-    if (res.ok) {
-      mutate();
-      toast.success("Candidate deleted successfully");
-    } else {
-      toast.error("Failed to delete candidate");
-    }
-    setIsDeleting(false);
-    setDeleteTarget(null);
-  };
-
-  const columns: ColumnDef<CandidateRow>[] = useMemo(() => [
-    {
-      id: "index",
-      header: "#",
-      cell: ({ row }) => <span className="text-muted-foreground">{row.index + 1}</span>,
-      size: 40,
-      enableSorting: false,
-    },
-    {
-      accessorKey: "fullName",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
-      cell: ({ row }) => (
-        <Link href={`/candidates/${row.original.id}`} className="font-medium text-foreground hover:underline">
-          {row.original.fullName}
-        </Link>
-      ),
-    },
-    {
-      accessorKey: "passportNumber",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-    },
-    {
-      accessorKey: "labourId",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Labour ID" />,
-      cell: ({ getValue }) => getValue() || "—",
-    },
-    {
-      accessorKey: "currentStageName",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Stage" />,
-      cell: ({ getValue }) => {
-        const stage = getValue() as string | null;
-        return (
-          <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700">
-            {stage || "Intake"}
-          </span>
-        );
+  const columns: ColumnDef<CandidateListItem>[] = useMemo(
+    () => [
+      {
+        accessorKey: "fullName",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+        cell: ({ row }) => (
+          <div>
+            <Link href={`/candidates/${row.original.id}`} className="font-semibold hover:underline">
+              {row.original.fullName}
+            </Link>
+            {row.original.isOverdue && (
+              <Badge variant="destructive" className="ml-2 text-[10px] gap-0.5">
+                <AlertTriangle className="h-3 w-3" /> Stuck
+              </Badge>
+            )}
+          </div>
+        ),
       },
-    },
-    {
-      accessorKey: "countryOfTravel",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Country" />,
-      cell: ({ getValue }) => getValue() || "—",
-    },
-    {
-      accessorKey: "registeredAt",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Registered" />,
-      cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`candidate-actions-${row.original.id}`}>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => router.push(`/candidates/${row.original.id}`)}>
-              <Eye className="h-4 w-4 mr-2" /> View Details
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEditCandidate(row.original)}>
-              <Pencil className="h-4 w-4 mr-2" /> Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDelete(row.original.id, row.original.fullName)} className="text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
-      size: 60,
-      enableSorting: false,
-    },
-  ], [router, handleDelete]);
+      {
+        accessorKey: "applicationNo",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="App #" />,
+        cell: ({ getValue }) => <span className="font-mono text-xs">{(getValue() as string) || "—"}</span>,
+      },
+      {
+        accessorKey: "passportNumber",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
+        cell: ({ getValue }) => <span className="font-mono text-xs">{getValue() as string}</span>,
+      },
+      {
+        accessorKey: "labourId",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Labour ID" />,
+        cell: ({ getValue }) => (getValue() as string) || "—",
+      },
+      {
+        accessorKey: "currentStageName",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Stage" />,
+        cell: ({ row }) => (
+          <Link href={stageHref(row.original.currentStageName)}>
+            <StatusPill value={row.original.currentStageName || "Intake"} />
+          </Link>
+        ),
+      },
+      {
+        accessorKey: "countryOfTravel",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Destination" />,
+        cell: ({ getValue }) => (getValue() as string) || "—",
+      },
+      {
+        accessorKey: "officeName",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Office" />,
+        cell: ({ getValue }) => (getValue() as string) || "—",
+      },
+      {
+        accessorKey: "daysInStage",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Days in stage" />,
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold tabular-nums",
+              row.original.isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-700",
+            )}
+          >
+            <Clock3 className="h-3 w-3" />
+            {row.original.daysInStage ?? 0}d
+          </span>
+        ),
+      },
+      {
+        accessorKey: "lastActionLabel",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Last action" />,
+        cell: ({ getValue }) => <span className="text-xs">{(getValue() as string) || "—"}</span>,
+      },
+      {
+        accessorKey: "registeredAt",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Registered" />,
+        cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/candidates/${row.original.id}`)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+        ),
+        enableSorting: false,
+      },
+    ],
+    [router],
+  );
 
   const table = useReactTable({
     data: candidates,
@@ -165,45 +145,39 @@ export default function CandidatesPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: { pagination: { pageSize: 12 } },
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Candidates</h1>
-        <p className="text-sm text-muted-foreground">Manage candidate registrations and track their pipeline progress</p>
+    <div className="flex flex-col gap-5 p-4 md:p-6">
+      <PipelineTracker />
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Candidates</h1>
+          <p className="text-sm text-muted-foreground">
+            {candidates.length} total{USE_MOCKS ? " · demo dataset" : ""}
+          </p>
+        </div>
+        <Button asChild className="gap-1">
+          <Link href="/candidates/register">
+            <Plus className="h-4 w-4" /> Register candidate
+          </Link>
+        </Button>
       </div>
 
-      <div className="rounded-lg border bg-card p-4 shadow-sm">
-        <DataTable
-          table={table}
-          enableGlobalFilter={true}
-          searchPlaceholder="Search candidates..."
-          paginated={true}
-          toolbarEndActions={
-            <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
-              <span className="mr-1">+</span> Create
-            </Button>
-          }
-        />
+      <div className="rounded-xl border bg-gradient-to-b from-card to-muted/20 p-3 shadow-sm">
+        {isLoading ? (
+          <ContentLoading text="Loading candidates…" />
+        ) : (
+          <DataTable
+            table={table}
+            enableGlobalFilter
+            dense
+            searchPlaceholder="Search across all fields…"
+          />
+        )}
       </div>
-
-      <CreateCandidateSheet open={createOpen} onOpenChange={setCreateOpen} />
-      <EditCandidateSheet
-        candidate={editCandidate}
-        open={!!editCandidate}
-        onOpenChange={(open) => { if (!open) setEditCandidate(null); }}
-        onUpdated={() => mutate()}
-      />
-      <DeleteDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-        title="Delete candidate"
-        description={`Are you sure you want to delete '${deleteTarget?.name}'? This action cannot be undone.`}
-        onConfirm={confirmDelete}
-        isDeleting={isDeleting}
-      />
     </div>
   );
 }

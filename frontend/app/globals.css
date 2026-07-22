@@ -483,11 +483,17 @@
     visibility: visible !important;
   }
 
-  /* Ensure icons inside input containers are visible */
-  .ethiopian .relative svg.text-muted-foreground,
-  .ethiopian .relative .text-muted-foreground {
+  /* Ensure icons inside input containers are visible (do NOT force display:block on all muted text — that breaks table headers) */
+  .ethiopian .relative svg.text-muted-foreground {
     color: rgb(107 114 128) !important;
-    display: block !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .ethiopian .relative > .text-muted-foreground,
+  .ethiopian .relative > svg.text-muted-foreground {
+    color: rgb(107 114 128) !important;
     visibility: visible !important;
     opacity: 1 !important;
   }
@@ -971,4 +977,32 @@
 
 .modern-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted-foreground);
+}
+
+/* Keep data tables in real table layout (prevents header cells stacking vertically) */
+[data-slot="table"] {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+[data-slot="table-header"] {
+  display: table-header-group;
+}
+
+[data-slot="table-body"] {
+  display: table-row-group;
+}
+
+[data-slot="table-footer"] {
+  display: table-footer-group;
+}
+
+[data-slot="table-row"] {
+  display: table-row;
+}
+
+[data-slot="table-head"],
+[data-slot="table-cell"] {
+  display: table-cell;
 }

@@ -125,6 +125,127 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Agency.Office", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("City")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("offices", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Agency.Partner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Country")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NameArabic")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("SponsorId")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("partners", (string)null);
+                });
+
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.Candidate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -132,6 +253,14 @@ namespace SimbaFlow.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ApplicationNo")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("BiometricId")
                         .HasColumnType("text");
 
                     b.Property<string>("City")
@@ -152,6 +281,9 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("CurrentStageEnteredAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("CurrentStageId")
                         .HasColumnType("uuid");
 
@@ -167,27 +299,57 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
+                    b.Property<string>("FileNumber")
+                        .HasColumnType("text");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("FlightDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Gender")
                         .HasColumnType("integer");
 
+                    b.Property<string>("HouseNo")
+                        .HasColumnType("text");
+
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsOverdue")
                         .HasColumnType("boolean");
 
                     b.Property<string>("LabourId")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("LastActionAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastActionLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("LastName")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("MaritalStatus")
                         .HasColumnType("text");
 
                     b.Property<string>("MiddleName")
                         .HasColumnType("text");
 
+                    b.Property<string>("NationalId")
+                        .HasColumnType("text");
+
                     b.Property<string>("Nationality")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Occupation")
                         .HasColumnType("text");
 
                     b.Property<Guid>("OfficeId")
@@ -196,8 +358,21 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<string>("OfficeName")
                         .HasColumnType("text");
 
+                    b.Property<DateOnly?>("PassportExpiryDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("PassportIssueDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("PassportNumber")
                         .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("PassportType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone2")
                         .HasColumnType("text");
 
                     b.Property<string>("PhoneNumber")
@@ -206,10 +381,25 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<string>("PhotoPath")
                         .HasColumnType("text");
 
+                    b.Property<string>("PlaceOfBirth")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PlaceOfIssue")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Qualification")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Region")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("RegisteredAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RegisteredBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Religion")
                         .HasColumnType("text");
 
                     b.Property<uint>("RowVersion")
@@ -221,6 +411,9 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Subcity")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -231,9 +424,132 @@ namespace SimbaFlow.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Woreda")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Candidates");
+                    b.HasIndex("ApplicationNo")
+                        .IsUnique();
+
+                    b.HasIndex("CurrentStageEnteredAt");
+
+                    b.HasIndex("CurrentStageId");
+
+                    b.HasIndex("LabourId")
+                        .IsUnique()
+                        .HasFilter("\"LabourId\" IS NOT NULL");
+
+                    b.HasIndex("OfficeId");
+
+                    b.HasIndex("PassportNumber")
+                        .IsUnique();
+
+                    b.ToTable("candidates", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateCommission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Currency")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SentByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("candidate_commissions", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateComplaint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ComplaintText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("FiledByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FiledByUserName")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.ToTable("candidate_complaints", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateDocument", b =>
@@ -260,7 +576,8 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.Property<string>("FileName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("FilePath")
                         .IsRequired()
@@ -274,7 +591,8 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -301,7 +619,435 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasIndex("CandidateId");
 
-                    b.ToTable("CandidateDocuments");
+                    b.ToTable("candidate_documents", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidatePlacement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Agent")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CertificateNumber")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("CertifiedDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("CocCenter")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("ContractDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ContractNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CountryOfTravel")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("NationalId")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("PartnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Remarks")
+                        .HasColumnType("text");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal?>("Salary")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateOnly?>("SignedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("SponsorAddress")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SponsorEmail")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SponsorId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SponsorName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SponsorNameArabic")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SponsorPhone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StickerVisaNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TrainingType")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("VisaNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("VisaType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("WakalaNumber")
+                        .HasColumnType("text");
+
+                    b.Property<string>("WorksIn")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("candidate_placements", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateRelative", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("BirthDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("City")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("Gender")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HouseNo")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Region")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RelativeKinship")
+                        .HasColumnType("text");
+
+                    b.Property<string>("RelativeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RelativePhone")
+                        .HasColumnType("text");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Subcity")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Woreda")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.ToTable("candidate_relatives", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateReturned", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CreatedByStaffId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly?>("ReturnDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ReturnReason")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ReturnTicketInfo")
+                        .HasColumnType("text");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.ToTable("candidate_returned", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateSkills", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArabicLevel")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("CanArabicCooking")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanBabysit")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanChildcare")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanClean")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanCook")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanIron")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanSew")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanWash")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<short?>("ChildrenCount")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("CookingNotes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EnglishLevel")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExperienceAbroad")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Height")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Weight")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("candidate_skills", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateStageStay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("EnterEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EnteredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("EnteredByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EnteredByUserName")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ExitEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExitReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ExitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ExitedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExitedByUserName")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("StageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StageName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StageId");
+
+                    b.HasIndex("CandidateId", "IsCurrent");
+
+                    b.ToTable("candidate_stage_stays", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateStepStay", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CandidateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ChangedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChangedByUserName")
+                        .HasColumnType("text");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("StageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StageStayId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StatusValue")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TrackKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid?>("WorkflowEventId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StageStayId");
+
+                    b.HasIndex("CandidateId", "TrackKey", "FinishedAt");
+
+                    b.ToTable("candidate_step_stays", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Identity.ApplicationRole", b =>
@@ -1394,7 +2140,7 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasIndex("WorkflowStageId");
 
-                    b.ToTable("MirrorViewRule");
+                    b.ToTable("MirrorViewRules");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.ParallelTrackDefinition", b =>
@@ -1442,7 +2188,7 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasIndex("WorkflowStageId");
 
-                    b.ToTable("ParallelTrackDefinition");
+                    b.ToTable("ParallelTrackDefinitions");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.StageMandatoryField", b =>
@@ -1488,7 +2234,103 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasIndex("WorkflowStageId");
 
-                    b.ToTable("StageMandatoryField");
+                    b.ToTable("StageMandatoryFields");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.StatusTransitionPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllowedPermissionCode")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AllowedRoleCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("ToStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("TrackKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrackKey", "ToStatus", "AllowedRoleCode")
+                        .IsUnique();
+
+                    b.ToTable("status_transition_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.TaskAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<Guid>("StaffUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TrackKey")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StaffUserId", "TrackKey")
+                        .IsUnique();
+
+                    b.ToTable("task_assignments", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.WorkflowDefinition", b =>
@@ -1514,7 +2356,8 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -1536,7 +2379,7 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WorkflowDefinitions");
+                    b.ToTable("workflow_definitions", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.WorkflowEvent", b =>
@@ -1585,7 +2428,12 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WorkflowEvents");
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("CandidateId", "SequenceNumber")
+                        .IsUnique();
+
+                    b.ToTable("workflow_events", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.WorkflowSnapshot", b =>
@@ -1620,7 +2468,9 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("WorkflowSnapshots");
+                    b.HasIndex("CandidateId", "SequenceNumber");
+
+                    b.ToTable("workflow_snapshots", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.WorkflowStage", b =>
@@ -1635,8 +2485,14 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
 
+                    b.Property<int?>("CriticalDurationHours")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Description")
                         .HasColumnType("text");
+
+                    b.Property<int?>("ExpectedDurationHours")
+                        .HasColumnType("integer");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -1649,7 +2505,8 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -1669,14 +2526,17 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("text");
 
+                    b.Property<int?>("WarningDurationHours")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("WorkflowDefinitionId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("WorkflowDefinitionId");
+                    b.HasIndex("WorkflowDefinitionId", "SortOrder");
 
-                    b.ToTable("WorkflowStages");
+                    b.ToTable("workflow_stages", (string)null);
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.WorkflowStageStatus", b =>
@@ -1729,7 +2589,7 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasIndex("WorkflowStageId");
 
-                    b.ToTable("WorkflowStageStatus");
+                    b.ToTable("WorkflowStageStatuses");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Workflow.WorkflowTransitionRule", b =>
@@ -1796,6 +2656,9 @@ namespace SimbaFlow.Infrastructure.Migrations
                     b.Property<Guid>("WorkflowDefinitionId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("WorkflowDefinitionId1")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SourceStageId");
@@ -1804,7 +2667,9 @@ namespace SimbaFlow.Infrastructure.Migrations
 
                     b.HasIndex("WorkflowDefinitionId");
 
-                    b.ToTable("WorkflowTransitionRule");
+                    b.HasIndex("WorkflowDefinitionId1");
+
+                    b.ToTable("WorkflowTransitionRules");
                 });
 
             modelBuilder.Entity("SimbaFlow.Infrastructure.Audit.AuditLog", b =>
@@ -1955,6 +2820,39 @@ namespace SimbaFlow.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.Candidate", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Agency.Office", "Office")
+                        .WithMany()
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Office");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateCommission", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithOne("Commission")
+                        .HasForeignKey("SimbaFlow.Domain.Entities.Candidates.CandidateCommission", "CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateComplaint", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithMany("Complaints")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateDocument", b =>
                 {
                     b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
@@ -1964,6 +2862,79 @@ namespace SimbaFlow.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidatePlacement", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithOne("Placement")
+                        .HasForeignKey("SimbaFlow.Domain.Entities.Candidates.CandidatePlacement", "CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateRelative", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithMany("Relatives")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateReturned", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithMany("ReturnedRecords")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateSkills", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithOne("Skills")
+                        .HasForeignKey("SimbaFlow.Domain.Entities.Candidates.CandidateSkills", "CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateStageStay", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithMany("StageStays")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateStepStay", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.Candidate", "Candidate")
+                        .WithMany("StepStays")
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SimbaFlow.Domain.Entities.Candidates.CandidateStageStay", "StageStay")
+                        .WithMany()
+                        .HasForeignKey("StageStayId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("StageStay");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Identity.ApplicationUser", b =>
@@ -2236,11 +3207,16 @@ namespace SimbaFlow.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SimbaFlow.Domain.Entities.Workflow.WorkflowDefinition", "WorkflowDefinition")
+                    b.HasOne("SimbaFlow.Domain.Entities.Workflow.WorkflowDefinition", null)
                         .WithMany("TransitionRules")
                         .HasForeignKey("WorkflowDefinitionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("SimbaFlow.Domain.Entities.Workflow.WorkflowDefinition", "WorkflowDefinition")
+                        .WithMany()
+                        .HasForeignKey("WorkflowDefinitionId1")
+                        .HasConstraintName("FK_WorkflowTransitionRules_workflow_definitions_WorkflowDefin~1");
 
                     b.Navigation("SourceStage");
 
@@ -2251,7 +3227,23 @@ namespace SimbaFlow.Infrastructure.Migrations
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.Candidate", b =>
                 {
+                    b.Navigation("Commission");
+
+                    b.Navigation("Complaints");
+
                     b.Navigation("Documents");
+
+                    b.Navigation("Placement");
+
+                    b.Navigation("Relatives");
+
+                    b.Navigation("ReturnedRecords");
+
+                    b.Navigation("Skills");
+
+                    b.Navigation("StageStays");
+
+                    b.Navigation("StepStays");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Identity.ApplicationRole", b =>

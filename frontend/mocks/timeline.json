@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ev1",
+    "eventType": 0,
+    "eventTypeName": "Registered",
+    "toStageName": "New Contracts",
+    "userName": "sara.t",
+    "timestamp": "2026-07-17T08:00:00Z",
+    "durationLabel": null
+  },
+  {
+    "id": "ev2",
+    "eventType": 1,
+    "eventTypeName": "StageTransitioned",
+    "fromStageName": "New Contracts",
+    "toStageName": "Embassy",
+    "durationMs": 259200000,
+    "durationLabel": "3d",
+    "userName": "yonas.b",
+    "timestamp": "2026-07-10T09:12:00Z"
+  },
+  {
+    "id": "ev3",
+    "eventType": 2,
+    "eventTypeName": "StatusUpdated",
+    "trackKey": "medical",
+    "fromStatus": "OnProgress",
+    "toStatus": "Fit",
+    "durationMs": 176580000,
+    "durationLabel": "2d 1h",
+    "userName": "sara.t",
+    "timestamp": "2026-07-14T11:03:00Z",
+    "notes": "Medical cleared"
+  },
+  {
+    "id": "ev4",
+    "eventType": 2,
+    "eventTypeName": "StatusUpdated",
+    "trackKey": "tasheer",
+    "fromStatus": "Booked",
+    "toStatus": "Done",
+    "durationMs": 86400000,
+    "durationLabel": "1d",
+    "userName": "yonas.b",
+    "timestamp": "2026-07-14T09:30:00Z"
+  }
+]

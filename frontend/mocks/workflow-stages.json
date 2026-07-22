@@ -1,0 +1,121 @@
+{
+  "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0001",
+  "name": "Default Labour Export Pipeline",
+  "description": "ERP default pipeline",
+  "version": 1,
+  "isActive": true,
+  "stages": [
+    {
+      "id": "stage-new-contracts",
+      "name": "New Contracts",
+      "sortOrder": 1,
+      "stageType": 0,
+      "isInitialStage": true,
+      "isFinalStage": false,
+      "expectedDurationHours": 72,
+      "statuses": [],
+      "parallelTracks": []
+    },
+    {
+      "id": "stage-embassy",
+      "name": "Embassy",
+      "sortOrder": 2,
+      "stageType": 1,
+      "isInitialStage": false,
+      "isFinalStage": false,
+      "expectedDurationHours": 168,
+      "warningDurationHours": 120,
+      "criticalDurationHours": 168,
+      "statuses": [
+        { "id": "s1", "name": "Fit", "sortOrder": 3, "isTerminal": true, "trackName": "medical", "color": "#1d8a4e" },
+        { "id": "s2", "name": "Done", "sortOrder": 2, "isTerminal": true, "trackName": "tasheer", "color": "#1d8a4e" },
+        { "id": "s3", "name": "Issued", "sortOrder": 3, "isTerminal": true, "trackName": "embassy", "color": "#1d8a4e" },
+        { "id": "s4", "name": "Submitted", "sortOrder": 2, "isTerminal": false, "trackName": "embassy", "color": "#1f6fb2" },
+        { "id": "s5", "name": "Ready", "sortOrder": 1, "isTerminal": false, "trackName": "embassy", "color": "#b8860b" }
+      ],
+      "parallelTracks": [
+        { "id": "t1", "trackName": "medical", "completionStatus": "Fit", "sortOrder": 1 },
+        { "id": "t2", "trackName": "tasheer", "completionStatus": "Done", "sortOrder": 2 }
+      ]
+    },
+    {
+      "id": "stage-lmis",
+      "name": "LMIS",
+      "sortOrder": 3,
+      "stageType": 2,
+      "isInitialStage": false,
+      "isFinalStage": false,
+      "expectedDurationHours": 120,
+      "statuses": [],
+      "parallelTracks": []
+    },
+    {
+      "id": "stage-ticket",
+      "name": "Ticket",
+      "sortOrder": 4,
+      "stageType": 0,
+      "isInitialStage": false,
+      "isFinalStage": false,
+      "expectedDurationHours": 72,
+      "statuses": [],
+      "parallelTracks": []
+    },
+    {
+      "id": "stage-depart",
+      "name": "Depart",
+      "sortOrder": 5,
+      "stageType": 0,
+      "isInitialStage": false,
+      "isFinalStage": false,
+      "expectedDurationHours": 48,
+      "statuses": [],
+      "parallelTracks": []
+    },
+    {
+      "id": "stage-arrival",
+      "name": "Arrival",
+      "sortOrder": 6,
+      "stageType": 0,
+      "isInitialStage": false,
+      "isFinalStage": false,
+      "statuses": [],
+      "parallelTracks": []
+    },
+    {
+      "id": "stage-commission",
+      "name": "Commission",
+      "sortOrder": 7,
+      "stageType": 0,
+      "isInitialStage": false,
+      "isFinalStage": true,
+      "statuses": [],
+      "parallelTracks": []
+    }
+  ],
+  "transitionRules": [
+    {
+      "id": "tr-to-embassy",
+      "sourceStageId": "stage-new-contracts",
+      "targetStageId": "stage-embassy",
+      "buttonLabel": "To Embassy",
+      "sortOrder": 1,
+      "conditions": { "operator": "AND", "rules": [] },
+      "requiredFields": [],
+      "allowedRoles": ["ITPersonnel", "Admin"],
+      "removeFromSource": true,
+      "isActive": true
+    },
+    {
+      "id": "tr-to-lmis",
+      "sourceStageId": "stage-embassy",
+      "targetStageId": "stage-lmis",
+      "buttonLabel": "To LMIS",
+      "sortOrder": 1,
+      "conditions": { "operator": "AND", "rules": [{ "field": "embassy", "op": "eq", "value": "Issued" }] },
+      "requiredFields": [],
+      "allowedRoles": ["ITPersonnel", "Admin"],
+      "removeFromSource": true,
+      "isActive": true
+    }
+  ]
+}

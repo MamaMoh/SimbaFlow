@@ -1,0 +1,24 @@
+{
+  "stageId": "stage-new-contracts",
+  "stageName": "New Contracts",
+  "items": [
+    {
+      "id": "c-0007",
+      "applicationNo": "E821990011",
+      "fullName": "Selam Getachew Wolde",
+      "passportNumber": "EQ3300221",
+      "labourId": "EF10006",
+      "countryOfTravel": "KSA",
+      "officeName": "Bole Branch",
+      "currentStatusValues": {},
+      "tracks": [],
+      "enteredAt": "2026-07-20T08:00:00Z",
+      "daysInStage": 2,
+      "isOverdue": false,
+      "lastActionLabel": "Registered",
+      "availableActions": [
+        { "transitionRuleId": "tr-to-embassy", "buttonLabel": "To Embassy", "isEnabled": true }
+      ]
+    }
+  ]
+}

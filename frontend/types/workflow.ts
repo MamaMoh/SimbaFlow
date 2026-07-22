@@ -13,9 +13,12 @@ export interface WorkflowStage {
   name: string;
   description?: string;
   sortOrder: number;
-  stageType: number; // 0=Simple, 1=ParallelTrack, 2=MilestoneSequence
+  stageType: number;
   isInitialStage: boolean;
   isFinalStage: boolean;
+  expectedDurationHours?: number;
+  warningDurationHours?: number;
+  criticalDurationHours?: number;
   statuses: WorkflowStageStatus[];
   parallelTracks: ParallelTrackDefinition[];
 }
@@ -74,4 +77,46 @@ export interface WorkflowState {
   stageName?: string;
   statusValues: Record<string, string>;
   visibleInStages: string[];
+  currentStageEnteredAt?: string;
+  daysInStage?: number;
+  isOverdue?: boolean;
+}
+
+export interface TrackStatusCell {
+  trackKey: string;
+  status?: string;
+  since?: string;
+  daysOnStep?: number;
+}
+
+export interface WorkflowViewRow {
+  id: string;
+  applicationNo: string;
+  fullName: string;
+  passportNumber: string;
+  labourId?: string;
+  countryOfTravel?: string;
+  sponsorName?: string;
+  officeName?: string;
+  currentStatusValues: Record<string, string>;
+  tracks: TrackStatusCell[];
+  enteredAt?: string;
+  daysInStage: number;
+  lastActionAt?: string;
+  lastActionLabel?: string;
+  isOverdue: boolean;
+  isPreview?: boolean;
+  flightDate?: string;
+  remainingDays?: number;
+  availableActions: AvailableAction[];
+}
+
+export interface Office {
+  id: string;
+  name: string;
+  code: string;
+  city?: string;
+  phone?: string;
+  email?: string;
+  isActive: boolean;
 }

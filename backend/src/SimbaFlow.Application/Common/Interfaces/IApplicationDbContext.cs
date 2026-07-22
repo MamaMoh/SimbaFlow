@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SimbaFlow.Domain.Entities.Agency;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Locations;
@@ -10,7 +11,7 @@ namespace SimbaFlow.Application.Common.Interfaces;
 
 public interface IApplicationDbContext
 {
-    // Identity (ASP.NET Core Identity-based entities)
+    // Identity
     DbSet<ApplicationUser> ApplicationUsers { get; }
     DbSet<ApplicationRole> ApplicationRoles { get; }
     DbSet<Permission> Permissions { get; }
@@ -28,6 +29,10 @@ public interface IApplicationDbContext
     // Locations
     DbSet<Location> Locations { get; }
 
+    // Agency
+    DbSet<Office> Offices { get; }
+    DbSet<Partner> Partners { get; }
+
     // Staff
     DbSet<StaffProfile> StaffProfiles { get; }
     DbSet<StaffLocationMapping> StaffLocationMappings { get; }
@@ -37,17 +42,32 @@ public interface IApplicationDbContext
     // Candidates
     DbSet<Candidate> Candidates { get; }
     DbSet<CandidateDocument> CandidateDocuments { get; }
+    DbSet<CandidatePlacement> CandidatePlacements { get; }
+    DbSet<CandidateRelative> CandidateRelatives { get; }
+    DbSet<CandidateSkills> CandidateSkills { get; }
+    DbSet<CandidateStageStay> CandidateStageStays { get; }
+    DbSet<CandidateStepStay> CandidateStepStays { get; }
+    DbSet<CandidateReturned> CandidateReturnedRecords { get; }
+    DbSet<CandidateComplaint> CandidateComplaints { get; }
+    DbSet<CandidateCommission> CandidateCommissions { get; }
 
     // Workflow
     DbSet<WorkflowDefinition> WorkflowDefinitions { get; }
     DbSet<WorkflowStage> WorkflowStages { get; }
     DbSet<WorkflowEvent> WorkflowEvents { get; }
     DbSet<WorkflowSnapshot> WorkflowSnapshots { get; }
+    DbSet<WorkflowTransitionRule> WorkflowTransitionRules { get; }
+    DbSet<WorkflowStageStatus> WorkflowStageStatuses { get; }
+    DbSet<ParallelTrackDefinition> ParallelTrackDefinitions { get; }
+    DbSet<MirrorViewRule> MirrorViewRules { get; }
+    DbSet<StageMandatoryField> StageMandatoryFields { get; }
+    DbSet<TaskAssignment> TaskAssignments { get; }
+    DbSet<StatusTransitionPermission> StatusTransitionPermissions { get; }
 
-    // Tenant Roles (per-agency)
-    DbSet<Domain.Entities.Tenancy.TenantRole> TenantRoles { get; }
-    DbSet<Domain.Entities.Tenancy.TenantRolePermission> TenantRolePermissions { get; }
-    DbSet<Domain.Entities.Tenancy.TenantUserRole> TenantUserRoles { get; }
+    // Tenant Roles
+    DbSet<TenantRole> TenantRoles { get; }
+    DbSet<TenantRolePermission> TenantRolePermissions { get; }
+    DbSet<TenantUserRole> TenantUserRoles { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

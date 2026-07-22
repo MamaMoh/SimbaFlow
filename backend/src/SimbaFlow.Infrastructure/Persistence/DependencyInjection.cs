@@ -117,6 +117,9 @@ public static class DependencyInjection
         // File Storage
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
+        // Workflow engine
+        services.AddScoped<Application.Common.Interfaces.IWorkflowEngineService, SimbaFlow.Infrastructure.Workflow.WorkflowEngineService>();
+
         // Read Audit (high-throughput via Channel)
         var readAuditChannel = System.Threading.Channels.Channel.CreateUnbounded<ReadAuditEntry>(
             new System.Threading.Channels.UnboundedChannelOptions { SingleReader = true });
