@@ -1,18 +1,20 @@
 import LoginForm from "@/components/auth/login-form";
+import Link from "next/link";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h1 className="mt-6 text-5xl font-bold text-gray-900">
-            SimbaFlow
-          </h1>
-          <p className="mt-3 text-lg text-gray-600 font-medium">
-            Labour Export Agency
-          </p>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-muted/40">
+      <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-4 md:px-8">
+        <Link href="/" className="text-lg font-bold text-primary">
+          SimbaFlow
+        </Link>
+        <LanguageSwitcher />
+      </div>
+      <div className="flex min-h-full items-center justify-center px-4 py-20">
+        <div className="w-full max-w-md space-y-6">
+          <LoginForm />
         </div>
-        <LoginForm />
       </div>
     </div>
   );

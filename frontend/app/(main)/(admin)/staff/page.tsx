@@ -26,6 +26,8 @@ import {
 import { CreateUserSheet } from "@/components/users/create-user-sheet";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { mockApi } from "@/lib/api/mock-api";
 
 interface UserRow {
   id: string;
@@ -54,14 +56,20 @@ export default function StaffPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, mutate } = useSWR(
-    `/api/proxy/users?page=1&pageSize=100`,
-    fetcher,
+    USE_MOCKS ? "mock-users" : `/api/proxy/users?page=1&pageSize=100`,
+    USE_MOCKS ? () => mockApi.getUsers() : fetcher,
     { revalidateOnFocus: false }
   );
 
   const users: UserRow[] = data?.data?.items || [];
 
   const handleToggleStatus = async (id: string) => {
+    if (USE_MOCKS) {
+      await mockApi.toggleUser(id);
+      toast.success("User status updated");
+      mutate();
+      return;
+    }
     await fetch(`/api/proxy/users/${id}/toggle-status`, { method: "PUT" });
     mutate();
   };
@@ -73,13 +81,23 @@ export default function StaffPage() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    await fetch(`/api/proxy/users/${deleteTarget.id}`, { method: "DELETE" });
+    if (USE_MOCKS) {
+      await mockApi.deleteUser(deleteTarget.id);
+      toast.success("User deleted");
+    } else {
+      await fetch(`/api/proxy/users/${deleteTarget.id}`, { method: "DELETE" });
+    }
     mutate();
     setIsDeleting(false);
     setDeleteTarget(null);
   };
 
   const handleResetPassword = async (id: string) => {
+    if (USE_MOCKS) {
+      await mockApi.resetUserPassword(id);
+      toast.success("Password reset to temporary demo password");
+      return;
+    }
     const newPassword = prompt("Enter new password (min 8 chars, uppercase, lowercase, digit, special):");
     if (!newPassword) return;
     const res = await fetch(`/api/proxy/users/${id}/password`, {
@@ -189,7 +207,7 @@ export default function StaffPage() {
                 <><Shield className="h-4 w-4 mr-2" /> Activate</>
               )}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("Edit user — coming soon")}>
+            <DropdownMenuItem onClick={() => toast.success("Edit form opens in next release — demo create/delete works")}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleResetPassword(row.original.id)}>

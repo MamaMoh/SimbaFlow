@@ -20,6 +20,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Shield, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { mockApi } from "@/lib/api/mock-api";
 
 const createRoleSchema = z.object({
   name: z.string().min(2, "Role name required"),
@@ -38,14 +40,28 @@ interface CreateRoleSheetProps {
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
+const MOCK_PERMISSIONS = [
+  { id: "1", code: "candidate.read", name: "Read candidates", module: "Candidates" },
+  { id: "2", code: "candidate.write", name: "Write candidates", module: "Candidates" },
+  { id: "3", code: "workflow.view", name: "View workflow", module: "Workflow" },
+  { id: "4", code: "workflow.configure", name: "Configure workflow", module: "Workflow" },
+  { id: "5", code: "embassy.read", name: "Read embassy", module: "Embassy" },
+  { id: "6", code: "embassy.write", name: "Write embassy", module: "Embassy" },
+  { id: "7", code: "accounting.read", name: "Read accounting", module: "Finance" },
+  { id: "8", code: "accounting.write", name: "Write accounting", module: "Finance" },
+  { id: "9", code: "staff.read", name: "Read staff", module: "Admin" },
+  { id: "10", code: "system.admin", name: "System admin", module: "Admin" },
+];
+
 export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleSheetProps) {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const { data: permissionsData } = useSWR(
-    open ? "/api/proxy/roles/permissions" : null,
+    open && !USE_MOCKS ? "/api/proxy/roles/permissions" : null,
     fetcher
   );
-  const permissions: { id: string; code: string; name: string; module: string }[] = permissionsData?.data || [];
+  const permissions: { id: string; code: string; name: string; module: string }[] =
+    USE_MOCKS ? MOCK_PERMISSIONS : permissionsData?.data || [];
 
   // Group permissions by module
   const grouped = permissions.reduce<Record<string, typeof permissions>>((acc, p) => {
@@ -82,6 +98,20 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
 
   const onSubmit = async (data: CreateRoleForm) => {
     try {
+      if (USE_MOCKS) {
+        await mockApi.createRole({
+          ...data,
+          sortOrder: data.sortOrder || 0,
+          permissions: selectedPermissions,
+        });
+        toast.success("Role created successfully");
+        reset();
+        setSelectedPermissions([]);
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
+
       const response = await fetch("/api/proxy/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -2,6 +2,11 @@ import { getServerSession, type NextAuthOptions } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authenticate, refreshAccessToken } from "../services/userService";
 import { jwtDecode } from "jwt-decode";
+import {
+  MOCK_ACCESS_TOKEN,
+  buildMockAuthUser,
+  isMockAuthEnabled,
+} from "@/lib/auth/mock-auth";
 
 /**
  * NextAuth URL configuration for production
@@ -126,6 +131,13 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      // Demo/mock sessions never hit the live auth API
+      if ((token as any)?.accessToken === MOCK_ACCESS_TOKEN) {
+        (token as any).expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+        (token as any).isError = false;
+        return token;
+      }
+
       // Attempt refresh if needed and refresh token is available
       if (needsRefresh && (token as any)?.refreshToken) {
         try {
@@ -227,6 +239,10 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
+
+        if (isMockAuthEnabled()) {
+          return buildMockAuthUser(String(credentials.username)) as any;
+        }
 
         const formdata = new FormData();
         formdata.append("username", credentials.username);

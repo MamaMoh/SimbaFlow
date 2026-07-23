@@ -3,129 +3,104 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { MOCK_ACCESS_TOKEN, MOCK_GRANTED_CLAIMS, isMockAuthEnabled } from "@/lib/auth/mock-auth";
 
 export function useAuth() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const useMocks =
-    process.env.NEXT_PUBLIC_USE_MOCKS === "true" ||
-    process.env.NEXT_PUBLIC_USE_MOCKS === "1";
+  const useMocks = isMockAuthEnabled();
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  const isLoading = useMocks ? false : status === "loading" || !isHydrated;
-  const isAuthenticated = useMocks || !!session?.user?.accessToken;
+  const accessToken = (session?.user as any)?.accessToken as string | undefined;
+  const isMockSession = accessToken === MOCK_ACCESS_TOKEN;
+
+  const isLoading = status === "loading" || !isHydrated;
+  const isAuthenticated = !!accessToken;
 
   const logout = async () => {
     try {
       setIsLoggingOut(true);
-// Add a small delay to ensure loading state is visible
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Add timeout to ensure logout completes
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
       const logoutPromise = signOut({ redirect: false });
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Logout timeout')), 5000)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Logout timeout")), 5000),
       );
-      
+
       await Promise.race([logoutPromise, timeoutPromise]);
-router.push("/login");
-      
-    } catch (error) {
-// Even if signOut fails or times out, redirect to login
-      router.push("/login");
+      router.push("/");
+      router.refresh();
+    } catch {
+      router.push("/");
+      router.refresh();
     } finally {
-setIsLoggingOut(false);
+      setIsLoggingOut(false);
     }
   };
 
   const user = session?.user;
-  
-  // Helper functions for user data
+
   const getDisplayName = () => {
-    if (useMocks) return "Demo User";
     if (!isHydrated || !user) return "User";
     const profile = (user as any).userProfile;
     return profile?.fullName || profile?.username || "User";
   };
 
   const getEmail = () => {
-    if (useMocks) return "demo@simbaflow.local";
     if (!isHydrated || !user) return "";
     const profile = (user as any).userProfile;
     return profile?.email || "";
   };
 
   const getUsername = () => {
-    if (useMocks) return "demo";
     if (!isHydrated || !user) return "";
     const profile = (user as any).userProfile;
     return profile?.username || "";
   };
 
   const getUserId = () => {
-    if (useMocks) return "mock-user";
     if (!isHydrated || !user) return "";
     const profile = (user as any).userProfile;
     return profile?.userId || "";
   };
 
   const getPermissions = () => {
-    if (useMocks) {
-      return [
-        "candidate.read",
-        "candidate.create",
-        "workflow.view",
-        "embassy.read",
-        "lmis.read",
-        "travel.read",
-        "arrival.read",
-        "commission.read",
-        "accounting.read",
-        "report.view",
-        "staff.read",
-        "role.read",
-        "office.read",
-        "partner.read",
-        "workflow.configure",
-        "tenant.manage",
-        "system.admin",
-      ];
-    }
     if (!isHydrated || !user) return [];
+    if (useMocks || isMockSession) return [...MOCK_GRANTED_CLAIMS];
     return (user as any).grantedClaims || [];
   };
 
   const hasPermission = (permission: string) => {
-    if (useMocks) return true;
+    if (useMocks || isMockSession) return true;
     return getPermissions().includes(permission);
   };
 
   const hasAnyPermission = (permissions: string[]) => {
-    if (useMocks) return true;
+    if (useMocks || isMockSession) return true;
     const userPerms = getPermissions();
     return permissions.some((perm) => userPerms.includes(perm));
   };
 
   const hasAllPermissions = (permissions: string[]) => {
-    if (useMocks) return true;
+    if (useMocks || isMockSession) return true;
     const userPerms = getPermissions();
     return permissions.every((perm) => userPerms.includes(perm));
   };
 
   const isFirstLogin = () => {
-    if (useMocks) return false;
+    if (useMocks || isMockSession) return false;
     if (!isHydrated || !user) return false;
     const profile = (user as any).userProfile;
     return profile?.isFirstLogin || false;
   };
 
   const isSuperAdmin = () => {
-    if (useMocks) return true;
+    if (useMocks || isMockSession) return true;
     return hasPermission("system.admin");
   };
 

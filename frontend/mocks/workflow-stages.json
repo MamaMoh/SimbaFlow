@@ -1,24 +1,31 @@
 {
   "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaa0001",
   "name": "Default Labour Export Pipeline",
-  "description": "ERP default pipeline",
+  "description": "Agency labour-export candidate pipeline with parallel embassy tracks and SLA timing.",
   "version": 1,
   "isActive": true,
   "stages": [
     {
       "id": "stage-new-contracts",
       "name": "New Contracts",
+      "description": "Intake and contract registration",
       "sortOrder": 1,
       "stageType": 0,
       "isInitialStage": true,
       "isFinalStage": false,
       "expectedDurationHours": 72,
-      "statuses": [],
+      "warningDurationHours": 48,
+      "criticalDurationHours": 72,
+      "statuses": [
+        { "id": "nc-s1", "name": "Registered", "sortOrder": 1, "isTerminal": false, "color": "#1f6fb2" },
+        { "id": "nc-s2", "name": "Verified", "sortOrder": 2, "isTerminal": true, "color": "#1d8a4e" }
+      ],
       "parallelTracks": []
     },
     {
       "id": "stage-embassy",
       "name": "Embassy",
+      "description": "Medical, Tasheer, and embassy visa tracks in parallel",
       "sortOrder": 2,
       "stageType": 1,
       "isInitialStage": false,
@@ -28,6 +35,7 @@
       "criticalDurationHours": 168,
       "statuses": [
         { "id": "s1", "name": "Fit", "sortOrder": 3, "isTerminal": true, "trackName": "medical", "color": "#1d8a4e" },
+        { "id": "s1b", "name": "Unfit", "sortOrder": 4, "isTerminal": true, "trackName": "medical", "color": "#c0392b" },
         { "id": "s2", "name": "Done", "sortOrder": 2, "isTerminal": true, "trackName": "tasheer", "color": "#1d8a4e" },
         { "id": "s3", "name": "Issued", "sortOrder": 3, "isTerminal": true, "trackName": "embassy", "color": "#1d8a4e" },
         { "id": "s4", "name": "Submitted", "sortOrder": 2, "isTerminal": false, "trackName": "embassy", "color": "#1f6fb2" },
@@ -35,60 +43,89 @@
       ],
       "parallelTracks": [
         { "id": "t1", "trackName": "medical", "completionStatus": "Fit", "sortOrder": 1 },
-        { "id": "t2", "trackName": "tasheer", "completionStatus": "Done", "sortOrder": 2 }
+        { "id": "t2", "trackName": "tasheer", "completionStatus": "Done", "sortOrder": 2 },
+        { "id": "t3", "trackName": "embassy", "completionStatus": "Issued", "sortOrder": 3 }
       ]
     },
     {
       "id": "stage-lmis",
       "name": "LMIS",
+      "description": "Labour market information system approval",
       "sortOrder": 3,
       "stageType": 2,
       "isInitialStage": false,
       "isFinalStage": false,
       "expectedDurationHours": 120,
-      "statuses": [],
+      "warningDurationHours": 96,
+      "criticalDurationHours": 120,
+      "statuses": [
+        { "id": "lmis-s1", "name": "Submitted", "sortOrder": 1, "isTerminal": false, "color": "#1f6fb2" },
+        { "id": "lmis-s2", "name": "Approved", "sortOrder": 2, "isTerminal": true, "color": "#1d8a4e" }
+      ],
       "parallelTracks": []
     },
     {
       "id": "stage-ticket",
       "name": "Ticket",
+      "description": "Flight booking and ticketing",
       "sortOrder": 4,
       "stageType": 0,
       "isInitialStage": false,
       "isFinalStage": false,
       "expectedDurationHours": 72,
-      "statuses": [],
+      "warningDurationHours": 48,
+      "criticalDurationHours": 72,
+      "statuses": [
+        { "id": "tk-s1", "name": "Requested", "sortOrder": 1, "isTerminal": false, "color": "#b8860b" },
+        { "id": "tk-s2", "name": "Booked", "sortOrder": 2, "isTerminal": true, "color": "#1d8a4e" }
+      ],
       "parallelTracks": []
     },
     {
       "id": "stage-depart",
       "name": "Depart",
+      "description": "Departure confirmation",
       "sortOrder": 5,
       "stageType": 0,
       "isInitialStage": false,
       "isFinalStage": false,
       "expectedDurationHours": 48,
-      "statuses": [],
+      "warningDurationHours": 24,
+      "criticalDurationHours": 48,
+      "statuses": [
+        { "id": "dp-s1", "name": "NotDepart", "sortOrder": 1, "isTerminal": false, "color": "#b8860b" },
+        { "id": "dp-s2", "name": "Depart", "sortOrder": 2, "isTerminal": true, "color": "#1d8a4e" }
+      ],
       "parallelTracks": []
     },
     {
       "id": "stage-arrival",
       "name": "Arrival",
+      "description": "Arrival and onboarding abroad",
       "sortOrder": 6,
       "stageType": 0,
       "isInitialStage": false,
       "isFinalStage": false,
-      "statuses": [],
+      "expectedDurationHours": 72,
+      "statuses": [
+        { "id": "ar-s1", "name": "Notified", "sortOrder": 1, "isTerminal": false, "color": "#1f6fb2" },
+        { "id": "ar-s2", "name": "OnDuty", "sortOrder": 2, "isTerminal": true, "color": "#1d8a4e" }
+      ],
       "parallelTracks": []
     },
     {
       "id": "stage-commission",
       "name": "Commission",
+      "description": "Commission settlement",
       "sortOrder": 7,
       "stageType": 0,
       "isInitialStage": false,
       "isFinalStage": true,
-      "statuses": [],
+      "expectedDurationHours": 168,
+      "statuses": [
+        { "id": "cm-s1", "name": "Unpaid", "sortOrder": 1, "isTerminal": false, "color": "#c0392b" },
+        { "id": "cm-s2", "name": "Paid", "sortOrder": 2, "isTerminal": true, "color": "#1d8a4e" }
+      ],
       "parallelTracks": []
     }
   ],
@@ -98,10 +135,11 @@
       "sourceStageId": "stage-new-contracts",
       "targetStageId": "stage-embassy",
       "buttonLabel": "To Embassy",
+      "buttonIcon": "plane",
       "sortOrder": 1,
       "conditions": { "operator": "AND", "rules": [] },
-      "requiredFields": [],
-      "allowedRoles": ["ITPersonnel", "Admin"],
+      "requiredFields": ["passportNumber", "applicationNo"],
+      "allowedRoles": ["CaseExecutive", "Admin"],
       "removeFromSource": true,
       "isActive": true
     },
@@ -111,9 +149,69 @@
       "targetStageId": "stage-lmis",
       "buttonLabel": "To LMIS",
       "sortOrder": 1,
-      "conditions": { "operator": "AND", "rules": [{ "field": "embassy", "op": "eq", "value": "Issued" }] },
+      "conditions": {
+        "operator": "AND",
+        "rules": [{ "field": "embassy", "op": "eq", "value": "Issued" }]
+      },
       "requiredFields": [],
-      "allowedRoles": ["ITPersonnel", "Admin"],
+      "allowedRoles": ["CaseExecutive", "Admin"],
+      "removeFromSource": true,
+      "isActive": true
+    },
+    {
+      "id": "tr-to-ticket",
+      "sourceStageId": "stage-lmis",
+      "targetStageId": "stage-ticket",
+      "buttonLabel": "To Ticketing",
+      "sortOrder": 1,
+      "conditions": {
+        "operator": "AND",
+        "rules": [{ "field": "lmis", "op": "eq", "value": "Approved" }]
+      },
+      "requiredFields": [],
+      "allowedRoles": ["CaseExecutive", "Admin"],
+      "removeFromSource": true,
+      "isActive": true
+    },
+    {
+      "id": "tr-to-depart",
+      "sourceStageId": "stage-ticket",
+      "targetStageId": "stage-depart",
+      "buttonLabel": "Ready to Depart",
+      "sortOrder": 1,
+      "conditions": {
+        "operator": "AND",
+        "rules": [{ "field": "ticket", "op": "eq", "value": "Booked" }]
+      },
+      "requiredFields": ["flightDate"],
+      "allowedRoles": ["CaseExecutive", "Admin"],
+      "removeFromSource": true,
+      "isActive": true
+    },
+    {
+      "id": "tr-to-arrival",
+      "sourceStageId": "stage-depart",
+      "targetStageId": "stage-arrival",
+      "buttonLabel": "Confirm Arrival",
+      "sortOrder": 1,
+      "conditions": {
+        "operator": "AND",
+        "rules": [{ "field": "depart", "op": "eq", "value": "Depart" }]
+      },
+      "requiredFields": [],
+      "allowedRoles": ["CaseExecutive", "Admin"],
+      "removeFromSource": true,
+      "isActive": true
+    },
+    {
+      "id": "tr-to-commission",
+      "sourceStageId": "stage-arrival",
+      "targetStageId": "stage-commission",
+      "buttonLabel": "To Commission",
+      "sortOrder": 1,
+      "conditions": { "operator": "AND", "rules": [] },
+      "requiredFields": [],
+      "allowedRoles": ["Finance", "Admin"],
       "removeFromSource": true,
       "isActive": true
     }

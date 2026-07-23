@@ -19,8 +19,10 @@ import {
   PanelLeft,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocale } from "@/lib/i18n/locale-provider";
 import { AppTooltip } from "../data-table/data-table-toolbar";
 import { useEffect, useState } from "react";
 import { ChangePasswordForm } from "@/components/forms/change-password-form";
@@ -29,6 +31,7 @@ import { Key } from "lucide-react";
 export function Header() {
   const { isCollapsed, toggleCollapsed, toggleMobile } = useSidebarStore();
   const { user, logout, getDisplayName, getEmail, getUsername, isLoggingOut } = useAuth();
+  const { chrome } = useLocale();
   const [isHydrated, setIsHydrated] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
 
@@ -109,21 +112,22 @@ export function Header() {
             {/* Search functionality to be implemented */}
           </div>
 
-          <nav className="flex items-center space-x-2">
+          <nav className="flex items-center gap-2">
+            <LanguageSwitcher variant="compact" />
             <ThemeToggle />
-            <AppTooltip content="Notifications">
+            <AppTooltip content={chrome.notifications}>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-9 w-9"
-                aria-label="Notifications"
+                aria-label={chrome.notifications}
               >
                 <Bell className="h-4 w-4" />
               </Button>
             </AppTooltip>
 
             <DropdownMenu>
-              <AppTooltip content="Profile">
+              <AppTooltip content={chrome.profile}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
@@ -150,7 +154,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowChangePassword(true)}>
                   <Key className="mr-2 h-4 w-4" />
-                  <span>Change Password</span>
+                  <span>{chrome.changePassword}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -161,12 +165,12 @@ export function Header() {
                   {isLoggingOut ? (
                     <>
                       <div className="h-4 w-4 bg-destructive/20 rounded animate-pulse mr-2" />
-                      <span>Logging out...</span>
+                      <span>{chrome.loggingOut}</span>
                     </>
                   ) : (
                     <>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
+                      <span>{chrome.logOut}</span>
                     </>
                   )}
                 </DropdownMenuItem>

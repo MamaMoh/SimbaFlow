@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" fill="none">
+  <defs>
+    <linearGradient id="room" x1="0" y1="0" x2="1200" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f4f7f3"/>
+      <stop offset="1" stop-color="#e1ebe6"/>
+    </linearGradient>
+    <linearGradient id="table" x1="200" y1="520" x2="1000" y2="780" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0f1612"/>
+      <stop offset="1" stop-color="#1a3d30"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="900" fill="url(#room)"/>
+  <rect x="0" y="0" width="1200" height="220" fill="#006633" opacity="0.08"/>
+  <ellipse cx="600" cy="640" rx="420" ry="90" fill="url(#table)"/>
+  <g fill="#0a2e22">
+    <circle cx="340" cy="420" r="48"/>
+    <circle cx="480" cy="390" r="52"/>
+    <circle cx="640" cy="400" r="50"/>
+    <circle cx="800" cy="415" r="46"/>
+  </g>
+  <g fill="#006633">
+    <path d="M280 560 C280 490 310 470 340 470 C370 470 400 490 400 560 Z"/>
+    <path d="M420 540 C420 470 450 445 480 445 C510 445 540 470 540 540 Z"/>
+    <path d="M580 550 C580 480 610 455 640 455 C670 455 700 480 700 550 Z"/>
+    <path d="M750 555 C750 490 775 470 800 470 C825 470 850 490 850 555 Z"/>
+  </g>
+  <rect x="470" y="590" width="120" height="70" rx="6" fill="#ffffff" opacity="0.9"/>
+  <rect x="610" y="585" width="100" height="65" rx="6" fill="#f8c318" opacity="0.85"/>
+  <rect x="530" y="620" width="140" height="8" rx="2" fill="#006633" opacity="0.35"/>
+</svg>

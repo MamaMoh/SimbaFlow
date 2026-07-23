@@ -17,6 +17,8 @@ import { Separator } from "@/components/ui/separator";
 import { Building2, User, Key } from "lucide-react";
 import { toast } from "sonner";
 import { PhoneInputField } from "@/components/ui/phone-input";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { mockApi } from "@/lib/api/mock-api";
 
 const createAgencySchema = z.object({
   agencyName: z.string().min(3, "Agency name must be at least 3 characters"),
@@ -66,6 +68,19 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
 
   const onSubmit = async (data: CreateAgencyForm) => {
     try {
+      if (USE_MOCKS) {
+        await mockApi.createTenant({
+          name: data.agencyName,
+          slug: data.slug,
+          contactEmail: data.contactEmail,
+        });
+        toast.success(`Agency "${data.agencyName}" created successfully`);
+        reset();
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
+
       const response = await fetch("/api/proxy/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" fill="none">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="800" y2="450" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0a2e22"/>
+      <stop offset="0.45" stop-color="#006633"/>
+      <stop offset="1" stop-color="#0f1612"/>
+    </linearGradient>
+    <linearGradient id="runway" x1="0" y1="280" x2="800" y2="450" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a1a1a"/>
+      <stop offset="1" stop-color="#2a2a2a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#sky)"/>
+  <path d="M0 300 L800 260 L800 450 L0 450 Z" fill="url(#runway)" opacity="0.55"/>
+  <path d="M120 340 H680" stroke="#f8c318" stroke-width="6" stroke-dasharray="28 18" opacity="0.85"/>
+  <g transform="translate(420 210)" fill="#ffffff" opacity="0.92">
+    <path d="M-90 8 L40 0 L110 -8 L130 4 L40 20 L-20 28 L-40 18 Z"/>
+    <path d="M10 4 L70 -55 L88 -52 L55 12 Z"/>
+    <path d="M5 18 L55 70 L72 62 L40 22 Z"/>
+    <path d="M-70 10 L-100 40 L-85 46 L-55 18 Z"/>
+  </g>
+  <circle cx="640" cy="90" r="36" fill="#f8c318" opacity="0.25"/>
+  <circle cx="640" cy="90" r="18" fill="#f8c318" opacity="0.45"/>
+</svg>

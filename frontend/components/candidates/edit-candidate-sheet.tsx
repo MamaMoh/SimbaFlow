@@ -21,6 +21,7 @@ import { CountrySelect } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import useSWR from "swr";
 import { toast } from "sonner";
+import { candidatesApi, USE_MOCKS } from "@/lib/api/candidates-api";
 
 const editCandidateSchema = z.object({
   firstName: z.string().min(2),
@@ -51,8 +52,14 @@ const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export function EditCandidateSheet({ candidate, open, onOpenChange, onUpdated }: EditCandidateSheetProps) {
   const { data } = useSWR(
-    candidate && open ? `/api/proxy/candidates/${candidate.id}` : null,
-    fetcher
+    candidate && open
+      ? USE_MOCKS
+        ? ["candidate-edit", candidate.id]
+        : `/api/proxy/candidates/${candidate.id}`
+      : null,
+    USE_MOCKS
+      ? () => candidatesApi.getById(candidate!.id)
+      : fetcher,
   );
 
   const {
@@ -69,7 +76,7 @@ export function EditCandidateSheet({ candidate, open, onOpenChange, onUpdated }:
   // Pre-fill form when data loads
   useEffect(() => {
     if (data?.data) {
-      const d = data.data;
+      const d = data.data as any;
       reset({
         firstName: d.firstName || "",
         lastName: d.lastName || "",
@@ -91,6 +98,18 @@ export function EditCandidateSheet({ candidate, open, onOpenChange, onUpdated }:
   const onSubmit = async (formData: EditCandidateForm) => {
     if (!candidate) return;
     try {
+      if (USE_MOCKS) {
+        const result = await candidatesApi.update(candidate.id, formData);
+        if (result.isSuccess) {
+          onOpenChange(false);
+          onUpdated();
+          toast.success("Candidate updated");
+        } else {
+          toast.error(result.error || "Update failed");
+        }
+        return;
+      }
+
       const response = await fetch(`/api/proxy/candidates/${candidate.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

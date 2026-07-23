@@ -16,15 +16,16 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { PipelineTracker } from "@/components/workflow/pipeline-tracker";
-import { StatusPill } from "@/components/workflow/status-pill";
+import { FlagBadge, StatusPill, TimingChip } from "@/components/workflow/status-pill";
 import { ContentLoading } from "@/components/loading/loading-components";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { EditCandidateSheet } from "@/components/candidates/edit-candidate-sheet";
 import { candidatesApi, USE_MOCKS } from "@/lib/api/candidates-api";
 import type { CandidateListItem } from "@/types/candidate";
 import { DEMO_STAGES } from "@/lib/demo/demo-data";
-import { AlertTriangle, Clock3, Eye, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { AlertTriangle, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 function stageHref(stageName?: string | null) {
   const match = DEMO_STAGES.find((s) => s.name === stageName);
@@ -35,8 +36,11 @@ export default function CandidatesPage() {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([{ id: "registeredAt", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [editTarget, setEditTarget] = useState<{ id: string; fullName: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading, mutate } = useSWR(
     ["candidates-all"],
     () => candidatesApi.list(),
     { revalidateOnFocus: false },
@@ -50,14 +54,16 @@ export default function CandidatesPage() {
         accessorKey: "fullName",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
-          <div>
+          <div className="min-w-[140px]">
             <Link href={`/candidates/${row.original.id}`} className="font-semibold hover:underline">
               {row.original.fullName}
             </Link>
             {row.original.isOverdue && (
-              <Badge variant="destructive" className="ml-2 text-[10px] gap-0.5">
-                <AlertTriangle className="h-3 w-3" /> Stuck
-              </Badge>
+              <div className="mt-1">
+                <FlagBadge tone="danger">
+                  <AlertTriangle className="h-3 w-3" /> Stuck
+                </FlagBadge>
+              </div>
             )}
           </div>
         ),
@@ -81,8 +87,8 @@ export default function CandidatesPage() {
         accessorKey: "currentStageName",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Stage" />,
         cell: ({ row }) => (
-          <Link href={stageHref(row.original.currentStageName)}>
-            <StatusPill value={row.original.currentStageName || "Intake"} />
+          <Link href={stageHref(row.original.currentStageName)} className="inline-flex">
+            <StatusPill value={row.original.currentStageName || "Intake"} size="sm" />
           </Link>
         ),
       },
@@ -100,15 +106,7 @@ export default function CandidatesPage() {
         accessorKey: "daysInStage",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Days in stage" />,
         cell: ({ row }) => (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold tabular-nums",
-              row.original.isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-700",
-            )}
-          >
-            <Clock3 className="h-3 w-3" />
-            {row.original.daysInStage ?? 0}d
-          </span>
+          <TimingChip days={row.original.daysInStage ?? 0} overdue={row.original.isOverdue} />
         ),
       },
       {
@@ -123,11 +121,37 @@ export default function CandidatesPage() {
       },
       {
         id: "actions",
-        header: "",
+        header: "Actions",
         cell: ({ row }) => (
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/candidates/${row.original.id}`)}>
-            <Eye className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="View"
+              onClick={() => router.push(`/candidates/${row.original.id}`)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              title="Edit"
+              onClick={() => setEditTarget({ id: row.original.id, fullName: row.original.fullName })}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              title="Delete"
+              onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.fullName })}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         ),
         enableSorting: false,
       },
@@ -147,6 +171,20 @@ export default function CandidatesPage() {
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 12 } },
   });
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    const result = await candidatesApi.remove(deleteTarget.id);
+    if (result.isSuccess) {
+      toast.success("Candidate deleted");
+      mutate();
+    } else {
+      toast.error(result.error || "Delete failed");
+    }
+    setIsDeleting(false);
+    setDeleteTarget(null);
+  };
 
   return (
     <div className="flex flex-col gap-5 p-4 md:p-6">
@@ -178,6 +216,22 @@ export default function CandidatesPage() {
           />
         )}
       </div>
+
+      <EditCandidateSheet
+        candidate={editTarget}
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        onUpdated={() => mutate()}
+      />
+
+      <DeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete candidate"
+        description={`Remove '${deleteTarget?.name}' from the pipeline?`}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

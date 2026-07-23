@@ -34,6 +34,7 @@ import {
   filterNavigationByClaims,
 } from "@/components/layout/nav-items";
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useLocale } from "@/lib/i18n/locale-provider";
 
 /** Returns the top-level parent nav item name whose subtree contains the current path (for opening on expand). */
 function getParentNameForActivePath(
@@ -114,6 +115,7 @@ function NavItemWithCollapse({
   // MOVE ALL HOOKS BEFORE THE EARLY RETURN
   // For top-level parents (not children), use controlled state
   // For nested parents (children), use local state
+  const { tNav } = useLocale();
   const isTopLevelParent =
     !isChild && item.children && item.children.length > 0;
 
@@ -175,7 +177,7 @@ function NavItemWithCollapse({
       <div className="pt-4 pb-1 px-2">
         {item.sectionLabel && (
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-            {item.sectionLabel}
+            {tNav(item.sectionLabel)}
           </p>
         )}
         <div className="h-px bg-gradient-to-r from-transparent via-border/40 to-transparent mt-1" />
@@ -246,7 +248,7 @@ function NavItemWithCollapse({
                 {/* Item label (hidden in collapsed sidebar) */}
                 {!isCollapsed && (
                   <span className="transition-all duration-300 truncate text-sm font-medium group-hover:translate-x-0.5 flex-1 text-left">
-                    {item.name}
+                    {tNav(item.name)}
                   </span>
                 )}
               </div>
@@ -264,7 +266,7 @@ function NavItemWithCollapse({
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right" className="z-[100]">
-            <p>{item.name}</p>
+            <p>{tNav(item.name)}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -361,14 +363,14 @@ function NavItemWithCollapse({
               {/* Leaf label (hidden in collapsed sidebar) */}
               {!isCollapsed && (
                 <span className="transition-all duration-300 truncate text-sm font-medium group-hover:translate-x-0.5 flex-1 text-left">
-                  {item.name}
+                  {tNav(item.name)}
                 </span>
               )}
             </Button>
           </Link>
         </TooltipTrigger>
         <TooltipContent side="right" className="z-[100]">
-          <p>{item.name}</p>
+          <p>{tNav(item.name)}</p>
         </TooltipContent>
       </Tooltip>
     </div>
@@ -379,6 +381,7 @@ export function Sidebar({ className }: SidebarProps) {
   const { isCollapsed, isMobileOpen, closeMobile } = useSidebarStore();
   const { user, logout, getPermissions, isSuperAdmin, isLoggingOut } =
     useAuth();
+  const { chrome, tNav } = useLocale();
   const pathname = usePathname();
 
   const userClaims = getPermissions();
@@ -541,12 +544,12 @@ export function Sidebar({ className }: SidebarProps) {
                   {isLoggingOut ? (
                     <>
                       <div className="h-4 w-4 bg-destructive/20 rounded animate-pulse" />
-                      <span>Logging out...</span>
+                      <span>{chrome.loggingOut}</span>
                     </>
                   ) : (
                     <>
                       <LogOut className="h-4 w-4 text-destructive" />
-                      <span>Log out</span>
+                      <span>{chrome.logOut}</span>
                     </>
                   )}
                 </DropdownMenuItem>

@@ -53,9 +53,22 @@ export const navigation: NavItem[] = [
   },
   {
     name: "Departures",
-    href: "/workflow/departures",
     icon: require("lucide-react").Clock,
     claims: ["travel.read", "system.admin"],
+    children: [
+      {
+        name: "Departure List",
+        href: "/workflow/departures",
+        icon: require("lucide-react").List,
+        claims: ["travel.read", "system.admin"],
+      },
+      {
+        name: "Calendar View",
+        href: "/departures/calendar",
+        icon: require("lucide-react").CalendarDays,
+        claims: ["travel.read", "system.admin"],
+      },
+    ],
   },
   {
     name: "Arrivals",

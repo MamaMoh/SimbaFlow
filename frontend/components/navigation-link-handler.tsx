@@ -14,28 +14,30 @@ export function NavigationLinkHandler() {
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+
       const target = e.target as HTMLElement;
-      // Find the closest anchor tag
       const link = target.closest("a");
-      
-      if (link && link.href) {
-        const href = link.getAttribute("href");
-        // Only trigger for internal links (not external or special links)
-        if (href && !href.startsWith("http") && !href.startsWith("mailto:") && !href.startsWith("#")) {
-          // Normalize href to match pathname format (remove domain, ensure leading slash)
-          const normalizedHref = href.replace(window.location.origin, "").split("?")[0].split("#")[0];
-          const normalizedPathname = pathname || "";
-          
-          // Only show loading if navigating to a different page
-          if (normalizedHref !== normalizedPathname) {
-            // Show loading IMMEDIATELY on click - set synchronously for instant feedback
-            setLoading(true);
-          }
-        }
+
+      if (!link || !link.href || link.target === "_blank" || link.hasAttribute("download")) {
+        return;
+      }
+
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("#")) {
+        return;
+      }
+
+      const normalizedHref = href.replace(window.location.origin, "").split("?")[0].split("#")[0];
+      const normalizedPathname = pathname || "";
+
+      if (normalizedHref !== normalizedPathname) {
+        setLoading(true);
       }
     };
 
-    // Add click listener to document with capture phase for immediate detection
     document.addEventListener("click", handleClick, true);
 
     return () => {
@@ -43,6 +45,5 @@ export function NavigationLinkHandler() {
     };
   }, [setLoading, pathname]);
 
-  return null; // This component doesn't render anything
+  return null;
 }
-

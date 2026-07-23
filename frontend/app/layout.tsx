@@ -13,11 +13,11 @@ import { NavigationLoading } from "@/components/loading/immediate-loading";
 import { GlobalErrorHandler } from "@/components/error/error-handler";
 import { ApiErrorBoundary } from "@/components/error/api-error-boundary";
 import { NavigationLinkHandler } from "@/components/navigation-link-handler";
+import { LocaleProvider } from "@/lib/i18n/locale-provider";
 
 export const metadata: Metadata = {
   title: "SimbaFlow",
-  description:
-    "Labour Export Agency Management System",
+  description: "Labour Export Agency Management System",
   formatDetection: {
     telephone: false,
   },
@@ -26,9 +26,7 @@ export const metadata: Metadata = {
       { url: "/SimbLogo.svg", type: "image/svg+xml" },
       { url: "/SimbLogo.svg", type: "image/svg+xml", sizes: "any" },
     ],
-    apple: [
-      { url: "/SimbLogo.svg", type: "image/svg+xml" },
-    ],
+    apple: [{ url: "/SimbLogo.svg", type: "image/svg+xml" }],
     shortcut: "/SimbLogo.svg",
   },
 };
@@ -48,18 +46,18 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <AuthProvider>
-          <ThemeProvider>
-            <GlobalErrorHandler />
-            <NavigationLinkHandler />
-            <ApiErrorBoundary>
-              <Suspense fallback={<CompilationLoading />}>
-                {children}
-              </Suspense>
-            </ApiErrorBoundary>
-            <NavigationLoading />
-            <Toaster />
-            <LogoutOverlay />
-          </ThemeProvider>
+          <LocaleProvider>
+            <ThemeProvider>
+              <GlobalErrorHandler />
+              <NavigationLinkHandler />
+              <ApiErrorBoundary>
+                <Suspense fallback={<CompilationLoading />}>{children}</Suspense>
+              </ApiErrorBoundary>
+              <NavigationLoading />
+              <Toaster />
+              <LogoutOverlay />
+            </ThemeProvider>
+          </LocaleProvider>
         </AuthProvider>
       </body>
     </html>

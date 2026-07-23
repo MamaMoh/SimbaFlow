@@ -91,68 +91,87 @@ function track(key: string, status: string | undefined, since?: string): TrackSt
 }
 
 function actionsFor(c: DemoCandidate): AvailableAction[] {
+  const nowReady = (label: string, id: string, enabled = true, reason?: string): AvailableAction => ({
+    transitionRuleId: id,
+    buttonLabel: label,
+    isEnabled: enabled,
+    disabledReason: enabled ? undefined : reason,
+  });
+
   switch (c.stageSlug) {
     case "new-contracts":
-      return [{ transitionRuleId: "tr-to-embassy", buttonLabel: "To Embassy", isEnabled: true }];
+      return [nowReady("To Embassy", "tr-to-embassy")];
     case "embassy": {
-      const canLmis = c.statusValues.embassy === "Issued";
-      const locked = !(c.statusValues.medical === "Fit" && c.statusValues.tasheer === "Done");
-      return [
-        {
-          transitionRuleId: "tr-to-lmis",
-          buttonLabel: "To LMIS",
-          isEnabled: canLmis,
-          disabledReason: canLmis ? undefined : locked ? "Needs FIT + DONE" : "Requires embassy=Issued",
-        },
-      ];
+      const s = c.statusValues;
+      const extras: AvailableAction[] = [];
+      if (s.medical !== "Fit") extras.push(nowReady("Mark Medical Fit", "status:medical:Fit"));
+      if (s.tasheer !== "Done") extras.push(nowReady("Mark Tasheer Done", "status:tasheer:Done"));
+      if (s.embassy !== "Issued") extras.push(nowReady("Mark Visa Issued", "status:embassy:Issued"));
+      const canLmis = s.embassy === "Issued";
+      const locked = !(s.medical === "Fit" && s.tasheer === "Done");
+      extras.push(
+        nowReady(
+          "To LMIS",
+          "tr-to-lmis",
+          canLmis,
+          canLmis ? undefined : locked ? "Needs FIT + DONE" : "Requires embassy=Issued",
+        ),
+      );
+      return extras;
     }
     case "lmis":
       if (c.isPreview) {
         return [
-          {
-            transitionRuleId: "tr-to-lmis",
-            buttonLabel: "Transfer to LMIS",
-            isEnabled: c.statusValues.embassy === "Issued",
-            disabledReason: c.statusValues.embassy === "Issued" ? undefined : "Waiting on ISSUED",
-          },
+          nowReady(
+            "Transfer to LMIS",
+            "tr-to-lmis",
+            c.statusValues.embassy === "Issued",
+            c.statusValues.embassy === "Issued" ? undefined : "Waiting on ISSUED",
+          ),
         ];
       }
-      return [
-        {
-          transitionRuleId: "tr-to-ticket",
-          buttonLabel: "To Ticket",
-          isEnabled: c.statusValues.lmis === "Issued",
-          disabledReason: c.statusValues.lmis === "Issued" ? undefined : "Requires LMIS Issued",
-        },
-      ];
-    case "tickets":
-      return [
-        {
-          transitionRuleId: "tr-to-depart",
-          buttonLabel: "To Depart",
-          isEnabled: c.statusValues.ticket === "Booked" && !!c.flightDate,
-          disabledReason: "Requires booked ticket + flight date",
-        },
-      ];
-    case "departures":
-      return [
-        {
-          transitionRuleId: "tr-to-arrival",
-          buttonLabel: "To Arrival",
-          isEnabled: c.statusValues.depart === "Depart",
-          disabledReason: "Mark DEPART first",
-        },
-      ];
+      {
+        const extras: AvailableAction[] = [];
+        if (c.statusValues.lmis !== "Issued" && c.statusValues.lmis !== "Approved") {
+          extras.push(nowReady("Mark LMIS Issued", "status:lmis:Issued"));
+        }
+        extras.push(
+          nowReady(
+            "To Ticket",
+            "tr-to-ticket",
+            c.statusValues.lmis === "Issued" || c.statusValues.lmis === "Approved",
+            "Requires LMIS Issued",
+          ),
+        );
+        return extras;
+      }
+    case "tickets": {
+      const extras: AvailableAction[] = [];
+      if (c.statusValues.ticket !== "Booked") extras.push(nowReady("Mark Ticket Booked", "status:ticket:Booked"));
+      extras.push(
+        nowReady(
+          "To Depart",
+          "tr-to-depart",
+          c.statusValues.ticket === "Booked" && !!c.flightDate,
+          "Requires booked ticket + flight date",
+        ),
+      );
+      return extras;
+    }
+    case "departures": {
+      const extras: AvailableAction[] = [];
+      if (c.statusValues.depart !== "Depart") extras.push(nowReady("Mark Departed", "status:depart:Depart"));
+      extras.push(
+        nowReady("To Arrival", "tr-to-arrival", c.statusValues.depart === "Depart", "Mark DEPART first"),
+      );
+      return extras;
+    }
     case "arrivals":
-      return [
-        {
-          transitionRuleId: "tr-to-commission",
-          buttonLabel: "Send to Commission",
-          isEnabled: true,
-        },
-      ];
-    case "commissions":
-      return [];
+      return [nowReady("Send to Commission", "tr-to-commission")];
+    case "commissions": {
+      if (c.statusValues.commission === "Paid") return [];
+      return [nowReady("Mark Commission Paid", "status:commission:Paid")];
+    }
     default:
       return [];
   }
@@ -187,8 +206,8 @@ const HO = DEMO_OFFICES[0]!;
 const BOLE = DEMO_OFFICES[1]!;
 const HAW = DEMO_OFFICES[2]!;
 
-/** Rich demo population across every pipeline stage */
-export const DEMO_CANDIDATES: DemoCandidate[] = [
+/** Rich demo population across every pipeline stage (mutable in mock mode) */
+export let DEMO_CANDIDATES: DemoCandidate[] = [
   // New Contracts
   {
     id: "c-nc-01",
@@ -890,6 +909,62 @@ export function getPipelineCounts() {
   }));
 }
 
+/** Candidates with flight dates for the Departure Calendar view. */
+export function getDepartureCalendarEvents() {
+  const FLIGHTS = ["EK-721", "SV-482", "QR-1195", "EY-606", "MS-838"];
+  const TERMINALS = ["T3 - A12", "T1 - B04", "T2 - C18", "T3 - D07", "T1 - A21"];
+
+  return DEMO_CANDIDATES.filter((c) => !!c.flightDate).map((c, i) => {
+    const stage = DEMO_STAGES.find((s) => s.slug === c.stageSlug);
+    const start = c.flightDate!;
+    const departed =
+      c.statusValues.depart === "Depart" ||
+      c.stageSlug === "arrivals" ||
+      c.stageSlug === "commissions";
+    const status =
+      departed
+        ? "completed"
+        : c.stageSlug === "departures"
+          ? "scheduled"
+          : c.stageSlug === "tickets"
+            ? "pending"
+            : "scheduled";
+
+    const shortName = c.fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p, idx) => (idx === 0 ? p : `${p.charAt(0)}.`))
+      .join(" ")
+      .toUpperCase();
+
+    return {
+      id: c.id,
+      title: shortName || c.fullName,
+      start,
+      allDay: false,
+      classNames: [`status-${status}`],
+      extendedProps: {
+        fullName: c.fullName,
+        applicationNo: c.applicationNo,
+        passportNumber: c.passportNumber,
+        labourId: c.labourId,
+        destination: c.countryOfTravel,
+        officeName: c.officeName,
+        stageName: stage?.name ?? c.stageSlug,
+        stageSlug: c.stageSlug,
+        sponsorName: c.sponsorName,
+        status,
+        flightDate: c.flightDate,
+        flightNo: FLIGHTS[i % FLIGHTS.length],
+        terminal: TERMINALS[i % TERMINALS.length],
+        visaIssuedAt: c.statusValues.embassy_since || c.registeredAt,
+        ticketConfirmedAt: c.statusValues.ticket_since || c.lastActionAt,
+      },
+    };
+  });
+}
+
 export function getDemoTimeline(candidateId: string): TimelineItem[] {
   const c = DEMO_CANDIDATES.find((x) => x.id === candidateId || `${x.id}-preview` === candidateId);
   if (!c) return [];
@@ -953,5 +1028,183 @@ export function getCandidateDetail(id: string) {
     relatives: [{ relativeName: "Family Contact", relativePhone: "+251922000111", relativeKinship: "Father" }],
     documents: [],
     timeline: getDemoTimeline(c.id),
+    availableActions: actionsFor(c),
   };
 }
+
+const demoListeners = new Set<() => void>();
+
+export function subscribeDemoData(listener: () => void) {
+  demoListeners.add(listener);
+  return () => demoListeners.delete(listener);
+}
+
+function notifyDemo() {
+  demoListeners.forEach((l) => l());
+}
+
+const STAGE_BY_TRANSITION: Record<string, DemoStageSlug> = {
+  "tr-to-embassy": "embassy",
+  "tr-to-lmis": "lmis",
+  "tr-to-ticket": "tickets",
+  "tr-to-depart": "departures",
+  "tr-to-arrival": "arrivals",
+  "tr-to-commission": "commissions",
+};
+
+const DEFAULT_STATUS: Partial<Record<DemoStageSlug, Record<string, string>>> = {
+  embassy: { medical: "OnProgress", tasheer: "OnProgress", embassy: "Ready" },
+  lmis: { insurance: "Paid", lmis: "Submitted" },
+  tickets: { ticket: "Requested" },
+  departures: { depart: "NotDepart" },
+  arrivals: { arrival: "Notified" },
+  commissions: { commission: "Unpaid" },
+};
+
+/** Apply a stage transition or status update against the in-memory demo dataset. */
+export function applyDemoCandidateAction(candidateId: string, actionId: string): { ok: boolean; message: string } {
+  const id = candidateId.replace(/-preview$/, "");
+  const idx = DEMO_CANDIDATES.findIndex((c) => c.id === id);
+  if (idx < 0) return { ok: false, message: "Candidate not found" };
+
+  const now = new Date().toISOString();
+  const current = DEMO_CANDIDATES[idx]!;
+
+  if (actionId.startsWith("status:")) {
+    const [, field, value] = actionId.split(":");
+    if (!field || !value) return { ok: false, message: "Invalid status action" };
+    DEMO_CANDIDATES[idx] = {
+      ...current,
+      statusValues: {
+        ...current.statusValues,
+        [field]: value,
+        [`${field}_since`]: now,
+      },
+      lastActionAt: now,
+      lastActionLabel: `${field} → ${value}`,
+      isOverdue: false,
+      flightDate:
+        field === "ticket" && value === "Booked" && !current.flightDate
+          ? new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10)
+          : current.flightDate,
+    };
+    notifyDemo();
+    return { ok: true, message: `Updated ${field} to ${value}` };
+  }
+
+  const nextSlug = STAGE_BY_TRANSITION[actionId];
+  if (!nextSlug) return { ok: false, message: "Unknown action" };
+
+  const defaults = DEFAULT_STATUS[nextSlug] ?? {};
+  const statusValues: Record<string, string> = { ...defaults };
+  for (const [k, v] of Object.entries(defaults)) {
+    statusValues[`${k}_since`] = now;
+    statusValues[k] = v;
+  }
+
+  DEMO_CANDIDATES[idx] = {
+    ...current,
+    stageSlug: nextSlug,
+    statusValues,
+    enteredAt: now,
+    lastActionAt: now,
+    lastActionLabel: `Moved to ${DEMO_STAGES.find((s) => s.slug === nextSlug)?.name ?? nextSlug}`,
+    isPreview: false,
+    isOverdue: false,
+    flightDate:
+      nextSlug === "tickets" && !current.flightDate
+        ? new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
+        : current.flightDate,
+  };
+  notifyDemo();
+  return {
+    ok: true,
+    message: `Moved to ${DEMO_STAGES.find((s) => s.slug === nextSlug)?.name ?? nextSlug}`,
+  };
+}
+
+export function registerDemoCandidate(input: Record<string, unknown>): string {
+  const officeId = String(input.officeId ?? DEMO_OFFICES[0]?.id ?? "");
+  const office = DEMO_OFFICES.find((o) => o.id === officeId) ?? DEMO_OFFICES[0]!;
+  const firstName = String(input.firstName ?? "");
+  const lastName = String(input.lastName ?? "");
+  const middleName = input.middleName ? String(input.middleName) : undefined;
+  const now = new Date().toISOString();
+  const id = `c-new-${Date.now().toString(36)}`;
+  const placement = (input.placement as Record<string, unknown> | undefined) ?? {};
+
+  const candidate: DemoCandidate = {
+    id,
+    applicationNo: `E${Date.now().toString().slice(-9)}`,
+    fullName: [firstName, middleName, lastName].filter(Boolean).join(" "),
+    firstName,
+    lastName,
+    middleName,
+    passportNumber: String(input.passportNumber ?? "XX000000"),
+    labourId: String(input.labourId || `EF${Date.now().toString().slice(-5)}`),
+    age: 25,
+    gender: Number(input.gender ?? 0),
+    countryOfTravel: String(placement.countryOfTravel ?? input.countryOfTravel ?? ""),
+    sponsorName: String(placement.sponsorName ?? input.sponsorName ?? ""),
+    sponsorId: placement.sponsorId ? String(placement.sponsorId) : undefined,
+    visaNo: placement.visaNumber ? String(placement.visaNumber) : undefined,
+    agent: placement.agent ? String(placement.agent) : undefined,
+    officeId: office.id,
+    officeName: office.name,
+    stageSlug: "new-contracts",
+    statusValues: {},
+    enteredAt: now,
+    lastActionAt: now,
+    lastActionLabel: "Registered",
+    registeredAt: now,
+  };
+
+  DEMO_CANDIDATES = [candidate, ...DEMO_CANDIDATES];
+  notifyDemo();
+  return id;
+}
+
+export function updateDemoCandidate(
+  id: string,
+  patch: Partial<{
+    firstName: string;
+    lastName: string;
+    middleName: string;
+    labourId: string;
+    countryOfTravel: string;
+    sponsorName: string;
+    passportNumber: string;
+  }>,
+): boolean {
+  const idx = DEMO_CANDIDATES.findIndex((c) => c.id === id);
+  if (idx < 0) return false;
+  const current = DEMO_CANDIDATES[idx]!;
+  const firstName = patch.firstName ?? current.firstName;
+  const lastName = patch.lastName ?? current.lastName;
+  const middleName = patch.middleName !== undefined ? patch.middleName || undefined : current.middleName;
+  DEMO_CANDIDATES[idx] = {
+    ...current,
+    firstName,
+    lastName,
+    middleName,
+    fullName: [firstName, middleName, lastName].filter(Boolean).join(" "),
+    labourId: patch.labourId ?? current.labourId,
+    countryOfTravel: patch.countryOfTravel ?? current.countryOfTravel,
+    sponsorName: patch.sponsorName ?? current.sponsorName,
+    passportNumber: patch.passportNumber ?? current.passportNumber,
+    lastActionAt: new Date().toISOString(),
+    lastActionLabel: "Profile updated",
+  };
+  notifyDemo();
+  return true;
+}
+
+export function deleteDemoCandidate(id: string): boolean {
+  const before = DEMO_CANDIDATES.length;
+  DEMO_CANDIDATES = DEMO_CANDIDATES.filter((c) => c.id !== id);
+  if (DEMO_CANDIDATES.length === before) return false;
+  notifyDemo();
+  return true;
+}
+
+

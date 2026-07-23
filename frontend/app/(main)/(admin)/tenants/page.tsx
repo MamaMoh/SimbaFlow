@@ -27,6 +27,8 @@ import { CreateAgencySheet } from "@/components/tenants/create-agency-sheet";
 import { EditAgencySheet } from "@/components/tenants/edit-agency-sheet";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { mockApi } from "@/lib/api/mock-api";
 
 interface AgencyRow {
   id: string;
@@ -54,10 +56,20 @@ export default function TenantsPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data, mutate } = useSWR("/api/proxy/tenants", fetcher, { revalidateOnFocus: false });
+  const { data, mutate } = useSWR(
+    USE_MOCKS ? "mock-tenants" : "/api/proxy/tenants",
+    USE_MOCKS ? () => mockApi.getTenants() : fetcher,
+    { revalidateOnFocus: false },
+  );
   const agencies: AgencyRow[] = data?.data || [];
 
   const handleStatusChange = async (id: string, status: number) => {
+    if (USE_MOCKS) {
+      await mockApi.setTenantStatus(id, status);
+      mutate();
+      toast.success("Agency status updated");
+      return;
+    }
     const res = await fetch(`/api/proxy/tenants/${id}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -75,12 +87,18 @@ export default function TenantsPage() {
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    const res = await fetch(`/api/proxy/tenants/${deleteTarget.id}`, { method: "DELETE" });
-    if (res.ok) {
+    if (USE_MOCKS) {
+      await mockApi.deleteTenant(deleteTarget.id);
       mutate();
       toast.success("Agency deleted");
     } else {
-      toast.error("Failed to delete agency");
+      const res = await fetch(`/api/proxy/tenants/${deleteTarget.id}`, { method: "DELETE" });
+      if (res.ok) {
+        mutate();
+        toast.success("Agency deleted");
+      } else {
+        toast.error("Failed to delete agency");
+      }
     }
     setIsDeleting(false);
     setDeleteTarget(null);

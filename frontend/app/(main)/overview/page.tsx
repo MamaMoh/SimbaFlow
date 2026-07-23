@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { PipelineTracker } from "@/components/workflow/pipeline-tracker";
 import { getCandidateList, getPipelineCounts } from "@/lib/demo/demo-data";
+import { getClearanceQueueCounts } from "@/lib/demo/clearances";
 import { USE_MOCKS } from "@/lib/api/candidates-api";
 import { AlertTriangle, ArrowRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FlagBadge } from "@/components/workflow/status-pill";
 
 export default function OverviewPage() {
   const counts = USE_MOCKS ? getPipelineCounts() : [];
   const candidates = USE_MOCKS ? getCandidateList() : [];
+  const clearanceQueues = USE_MOCKS ? getClearanceQueueCounts() : [];
   const overdue = candidates.filter((c) => c.isOverdue);
   const total = candidates.length;
   const inPipeline = candidates.filter((c) => c.currentStageName !== "Commissions").length;
@@ -46,6 +49,51 @@ export default function OverviewPage() {
       </div>
 
       <PipelineTracker />
+
+      {USE_MOCKS && clearanceQueues.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div>
+              <h2 className="font-semibold">External services</h2>
+              <p className="text-xs text-muted-foreground">
+                Clearance queues across Musaned, Wafid, visa, insurance, COC, and tickets
+              </p>
+            </div>
+            <FlagBadge tone="neutral">EasyEnjaz-style</FlagBadge>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {clearanceQueues.map((q) => (
+              <Link
+                key={q.serviceId}
+                href={q.href}
+                className={cn(
+                  "group rounded-xl border bg-card p-3 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/40",
+                  q.blocked > 0 && "border-rose-200",
+                )}
+              >
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {q.easyenjazAlias}
+                </div>
+                <div className="mt-1 text-sm font-semibold group-hover:text-primary">{q.label}</div>
+                <div className="mt-3 flex items-end justify-between gap-2">
+                  <div>
+                    <div className="text-2xl font-bold tabular-nums leading-none">{q.waiting}</div>
+                    <div className="mt-0.5 text-[10px] text-muted-foreground">waiting</div>
+                  </div>
+                  {q.blocked > 0 ? (
+                    <div className="text-right">
+                      <div className="text-sm font-bold tabular-nums text-rose-700">{q.blocked}</div>
+                      <div className="text-[10px] text-rose-600/80">blocked</div>
+                    </div>
+                  ) : (
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card p-4 shadow-sm">

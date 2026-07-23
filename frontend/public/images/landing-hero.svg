@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="960" viewBox="0 0 1200 960" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#e9f4ec"/>
+      <stop offset="0.55" stop-color="#f6faf8"/>
+      <stop offset="1" stop-color="#dcefe3"/>
+    </linearGradient>
+    <linearGradient id="desk" x1="200" y1="520" x2="1000" y2="860" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0a2e22"/>
+      <stop offset="1" stop-color="#006633"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="430" y1="300" x2="780" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a3d30"/>
+      <stop offset="1" stop-color="#0f1612"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="960" fill="url(#bg)"/>
+  <circle cx="980" cy="160" r="120" fill="#f8c318" opacity="0.2"/>
+  <circle cx="160" cy="780" r="90" fill="#006633" opacity="0.12"/>
+  <!-- desk -->
+  <path d="M180 620 H1020 L980 860 H220 Z" fill="url(#desk)" opacity="0.92"/>
+  <!-- laptop base -->
+  <rect x="360" y="560" width="480" height="28" rx="6" fill="#07211a"/>
+  <rect x="400" y="320" width="400" height="250" rx="12" fill="url(#screen)"/>
+  <rect x="420" y="340" width="360" height="200" rx="6" fill="#143d2c"/>
+  <!-- chart bars on screen -->
+  <rect x="460" y="440" width="40" height="80" rx="4" fill="#f8c318"/>
+  <rect x="520" y="400" width="40" height="120" rx="4" fill="#7dcea0"/>
+  <rect x="580" y="420" width="40" height="100" rx="4" fill="#f8c318" opacity="0.75"/>
+  <rect x="640" y="380" width="40" height="140" rx="4" fill="#00994d"/>
+  <rect x="700" y="410" width="40" height="110" rx="4" fill="#7dcea0"/>
+  <!-- person silhouette -->
+  <circle cx="280" cy="360" r="54" fill="#0a2e22"/>
+  <path d="M210 520 C210 450 240 420 280 420 C320 420 350 450 350 520 Z" fill="#0a2e22"/>
+  <rect x="248" y="500" width="64" height="90" rx="10" fill="#006633"/>
+</svg>

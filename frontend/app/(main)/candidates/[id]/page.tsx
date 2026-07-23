@@ -4,24 +4,75 @@ import { use } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { candidatesApi, USE_MOCKS } from "@/lib/api/candidates-api";
+import {
+  getCandidateClearances,
+  getCandidateReadiness,
+  updateClearanceStatus,
+} from "@/lib/demo/clearances";
+import { ClearancesHub } from "@/components/candidates/clearances-hub";
+import { ReadinessChecklist } from "@/components/candidates/readiness-checklist";
 import { PipelineTracker } from "@/components/workflow/pipeline-tracker";
-import { StatusPill } from "@/components/workflow/status-pill";
+import {
+  FlagBadge,
+  StatusPill,
+  StatusTrackGroup,
+  TimingChip,
+} from "@/components/workflow/status-pill";
 import { ContentLoading } from "@/components/loading/loading-components";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock3 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 export default function CandidateDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { data, isLoading } = useSWR(["candidate", id], () => candidatesApi.getById(id), {
+  const { data, isLoading, mutate } = useSWR(["candidate", id], () => candidatesApi.getById(id), {
     revalidateOnFocus: false,
   });
-  const { data: timelineRes } = useSWR(["timeline", id], () => candidatesApi.timeline(id), {
-    revalidateOnFocus: false,
-  });
+  const { data: timelineRes, mutate: mutateTimeline } = useSWR(
+    ["timeline", id],
+    () => candidatesApi.timeline(id),
+    { revalidateOnFocus: false },
+  );
+  const { data: clearances = [], mutate: mutateClearances } = useSWR(
+    USE_MOCKS ? ["clearances", id] : null,
+    () => getCandidateClearances(id),
+    { revalidateOnFocus: false },
+  );
+  const { data: readiness, mutate: mutateReadiness } = useSWR(
+    USE_MOCKS ? ["readiness", id] : null,
+    () => getCandidateReadiness(id),
+    { revalidateOnFocus: false },
+  );
 
   const c = data?.data as any;
   const timeline = timelineRes?.data ?? [];
+
+  const refreshAll = () => {
+    mutate();
+    mutateTimeline();
+    mutateClearances();
+    mutateReadiness();
+  };
+
+  const handleAction = async (actionId: string) => {
+    const result = await candidatesApi.applyAction(id, actionId);
+    if (result.isSuccess) {
+      toast.success((result.data as any)?.message ?? "Action applied");
+      refreshAll();
+    } else {
+      toast.error(result.error || "Action failed");
+    }
+  };
+
+  const handleMarkClearance = (serviceId: string) => {
+    const result = updateClearanceStatus(id, serviceId);
+    if (result.ok) {
+      toast.success(result.message);
+      refreshAll();
+    } else {
+      toast.error(result.message);
+    }
+  };
 
   if (isLoading) {
     return <ContentLoading text="Loading candidate…" className="min-h-[50vh]" />;
@@ -54,20 +105,48 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
             <span className="font-mono">{c.passportNumber}</span>
             <span>·</span>
             <span>{c.applicationNo || c.labourId}</span>
-            {c.isOverdue && <Badge variant="destructive">Overdue</Badge>}
-            {USE_MOCKS && <Badge variant="outline">Demo</Badge>}
+            {c.isOverdue && (
+              <FlagBadge tone="danger">
+                Overdue
+              </FlagBadge>
+            )}
+            {USE_MOCKS && <FlagBadge tone="neutral">Demo</FlagBadge>}
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">
-          <StatusPill value={c.currentStageName || c.stageSlug} />
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground">
-            <Clock3 className="h-3.5 w-3.5" /> {c.daysInStage ?? 0}d in stage
-          </span>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 shadow-sm">
+            <StatusPill value={c.currentStageName || c.stageSlug} size="md" />
+            <TimingChip days={c.daysInStage ?? 0} overdue={c.isOverdue} />
+          </div>
+          {!!c.availableActions?.length && (
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {c.availableActions.map((a: any) => (
+                <Button
+                  key={a.transitionRuleId}
+                  size="sm"
+                  variant={a.isEnabled ? "default" : "outline"}
+                  disabled={!a.isEnabled}
+                  title={a.disabledReason}
+                  onClick={() => handleAction(a.transitionRuleId)}
+                >
+                  {a.buttonLabel}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <section className="lg:col-span-2 space-y-4">
+          {USE_MOCKS && (
+            <ClearancesHub
+              clearances={clearances}
+              canMutate
+              onMarkDone={handleMarkClearance}
+            />
+          )}
+
           <div className="rounded-xl border bg-card p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Profile</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
@@ -113,19 +192,32 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
               Current status tracks
             </h2>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(c.currentStatusValues || c.statusValues || {})
-                .filter(([k]) => !k.endsWith("_since") && k !== "tasheer_datetime")
-                .map(([k, v]) => (
-                  <StatusPill key={k} label={k} value={String(v)} />
-                ))}
-              {!Object.keys(c.currentStatusValues || c.statusValues || {}).length && (
-                <span className="text-sm text-muted-foreground">No status values yet</span>
-              )}
+              {(() => {
+                const entries = Object.entries(c.currentStatusValues || c.statusValues || {}).filter(
+                  ([k]) => !k.endsWith("_since") && k !== "tasheer_datetime",
+                );
+                if (!entries.length) {
+                  return <span className="text-sm text-muted-foreground">No status values yet</span>;
+                }
+                return (
+                  <StatusTrackGroup
+                    max={6}
+                    items={entries.map(([k, v]) => ({
+                      key: k,
+                      label: k,
+                      value: String(v),
+                    }))}
+                  />
+                );
+              })()}
             </div>
           </div>
         </section>
 
-        <section className="rounded-xl border bg-card p-4 shadow-sm">
+        <section className="space-y-4">
+          {USE_MOCKS && readiness && <ReadinessChecklist readiness={readiness} />}
+
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Timeline
           </h2>
@@ -147,6 +239,7 @@ export default function CandidateDetailPage({ params }: { params: Promise<{ id: 
               </li>
             ))}
           </ol>
+          </div>
         </section>
       </div>
     </div>

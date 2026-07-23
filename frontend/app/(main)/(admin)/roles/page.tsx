@@ -26,6 +26,8 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { CreateRoleSheet } from "@/components/roles/create-role-sheet";
 import { toast } from "sonner";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { mockApi } from "@/lib/api/mock-api";
 
 interface RoleRow {
   id: string;
@@ -48,19 +50,29 @@ export default function RolesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data, mutate } = useSWR("/api/proxy/roles", fetcher, { revalidateOnFocus: false });
+  const { data, mutate } = useSWR(
+    USE_MOCKS ? "mock-roles" : "/api/proxy/roles",
+    USE_MOCKS ? () => mockApi.getRoles() : fetcher,
+    { revalidateOnFocus: false },
+  );
   const roles: RoleRow[] = data?.data || [];
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
-    const res = await fetch(`/api/proxy/roles/${deleteTarget.id}`, { method: "DELETE" });
-    if (res.ok) {
+    if (USE_MOCKS) {
+      await mockApi.deleteRole(deleteTarget.id);
       mutate();
       toast.success("Role deleted");
     } else {
-      const err = await res.json().catch(() => null);
-      toast.error(err?.error || "Failed to delete role");
+      const res = await fetch(`/api/proxy/roles/${deleteTarget.id}`, { method: "DELETE" });
+      if (res.ok) {
+        mutate();
+        toast.success("Role deleted");
+      } else {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error || "Failed to delete role");
+      }
     }
     setIsDeleting(false);
     setDeleteTarget(null);
@@ -131,10 +143,10 @@ export default function RolesPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => toast.info("Edit permissions — coming soon")}>
+            <DropdownMenuItem onClick={() => toast.success(`${row.original.permissions.length} permissions assigned`)}>
               <Pencil className="h-4 w-4 mr-2" /> Edit Permissions
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("View users — coming soon")}>
+            <DropdownMenuItem onClick={() => toast.success(`${row.original.userCount} users on this role`)}>
               <Users className="h-4 w-4 mr-2" /> View Users
             </DropdownMenuItem>
             {!row.original.isSystemRole && (

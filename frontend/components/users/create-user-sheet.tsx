@@ -25,6 +25,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { User, Shield, Key } from "lucide-react";
 import { toast } from "sonner";
+import { USE_MOCKS } from "@/lib/api/candidates-api";
+import { mockApi } from "@/lib/api/mock-api";
 
 const createUserSchema = z.object({
   firstName: z.string().min(2, "First name required"),
@@ -72,6 +74,23 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
 
   const onSubmit = async (data: CreateUserForm) => {
     try {
+      if (USE_MOCKS) {
+        await mockApi.createUser({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          username: data.username,
+          email: data.email,
+          phoneNumber: data.phoneNumber,
+          role: data.role,
+          requireMfa: data.requireMfa,
+        });
+        toast.success("User created");
+        reset();
+        onOpenChange(false);
+        onCreated();
+        return;
+      }
+
       const response = await fetch("/api/proxy/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,6 +108,7 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
 
       const result = await response.json();
       if (result.isSuccess) {
+        toast.success("User created");
         reset();
         onOpenChange(false);
         onCreated();

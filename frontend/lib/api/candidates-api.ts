@@ -28,15 +28,23 @@ export const candidatesApi = {
   },
 
   async register(body: Record<string, unknown>): Promise<ApiResult<string>> {
-    if (USE_MOCKS) {
-      return {
-        isSuccess: true,
-        data: `mock-${Date.now()}`,
-        statusCode: 201,
-        error: null,
-      };
-    }
+    if (USE_MOCKS) return mockApi.registerCandidate(body) as never;
     return apiClient.post("/candidates", body);
+  },
+
+  async applyAction(candidateId: string, actionId: string): Promise<ApiResult<{ message: string }>> {
+    if (USE_MOCKS) return mockApi.applyCandidateAction(candidateId, actionId) as never;
+    return apiClient.post(`/candidates/${candidateId}/actions`, { actionId });
+  },
+
+  async update(id: string, body: Record<string, unknown>): Promise<ApiResult<CandidateDetail>> {
+    if (USE_MOCKS) return mockApi.updateCandidate(id, body) as never;
+    return apiClient.put(`/candidates/${id}`, body);
+  },
+
+  async remove(id: string): Promise<ApiResult<boolean>> {
+    if (USE_MOCKS) return mockApi.deleteCandidate(id) as never;
+    return apiClient.delete(`/candidates/${id}`);
   },
 };
 
@@ -80,4 +88,11 @@ export const officesApi = {
   },
 };
 
-export { USE_MOCKS };
+export const partnersApi = {
+  async list() {
+    if (USE_MOCKS) return mockApi.getPartners();
+    return apiClient.get("/partners");
+  },
+};
+
+export { USE_MOCKS, mockApi };

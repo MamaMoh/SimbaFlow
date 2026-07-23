@@ -108,8 +108,8 @@ export default function RegisterCandidatePage() {
       });
 
       if (result.isSuccess) {
-        toast.success(USE_MOCKS ? "Saved (mock)" : "Candidate registered");
-        router.push(`/candidates`);
+        toast.success(USE_MOCKS ? "Candidate registered" : "Candidate registered");
+        router.push(USE_MOCKS ? `/candidates/${result.data}` : `/candidates`);
       } else {
         toast.error(result.error || "Registration failed");
       }

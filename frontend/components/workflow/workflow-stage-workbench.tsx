@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
@@ -14,30 +14,50 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { PipelineTracker } from "@/components/workflow/pipeline-tracker";
-import { StatusPill } from "@/components/workflow/status-pill";
+import {
+  FlagBadge,
+  StatusTrackGroup,
+  TimingChip,
+} from "@/components/workflow/status-pill";
 import { ContentLoading } from "@/components/loading/loading-components";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import type { WorkflowViewRow } from "@/types/workflow";
-import { AlertTriangle, Clock3, Eye } from "lucide-react";
+import { AlertTriangle, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigationLoadingStore } from "@/lib/stores/navigation-loading-store";
+
+function candidateHref(id: string) {
+  return `/candidates/${id.replace(/-preview$/, "")}`;
+}
 
 export function WorkflowStageWorkbench({
   stageName,
   stageSlug,
   rows,
   isLoading,
+  onAction,
 }: {
   stageName: string;
   stageSlug: string;
   rows: WorkflowViewRow[];
   isLoading?: boolean;
+  onAction?: (candidateId: string, actionId: string) => void | Promise<void>;
 }) {
+  const router = useRouter();
+  const setLoading = useNavigationLoadingStore((s) => s.setLoading);
   const [sorting, setSorting] = useState<SortingState>([{ id: "daysInStage", desc: true }]);
   const [globalFilter, setGlobalFilter] = useState("");
 
   const overdueCount = rows.filter((r) => r.isOverdue).length;
   const previewCount = rows.filter((r) => r.isPreview).length;
+
+  const openCandidate = useCallback(
+    (id: string) => {
+      setLoading(true);
+      router.push(candidateHref(id));
+    },
+    [router, setLoading],
+  );
 
   const columns: ColumnDef<WorkflowViewRow>[] = useMemo(
     () => [
@@ -46,24 +66,23 @@ export function WorkflowStageWorkbench({
         header: ({ column }) => <DataTableColumnHeader column={column} title="Candidate" />,
         cell: ({ row }) => (
           <div className="min-w-[160px]">
-            <Link
-              href={`/candidates/${row.original.id.replace(/-preview$/, "")}`}
-              className="font-semibold text-foreground hover:underline"
+            <button
+              type="button"
+              onClick={() => openCandidate(row.original.id)}
+              className="text-left font-semibold text-foreground hover:underline"
             >
               {row.original.fullName}
-            </Link>
-            <div className="mt-0.5 flex flex-wrap gap-1">
-              {row.original.isPreview && (
-                <Badge variant="outline" className="text-[10px] border-violet-300 text-violet-700 bg-violet-50">
-                  Mirror preview
-                </Badge>
-              )}
-              {row.original.isOverdue && (
-                <Badge variant="destructive" className="text-[10px] gap-0.5">
-                  <AlertTriangle className="h-3 w-3" /> Overdue
-                </Badge>
-              )}
-            </div>
+            </button>
+            {(row.original.isPreview || row.original.isOverdue) && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {row.original.isPreview && <FlagBadge tone="info">Mirror</FlagBadge>}
+                {row.original.isOverdue && (
+                  <FlagBadge tone="danger">
+                    <AlertTriangle className="h-3 w-3" /> Overdue
+                  </FlagBadge>
+                )}
+              </div>
+            )}
           </div>
         ),
         filterFn: "includesString",
@@ -105,17 +124,20 @@ export function WorkflowStageWorkbench({
             .map(([k, v]) => `${k}:${v}`)
             .join(" "),
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status tracks" />,
-        cell: ({ row }) => (
-          <div className="flex max-w-[280px] flex-wrap gap-1">
-            {row.original.tracks.length > 0
-              ? row.original.tracks.map((t) => (
-                  <StatusPill key={t.trackKey} label={t.trackKey} value={t.status} sinceDays={t.daysOnStep} />
-                ))
-              : Object.entries(row.original.currentStatusValues || {}).map(([k, v]) => (
-                  <StatusPill key={k} label={k} value={v} />
-                ))}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const fromTracks = row.original.tracks.map((t) => ({
+            key: t.trackKey,
+            label: t.trackKey,
+            value: t.status,
+            sinceDays: t.daysOnStep,
+          }));
+          const fromValues = Object.entries(row.original.currentStatusValues || {}).map(([k, v]) => ({
+            key: k,
+            label: k,
+            value: v,
+          }));
+          return <StatusTrackGroup items={fromTracks.length ? fromTracks : fromValues} max={2} />;
+        },
         enableSorting: false,
       },
       {
@@ -130,15 +152,7 @@ export function WorkflowStageWorkbench({
         accessorKey: "daysInStage",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Days" />,
         cell: ({ row }) => (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold tabular-nums",
-              row.original.isOverdue ? "bg-rose-50 text-rose-700" : "bg-slate-100 text-slate-700",
-            )}
-          >
-            <Clock3 className="h-3 w-3" />
-            {row.original.daysInStage}d
-          </span>
+          <TimingChip days={row.original.daysInStage} overdue={row.original.isOverdue} />
         ),
       },
       {
@@ -165,10 +179,17 @@ export function WorkflowStageWorkbench({
         header: "Actions",
         cell: ({ row }) => (
           <div className="flex flex-wrap items-center gap-1 min-w-[140px]">
-            <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-              <Link href={`/candidates/${row.original.id.replace(/-preview$/, "")}`}>
-                <Eye className="h-3.5 w-3.5" />
-              </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              title="View candidate"
+              onClick={(e) => {
+                e.stopPropagation();
+                openCandidate(row.original.id);
+              }}
+            >
+              <Eye className="h-3.5 w-3.5" />
             </Button>
             {row.original.availableActions.map((a) => (
               <Button
@@ -176,8 +197,12 @@ export function WorkflowStageWorkbench({
                 size="sm"
                 className="h-7 text-xs"
                 variant={a.isEnabled ? "default" : "outline"}
-                disabled={!a.isEnabled}
+                disabled={!a.isEnabled || !onAction}
                 title={a.disabledReason}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAction?.(row.original.id, a.transitionRuleId);
+                }}
               >
                 {a.buttonLabel}
               </Button>
@@ -187,7 +212,7 @@ export function WorkflowStageWorkbench({
         enableSorting: false,
       },
     ],
-    [],
+    [onAction, openCandidate],
   );
 
   const table = useReactTable({
