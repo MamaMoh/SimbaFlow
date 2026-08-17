@@ -42,10 +42,14 @@ public static class PermissionSeeder
         // Embassy
         ("embassy", "embassy.read", "View embassy processing stage"),
         ("embassy", "embassy.update", "Update medical, Tasheer, and visa status"),
+        ("embassy", "embassy.case_view", "View Case Executive board"),
+        ("embassy", "embassy.case_submit", "Submit visa documentation (Case Executive)"),
+        ("embassy", "embassy.visa_outcome", "Record visa Issued/Rejected and resubmit"),
 
         // LMIS
         ("lmis", "lmis.read", "View LMIS stage"),
         ("lmis", "lmis.update", "Update insurance, milestone status"),
+        ("lmis", "lmis.document", "Upload LMIS documents"),
 
         // Travel & Logistics
         ("travel", "travel.read", "View ticket and departure views"),
@@ -181,6 +185,10 @@ public static class PermissionSeeder
                 SchemaName = "tenant_default_agency",
                 ContactEmail = "admin@simbaflow.local",
                 SubscriptionStatus = Domain.Enums.TenantStatus.Active,
+                AgencyLevel = 3,
+                LicenseStatus = Domain.Enums.AgencyLicenseStatus.Active,
+                LicensedCountries = ["Saudi Arabia", "United Arab Emirates", "Kuwait"],
+                Country = "Ethiopia",
             });
             await context.SaveChangesAsync();
         }

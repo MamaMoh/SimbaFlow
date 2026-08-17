@@ -17,7 +17,7 @@ SimbaFlow is redesigned as a **labour export agency management platform** using:
 | Accounting | Hybrid bounded context | Clean separation with domain event bridge |
 | Bot Deployment | In-process hybrid | Simpler Docker Compose, shared DB access |
 | SignalR Scope | All status changes | Maximum real-time visibility |
-| Cross-Tenant | Public schema | Simple metadata access for system admin |
+| Cross-Tenant | Public schema | Tenant metadata + **shared Partner catalog** for Art. 40 |
 
 ## High-Level Component Map
 
@@ -45,7 +45,7 @@ SimbaFlow is redesigned as a **labour export agency management platform** using:
 10. **Email Service** — SMTP delivery for reports and notifications
 
 ### API Modules (18 Carter modules)
-Auth, Candidate, Workflow, Embassy, LMIS, Travel, Arrival, Exception, Commission, Accounting, Office, Staff, User, Role, Notification, Report, Tenant, Dashboard
+Auth, Candidate, Workflow, Embassy, LMIS, Travel, Arrival, Exception, Commission, Accounting, Office, Partner, Staff, User, Role, Notification, Report, Tenant, Dashboard
 
 ### Frontend Components (12 feature areas)
 Auth Shell, Main Layout, Dashboard, Candidates, Workflow Views (7 views), Workflow Config (Admin), Finance, Exceptions, Staff/Office, Reports, Notification/Bot Config, Admin
@@ -64,11 +64,17 @@ Auth Shell, Main Layout, Dashboard, Candidates, Workflow Views (7 views), Workfl
 |---------|-----------|---------------|
 | Candidate & Workflow | Candidate, WorkflowInstance, WorkflowEvent, WorkflowConfig | Core — other contexts listen to its events |
 | Finance | Account, JournalEntry, Commission, Dispute, ExchangeRate | Consumes candidate events, produces payment events |
-| ERP | Tenant, Office, PartnerAgency, Staff, Role, Permission | Provides reference data consumed by all |
+| ERP | Tenant (+ license/level), Office, PartnerAgency (public), PartnerLink, Staff, Role, Permission | Provides reference data consumed by all |
 | Notification | NotificationRule, Template, DeliveryRecord, BotUser | Listens to ALL domain events, dispatches notifications |
 | Exception | ExceptionCase, InvestigationNote, LiabilityAssignment | Sub-domain of Candidate; triggers financial adjustments |
 
 **Integration Rule**: Bounded contexts communicate exclusively via domain events. No cross-context database joins.
+
+## Domain decision addendum (2026-07-22)
+
+Partner agencies and tenant MoLS licensing: see  
+`aidlc-docs/inception/requirements/partner-agency-and-tenant-licensing.md`  
+(Shared public catalog + tenant PartnerLinks; agency levels 1–5; Art. 40 capacity.)
 
 ## Technology Additions (Beyond Existing Stack)
 

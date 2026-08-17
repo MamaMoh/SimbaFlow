@@ -34,16 +34,22 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserCommand>
 public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, Result<Guid>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpdateUserHandler(UserManager<ApplicationUser> userManager)
+    public UpdateUserHandler(UserManager<ApplicationUser> userManager, ICurrentUserService currentUser)
     {
         _userManager = userManager;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<Guid>> Handle(UpdateUserCommand request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(request.Id.ToString());
         if (user is null)
+            return Result<Guid>.Failure("User not found", 404);
+
+        // SECURITY: tenant admins may only modify users within their own tenant.
+        if (!UserAccessGuard.CanManage(_currentUser, user))
             return Result<Guid>.Failure("User not found", 404);
 
         // Check email uniqueness (exclude self)
@@ -57,7 +63,10 @@ public class UpdateUserHandler : IRequestHandler<UpdateUserCommand, Result<Guid>
         user.Email = request.Email;
         user.PhoneNumber = request.PhoneNumber;
         user.DepartmentId = request.DepartmentId;
-        user.IsSuperAdmin = request.IsSuperAdmin;
+
+        // SECURITY: only a platform SuperAdmin may change the SuperAdmin flag.
+        if (_currentUser.IsSuperAdmin)
+            user.IsSuperAdmin = request.IsSuperAdmin;
 
         var result = await _userManager.UpdateAsync(user);
         if (!result.Succeeded)

@@ -153,13 +153,19 @@ public class ApplicationDbContext
                 .OnDelete(Microsoft.EntityFrameworkCore.DeleteBehavior.Restrict);
         });
 
-        // TenantInfo — TenantSettings as JSON
+        // TenantInfo — TenantSettings + licensed countries as JSON
         modelBuilder.Entity<Domain.Entities.Identity.TenantInfo>(entity =>
         {
             entity.Property(t => t.Settings)
                 .HasConversion(
                     v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => string.IsNullOrEmpty(v) ? new Domain.Entities.Tenancy.TenantSettings() : System.Text.Json.JsonSerializer.Deserialize<Domain.Entities.Tenancy.TenantSettings>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
+
+            entity.Property(t => t.LicensedCountries)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    v => System.Text.Json.JsonSerializer.Serialize(v ?? new List<string>(), (System.Text.Json.JsonSerializerOptions?)null),
+                    v => ParseStringList(v));
         });
 
         // ApplicationUser — relationships and conversions
@@ -225,6 +231,21 @@ public class ApplicationDbContext
         {
             entity.HasKey(tur => new { tur.UserId, tur.TenantRoleId });
         });
+    }
+
+    private static List<string> ParseStringList(string? v)
+    {
+        if (string.IsNullOrWhiteSpace(v) || v == "{}" || v == "null")
+            return new List<string>();
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<string>>(v, (System.Text.Json.JsonSerializerOptions?)null)
+                   ?? new List<string>();
+        }
+        catch
+        {
+            return new List<string>();
+        }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -45,6 +45,15 @@ public class GlobalExceptionHandler
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new { IsSuccess = false, Error = "Unauthorized" });
         }
+        catch (BadHttpRequestException ex)
+        {
+            // Malformed request (missing/unparseable route or query binding, bad JSON body).
+            // This is the caller's mistake, so report 400 rather than a misleading 500.
+            _logger.LogWarning(ex, "Bad request");
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { IsSuccess = false, Error = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unhandled exception occurred");

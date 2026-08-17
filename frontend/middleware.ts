@@ -22,6 +22,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
+  // The public marketing site is always reachable, signed in or not
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   // Define public routes that do not require authentication
   const publicRoutes = ["/login", "/forgot-password", "/reset-password", "/accident-reporting"];
   // Allow access to error pages without authentication

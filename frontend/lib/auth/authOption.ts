@@ -76,6 +76,7 @@ export const authOptions: NextAuthOptions = {
         if (u.requiresPasswordChange) {
           (token as any).requiresPasswordChange = true;
           (token as any).username = u.username;
+          (token as any).accessToken = u.accessToken;
           (token as any).isError = false;
           return token;
         }
@@ -186,6 +187,7 @@ export const authOptions: NextAuthOptions = {
       if ((token as any)?.requiresPasswordChange) {
         (session.user as any).requiresPasswordChange = true;
         (session.user as any).username = (token as any).username;
+        (session.user as any).accessToken = (token as any).accessToken;
         return session;
       }
 

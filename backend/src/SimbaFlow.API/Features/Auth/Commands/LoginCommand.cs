@@ -2,9 +2,11 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Infrastructure.Options;
 
 namespace SimbaFlow.API.Features.Auth.Commands;
 
@@ -18,7 +20,8 @@ public record LoginResponse(
     long ExpiresAt,
     UserProfileDto User,
     bool RequiresPasswordChange = false,
-    bool RequiresMfa = false);
+    bool RequiresMfa = false,
+    bool RequiresMfaSetup = false);
 
 public record UserProfileDto(
     Guid Id,
@@ -49,22 +52,31 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUser;
+    private readonly MfaOptions _mfa;
 
     public LoginHandler(
         UserManager<ApplicationUser> userManager,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
-        IApplicationDbContext context,
-        ICurrentUserService currentUser)
+        IPlatformDbContext context,
+        ICurrentUserService currentUser,
+        IOptions<MfaOptions> mfaOptions)
     {
         _userManager = userManager;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
         _context = context;
         _currentUser = currentUser;
+        _mfa = mfaOptions.Value;
     }
+
+    /// <summary>True when this user's roles require MFA per policy.</summary>
+    private bool MfaRequiredFor(ApplicationUser user, IReadOnlyList<string> roles) =>
+        _mfa.Enforce && (
+            (_mfa.RequireForSuperAdmin && user.IsSuperAdmin) ||
+            roles.Any(r => _mfa.RequiredRoles.Contains(r, StringComparer.OrdinalIgnoreCase)));
 
     public async Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
@@ -94,7 +106,9 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
             return Result<LoginResponse>.Failure("Invalid credentials", 401);
         }
 
-        // Check if MFA is enabled
+        var roles = (await _userManager.GetRolesAsync(user)).ToList();
+
+        // Check if MFA is enabled → challenge for the TOTP code (second factor).
         if (user.TwoFactorEnabled)
         {
             // Return MFA required response (frontend will prompt for TOTP code)
@@ -107,15 +121,31 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
                 RequiresMfa: true));
         }
 
+        // Enforcement: a privileged user without MFA must enroll before receiving a
+        // full token. Issue only a limited setup token scoped to the enrollment endpoints.
+        if (MfaRequiredFor(user, roles))
+        {
+            var setupToken = _jwtTokenService.GenerateMfaSetupToken(user, _mfa.SetupTokenMinutes);
+            var setupExpiry = DateTimeOffset.UtcNow.AddMinutes(_mfa.SetupTokenMinutes).ToUnixTimeMilliseconds();
+            return Result<LoginResponse>.Success(new LoginResponse(
+                AccessToken: setupToken,
+                RefreshToken: string.Empty,
+                ExpiresAt: setupExpiry,
+                User: new UserProfileDto(
+                    user.Id, user.UserName!, user.FullName, user.Email!,
+                    user.PhoneNumber, user.ProfileImageUrl,
+                    user.IsFirstLogin, user.IsSuperAdmin, user.DepartmentId,
+                    [], roles),
+                RequiresMfaSetup: true));
+        }
+
         // Generate tokens and complete login
-        return await CompleteLoginAsync(user, cancellationToken);
+        return await CompleteLoginAsync(user, roles, cancellationToken);
     }
 
-    private async Task<Result<LoginResponse>> CompleteLoginAsync(ApplicationUser user, CancellationToken ct)
+    private async Task<Result<LoginResponse>> CompleteLoginAsync(
+        ApplicationUser user, List<string> roles, CancellationToken ct)
     {
-        // Get roles and permissions
-        var roles = (await _userManager.GetRolesAsync(user)).ToList();
-
         var permissions = await _context.RolePermissions
             .Include(rp => rp.Permission)
             .Include(rp => rp.Role)

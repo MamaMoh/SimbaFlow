@@ -34,7 +34,7 @@ using (var scope = app.Services.CreateScope())
 
     if (app.Environment.IsDevelopment())
     {
-        var dbContext = services.GetRequiredService<SimbaFlow.Infrastructure.Persistence.ApplicationDbContext>();
+        var dbContext = services.GetRequiredService<SimbaFlow.Infrastructure.Persistence.PlatformDbContext>();
         var logger = services.GetRequiredService<ILogger<Program>>();
         try
         {
@@ -46,6 +46,60 @@ using (var scope = app.Services.CreateScope())
                 "Database migration failed. Fix migrations and run: dotnet ef database update");
             throw;
         }
+
+        try
+        {
+            var tenantMigrator = services.GetRequiredService<SimbaFlow.Infrastructure.Persistence.ITenantSchemaMigrator>();
+            await tenantMigrator.MigrateAllActiveTenantsAsync();
+
+            var configuration = services.GetRequiredService<IConfiguration>();
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            if (!string.IsNullOrWhiteSpace(connectionString))
+            {
+                var tenants = await dbContext.Tenants
+                    .AsNoTracking()
+                    .Where(t => !t.IsDeleted && t.SubscriptionStatus == SimbaFlow.Domain.Enums.TenantStatus.Active)
+                    .Select(t => new { t.Id, t.SchemaName })
+                    .ToListAsync();
+
+                foreach (var tenant in tenants)
+                {
+                    try
+                    {
+                        await WorkflowSeeder.SeedDefaultWorkflowIntoSchemaAsync(
+                            connectionString,
+                            tenant.SchemaName,
+                            tenant.Id);
+
+                        var upgrader = services.GetRequiredService<IWorkflowDefinitionUpgrader>();
+                        await upgrader.EnsureUnit3ArtifactsIntoSchemaAsync(
+                            connectionString,
+                            tenant.SchemaName,
+                            tenant.Id);
+                        await upgrader.EnsureUnit4ArtifactsIntoSchemaAsync(
+                            connectionString,
+                            tenant.SchemaName,
+                            tenant.Id);
+
+                        var financeSeed = services.GetRequiredService<SimbaFlow.Application.Common.Interfaces.IFinanceSeedService>();
+                        await financeSeed.EnsureUnit5ArtifactsIntoSchemaAsync(
+                            connectionString,
+                            tenant.SchemaName,
+                            tenant.Id);
+                    }
+                    catch (Exception seedEx)
+                    {
+                        logger.LogWarning(seedEx,
+                            "Workflow seed/upgrade skipped/failed for schema {Schema}", tenant.SchemaName);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Per-tenant failures are logged inside the migrator; only unexpected aggregate failures land here.
+            logger.LogError(ex, "Tenant schema migration failed");
+        }
     }
 
     await PermissionSeeder.SeedPermissionsAsync(services);
@@ -53,6 +107,7 @@ using (var scope = app.Services.CreateScope())
     await AdminSeeder.SeedDefaultAdminAsync(services);
     await DepartmentSeeder.SeedDepartmentsAsync(services);
     await LocationSeeder.SeedLocationsAsync(services);
+    await PartnerAgencySeeder.SeedPartnerAgenciesAsync(services);
     await RolePermissionSeeder.SeedRolePermissionsAsync(services);
 }
 

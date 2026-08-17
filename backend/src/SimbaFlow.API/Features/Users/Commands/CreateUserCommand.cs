@@ -48,16 +48,19 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
     public CreateUserHandler(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IApplicationDbContext context)
+        IPlatformDbContext context,
+        ICurrentUserService currentUser)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<Guid>> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -72,6 +75,16 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
         if (existingEmail is not null)
             return Result<Guid>.Failure("Email already exists", 409);
 
+        // SECURITY: only a platform SuperAdmin may grant SuperAdmin or place a user in an
+        // arbitrary tenant. Tenant admins can only create ordinary users in their OWN tenant.
+        var isSuperAdmin = request.IsSuperAdmin;
+        var tenantId = request.TenantId;
+        if (!_currentUser.IsSuperAdmin)
+        {
+            isSuperAdmin = false;
+            tenantId = _currentUser.TenantId;
+        }
+
         var user = new ApplicationUser
         {
             UserName = request.Username,
@@ -81,8 +94,8 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
             MiddleName = request.MiddleName,
             PhoneNumber = request.PhoneNumber,
             DepartmentId = request.DepartmentId,
-            TenantId = request.TenantId,
-            IsSuperAdmin = request.IsSuperAdmin,
+            TenantId = tenantId,
+            IsSuperAdmin = isSuperAdmin,
             IsFirstLogin = true,
             MustChangePassword = true,
             IsActive = true,

@@ -1,0 +1,204 @@
+/*
+ * Styling for the public marketing site.
+ *
+ * The landing page is intentionally dark in both app themes, so it uses its own
+ * palette instead of the application design tokens in globals.css.
+ */
+
+.mkt {
+  --mkt-bg: #060b09;
+  --mkt-bg-raised: #0a120f;
+  --mkt-surface: rgba(255, 255, 255, 0.035);
+  --mkt-surface-strong: rgba(255, 255, 255, 0.06);
+  --mkt-line: rgba(255, 255, 255, 0.09);
+  --mkt-line-strong: rgba(255, 255, 255, 0.16);
+  --mkt-text: #eaf2ee;
+  --mkt-muted: #93a8a0;
+  --mkt-faint: #64766f;
+  --mkt-green: #12b76a;
+  --mkt-green-deep: #006633;
+  --mkt-yellow: #f8c318;
+  --mkt-red: #c30f16;
+
+  background-color: var(--mkt-bg);
+  color: var(--mkt-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mkt ::selection {
+  background: rgba(18, 183, 106, 0.3);
+  color: #fff;
+}
+
+/* Scroll container: the app shell locks <body>, so the site scrolls in here. */
+.mkt-scroll {
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+/* Clear the sticky header when jumping to an anchor. */
+.mkt section[id] {
+  scroll-margin-top: 84px;
+}
+
+.mkt-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.mkt-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* --- Backdrops ---------------------------------------------------------- */
+
+/* Soft brand-coloured glow behind the hero. */
+.mkt-aurora {
+  background:
+    radial-gradient(58% 46% at 18% 8%, rgba(18, 183, 106, 0.22) 0%, transparent 62%),
+    radial-gradient(46% 40% at 82% 0%, rgba(248, 195, 24, 0.13) 0%, transparent 60%),
+    radial-gradient(64% 52% at 62% 46%, rgba(195, 15, 22, 0.1) 0%, transparent 66%);
+}
+
+.mkt-grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(72% 60% at 50% 34%, #000 0%, transparent 100%);
+  -webkit-mask-image: radial-gradient(72% 60% at 50% 34%, #000 0%, transparent 100%);
+}
+
+/* Hairline that fades out at both ends, used as a section divider. */
+.mkt-rule {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.14), transparent);
+}
+
+/* --- Type --------------------------------------------------------------- */
+
+.mkt-display {
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.mkt-gradient-text {
+  background: linear-gradient(100deg, #ffffff 8%, #b8f5d6 42%, #f8c318 88%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* --- Surfaces ----------------------------------------------------------- */
+
+.mkt-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+  border: 1px solid var(--mkt-line);
+  border-radius: 18px;
+  transition: border-color 0.25s ease, transform 0.25s ease, background 0.25s ease;
+}
+
+.mkt-card:hover {
+  border-color: rgba(18, 183, 106, 0.36);
+  transform: translateY(-2px);
+}
+
+/* Thin highlight along the top edge, like light catching a bevel. */
+.mkt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.28), transparent);
+  pointer-events: none;
+}
+
+.mkt-glass {
+  background: rgba(6, 11, 9, 0.72);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+/* --- Motion ------------------------------------------------------------- */
+
+.mkt-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mkt-reveal[data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes mkt-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.mkt-float {
+  animation: mkt-float 7s ease-in-out infinite;
+}
+
+/* Pulse used on the "live" dot and the active pipeline stage. */
+@keyframes mkt-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.86); }
+}
+
+.mkt-pulse {
+  animation: mkt-pulse 2.2s ease-in-out infinite;
+}
+
+/* Marquee for the stage ticker; the track holds two identical copies. */
+@keyframes mkt-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.mkt-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: mkt-marquee 38s linear infinite;
+}
+
+.mkt-marquee:hover .mkt-marquee-track {
+  animation-play-state: paused;
+}
+
+.mkt-fade-x {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mkt-scroll { scroll-behavior: auto; }
+  .mkt-reveal { opacity: 1; transform: none; transition: none; }
+  .mkt-float,
+  .mkt-pulse,
+  .mkt-marquee-track { animation: none; }
+}
+
+/* --- FAQ ---------------------------------------------------------------- */
+
+.mkt-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.mkt-faq summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.mkt-faq details[open] .mkt-faq-icon {
+  transform: rotate(45deg);
+}

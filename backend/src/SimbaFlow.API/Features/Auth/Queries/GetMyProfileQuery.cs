@@ -33,12 +33,12 @@ public record MyProfileDto(
 public class GetMyProfileHandler : IRequestHandler<GetMyProfileQuery, Result<MyProfileDto>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUser;
 
     public GetMyProfileHandler(
         UserManager<ApplicationUser> userManager,
-        IApplicationDbContext context,
+        IPlatformDbContext context,
         ICurrentUserService currentUser)
     {
         _userManager = userManager;

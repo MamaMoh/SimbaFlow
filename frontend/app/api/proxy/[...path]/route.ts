@@ -124,6 +124,12 @@ async function handleRequest(
       headers["X-Current-Location"] = locationHeader;
     }
 
+    // Forward tenant scope for platform admins (optional)
+    const tenantHeader = request.headers.get("x-tenant-id");
+    if (tenantHeader) {
+      headers["X-Tenant-Id"] = tenantHeader;
+    }
+
     // Initialize fetch options with method and headers
     const fetchOptions: RequestInit = { method, headers };
 
@@ -195,16 +201,23 @@ async function handleRequest(
       }
     }
 
-    // Non-JSON response (shouldn't happen for API endpoints, but handle gracefully)
+    // Binary / file responses (PDF, images, documents)
     if (!response.ok) {
       return NextResponse.json(
         { error: response.statusText, code: "REQUEST_FAILED" },
         { status: response.status }
       );
     }
-    
-    return NextResponse.json({ success: true });
-    
+
+    const buffer = await response.arrayBuffer();
+    const responseHeaders = new Headers();
+    responseHeaders.set("Content-Type", contentType || "application/octet-stream");
+    const disposition = response.headers.get("content-disposition");
+    if (disposition) responseHeaders.set("Content-Disposition", disposition);
+    responseHeaders.set("Content-Length", String(buffer.byteLength));
+
+    return new NextResponse(buffer, { status: response.status, headers: responseHeaders });
+
   } catch (error) {
     // Log errors server-side only to prevent information disclosure
 // Return generic error message to prevent information disclosure

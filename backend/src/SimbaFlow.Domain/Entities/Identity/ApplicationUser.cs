@@ -28,7 +28,6 @@ public class ApplicationUser : IdentityUser<Guid>
     // ──── Security Policies (per-user overrides) ────
     /// <summary>
     /// Overrides the global MFA policy for this specific account.
-    /// Use for high-risk accounts (finance, agency owner, admin).
     /// </summary>
     public bool RequireMfa { get; set; }
 

@@ -18,19 +18,36 @@ export async function changePassword(data: { currentPassword: string; newPasswor
     return { success: false, error: "Not authenticated. Please login again." };
   }
 
-  const response = await fetch(`${API_URL}/api/auth/change-password`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
+  try {
+    // Backend expects: CurrentPassword, NewPassword, ConfirmPassword (PascalCase)
+    const payload = {
+      currentPassword: data.currentPassword,
+      newPassword: data.newPassword,
+      confirmPassword: data.confirmPassword || data.newPassword,
+    };
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Password change failed" }));
-    return { success: false, error: error.error || "Password change failed" };
+    const response = await fetch(`${API_URL}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok || (result && !result.isSuccess)) {
+      // Extract the actual error message from the backend
+      const errorMessage = result?.error 
+        || result?.errors?.join("; ")
+        || (result?.data && typeof result.data === 'string' ? result.data : null)
+        || `Password change failed (HTTP ${response.status})`;
+      return { success: false, error: errorMessage };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Network error. Please try again." };
   }
-
-  return { success: true };
 }

@@ -5,11 +5,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Infrastructure.Options;
 using SimbaFlow.Infrastructure.Audit;
 using SimbaFlow.Infrastructure.BackgroundJobs;
 using SimbaFlow.Infrastructure.DomainEvents;
 using SimbaFlow.Infrastructure.Identity;
 using SimbaFlow.Infrastructure.Services;
+using SimbaFlow.Infrastructure.Services.Bot;
+using SimbaFlow.Infrastructure.Workflow;
+using SimbaFlow.Infrastructure.Persistence.Seeds;
 
 namespace SimbaFlow.Infrastructure.Persistence;
 
@@ -29,37 +33,61 @@ public static class DependencyInjection
             throw new InvalidOperationException(
                 "Jwt:Key must be configured with at least 32 bytes.");
 
-        // Database with tenant schema isolation
+        // ═══════════════════════════════════════════════════════════════
+        // 1. PLATFORM DbContext (public schema — Identity, Tenants, Audit)
+        //    NO interceptor. Always queries "public" schema.
+        // ═══════════════════════════════════════════════════════════════
+        services.AddDbContext<PlatformDbContext>(options =>
+            options.UseNpgsql(connectionString,
+                b => b.MigrationsAssembly(typeof(PlatformDbContext).Assembly.FullName)));
+
+        services.AddScoped<IPlatformDbContext>(sp => sp.GetRequiredService<PlatformDbContext>());
+
+        // ═══════════════════════════════════════════════════════════════
+        // 2. TENANT DbContext (dynamic schema — Candidates, Workflow, Roles)
+        //    Has TenantConnectionInterceptor that sets search_path.
+        // ═══════════════════════════════════════════════════════════════
         services.AddScoped<TenantConnectionInterceptor>();
-        services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        services.AddDbContext<TenantDbContext>((sp, options) =>
         {
-            options.UseNpgsql(
-                connectionString,
-                b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName));
+            options.UseNpgsql(connectionString, b =>
+                b.MigrationsAssembly(typeof(TenantDbContext).Assembly.FullName)
+                    .MigrationsHistoryTable("__ef_migrations_history"));
+            options.UseSnakeCaseNamingConvention();
             options.AddInterceptors(sp.GetRequiredService<TenantConnectionInterceptor>());
         });
 
-        services.AddScoped<IApplicationDbContext>(provider =>
-            provider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<ITenantDbContext>(sp => sp.GetRequiredService<TenantDbContext>());
+        services.AddScoped<ITenantSchemaMigrator, TenantSchemaMigrator>();
 
-        // DbContextFactory for TenantSchemaResolver (needs independent contexts)
-        services.AddSingleton<IDbContextFactory<ApplicationDbContext>>(sp =>
+        // Keep legacy IApplicationDbContext pointing to PlatformDbContext for now
+        // (gradually migrate handlers to use IPlatformDbContext or ITenantDbContext)
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql(connectionString));
+
+        // ═══════════════════════════════════════════════════════════════
+        // 3. Tenant Schema Resolution (for the interceptor)
+        // ═══════════════════════════════════════════════════════════════
+        services.AddSingleton<IDbContextFactory<PlatformDbContext>>(sp =>
         {
-            var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+            var optionsBuilder = new DbContextOptionsBuilder<PlatformDbContext>();
             optionsBuilder.UseNpgsql(connectionString);
-            return new SimpleDbContextFactory(optionsBuilder.Options, sp);
+            return new PlatformDbContextFactory(optionsBuilder.Options, sp);
         });
 
         services.AddScoped<ITenantSchemaResolver, TenantSchemaResolver>();
 
-        // Tenant context (resolved from current user's JWT claims)
+        // Tenant context (from JWT claims)
         services.AddScoped<ITenantContext>(sp =>
         {
             var currentUser = sp.GetRequiredService<ICurrentUserService>();
-            return new TenantContext(currentUser.TenantId, null, currentUser.TenantId.HasValue ? null : null, currentUser.IsSuperAdmin);
+            return new TenantContext(currentUser.TenantId, null, null, currentUser.IsSuperAdmin);
         });
 
-        // Authentication
+        // ═══════════════════════════════════════════════════════════════
+        // 4. Authentication (JWT)
+        // ═══════════════════════════════════════════════════════════════
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -82,7 +110,9 @@ public static class DependencyInjection
             };
         });
 
-        // ASP.NET Core Identity
+        // ═══════════════════════════════════════════════════════════════
+        // 5. ASP.NET Core Identity (uses PlatformDbContext)
+        // ═══════════════════════════════════════════════════════════════
         services.AddIdentityCore<ApplicationUser>(options =>
         {
             options.Password.RequiredLength = int.Parse(configuration["Identity:Password:RequiredLength"] ?? "8");
@@ -98,24 +128,41 @@ public static class DependencyInjection
             options.SignIn.RequireConfirmedEmail = false;
         })
         .AddRoles<ApplicationRole>()
-        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddEntityFrameworkStores<PlatformDbContext>()
         .AddDefaultTokenProviders()
         .AddPasswordValidator<PasswordHistoryValidator>();
 
-        // Identity services
+        // ═══════════════════════════════════════════════════════════════
+        // 6. Application Services
+        // ═══════════════════════════════════════════════════════════════
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         services.AddScoped<IDomainEventDispatcher, DomainEventDispatcher>();
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services.AddScoped<IWorkflowEngineService, WorkflowEngineService>();
+        services.AddScoped<ICvGenerationService, CvGenerationService>();
+        services.AddScoped<IReportExportService, Services.Reporting.ReportExportService>();
+        services.AddScoped<IWorkflowDefinitionUpgrader, WorkflowDefinitionUpgrader>();
+        services.AddScoped<ICandidateNotifier, TelegramCandidateNotifier>();
+        services.AddScoped<IFinanceSeedService, FinanceSeedService>();
+        services.AddScoped<IHqOfficeSeedService, HqOfficeSeedService>();
+        services.AddScoped<IExchangeRateService, ExchangeRateService>();
+        services.AddScoped<IJournalPostingService, JournalPostingService>();
+        services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
+        services.Configure<MfaOptions>(configuration.GetSection("Mfa"));
+        services.AddHttpClient<ITelegramGateway, TelegramGateway>();
+        services.AddSingleton<ITelegramPollerState, TelegramPollerState>();
+        services.AddScoped<ITenantBotDbContextFactory, TenantBotDbContextFactory>();
+        services.AddScoped<IBotLinkService, BotLinkService>();
+        services.AddScoped<ITelegramCommandDispatcher, TelegramCommandDispatcher>();
+        services.AddScoped<INotificationPushService, NotificationPushService>();
 
         // Staff context
         services.AddScoped<StaffContext>();
         services.AddScoped<IStaffContext>(provider => provider.GetRequiredService<StaffContext>());
         services.AddMemoryCache();
-
-        // File Storage
-        services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
         // Read Audit (high-throughput via Channel)
         var readAuditChannel = System.Threading.Channels.Channel.CreateUnbounded<ReadAuditEntry>(
@@ -127,7 +174,45 @@ public static class DependencyInjection
         // Background services
         services.AddHostedService<TokenCleanupService>();
         services.AddHostedService<SessionCleanupService>();
+        services.AddHostedService<TelegramPollingService>();
 
         return services;
+    }
+}
+
+/// <summary>
+/// Factory for creating PlatformDbContext instances (used by TenantSchemaResolver).
+/// </summary>
+internal class PlatformDbContextFactory : IDbContextFactory<PlatformDbContext>
+{
+    private readonly DbContextOptions<PlatformDbContext> _options;
+    private readonly IServiceProvider _serviceProvider;
+
+    public PlatformDbContextFactory(DbContextOptions<PlatformDbContext> options, IServiceProvider serviceProvider)
+    {
+        _options = options;
+        _serviceProvider = serviceProvider;
+    }
+
+    public PlatformDbContext CreateDbContext()
+    {
+        var currentUser = new NoOpCurrentUserService();
+        return new PlatformDbContext(_options, currentUser);
+    }
+
+    private class NoOpCurrentUserService : ICurrentUserService
+    {
+        public string? UserId => null;
+        public string? UserName => null;
+        public string? Email => null;
+        public Guid? ActiveLocationId => null;
+        public Guid? DepartmentId => null;
+        public Guid? TenantId => null;
+        public IReadOnlyList<string> Permissions => [];
+        public IReadOnlyList<string> Roles => [];
+        public bool IsSuperAdmin => false;
+        public bool HasPermission(string permission) => false;
+        public string? IpAddress => null;
+        public string? UserAgent => null;
     }
 }

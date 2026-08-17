@@ -36,18 +36,20 @@ import { changePassword } from "@/lib/server/actions/users";
 const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(6, "Password must be at least 6 characters"),
+    newPassword: z.string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain an uppercase letter")
+      .regex(/[a-z]/, "Password must contain a lowercase letter")
+      .regex(/[0-9]/, "Password must contain a digit")
+      .regex(/[^a-zA-Z0-9]/, "Password must contain a special character"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
   })
-  .refine((data) => {
-    const strength = calculatePasswordStrength(data.newPassword);
-    return strength.meetsApiRequirements;
-  }, {
-    message: "Password must contain at least one letter and one digit",
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    message: "New password must differ from current password",
     path: ["newPassword"],
   });
 
@@ -222,27 +224,6 @@ export function ChangePasswordPageForm() {
       return;
     }
 
-    // Reject if user tries to use the sample password
-    if (samplePassword && data.newPassword === samplePassword) {
-      toast.error("You cannot use the sample password. Please create your own unique password.");
-      form.setError("newPassword", {
-        type: "manual",
-        message: "Sample password cannot be used. Create your own unique password.",
-      });
-      return;
-    }
-
-    // Double-check password strength and API requirements
-    const strength = calculatePasswordStrength(data.newPassword);
-    if (!strength.meetsApiRequirements) {
-      toast.error("Password must contain at least one letter and one digit.");
-      form.setError("newPassword", {
-        type: "manual",
-        message: "Password must contain at least one letter and one digit.",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       // Get username from URL params (safer than sessionStorage)
@@ -252,6 +233,7 @@ export function ChangePasswordPageForm() {
       const result = await changePassword({
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
+        confirmPassword: data.confirmPassword,
       });
 
       if (!result.success) {
@@ -612,7 +594,7 @@ export function ChangePasswordPageForm() {
               <Button
                 type="submit"
                 className="w-full h-10 font-medium"
-                disabled={isSubmitting || newPasswordValue.length < 6 || !newPasswordStrength.meetsApiRequirements}
+                disabled={isSubmitting || newPasswordValue.length < 8 || !newPasswordStrength.meetsApiRequirements}
               >
                 {isSubmitting ? "Changing Password..." : "Change Password"}
               </Button>

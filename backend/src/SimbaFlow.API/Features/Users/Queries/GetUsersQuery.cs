@@ -32,11 +32,11 @@ public record UserListDto(
 
 public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedList<UserListDto>>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ICurrentUserService _currentUserService;
 
-    public GetUsersHandler(IApplicationDbContext context, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService)
+    public GetUsersHandler(IPlatformDbContext context, UserManager<ApplicationUser> userManager, ICurrentUserService currentUserService)
     {
         _context = context;
         _userManager = userManager;

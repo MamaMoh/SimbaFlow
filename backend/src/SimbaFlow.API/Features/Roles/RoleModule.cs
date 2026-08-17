@@ -16,7 +16,7 @@ public class RoleModule : ICarterModule
             .RequireAuthorization();
 
         // List all roles for the current tenant
-        group.MapGet("/", async (IApplicationDbContext context) =>
+        group.MapGet("/", async (ITenantDbContext context) =>
         {
             var roles = await context.TenantRoles
                 .AsNoTracking()
@@ -33,7 +33,7 @@ public class RoleModule : ICarterModule
         });
 
         // Get all system permissions (the building blocks for role assignment)
-        group.MapGet("/permissions", async (IApplicationDbContext context) =>
+        group.MapGet("/permissions", async (IPlatformDbContext context) =>
         {
             var permissions = await context.Permissions
                 .AsNoTracking()
@@ -47,7 +47,7 @@ public class RoleModule : ICarterModule
         });
 
         // Create a new role for the current tenant
-        group.MapPost("/", async (CreateRoleRequest request, IApplicationDbContext context) =>
+        group.MapPost("/", async (CreateRoleRequest request, ITenantDbContext context) =>
         {
             // Check code uniqueness
             var exists = await context.TenantRoles
@@ -85,7 +85,7 @@ public class RoleModule : ICarterModule
         });
 
         // Update role
-        group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, IApplicationDbContext context) =>
+        group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, ITenantDbContext context) =>
         {
             var role = await context.TenantRoles
                 .Include(r => r.Permissions)
@@ -118,7 +118,7 @@ public class RoleModule : ICarterModule
         });
 
         // Delete role
-        group.MapDelete("/{id:guid}", async (Guid id, IApplicationDbContext context) =>
+        group.MapDelete("/{id:guid}", async (Guid id, ITenantDbContext context) =>
         {
             var role = await context.TenantRoles
                 .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
@@ -136,7 +136,7 @@ public class RoleModule : ICarterModule
         });
 
         // Assign role to user
-        group.MapPost("/{roleId:guid}/users/{userId:guid}", async (Guid roleId, Guid userId, IApplicationDbContext context) =>
+        group.MapPost("/{roleId:guid}/users/{userId:guid}", async (Guid roleId, Guid userId, ITenantDbContext context) =>
         {
             var exists = await context.TenantUserRoles
                 .AnyAsync(ur => ur.UserId == userId && ur.TenantRoleId == roleId);
@@ -155,7 +155,7 @@ public class RoleModule : ICarterModule
         });
 
         // Remove role from user
-        group.MapDelete("/{roleId:guid}/users/{userId:guid}", async (Guid roleId, Guid userId, IApplicationDbContext context) =>
+        group.MapDelete("/{roleId:guid}/users/{userId:guid}", async (Guid roleId, Guid userId, ITenantDbContext context) =>
         {
             var assignment = await context.TenantUserRoles
                 .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.TenantRoleId == roleId);
@@ -170,22 +170,41 @@ public class RoleModule : ICarterModule
         });
 
         // Get users for a role
-        group.MapGet("/{roleId:guid}/users", async (Guid roleId, IApplicationDbContext context) =>
+        group.MapGet("/{roleId:guid}/users", async (Guid roleId, ITenantDbContext tenantContext, IPlatformDbContext platformContext) =>
         {
-            var users = await context.TenantUserRoles
+            var userRoles = await tenantContext.TenantUserRoles
                 .AsNoTracking()
                 .Where(ur => ur.TenantRoleId == roleId)
-                .Join(context.ApplicationUsers, ur => ur.UserId, u => u.Id, (ur, u) => new
+                .ToListAsync();
+
+            var userIds = userRoles.Select(ur => ur.UserId).ToList();
+
+            var users = await platformContext.ApplicationUsers
+                .AsNoTracking()
+                .Where(u => userIds.Contains(u.Id))
+                .Select(u => new
                 {
                     u.Id,
                     u.UserName,
                     FullName = u.FirstName + " " + u.LastName,
                     u.Email,
-                    ur.AssignedAt,
                 })
                 .ToListAsync();
 
-            return Results.Ok(new { isSuccess = true, data = users });
+            var result = users.Select(u =>
+            {
+                var ur = userRoles.First(x => x.UserId == u.Id);
+                return new
+                {
+                    u.Id,
+                    u.UserName,
+                    u.FullName,
+                    u.Email,
+                    ur.AssignedAt,
+                };
+            }).ToList();
+
+            return Results.Ok(new { isSuccess = true, data = result });
         });
     }
 }

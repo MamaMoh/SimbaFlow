@@ -12,6 +12,7 @@ import {
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { cn } from "@/lib/utils";
+import { Inbox } from "lucide-react";
 
 type PaginationProps = Omit<
   React.ComponentProps<typeof DataTablePagination>,
@@ -34,6 +35,10 @@ export interface DataTableProps<TData, TValue> {
   onPrint?: (allData: any[], selectedRows: any[]) => void;
   searchPlaceholder?: string;
   useFilterPopover?: boolean;
+  /** Message shown inside the table body when there are no rows. */
+  emptyMessage?: string;
+  /** Full custom empty-state node (overrides emptyMessage). */
+  emptyState?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>(
@@ -55,6 +60,8 @@ export function DataTable<TData, TValue>(
     onPrint,
     searchPlaceholder,
     useFilterPopover = false,
+    emptyMessage = "No records to display yet.",
+    emptyState,
   } = props;
   return (
     <div
@@ -122,12 +129,17 @@ export function DataTable<TData, TValue>(
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={table.getAllColumns().length}
-                  className="h-24 text-center"
+                  className="h-40 text-center align-middle"
                 >
-                  No results.
+                  {emptyState ?? (
+                    <div className="flex flex-col items-center justify-center gap-2 py-6 text-muted-foreground">
+                      <Inbox className="h-8 w-8 opacity-40" />
+                      <p className="text-sm">{emptyMessage}</p>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             )}

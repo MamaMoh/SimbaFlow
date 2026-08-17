@@ -60,8 +60,13 @@ export async function refreshAccessToken(refreshToken: string) {
 
   const data = json.data;
   return {
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
-    expiresAt: data.expiresAt,
+    accessToken: data.accessToken as string,
+    refreshToken: data.refreshToken as string,
+    expiresAt: data.expiresAt as number | string | undefined,
+    grantedClaims: (data.grantedClaims ?? data.user?.permissions ?? undefined) as
+      | string[]
+      | undefined,
+    roles: (data.roles ?? data.user?.roles ?? undefined) as string[] | undefined,
+    userProfile: (data.userProfile ?? data.user ?? undefined) as unknown,
   };
 }

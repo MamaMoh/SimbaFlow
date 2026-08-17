@@ -13,16 +13,30 @@ public record ForceLogoutCommand(Guid UserId) : IRequest<Result>, IRequirePermis
 public class ForceLogoutHandler : IRequestHandler<ForceLogoutCommand, Result>
 {
     private readonly IRefreshTokenService _refreshTokenService;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public ForceLogoutHandler(IRefreshTokenService refreshTokenService, IApplicationDbContext context)
+    public ForceLogoutHandler(
+        IRefreshTokenService refreshTokenService,
+        IPlatformDbContext context,
+        ICurrentUserService currentUser)
     {
         _refreshTokenService = refreshTokenService;
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async Task<Result> Handle(ForceLogoutCommand request, CancellationToken cancellationToken)
     {
+        // SECURITY: tenant admins may only force-logout users in their own tenant.
+        var target = await _context.ApplicationUsers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
+        if (target is null)
+            return Result.Failure("User not found", 404);
+        if (!UserAccessGuard.CanManage(_currentUser, target))
+            return Result.Failure("User not found", 404);
+
         // Revoke all refresh tokens
         await _refreshTokenService.RevokeAllForUserAsync(request.UserId, "AdminForceLogout", cancellationToken);
 

@@ -29,14 +29,14 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUser;
 
     public RefreshTokenHandler(
         IRefreshTokenService refreshTokenService,
         UserManager<ApplicationUser> userManager,
         IJwtTokenService jwtTokenService,
-        IApplicationDbContext context,
+        IPlatformDbContext context,
         ICurrentUserService currentUser)
     {
         _refreshTokenService = refreshTokenService;

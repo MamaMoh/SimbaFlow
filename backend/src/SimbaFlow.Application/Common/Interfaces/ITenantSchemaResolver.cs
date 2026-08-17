@@ -13,6 +13,11 @@ public interface ITenantSchemaResolver
     Task<string?> ResolveSchemaAsync(Guid tenantId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Schema used when a platform SuperAdmin has no tenant claim (default agency).
+    /// </summary>
+    Task<string?> ResolveDefaultSchemaAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Invalidate cached schema mapping for a tenant (e.g., on tenant update).
     /// </summary>
     void InvalidateCache(Guid tenantId);

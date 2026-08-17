@@ -2,6 +2,7 @@ using Carter;
 using MediatR;
 using SimbaFlow.API.Features.Candidates.Commands;
 using SimbaFlow.API.Features.Candidates.Queries;
+using SimbaFlow.Application.Common.Models;
 
 namespace SimbaFlow.API.Features.Candidates;
 
@@ -56,10 +57,23 @@ public class CandidateModule : ICarterModule
             return result.IsSuccess ? Results.NoContent() : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Upload document
+        // Upload document (documentType from query or form field)
         group.MapPost("/{candidateId:guid}/documents", async (
-            Guid candidateId, IFormFile file, int documentType, ISender sender) =>
+            Guid candidateId, HttpRequest httpRequest, ISender sender) =>
         {
+            if (!httpRequest.HasFormContentType)
+                return Results.Json(Result.Failure("Expected multipart form data", 400), statusCode: 400);
+
+            var form = await httpRequest.ReadFormAsync();
+            var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+            if (file is null)
+                return Results.Json(Result.Failure("File is required", 400), statusCode: 400);
+
+            var typeRaw = form["documentType"].FirstOrDefault()
+                ?? httpRequest.Query["documentType"].FirstOrDefault();
+            if (!int.TryParse(typeRaw, out var documentType))
+                return Results.Json(Result.Failure("documentType is required", 400), statusCode: 400);
+
             var command = new UploadDocumentCommand(candidateId, file, documentType);
             var result = await sender.Send(command);
             return result.IsSuccess
@@ -67,11 +81,13 @@ public class CandidateModule : ICarterModule
                 : Results.Json(result, statusCode: result.StatusCode);
         }).DisableAntiforgery();
 
-        // Get candidate documents
-        group.MapGet("/{candidateId:guid}/documents", async (Guid candidateId, ISender sender) =>
+        // Download candidate media (photo / full-photo / passport) for UI previews
+        group.MapGet("/{candidateId:guid}/media/{kind}", async (Guid candidateId, string kind, ISender sender) =>
         {
-            var result = await sender.Send(new GetCandidateDocumentsQuery(candidateId));
-            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+            var result = await sender.Send(new GetCandidateMediaQuery(candidateId, kind));
+            if (!result.IsSuccess || result.Data is null)
+                return Results.Json(result, statusCode: result.StatusCode);
+            return Results.File(result.Data.Bytes, result.Data.ContentType, result.Data.FileName);
         });
 
         // Get candidate timeline (workflow events)
@@ -87,6 +103,24 @@ public class CandidateModule : ICarterModule
             var result = await sender.Send(new GenerateCVCommand(candidateId));
             return result.IsSuccess
                 ? Results.File(result.Data!, "application/pdf", $"cv_{candidateId}.pdf")
+                : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Bulk generate CVs → ZIP
+        group.MapPost("/cv/bulk", async (GenerateBulkCvCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess
+                ? Results.File(result.Data!, "application/zip", $"cvs_{DateTime.UtcNow:yyyyMMddHHmmss}.zip")
+                : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Generate Enjaz / visa application form
+        group.MapPost("/{candidateId:guid}/visa-form", async (Guid candidateId, ISender sender) =>
+        {
+            var result = await sender.Send(new GenerateVisaFormCommand(candidateId));
+            return result.IsSuccess
+                ? Results.File(result.Data!, "application/pdf", $"visa_{candidateId}.pdf")
                 : Results.Json(result, statusCode: result.StatusCode);
         });
     }

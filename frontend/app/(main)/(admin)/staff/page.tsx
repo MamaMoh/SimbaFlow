@@ -26,6 +26,7 @@ import {
 import { CreateUserSheet } from "@/components/users/create-user-sheet";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface UserRow {
   id: string;
@@ -221,11 +222,11 @@ export default function StaffPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Users & Staff</h1>
-        <p className="text-sm text-muted-foreground">Manage system users, roles, and access</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Users & Staff"
+        description="Manage system users, roles, and access"
+      />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable

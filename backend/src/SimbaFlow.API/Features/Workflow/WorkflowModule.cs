@@ -99,6 +99,39 @@ public class WorkflowModule : ICarterModule
                 ? Results.Created($"/api/workflow/config/transitions/{result.Data}", result)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
+
+        // Delete (retire) a stage
+        configGroup.MapDelete("/stages/{stageId:guid}", async (Guid stageId, ISender sender) =>
+        {
+            var result = await sender.Send(new DeleteStageCommand(stageId));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Update a transition rule (label, required fields, WHO can perform it)
+        configGroup.MapPut("/transitions/{transitionId:guid}", async (
+            Guid transitionId, UpdateTransitionRequest request, ISender sender) =>
+        {
+            var result = await sender.Send(new UpdateTransitionRuleCommand(
+                transitionId, request.ButtonLabel, request.ButtonIcon,
+                request.RequiredFields, request.AllowedRoles,
+                request.RemoveFromSource, request.IsActive));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Delete a transition rule
+        configGroup.MapDelete("/transitions/{transitionId:guid}", async (Guid transitionId, ISender sender) =>
+        {
+            var result = await sender.Send(new DeleteTransitionRuleCommand(transitionId));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Configure parallel tracks for a stage
+        configGroup.MapPut("/stages/{stageId:guid}/tracks", async (
+            Guid stageId, List<ParallelTrackInput> tracks, ISender sender) =>
+        {
+            var result = await sender.Send(new ConfigureParallelTracksCommand(stageId, tracks));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
     }
 }
 
@@ -106,3 +139,6 @@ public class WorkflowModule : ICarterModule
 public record ExecuteTransitionRequest(Guid TransitionRuleId, string? Notes);
 public record UpdateStatusRequest(string TrackName, string NewValue, string? Notes);
 public record UpdateStageRequest(string Name, string? Description, int SortOrder, int StageType);
+public record UpdateTransitionRequest(
+    string ButtonLabel, string? ButtonIcon, string[]? RequiredFields,
+    string[]? AllowedRoles, bool RemoveFromSource, bool IsActive);

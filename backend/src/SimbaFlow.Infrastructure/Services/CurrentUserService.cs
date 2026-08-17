@@ -62,6 +62,16 @@ public class CurrentUserService : ICurrentUserService
     {
         get
         {
+            // SECURITY: only platform admins (SuperAdmin) may target a tenant via the
+            // X-Tenant-Id header. For everyone else the tenant is bound to the JWT claim,
+            // so a tenant user can never reach another tenant's data by forging the header.
+            if (IsSuperAdmin)
+            {
+                var header = Context?.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(header) && Guid.TryParse(header, out var headerTenantId))
+                    return headerTenantId;
+            }
+
             var claim = User?.FindFirstValue("tenant_id");
             return !string.IsNullOrEmpty(claim) && Guid.TryParse(claim, out var id) ? id : null;
         }

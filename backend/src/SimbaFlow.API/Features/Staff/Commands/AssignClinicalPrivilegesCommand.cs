@@ -42,9 +42,9 @@ public class AssignClinicalPrivilegesValidator : AbstractValidator<AssignClinica
 // --- Handler ---
 public class AssignClinicalPrivilegesHandler : IRequestHandler<AssignClinicalPrivilegesCommand, Result<Guid>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
 
-    public AssignClinicalPrivilegesHandler(IApplicationDbContext context) => _context = context;
+    public AssignClinicalPrivilegesHandler(IPlatformDbContext context) => _context = context;
 
     public async Task<Result<Guid>> Handle(AssignClinicalPrivilegesCommand request, CancellationToken cancellationToken)
     {

@@ -20,8 +20,9 @@
 - FR-01.5: Search and filter candidates by name, passport number, labour ID, status, country of travel, office
 - FR-01.6: Display complete status history timeline per candidate (every stage transition logged with timestamp and user)
 - FR-01.7: Assign Labour ID linking to cross-border regulatory channels
-- FR-01.8: Record Country of Travel and Office Name (overseas partner agency/employer)
+- FR-01.8: Record Country of Travel and **Partner agency** (overseas receiving agent / AppSheet “Office”; master data via catalog + tenant link — see `partner-agency-and-tenant-licensing.md`)
 - FR-01.9: Record Contract Date as legal timeline baseline
+- FR-01.10: Assign Registering Branch (`office_id`) — local Ethiopian agency branch that owns the candidate
 
 ### FR-02: Configurable Workflow Engine
 - FR-02.1: Store workflow configuration in database tables (stages, statuses, transitions) — admin UI to configure per agency
@@ -83,11 +84,13 @@
 
 ### FR-08: Agency ERP
 - FR-08.1: Employee/staff management
-- FR-08.2: Office/branch management (physical locations)
-- FR-08.3: Partner agency (overseas) management — employer directory
+- FR-08.2: Office/branch management (physical locations / ቅርንጫፍ)
+- FR-08.3: Partner agencies — **platform catalog** (SuperAdmin) + **tenant links/agreements** (Agency Owner); intake selects from Active links only; enforce agency level ትስስር caps and Art. 40 (Directive 1126/2018)
 - FR-08.4: Role-based access control with roles: Admin, Embassy Officer, Case Executive, Finance, Field Agent, Agency Owner (super-admin per tenant), Data Entry Clerk, Auditor (read-only), Office Manager (branch-level admin), Notification Manager, API Integration User
 - FR-08.5: Full audit trail for all operations (write + read)
 - FR-08.6: Dashboard and KPIs
+- FR-08.7: Tenant licensing metadata — agency level (ደረጃ 1–5), MoLS license number/dates/status, licensed destination countries; optional capital/bond; distinct from SaaS subscription status
+- FR-08.8: On tenant provision — collect license fields + HQ address; auto-create default HQ branch office; force owner password change on first login
 
 ### FR-09: Telegram/WhatsApp Bot (Full Scope)
 - FR-09.1: Field employee access to candidate status lookup

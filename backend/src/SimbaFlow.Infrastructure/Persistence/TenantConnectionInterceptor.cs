@@ -32,20 +32,32 @@ public class TenantConnectionInterceptor : DbConnectionInterceptor
         CancellationToken cancellationToken = default)
     {
         var tenantId = _currentUser.TenantId;
+        string? schemaName = null;
 
         if (tenantId.HasValue)
         {
-            var schemaName = await _schemaResolver.ResolveSchemaAsync(tenantId.Value, cancellationToken);
-            if (schemaName is not null)
-            {
-                await using var cmd = connection.CreateCommand();
-                cmd.CommandText = $"SET search_path TO \"{schemaName}\", \"public\"";
-                await cmd.ExecuteNonQueryAsync(cancellationToken);
-
-                _logger.LogDebug("Set search_path to {Schema} for tenant {TenantId}", schemaName, tenantId);
-            }
+            schemaName = await _schemaResolver.ResolveSchemaAsync(tenantId.Value, cancellationToken);
         }
-        // If no tenantId (SuperAdmin), search_path stays as "public" (default)
+        else if (_currentUser.IsSuperAdmin)
+        {
+            // Platform admins have no JWT tenant_id — default to the seeded agency schema
+            // so tenant DbSets (workflow, candidates) resolve instead of public.
+            schemaName = await _schemaResolver.ResolveDefaultSchemaAsync(cancellationToken)
+                ?? "tenant_default_agency";
+        }
+
+        if (!string.IsNullOrWhiteSpace(schemaName))
+        {
+            await using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"SET search_path TO \"{schemaName}\", \"public\"";
+            await cmd.ExecuteNonQueryAsync(cancellationToken);
+
+            _logger.LogDebug(
+                "Set search_path to {Schema} for tenant {TenantId} (superAdmin={IsSuperAdmin})",
+                schemaName,
+                tenantId,
+                _currentUser.IsSuperAdmin);
+        }
 
         await base.ConnectionOpenedAsync(connection, eventData, cancellationToken);
     }

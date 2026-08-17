@@ -48,12 +48,12 @@ public class ProvisionUserAccountValidator : AbstractValidator<ProvisionUserAcco
 // --- Handler ---
 public class ProvisionUserAccountHandler : IRequestHandler<ProvisionUserAccountCommand, Result<Guid>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
 
     public ProvisionUserAccountHandler(
-        IApplicationDbContext context,
+        IPlatformDbContext context,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager)
     {

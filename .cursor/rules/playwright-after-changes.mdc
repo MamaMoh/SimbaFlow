@@ -1,0 +1,24 @@
+---
+description: After frontend/UI code changes, run Playwright E2E tests before finishing
+alwaysApply: true
+---
+
+# Playwright after code changes
+
+Whenever you change frontend/UI code (especially under `frontend/`), finish by running Playwright and report the result.
+
+## Required steps
+
+1. Ensure API (`http://localhost:5117`) and frontend (`http://localhost:3000`) are running. Start/restart them if needed.
+2. From `frontend/`, run:
+   ```bash
+   npx playwright test --reporter=list
+   ```
+3. If browsers are missing, run `npx playwright install chromium` then retry.
+4. Fix failures caused by your changes before considering the task done.
+5. Briefly tell the user the pass/fail count (e.g. `26 passed`).
+
+## Scope
+
+- Always for UI, forms, auth, candidates, OCR, navigation, and related frontend work.
+- Skip only for pure docs/backend-only changes with no UI impact — say so when skipping.

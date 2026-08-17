@@ -8,23 +8,28 @@
 
 ---
 
+## Progress (reassessed 2026-07-21; engine batch completed same day)
+
+See `aidlc-docs/construction/candidate-workflow/code-generation-progress.md` for full evidence.
+**Done: 23 | Partial: 0 | Deferred: 0** (100% — UI completeness pass after Answer D)
+
 ## Code Generation Steps
 
 ### Phase A: Domain Layer
 
-- [ ] **Step 1**: Create candidate domain entities
+- [x] **Step 1**: Create candidate domain entities — DONE
   - Create: `backend/src/SimbaFlow.Domain/Entities/Candidates/Candidate.cs`
   - Create: `backend/src/SimbaFlow.Domain/Entities/Candidates/CandidateDocument.cs`
   - Create: `backend/src/SimbaFlow.Domain/Enums/CandidateStatus.cs`
   - Create: `backend/src/SimbaFlow.Domain/Enums/Gender.cs` (if not reusing existing)
   - Create: `backend/src/SimbaFlow.Domain/Enums/DocumentType.cs`
 
-- [ ] **Step 2**: Create workflow event sourcing entities
+- [x] **Step 2**: Create workflow event sourcing entities — DONE
   - Create: `backend/src/SimbaFlow.Domain/Entities/Workflow/WorkflowEvent.cs`
   - Create: `backend/src/SimbaFlow.Domain/Entities/Workflow/WorkflowSnapshot.cs`
   - Create: `backend/src/SimbaFlow.Domain/Enums/WorkflowEventType.cs`
 
-- [ ] **Step 3**: Create workflow configuration entities
+- [x] **Step 3**: Create workflow configuration entities — DONE
   - Create: `backend/src/SimbaFlow.Domain/Entities/Workflow/WorkflowDefinition.cs`
   - Create: `backend/src/SimbaFlow.Domain/Entities/Workflow/WorkflowStage.cs`
   - Create: `backend/src/SimbaFlow.Domain/Entities/Workflow/WorkflowStageStatus.cs`
@@ -34,126 +39,88 @@
   - Create: `backend/src/SimbaFlow.Domain/Entities/Workflow/StageMandatoryField.cs`
   - Create: `backend/src/SimbaFlow.Domain/Enums/StageType.cs`
 
-- [ ] **Step 4**: Create domain events
+- [x] **Step 4**: Create domain events — DONE
   - Create: `backend/src/SimbaFlow.Domain/Events/CandidateRegisteredEvent.cs`
   - Create: `backend/src/SimbaFlow.Domain/Events/CandidateStageChangedEvent.cs`
   - Create: `backend/src/SimbaFlow.Domain/Events/CandidateStatusChangedEvent.cs`
 
 ### Phase B: Infrastructure Layer
 
-- [ ] **Step 5**: Update ApplicationDbContext — add new DbSets
-  - Modify: `ApplicationDbContext.cs` — add Candidate, Document, Workflow DbSets
-  - Modify: `IApplicationDbContext.cs` — add interface members
+- [x] **Step 5**: Update DbContext — add new DbSets — DONE (2026-07-21)
+  - `ITenantDbContext` extended with all workflow DbSets; `TenantDbContext` already had them
 
-- [ ] **Step 6**: Create EF Core entity configurations
-  - Create: `backend/src/SimbaFlow.Infrastructure/Persistence/Configurations/CandidateConfiguration.cs`
-  - Create: `backend/src/SimbaFlow.Infrastructure/Persistence/Configurations/WorkflowEventConfiguration.cs`
-  - Create: `backend/src/SimbaFlow.Infrastructure/Persistence/Configurations/WorkflowDefinitionConfiguration.cs`
+- [x] **Step 6**: Create EF Core entity configurations — DONE (indexes inline, 2026-07-21)
+  - Indexes added in `TenantDbContext.OnModelCreating` (passport unique, labour_id, stage, office, event seq)
 
-- [ ] **Step 7**: Create workflow engine service
-  - Create: `backend/src/SimbaFlow.Infrastructure/Workflow/WorkflowEngineService.cs`
-  - Create: `backend/src/SimbaFlow.Infrastructure/Workflow/IWorkflowEngineService.cs`
-  - Create: `backend/src/SimbaFlow.Infrastructure/Workflow/ConditionEvaluator.cs`
-  - Create: `backend/src/SimbaFlow.Infrastructure/Workflow/WorkflowState.cs`
+- [x] **Step 7**: Create workflow engine service — DONE (2026-07-21)
+  - Done: `IWorkflowEngineService.cs`, `ConditionEvaluator.cs`, `WorkflowState`, **`WorkflowEngineService.cs`**
 
-- [ ] **Step 8**: Create CV generation service
-  - Create: `backend/src/SimbaFlow.Infrastructure/Services/CvGenerationService.cs`
-  - Create: `backend/src/SimbaFlow.Application/Common/Interfaces/ICvGenerationService.cs`
+- [x] **Step 8**: Create CV generation service — DONE (2026-07-21)
+  - `ICvGenerationService` + `CvGenerationService` (QuestPDF Community)
 
-- [ ] **Step 9**: Create default workflow seeder
+- [x] **Step 9**: Create default workflow seeder — DONE (2026-07-21)
   - Create: `backend/src/SimbaFlow.Infrastructure/Persistence/Seeds/WorkflowSeeder.cs`
+  - Hooked into `ProvisionTenantCommand` (DDL + seed)
 
-- [ ] **Step 10**: Register new services in DI
-  - Modify: `DependencyInjection.cs` — register IWorkflowEngineService, ICvGenerationService
+- [x] **Step 10**: Register new services in DI — DONE (2026-07-21)
+  - `IWorkflowEngineService` → `WorkflowEngineService`
+  - `ICvGenerationService` → `CvGenerationService`
 
 ### Phase C: API Layer — Candidate Module
 
-- [ ] **Step 11**: Create Candidate API module
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/CandidateModule.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Commands/RegisterCandidateCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Commands/UpdateCandidateCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Commands/DeleteCandidateCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Commands/UploadDocumentCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Commands/GenerateCVCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Queries/GetCandidatesQuery.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Queries/GetCandidateByIdQuery.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Queries/GetCandidateDocumentsQuery.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Queries/GetCandidateTimelineQuery.cs`
+- [x] **Step 11**: Create Candidate API module — DONE (2026-07-21)
+  - Routes + Register/Update/Delete/Upload + queries + **GenerateCV** (PDF + store as CandidateDocument)
 
-- [ ] **Step 12**: Create Candidate validators
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Validators/RegisterCandidateValidator.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Candidates/Validators/UpdateCandidateValidator.cs`
+- [x] **Step 12**: Create Candidate validators — DONE (2026-07-21)
+  - `Validators/RegisterCandidateValidator.cs`
+  - `Validators/UpdateCandidateValidator.cs`
 
 ### Phase D: API Layer — Workflow Module
 
-- [ ] **Step 13**: Create Workflow API module
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/WorkflowModule.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Commands/ExecuteTransitionCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Commands/UpdateStatusCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Queries/GetAvailableActionsQuery.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Queries/GetViewCandidatesQuery.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Queries/GetWorkflowStateQuery.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Queries/GetWorkflowEventsQuery.cs`
+- [x] **Step 13**: Create Workflow API module — DONE (2026-07-21)
+  - ExecuteTransition, UpdateStatus, GetAvailableActions, GetViewCandidates, GetWorkflowState, GetWorkflowEvents wired to engine/EF
 
-- [ ] **Step 14**: Create Workflow Configuration API
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Commands/CreateStageCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Commands/UpdateStageCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Commands/CreateTransitionRuleCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Commands/ConfigureParallelTracksCommand.cs`
-  - Create: `backend/src/SimbaFlow.API/Features/Workflow/Queries/GetWorkflowDefinitionQuery.cs`
+- [x] **Step 14**: Create Workflow Configuration API — DONE (2026-07-21)
+  - CreateStage, UpdateStage, CreateTransitionRule, ConfigureParallelTracks, GetWorkflowDefinition implemented
+  - Route: `PUT /api/workflow/config/stages/{stageId}/tracks`
 
-- [ ] **Step 15**: Create domain event handlers (SignalR broadcast)
-  - Create: `backend/src/SimbaFlow.Infrastructure/DomainEvents/CandidateStageChangedHandler.cs`
-  - Create: `backend/src/SimbaFlow.Infrastructure/DomainEvents/CandidateStatusChangedHandler.cs`
+- [x] **Step 15**: Create domain event handlers (SignalR broadcast) — DONE (2026-07-21)
+  - `CandidateStageChangedHandler.cs`, `CandidateStatusChangedHandler.cs`
 
 ### Phase E: Frontend
 
-- [ ] **Step 16**: Create candidate pages and components
-  - Create: `frontend/app/(main)/candidates/page.tsx` — candidate list
-  - Create: `frontend/app/(main)/candidates/[id]/page.tsx` — candidate detail
-  - Create: `frontend/app/(main)/candidates/register/page.tsx` — registration form
-  - Create: `frontend/components/candidates/candidate-table.tsx`
-  - Create: `frontend/components/candidates/candidate-detail.tsx`
-  - Create: `frontend/components/candidates/register-candidate-form.tsx`
-  - Create: `frontend/components/candidates/document-uploader.tsx`
-  - Create: `frontend/components/candidates/document-list.tsx`
-  - Create: `frontend/components/candidates/candidate-timeline.tsx`
+- [x] **Step 16**: Create candidate pages and components — DONE (2026-07-21)
+  - List + register (prior); **detail page**, document uploader/list, timeline
 
-- [ ] **Step 17**: Create workflow view pages and components
-  - Create: `frontend/app/(main)/workflow/[stageId]/page.tsx` — generic workflow view
-  - Create: `frontend/components/workflow/action-button-bar.tsx`
-  - Create: `frontend/components/workflow/candidate-status-badge.tsx`
-  - Create: `frontend/components/workflow/workflow-view-table.tsx`
+- [x] **Step 17**: Create workflow view pages and components — DONE (2026-07-21)
+  - Stage board page resolves nav slugs → stage IDs; action-button-bar, status-badge, workflow-view-table
 
-- [ ] **Step 18**: Create workflow configuration admin page
-  - Create: `frontend/app/(main)/(admin)/workflow/page.tsx`
-  - Create: `frontend/components/workflow/workflow-config-editor.tsx`
-  - Create: `frontend/components/workflow/condition-builder.tsx`
-  - Create: `frontend/components/workflow/stage-editor.tsx`
+- [x] **Step 18**: Create workflow configuration admin page — DONE (2026-07-21)
+  - `frontend/app/(main)/admin/workflow/page.tsx`
+  - `workflow-config-editor.tsx`, `condition-builder.tsx`, `stage-editor.tsx`, `create-transition-sheet.tsx`
+  - Also: Offices CRUD (`/offices`), Partners/Accounting/Reports/Settings/Overview page standards + PageAlert/toasts
 
-- [ ] **Step 19**: Create TypeScript types and API hooks
-  - Create: `frontend/types/candidate.ts`
-  - Create: `frontend/types/workflow.ts`
-  - Create: `frontend/lib/api/candidates.ts` — SWR hooks
-  - Create: `frontend/lib/api/workflow.ts` — SWR hooks
+- [x] **Step 19**: Create TypeScript types and API hooks — DONE (2026-07-21)
+  - Types (prior); `lib/api/candidates.ts`, `lib/api/workflow.ts`
 
 ### Phase F: Tests
 
-- [ ] **Step 20**: Backend unit tests
-  - Create: `backend/tests/SimbaFlow.API.Tests/Services/WorkflowEngineServiceTests.cs`
-  - Create: `backend/tests/SimbaFlow.API.Tests/Services/ConditionEvaluatorTests.cs`
+- [x] **Step 20**: Backend unit tests — DONE (2026-07-21)
+  - ConditionEvaluatorTests, WorkflowEngineServiceTests, CandidateSignalRHandlerTests
 
-- [ ] **Step 21**: Property-based tests (FsCheck)
-  - Create: `backend/tests/SimbaFlow.API.Tests/Properties/WorkflowEngineProperties.cs`
-  - Properties: event replay idempotence, snapshot round-trip, transition atomic rejection, condition determinism, stateful model test
+- [x] **Step 21**: Property-based tests (FsCheck) — DONE (2026-07-21)
+  - `WorkflowEngineProperties.cs` — replay idempotence, snapshot round-trip, condition determinism, contradictory AND, stateful compose, mirror activate/deactivate
+  - 25 tests passed
 
 ### Phase G: Migration & Documentation
 
-- [ ] **Step 22**: Create EF Core migration
-  - Generate migration for all new entities
+- [x] **Step 22**: Create EF Core migration — DONE (2026-07-21)
+  - `Migrations/Tenant/20260721075312_InitialTenant.cs`
+  - `ITenantSchemaMigrator` / `TenantSchemaMigrator` applies per-schema via search_path
+  - Wired in Program.cs (dev) + ProvisionTenantCommand
 
-- [ ] **Step 23**: Generate code summary documentation
-  - Create: `aidlc-docs/construction/candidate-workflow/code/code-summary.md`
+- [x] **Step 23**: Generate code summary documentation — DONE (2026-07-21)
+  - `aidlc-docs/construction/candidate-workflow/code/code-summary.md`
 
 ---
 

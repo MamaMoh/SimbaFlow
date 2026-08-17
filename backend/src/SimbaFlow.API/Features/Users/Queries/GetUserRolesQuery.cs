@@ -17,18 +17,24 @@ public record UserRoleItemDto(Guid Id, string Name, string? Description);
 public class GetUserRolesHandler : IRequestHandler<GetUserRolesQuery, Result<List<UserRoleItemDto>>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public GetUserRolesHandler(UserManager<ApplicationUser> userManager, IApplicationDbContext context)
+    public GetUserRolesHandler(UserManager<ApplicationUser> userManager, IPlatformDbContext context, ICurrentUserService currentUser)
     {
         _userManager = userManager;
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<List<UserRoleItemDto>>> Handle(GetUserRolesQuery request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(request.UserId.ToString());
         if (user is null)
+            return Result<List<UserRoleItemDto>>.Failure("User not found", 404);
+
+        // SECURITY: tenant admins may only view roles of users in their own tenant.
+        if (!UserAccessGuard.CanManage(_currentUser, user))
             return Result<List<UserRoleItemDto>>.Failure("User not found", 404);
 
         var roleNames = await _userManager.GetRolesAsync(user);

@@ -33,6 +33,10 @@ public class DeleteUserHandler : IRequestHandler<DeleteUserCommand, Result>
         if (user is null)
             return Result.Failure("User not found", 404);
 
+        // SECURITY: tenant admins may only delete users in their own tenant.
+        if (!UserAccessGuard.CanManage(_currentUser, user))
+            return Result.Failure("User not found", 404);
+
         // Prevent self-deletion
         if (_currentUser.UserId == user.Id.ToString())
             return Result.Failure("Cannot delete your own account", 400);

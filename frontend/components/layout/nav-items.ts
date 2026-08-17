@@ -23,6 +23,12 @@ export const navigation: NavItem[] = [
     icon: require("lucide-react").Users,
     claims: ["candidate.read", "system.admin"],
   },
+  {
+    name: "My Work",
+    href: "/my-work",
+    icon: require("lucide-react").ListChecks,
+    claims: ["candidate.read", "system.admin"],
+  },
 
   // ──── Separator: Workflow ────
   { name: "sep-workflow", isSeparator: true, icon: null, sectionLabel: "Workflow Pipeline" },
@@ -38,6 +44,12 @@ export const navigation: NavItem[] = [
     href: "/workflow/embassy",
     icon: require("lucide-react").Building,
     claims: ["embassy.read", "system.admin"],
+  },
+  {
+    name: "Case Executive",
+    href: "/workflow/case-executive",
+    icon: require("lucide-react").Briefcase,
+    claims: ["embassy.case_view", "embassy.read", "system.admin"],
   },
   {
     name: "LMIS",
@@ -64,6 +76,12 @@ export const navigation: NavItem[] = [
     claims: ["arrival.read", "system.admin"],
   },
   {
+    name: "Exceptions",
+    href: "/workflow/exceptions",
+    icon: require("lucide-react").AlertTriangle,
+    claims: ["arrival.read", "arrival.exception", "system.admin"],
+  },
+  {
     name: "Commissions",
     href: "/workflow/commissions",
     icon: require("lucide-react").Banknote,
@@ -80,10 +98,22 @@ export const navigation: NavItem[] = [
     claims: ["accounting.read", "system.admin"],
   },
   {
+    name: "Exchange rates",
+    href: "/finance/rates",
+    icon: require("lucide-react").ArrowLeftRight,
+    claims: ["accounting.read", "system.admin"],
+  },
+  {
     name: "Reports",
     href: "/reports",
     icon: require("lucide-react").BarChart3,
     claims: ["report.view", "system.admin"],
+  },
+  {
+    name: "Compliance",
+    href: "/compliance",
+    icon: require("lucide-react").ShieldAlert,
+    claims: ["candidate.read", "system.admin"],
   },
 
   // ──── Separator: Administration ────
@@ -121,10 +151,22 @@ export const navigation: NavItem[] = [
     claims: ["partner.read", "system.admin"],
   },
   {
+    name: "Partner catalog",
+    href: "/admin/partners",
+    icon: require("lucide-react").Library,
+    claims: ["system.admin"],
+  },
+  {
     name: "Workflow Config",
     href: "/admin/workflow",
     icon: require("lucide-react").Workflow,
     claims: ["workflow.configure", "system.admin"],
+  },
+  {
+    name: "Bot & Notifications",
+    href: "/admin/bot",
+    icon: require("lucide-react").BellRing,
+    claims: ["bot.configure", "system.admin"],
   },
   {
     name: "Tenants",
@@ -136,7 +178,9 @@ export const navigation: NavItem[] = [
     name: "Settings",
     href: "/settings",
     icon: require("lucide-react").Settings,
-    claims: ["system.admin"],
+    // Anyone who can link their own Telegram account needs to reach Settings; the page
+    // itself still gates the admin-only sections on system.admin.
+    claims: ["system.admin", "bot.use"],
   },
 ];
 

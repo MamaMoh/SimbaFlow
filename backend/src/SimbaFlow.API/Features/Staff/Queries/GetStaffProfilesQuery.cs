@@ -39,9 +39,9 @@ public record GetStaffProfilesQuery(
 // --- Handler ---
 public class GetStaffProfilesHandler : IRequestHandler<GetStaffProfilesQuery, Result<List<StaffProfileListDto>>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
 
-    public GetStaffProfilesHandler(IApplicationDbContext context) => _context = context;
+    public GetStaffProfilesHandler(IPlatformDbContext context) => _context = context;
 
     public async Task<Result<List<StaffProfileListDto>>> Handle(GetStaffProfilesQuery request, CancellationToken ct)
     {

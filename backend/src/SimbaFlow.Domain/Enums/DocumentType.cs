@@ -10,5 +10,7 @@ public enum DocumentType
     MedicalCertificate = 5,
     TasheerDocument = 6,
     TicketBooking = 7,
+    FullPhoto = 8,
+    VisaForm = 9,
     Other = 99
 }

@@ -7,7 +7,8 @@
 | BR-C01.1 | Passport number must be unique within the tenant | Unique index on (PassportNumber) in tenant schema |
 | BR-C01.2 | Labour ID must be unique within the tenant (if provided) | Unique index on (LabourId) WHERE LabourId IS NOT NULL |
 | BR-C01.3 | Date of birth must be in the past | Validation: DOB < today |
-| BR-C01.4 | Candidate must be assigned to an office | OfficeId required, validated against existing offices |
+| BR-C01.4 | Candidate must be assigned to a registering branch | OfficeId required, validated against existing offices (ቅርንጫፍ) |
+| BR-C01.5 | Partner agency is destination-country agent (AppSheet Office) | Until Unit 6: free-text OfficeName; after: PartnerAgencyId from Active PartnerLink |
 | BR-C01.5 | Passport number format: alphanumeric, 5-20 characters | Regex validation |
 | BR-C01.6 | First and last name are required (min 2 chars each) | FluentValidation |
 | BR-C01.7 | On registration, candidate enters the workflow's initial stage | WorkflowEngine sets CurrentStageId |

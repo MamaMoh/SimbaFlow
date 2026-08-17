@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 
 interface TenantInfo {
@@ -20,6 +20,7 @@ interface TenantContextValue {
   currentOffice: { id: string; name: string } | null;
   permissions: string[];
   hasPermission: (permission: string) => boolean;
+  isSuperAdmin: boolean;
   isLoading: boolean;
 }
 
@@ -28,46 +29,71 @@ const TenantContext = createContext<TenantContextValue>({
   currentOffice: null,
   permissions: [],
   hasPermission: () => false,
+  isSuperAdmin: false,
   isLoading: true,
 });
 
+function readClaims(session: unknown): string[] {
+  const s = session as any;
+  const fromUser = s?.user?.grantedClaims;
+  if (Array.isArray(fromUser)) return fromUser;
+  if (Array.isArray(s?.permissions)) return s.permissions;
+  return [];
+}
+
+function readIsSuperAdmin(session: unknown, claims: string[]): boolean {
+  const s = session as any;
+  if (s?.user?.userProfile?.isSuperAdmin === true) return true;
+  if (s?.user?.isSuperAdmin === true) return true;
+  if (s?.isSuperAdmin === true) return true;
+  // Platform operators often carry system.admin without the profile flag
+  return claims.includes("system.admin");
+}
+
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [currentOffice, setCurrentOffice] = useState<{ id: string; name: string } | null>(null);
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const permissions = useMemo(() => readClaims(session), [session]);
+  const isSuperAdmin = useMemo(
+    () => readIsSuperAdmin(session, permissions),
+    [session, permissions]
+  );
+  const isLoading = status === "loading";
 
   useEffect(() => {
-    if (!(session as any)?.accessToken) {
-      setIsLoading(false);
+    if (!(session as any)?.user?.accessToken && !(session as any)?.accessToken) {
       return;
     }
 
-    // Extract permissions and tenant info from session/token
     const tokenPayload = session as any;
-    if (tokenPayload?.permissions) {
-      setPermissions(tokenPayload.permissions);
-    }
     if (tokenPayload?.tenant) {
       setTenant(tokenPayload.tenant);
     }
     if (tokenPayload?.office) {
       setCurrentOffice(tokenPayload.office);
     }
-
-    setIsLoading(false);
   }, [session]);
 
   const hasPermission = (permission: string): boolean => {
-    if ((session as any)?.isSuperAdmin) return true;
+    if (isLoading) return false;
+    if (isSuperAdmin) return true;
     if ((session as any)?.role === "AgencyOwner") return true;
+    if ((session as any)?.user?.roles?.includes?.("AgencyOwner")) return true;
     return permissions.includes(permission);
   };
 
   return (
     <TenantContext.Provider
-      value={{ tenant, currentOffice, permissions, hasPermission, isLoading }}
+      value={{
+        tenant,
+        currentOffice,
+        permissions,
+        hasPermission,
+        isSuperAdmin,
+        isLoading,
+      }}
     >
       {children}
     </TenantContext.Provider>
@@ -79,6 +105,7 @@ export function useTenant() {
 }
 
 export function usePermissions() {
-  const { hasPermission, permissions } = useContext(TenantContext);
-  return { hasPermission, permissions };
+  const { hasPermission, permissions, isLoading, isSuperAdmin } =
+    useContext(TenantContext);
+  return { hasPermission, permissions, isLoading, isSuperAdmin };
 }

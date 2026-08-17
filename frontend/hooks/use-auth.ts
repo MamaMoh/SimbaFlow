@@ -30,11 +30,11 @@ export function useAuth() {
       );
       
       await Promise.race([logoutPromise, timeoutPromise]);
-router.push("/login");
-      
+router.push("/");
+
     } catch (error) {
-// Even if signOut fails or times out, redirect to login
-      router.push("/login");
+// Even if signOut fails or times out, send the user to the public site
+      router.push("/");
     } finally {
 setIsLoggingOut(false);
     }

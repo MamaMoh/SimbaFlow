@@ -29,13 +29,21 @@ public record CandidateListDto(
     string? CountryOfTravel,
     string? OfficeName,
     string Status,
-    DateTime RegisteredAt);
+    DateTime RegisteredAt,
+    string DateOfBirth,
+    int? Age,
+    string? Occupation,
+    string? SponsorName,
+    string? SponsorIdNumber,
+    string? VisaNumber,
+    string? AgentName,
+    string? WorksIn);
 
 public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<PaginatedCandidateResult>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ITenantDbContext _context;
 
-    public GetCandidatesHandler(IApplicationDbContext context)
+    public GetCandidatesHandler(ITenantDbContext context)
     {
         _context = context;
     }
@@ -46,7 +54,6 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
             .AsNoTracking()
             .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
 
-        // Text search
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.ToLower();
@@ -54,10 +61,11 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 EF.Functions.ILike(c.FirstName, $"%{search}%") ||
                 EF.Functions.ILike(c.LastName, $"%{search}%") ||
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
-                (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
+                (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")) ||
+                (c.SponsorName != null && EF.Functions.ILike(c.SponsorName, $"%{search}%")) ||
+                (c.VisaNumber != null && EF.Functions.ILike(c.VisaNumber, $"%{search}%")));
         }
 
-        // Filters
         if (request.StageId.HasValue)
             query = query.Where(c => c.CurrentStageId == request.StageId);
 
@@ -67,24 +75,35 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
         if (!string.IsNullOrWhiteSpace(request.CountryOfTravel))
             query = query.Where(c => c.CountryOfTravel == request.CountryOfTravel);
 
-        // Count
         var totalCount = await query.CountAsync(cancellationToken);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        // Paginate
         var items = await query
             .OrderByDescending(c => c.RegisteredAt)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .Select(c => new CandidateListDto(
                 c.Id,
-                c.FirstName + " " + c.LastName,
+                string.IsNullOrEmpty(c.MiddleName)
+                    ? c.FirstName + " " + c.LastName
+                    : c.FirstName + " " + c.MiddleName + " " + c.LastName,
                 c.PassportNumber,
                 c.LabourId,
                 c.CurrentStageName,
                 c.CountryOfTravel,
                 c.OfficeName,
                 c.Status.ToString(),
-                c.RegisteredAt))
+                c.RegisteredAt,
+                c.DateOfBirth.ToString("yyyy-MM-dd"),
+                today.Year - c.DateOfBirth.Year -
+                    ((c.DateOfBirth.Month > today.Month ||
+                      (c.DateOfBirth.Month == today.Month && c.DateOfBirth.Day > today.Day)) ? 1 : 0),
+                c.Occupation,
+                c.SponsorName,
+                c.SponsorIdNumber,
+                c.VisaNumber,
+                c.AgentName,
+                c.WorksIn ?? c.CountryOfTravel))
             .ToListAsync(cancellationToken);
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
@@ -104,20 +123,89 @@ public record CandidateDetailDto(
     string FirstName,
     string LastName,
     string? MiddleName,
+    string? LocalFullName,
     string PassportNumber,
     string? LabourId,
+    string? BiometricId,
+    string? NationalId,
     string DateOfBirth,
+    string? PlaceOfBirth,
     int Gender,
     string? Nationality,
+    string? Religion,
+    string? MaritalStatus,
+    int? NumberOfChildren,
+    string? Height,
+    string? Weight,
+    string? PassportType,
+    string? PassportPlaceOfIssue,
+    string? PassportIssueDate,
+    string? PassportExpiryDate,
     string? PhoneNumber,
     string? Email,
     string? Address,
     string? City,
     string? Country,
+    string? Region,
+    string? Subcity,
+    string? Woreda,
+    string? HouseNo,
+    string? Occupation,
+    string? Qualification,
+    string? MonthlySalary,
+    string? ContractPeriod,
+    string? EnglishLevel,
+    string? ArabicLevel,
+    string? OtherLanguages,
+    int? ExperienceAbroadYears,
+    string? WorksIn,
+    string? ReferenceNo,
+    string? Remark,
+    string? CookingLevel,
+    bool SkillCleaning,
+    bool SkillWashing,
+    bool SkillCooking,
+    bool SkillIroning,
+    bool SkillSewing,
+    bool SkillBabysitting,
+    bool SkillChildCare,
     string? CountryOfTravel,
     string? OfficeName,
+    Guid? PartnerAgencyId,
     string? ContractDate,
     Guid OfficeId,
+    string? PhotoPath,
+    string? FullPhotoPath,
+    string? VisaNumber,
+    string? VisaType,
+    string? SponsorName,
+    string? SponsorIdNumber,
+    string? SponsorPhone,
+    string? SponsorAddress,
+    string? SponsorArabicName,
+    string? AgentName,
+    string? ApplicationNo,
+    string? FileNo,
+    string? WakalaNo,
+    string? ContractNo,
+    string? StickerVisaNo,
+    string? SignedOn,
+    string? RelativeName,
+    string? RelativePhone,
+    string? RelativeKinship,
+    string? RelativeGender,
+    string? RelativeBirthDate,
+    string? RelativeCity,
+    string? RelativeRegion,
+    string? RelativeSubcity,
+    string? RelativeWoreda,
+    string? RelativeHouseNo,
+    string? ContactPerson2,
+    string? ContactPhone2,
+    string? CocCenterName,
+    string? CertificateNo,
+    string? CertifiedDate,
+    string? MedicalPlace,
     string? CurrentStageName,
     Guid? CurrentStageId,
     DateTime RegisteredAt,
@@ -125,9 +213,9 @@ public record CandidateDetailDto(
 
 public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Result<CandidateDetailDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ITenantDbContext _context;
 
-    public GetCandidateByIdHandler(IApplicationDbContext context)
+    public GetCandidateByIdHandler(ITenantDbContext context)
     {
         _context = context;
     }
@@ -138,14 +226,36 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
             .AsNoTracking()
             .Where(c => c.Id == request.Id && !c.IsDeleted)
             .Select(c => new CandidateDetailDto(
-                c.Id, c.FirstName, c.LastName, c.MiddleName,
-                c.PassportNumber, c.LabourId,
-                c.DateOfBirth.ToString("yyyy-MM-dd"), (int)c.Gender,
-                c.Nationality, c.PhoneNumber, c.Email,
-                c.Address, c.City, c.Country,
-                c.CountryOfTravel, c.OfficeName,
+                c.Id, c.FirstName, c.LastName, c.MiddleName, c.LocalFullName,
+                c.PassportNumber, c.LabourId, c.BiometricId, c.NationalId,
+                c.DateOfBirth.ToString("yyyy-MM-dd"), c.PlaceOfBirth, (int)c.Gender,
+                c.Nationality, c.Religion, c.MaritalStatus, c.NumberOfChildren,
+                c.Height, c.Weight,
+                c.PassportType, c.PassportPlaceOfIssue,
+                c.PassportIssueDate.HasValue ? c.PassportIssueDate.Value.ToString("yyyy-MM-dd") : null,
+                c.PassportExpiryDate.HasValue ? c.PassportExpiryDate.Value.ToString("yyyy-MM-dd") : null,
+                c.PhoneNumber, c.Email,
+                c.Address, c.City, c.Country, c.Region, c.Subcity, c.Woreda, c.HouseNo,
+                c.Occupation, c.Qualification, c.MonthlySalary, c.ContractPeriod,
+                c.EnglishLevel, c.ArabicLevel, c.OtherLanguages, c.ExperienceAbroadYears, c.WorksIn,
+                c.ReferenceNo, c.Remark, c.CookingLevel,
+                c.SkillCleaning, c.SkillWashing, c.SkillCooking, c.SkillIroning,
+                c.SkillSewing, c.SkillBabysitting, c.SkillChildCare,
+                c.CountryOfTravel, c.OfficeName, c.PartnerAgencyId,
                 c.ContractDate.HasValue ? c.ContractDate.Value.ToString("yyyy-MM-dd") : null,
-                c.OfficeId, c.CurrentStageName, c.CurrentStageId,
+                c.OfficeId,
+                c.PhotoPath, c.FullPhotoPath,
+                c.VisaNumber, c.VisaType, c.SponsorName, c.SponsorIdNumber,
+                c.SponsorPhone, c.SponsorAddress, c.SponsorArabicName, c.AgentName,
+                c.ApplicationNo, c.FileNo, c.WakalaNo, c.ContractNo, c.StickerVisaNo,
+                c.SignedOn.HasValue ? c.SignedOn.Value.ToString("yyyy-MM-dd") : null,
+                c.RelativeName, c.RelativePhone, c.RelativeKinship, c.RelativeGender,
+                c.RelativeBirthDate.HasValue ? c.RelativeBirthDate.Value.ToString("yyyy-MM-dd") : null,
+                c.RelativeCity, c.RelativeRegion, c.RelativeSubcity, c.RelativeWoreda, c.RelativeHouseNo,
+                c.ContactPerson2, c.ContactPhone2, c.CocCenterName, c.CertificateNo,
+                c.CertifiedDate.HasValue ? c.CertifiedDate.Value.ToString("yyyy-MM-dd") : null,
+                c.MedicalPlace,
+                c.CurrentStageName, c.CurrentStageId,
                 c.RegisteredAt, c.RegisteredBy))
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -161,9 +271,9 @@ public record CandidateDocumentDto(Guid Id, string OriginalFileName, string Cont
 
 public class GetCandidateDocumentsHandler : IRequestHandler<GetCandidateDocumentsQuery, Result<List<CandidateDocumentDto>>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ITenantDbContext _context;
 
-    public GetCandidateDocumentsHandler(IApplicationDbContext context) => _context = context;
+    public GetCandidateDocumentsHandler(ITenantDbContext context) => _context = context;
 
     public async Task<Result<List<CandidateDocumentDto>>> Handle(GetCandidateDocumentsQuery request, CancellationToken cancellationToken)
     {
@@ -184,9 +294,9 @@ public record TimelineEntryDto(Guid Id, int EventType, string? FromStageName, st
 
 public class GetCandidateTimelineHandler : IRequestHandler<GetCandidateTimelineQuery, Result<List<TimelineEntryDto>>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly ITenantDbContext _context;
 
-    public GetCandidateTimelineHandler(IApplicationDbContext context) => _context = context;
+    public GetCandidateTimelineHandler(ITenantDbContext context) => _context = context;
 
     public async Task<Result<List<TimelineEntryDto>>> Handle(GetCandidateTimelineQuery request, CancellationToken cancellationToken)
     {
@@ -198,16 +308,5 @@ public class GetCandidateTimelineHandler : IRequestHandler<GetCandidateTimelineQ
             .ToListAsync(cancellationToken);
 
         return Result<List<TimelineEntryDto>>.Success(events);
-    }
-}
-
-public record GenerateCVCommand(Guid CandidateId) : IRequest<Result<byte[]>>;
-
-public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<byte[]>>
-{
-    public Task<Result<byte[]>> Handle(GenerateCVCommand request, CancellationToken cancellationToken)
-    {
-        // TODO: Implement with QuestPDF in Unit 2 continued
-        return Task.FromResult(Result<byte[]>.Failure("CV generation not yet implemented", 501));
     }
 }

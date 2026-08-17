@@ -26,7 +26,7 @@
 ### Candidate Registration Form
 - **Component**: `RegisterCandidateForm`
 - **Permission**: `candidate.create`
-- **Fields**: First name, Last name, Middle name, Passport number, DOB, Gender, Nationality, Phone, Email, Address, City, Country, Labour ID, Country of Travel, Office Name, Contract Date
+- **Fields**: First name, Last name, Middle name, Passport number, DOB, Gender, Nationality, Phone, Email, Address, City, Country, Labour ID, Country of Travel, **Partner Agency** (AppSheet Office; free-text until Unit 6 catalog+links), **Registering Branch** (`officeId`), Contract Date
 - **Validation**: Zod schema matching backend rules
 - **Behavior**: On submit → POST /api/candidates → navigate to detail page
 - **data-testid**: `register-candidate-form`, `register-candidate-submit-button`

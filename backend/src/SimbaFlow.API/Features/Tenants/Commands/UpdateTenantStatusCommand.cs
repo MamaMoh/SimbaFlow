@@ -10,10 +10,10 @@ public record UpdateTenantStatusCommand(Guid TenantId, TenantStatus Status) : IR
 
 public class UpdateTenantStatusHandler : IRequestHandler<UpdateTenantStatusCommand, Result>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ITenantSchemaResolver _schemaResolver;
 
-    public UpdateTenantStatusHandler(IApplicationDbContext context, ITenantSchemaResolver schemaResolver)
+    public UpdateTenantStatusHandler(IPlatformDbContext context, ITenantSchemaResolver schemaResolver)
     {
         _context = context;
         _schemaResolver = schemaResolver;

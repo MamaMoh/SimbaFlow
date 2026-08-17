@@ -9,7 +9,7 @@ using SimbaFlow.Domain.Entities.Identity;
 namespace SimbaFlow.API.Features.Auth.Commands;
 
 // --- Command ---
-public record VerifyMfaCommand(string Username, string Code) : IRequest<Result<LoginResponse>>;
+public record VerifyMfaCommand(string Username, string Password, string Code) : IRequest<Result<LoginResponse>>;
 
 // --- Validator ---
 public class VerifyMfaValidator : AbstractValidator<VerifyMfaCommand>
@@ -17,6 +17,7 @@ public class VerifyMfaValidator : AbstractValidator<VerifyMfaCommand>
     public VerifyMfaValidator()
     {
         RuleFor(x => x.Username).NotEmpty();
+        RuleFor(x => x.Password).NotEmpty();
         RuleFor(x => x.Code).NotEmpty().Length(6);
     }
 }
@@ -27,14 +28,14 @@ public class VerifyMfaHandler : IRequestHandler<VerifyMfaCommand, Result<LoginRe
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUser;
 
     public VerifyMfaHandler(
         UserManager<ApplicationUser> userManager,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
-        IApplicationDbContext context,
+        IPlatformDbContext context,
         ICurrentUserService currentUser)
     {
         _userManager = userManager;
@@ -50,12 +51,32 @@ public class VerifyMfaHandler : IRequestHandler<VerifyMfaCommand, Result<LoginRe
         if (user is null || !user.IsActive || user.IsDeleted)
             return Result<LoginResponse>.Failure("Invalid request", 401);
 
+        // Lockout applies to the MFA step too (rate-limits code brute-forcing).
+        if (await _userManager.IsLockedOutAsync(user))
+            return Result<LoginResponse>.Failure("Account is locked. Try again later.", 423);
+
+        // SECURITY: MFA is a SECOND factor — re-verify the password so a TOTP code alone
+        // can never yield a session. Binds this step to a successful password check.
+        var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!passwordValid)
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Result<LoginResponse>.Failure("Invalid credentials", 401);
+        }
+
+        // Only meaningful when the user actually enrolled MFA.
+        if (!user.TwoFactorEnabled)
+            return Result<LoginResponse>.Failure("MFA is not enabled for this account", 400);
+
         // Verify TOTP code
         var isValid = await _userManager.VerifyTwoFactorTokenAsync(
             user, _userManager.Options.Tokens.AuthenticatorTokenProvider, request.Code);
 
         if (!isValid)
+        {
+            await _userManager.AccessFailedAsync(user);
             return Result<LoginResponse>.Failure("Invalid verification code", 401);
+        }
 
         // Complete login flow (same as successful login)
         var roles = (await _userManager.GetRolesAsync(user)).ToList();

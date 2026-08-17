@@ -123,7 +123,8 @@ No user stories — infrastructure cleanup task.
 |----------|-------------|------|
 | US-8.01 | Manage Staff/Employees | ERP |
 | US-8.02 | Manage Offices/Branches | ERP |
-| US-8.03 | Manage Partner Agencies | ERP |
+| US-8.03 | Manage Partner Agency Links (Tenant) | ERP |
+| US-8.03a | Manage Partner Catalog (Platform) | ERP |
 | US-8.04 | Configure Roles and Permissions | ERP |
 | US-8.05 | View Audit Trail | ERP |
 | US-8.06 | Dashboard and KPIs | ERP |

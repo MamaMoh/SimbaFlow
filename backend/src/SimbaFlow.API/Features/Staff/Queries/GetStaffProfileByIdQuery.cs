@@ -69,9 +69,9 @@ public record GetStaffProfileByIdQuery(Guid Id) : IRequest<Result<StaffProfileDe
 // --- Handler ---
 public class GetStaffProfileByIdHandler : IRequestHandler<GetStaffProfileByIdQuery, Result<StaffProfileDetailDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
 
-    public GetStaffProfileByIdHandler(IApplicationDbContext context) => _context = context;
+    public GetStaffProfileByIdHandler(IPlatformDbContext context) => _context = context;
 
     public async Task<Result<StaffProfileDetailDto>> Handle(GetStaffProfileByIdQuery request, CancellationToken ct)
     {

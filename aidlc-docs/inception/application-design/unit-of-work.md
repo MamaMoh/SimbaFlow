@@ -141,23 +141,27 @@
 
 ## Unit 6: Agency ERP (Staff, Office, Partners, Admin)
 
-**Purpose**: Agency operational management — employees, offices, partners, roles, dashboard.
+**Purpose**: Agency operational management — employees, offices, partners, roles, dashboard; MoLS partner/license rules.
 
 **Scope**:
 - Staff/employee management (adapt existing StaffProfile patterns)
-- Office/branch CRUD with hierarchical structure
-- Partner agency/employer directory
+- Office/branch CRUD with hierarchical structure (ቅርንጫፍ — registering branch)
+- **Partner catalog (platform/public)** — SuperAdmin CRUD; capacity tier Art. 40
+- **Partner links (tenant)** — Agency Owner links catalog partners + agreement dates; enforce ደረጃ ትስስር caps
+- **Tenant license fields** — agency level 1–5, license #/dates/status, licensed countries (extend provision + edit)
 - Role and permission management (adapt existing, add new labour export permissions)
 - KPI dashboard (pipeline funnel, trend charts, quick metrics)
 - Audit trail viewer (existing audit data, new UI)
-- API: OfficeModule, StaffModule (adapt), DashboardModule
-- Frontend: Staff management pages, Office management page, Partner directory page, Dashboard/overview page, Audit trail viewer
+- API: OfficeModule, **PartnerModule** (catalog + links), StaffModule (adapt), DashboardModule; TenantModule license fields
+- Frontend: Staff pages, Offices, Partners (tenant links), Admin Partner Catalog, Dashboard, Audit trail
 
-**Stories Covered**: US-8.01 through US-8.06 (ERP), US-10.01 (Pipeline view — dashboard)
+**Stories Covered**: US-8.01 through US-8.06, **US-8.03a**, US-8.07 (extended), US-10.01 (Pipeline view — dashboard)
 
-**Key Entities**: Office, PartnerAgency, (StaffProfile adapted from existing), Permission (new permissions added)
+**Key Entities**: Office, **PartnerAgency (public)**, **PartnerLink**, TenantInfo license fields, StaffProfile, Permission
 
-**Dependencies**: Unit 1 (Tenant, RBAC), Unit 2 (Candidate counts for dashboard)
+**Dependencies**: Unit 1 (Tenant, RBAC), Unit 2 (Candidate counts for dashboard; intake uses PartnerLink)
+
+**Domain reference**: `aidlc-docs/inception/requirements/partner-agency-and-tenant-licensing.md`
 
 ---
 

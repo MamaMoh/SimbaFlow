@@ -63,13 +63,15 @@ The system follows Clean Architecture with an event-sourced workflow engine at i
 - **Bounded Context**: Finance (bridges to Candidate via domain events)
 
 ### DC-06: Agency/Tenant
-- **Purpose**: Multi-tenant agency representation
+- **Purpose**: Multi-tenant agency representation + MoLS licensing + partner catalog/links
 - **Responsibilities**:
-  - Store agency metadata (name, contact, subscription status)
-  - Maintain office/branch hierarchy
-  - Store partner agency directory
+  - Store agency metadata (name, contact, SaaS subscription status)
+  - Store MoLS license metadata (agency level 1–5, license number/dates/status, licensed countries)
+  - Maintain office/branch hierarchy (ቅርንጫፍ — registering branch)
+  - Maintain **platform PartnerAgency catalog** (public) and **tenant PartnerLinks** (agreements)
   - Hold tenant-level configuration
 - **Bounded Context**: ERP
+- **Reference**: `inception/requirements/partner-agency-and-tenant-licensing.md`
 
 ### DC-07: Staff/Employee
 - **Purpose**: Agency employee management (reusing existing StaffProfile pattern)
@@ -211,7 +213,12 @@ The system follows Clean Architecture with an event-sourced workflow engine at i
 - Chart of accounts, journal entries, trial balance, financial statements
 
 ### AM-11: OfficeModule
-- Office/branch CRUD, partner agency directory
+- Office/branch CRUD (registering branch; not overseas partner)
+
+### AM-11b: PartnerModule
+- SuperAdmin: PartnerAgency catalog CRUD (public schema, Art. 40 capacity tier)
+- Agency Owner: PartnerLink create/renew/deactivate; list Active partners for intake
+- Enforce ደረጃ ትስስር caps and Art. 40 inbound limits
 
 ### AM-12: StaffModule (Adapt existing)
 - Staff profiles, provisioning, roles (adapt from current implementation)
@@ -229,7 +236,8 @@ The system follows Clean Architecture with an event-sourced workflow engine at i
 - Report generation, export, scheduled reports configuration
 
 ### AM-17: TenantModule
-- Tenant provisioning, metadata management (admin-only)
+- Tenant provisioning + MoLS license fields (level, license, countries)
+- Auto-create HQ office on provision; metadata management (admin-only)
 
 ### AM-18: DashboardModule
 - KPI data, pipeline funnel, trend charts

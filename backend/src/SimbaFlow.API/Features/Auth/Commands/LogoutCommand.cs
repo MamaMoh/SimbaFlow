@@ -22,12 +22,12 @@ public class LogoutValidator : AbstractValidator<LogoutCommand>
 public class LogoutHandler : IRequestHandler<LogoutCommand, Result>
 {
     private readonly IRefreshTokenService _refreshTokenService;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUser;
 
     public LogoutHandler(
         IRefreshTokenService refreshTokenService,
-        IApplicationDbContext context,
+        IPlatformDbContext context,
         ICurrentUserService currentUser)
     {
         _refreshTokenService = refreshTokenService;

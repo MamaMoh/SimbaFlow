@@ -71,9 +71,9 @@ public class DraftStaffProfileValidator : AbstractValidator<DraftStaffProfileCom
 // --- Handler ---
 public class DraftStaffProfileHandler : IRequestHandler<DraftStaffProfileCommand, Result<Guid>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
 
-    public DraftStaffProfileHandler(IApplicationDbContext context) => _context = context;
+    public DraftStaffProfileHandler(IPlatformDbContext context) => _context = context;
 
     public async Task<Result<Guid>> Handle(DraftStaffProfileCommand request, CancellationToken cancellationToken)
     {

@@ -31,3 +31,13 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Local file uploads (dev)
+backend/**/storage/
+storage/
+
+# Runtime application logs (Serilog writes .json here; they capture tokens/PII)
+backend/src/SimbaFlow.API/logs/
+frontend/test-results/
+frontend/playwright-report/
+test-results/

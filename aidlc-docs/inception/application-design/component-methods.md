@@ -68,12 +68,17 @@
 
 | Method | Input | Output | Purpose |
 |--------|-------|--------|---------|
-| ProvisionTenant | ProvisionTenantCommand (name, contactDetails, adminUser) | Result&lt;Guid&gt; | Create new agency (schema + seed) |
+| ProvisionTenant | ProvisionTenantCommand (name, slug, contact, HQ, agencyLevel, license…, adminUser) | Result&lt;Guid&gt; | Create agency (schema + seed + HQ office) |
+| UpdateTenantLicense | UpdateTenantLicenseCommand (tenantId, level, license fields, countries) | Result | MoLS license metadata |
 | GetTenants | GetTenantsQuery | Result&lt;List&lt;TenantDto&gt;&gt; | List all tenants (admin) |
 | CreateOffice | CreateOfficeCommand (name, address, city, country, phone, managerId?) | Result&lt;Guid&gt; | Add office/branch |
 | UpdateOffice | UpdateOfficeCommand (id, fields...) | Result | Modify office |
-| CreatePartnerAgency | CreatePartnerAgencyCommand (name, country, contact, phone, email) | Result&lt;Guid&gt; | Add partner/employer |
-| GetPartnerAgencies | GetPartnerAgenciesQuery (filters) | Result&lt;List&lt;PartnerDto&gt;&gt; | List partners |
+| CreatePartnerAgency | CreatePartnerAgencyCommand (name, country, capacityTier, licenseId?, contact…) | Result&lt;Guid&gt; | SuperAdmin: add catalog partner |
+| UpdatePartnerAgency | UpdatePartnerAgencyCommand (…) | Result | SuperAdmin: update catalog |
+| GetPartnerCatalog | GetPartnerCatalogQuery (country?, active?) | Result&lt;List&lt;PartnerDto&gt;&gt; | Admin catalog list |
+| LinkPartner | LinkPartnerCommand (partnerAgencyId, agreementStart, agreementEnd) | Result&lt;Guid&gt; | Tenant: create ትስስር + agreement |
+| RenewPartnerLink | RenewPartnerLinkCommand (linkId, newEnd) | Result | Extend agreement |
+| GetLinkedPartners | GetLinkedPartnersQuery (country?, activeOnly?) | Result&lt;List&lt;PartnerLinkDto&gt;&gt; | Tenant intake options |
 
 ## DC-08: Exception Containment
 

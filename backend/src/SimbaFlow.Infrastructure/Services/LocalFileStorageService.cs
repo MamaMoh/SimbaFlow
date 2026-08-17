@@ -21,8 +21,14 @@ public class LocalFileStorageService : IFileStorageService
 
     public LocalFileStorageService(IConfiguration configuration, ILogger<LocalFileStorageService> logger)
     {
-        _basePath = configuration["FileStorage:BasePath"] ?? "/data";
+        var configured = configuration["FileStorage:BasePath"];
+        _basePath = Path.GetFullPath(
+            string.IsNullOrWhiteSpace(configured)
+                ? Path.Combine(Directory.GetCurrentDirectory(), "storage")
+                : configured);
+        Directory.CreateDirectory(_basePath);
         _logger = logger;
+        _logger.LogInformation("File storage base path: {BasePath}", _basePath);
     }
 
     public async Task<string> UploadAsync(

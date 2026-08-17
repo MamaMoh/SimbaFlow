@@ -26,6 +26,7 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { CreateRoleSheet } from "@/components/roles/create-role-sheet";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface RoleRow {
   id: string;
@@ -170,11 +171,11 @@ export default function RolesPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Roles & Permissions</h1>
-        <p className="text-sm text-muted-foreground">Define custom roles and assign permissions for your agency</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Roles & Permissions"
+        description="Define custom roles and assign permissions for your agency"
+      />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable

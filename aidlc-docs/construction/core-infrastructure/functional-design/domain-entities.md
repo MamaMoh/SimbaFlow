@@ -12,12 +12,24 @@ TenantInfo : BaseEntity
 ├── Address : string?
 ├── City : string?
 ├── Country : string?
-├── SubscriptionStatus : TenantStatus (Active, Suspended, Deactivated)
+├── SubscriptionStatus : TenantStatus (Active, Suspended, Deactivated)  // SaaS
 ├── MaxUsers : int (default: 50)
 ├── ProvisionedAt : DateTime
 ├── ProvisionedBy : string
-└── Settings : TenantSettings (JSON)
+├── Settings : TenantSettings (JSON)
+│
+│ // MoLS / Directive 1126/2018 — planned (see partner-agency-and-tenant-licensing.md)
+├── AgencyLevel : int (1..5)                          // ደረጃ
+├── LicenseNumber : string?
+├── LicenseIssuedAt : DateOnly?
+├── LicenseExpiresAt : DateOnly?
+├── LicenseStatus : AgencyLicenseStatus               // distinct from SubscriptionStatus
+├── LicensedCountries : string[]                      // destination country caps
+├── CapitalEtb : decimal?
+└── BondUsd : decimal?
 ```
+
+**Related (Unit 6):** `PartnerAgency` lives in **public** schema; `PartnerLink` binds tenant ↔ partner with agreement dates.
 
 ## Entity: TenantSettings (Value Object, stored as JSONB)
 

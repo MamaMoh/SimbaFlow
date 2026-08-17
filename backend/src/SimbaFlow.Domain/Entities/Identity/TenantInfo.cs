@@ -35,7 +35,7 @@ public class TenantInfo : BaseEntity
     /// <summary>Country of headquarters.</summary>
     public string? Country { get; set; }
 
-    /// <summary>Current subscription/activation status.</summary>
+    /// <summary>Current SaaS subscription/activation status.</summary>
     public TenantStatus SubscriptionStatus { get; set; } = TenantStatus.Active;
 
     /// <summary>Maximum number of user accounts allowed for this tenant.</summary>
@@ -49,4 +49,24 @@ public class TenantInfo : BaseEntity
 
     /// <summary>Per-agency configuration stored as JSONB.</summary>
     public TenantSettings Settings { get; set; } = new();
+
+    // ──── MoLS licensing (Directive 1126/2018 Arts. 18–22) ────
+
+    /// <summary>Agency level ደረጃ 1–5. Drives partner / country caps.</summary>
+    public int AgencyLevel { get; set; } = 5;
+
+    public string? LicenseNumber { get; set; }
+
+    public DateOnly? LicenseIssuedAt { get; set; }
+
+    public DateOnly? LicenseExpiresAt { get; set; }
+
+    public AgencyLicenseStatus LicenseStatus { get; set; } = AgencyLicenseStatus.Pending;
+
+    /// <summary>Licensed destination country codes/names.</summary>
+    public List<string> LicensedCountries { get; set; } = [];
+
+    public decimal? CapitalEtb { get; set; }
+
+    public decimal? BondUsd { get; set; }
 }

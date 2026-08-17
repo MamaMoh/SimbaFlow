@@ -331,3 +331,433 @@
 **Context**: Unit 2 Code Gen Part 2 in progress. Focus: implement real candidate registration, list, and search with database integration.
 
 ---
+
+---
+
+## Session Continuity
+**Timestamp**: 2026-07-21T07:10:00Z
+**User Input**: "using ai dlc lest continue"
+**AI Response**: "Welcome back prompt presented. Unit 2 Code Generation awaiting completion. Created session-continuity-questions.md."
+**Context**: User returned to resume AI-DLC. Current stage: CONSTRUCTION Unit 2 Code Generation (AWAITING USER APPROVAL / in progress). Loaded aidlc-state.md, audit.md, candidate-workflow code generation plan. Context summary: Unit 1 complete; Unit 2 design approved; domain entities + partial candidate/workflow API + partial frontend exist; WorkflowEngineService implementation, seeder, CV service, remaining handlers, tests, and migration still outstanding.
+
+---
+
+## Session Continuity — Answer Received
+**Timestamp**: 2026-07-21T07:12:00Z
+**User Input**: "done" (Answer: C — Re-assess Unit 2 code generation progress)
+**AI Response**: "Completed reassessment. Updated plan checkboxes. Created code-generation-progress.md. Awaiting next-action answer in post-reassessment-questions.md."
+**Context**: Unit 2 ~35% complete. Done: Steps 1-4. Partial: 5,6,7,11,13,14,16,17,19. Not started: 8,9,10,12,15,18,20-23. Architecture drift noted (Platform/Tenant DbContext vs single ApplicationDbContext).
+
+---
+
+## Unit 2 Code Generation — Engine Batch
+**Timestamp**: 2026-07-21T07:35:00Z
+**User Input**: "done" (Answer: A — recommended order)
+**AI Response**: "Implemented ITenantDbContext gaps, WorkflowEngineService, WorkflowSeeder + provision DDL/seed, DI registration, Workflow API handlers (13-14). Build succeeded (0 errors). Presenting engine-batch-approval-questions.md."
+**Context**: Unit 2 now ~55%. Remaining: CV, validators, SignalR, frontend, tests, migration, docs.
+
+---
+
+## Unit 2 Code Generation — CV + Validators Batch
+**Timestamp**: 2026-07-21T07:40:00Z
+**User Input**: "done" (Answer: A — approve engine batch, continue CV + validators)
+**AI Response**: "Implemented QuestPDF CvGenerationService, GenerateCV handler, Register/Update validators. Build succeeded. Presenting cv-validators-approval-questions.md."
+**Context**: Unit 2 ~65%. Remaining: SignalR, frontend, tests, migration, docs.
+
+---
+
+## Unit 2 Code Generation — Frontend Stage Boards Batch
+**Timestamp**: 2026-07-21T07:45:00Z
+**User Input**: "done" (Answer: A — frontend stage boards)
+**AI Response**: "Implemented candidate detail, documents/timeline, workflow stage boards, API hooks. GetWorkflowDefinition permission → workflow.view. Presenting frontend-boards-approval-questions.md."
+**Context**: Unit 2 ~75%. Remaining: admin config UI, SignalR, tests, migration, docs.
+
+---
+
+## Unit 2 Code Generation — SignalR + Tests Batch
+**Timestamp**: 2026-07-21T07:50:00Z
+**User Input**: "done" (Answer: A — SignalR + tests)
+**AI Response**: "Implemented SignalR handlers, unit + FsCheck tests (25 passed). Fixed GetCurrentState StageId fallback. Presenting signalr-tests-approval-questions.md."
+**Context**: Unit 2 ~85%. Remaining: Step 18 admin UI, Steps 22-23 migration/docs, optional Step 6.
+
+---
+
+## Unit 2 Code Generation — Migration + Summary (COMPLETE)
+**Timestamp**: 2026-07-21T07:55:00Z
+**User Input**: "done" (Answer: A — Steps 22-23)
+**AI Response**: "Created InitialTenant migration, TenantSchemaMigrator, code-summary.md. Provision/Program wired. Build OK, 25 tests passed. Unit 2 marked complete pending approval (Step 18 deferred)."
+**Context**: Presenting unit2-completion-questions.md.
+
+---
+
+## Unit 2 Completion — Answer D (UI completeness)
+**Timestamp**: 2026-07-21T08:05:00Z
+**User Input**: "done" + Answer D: all UI must be done, not nav-only, with success/error messages and page standards
+**AI Response**: "Audited nav vs pages. Missing: /admin/workflow, /offices, /partners, /finance/accounting. Clarifying scope in ui-completeness-questions.md before implementing (Unit 2-only vs full nav ERP)."
+**Context**: Unit 2 not approved yet; user rejected proceed-to-Unit-3 until UI bar is met.
+
+---
+
+## Unit 2 UI Completeness — Implemented
+**Timestamp**: 2026-07-21T09:00:00Z
+**User Input**: "done" (Q1 Answer D all; Q2 Answer C all type — sonner + page alerts)
+**AI Response**: "Shipped Step 18 /admin/workflow (stages, transitions, condition builder); /offices CRUD; Partners/Accounting/Reports/Settings/Overview standard pages; PageAlert+toasts on Candidates/Workflow; /departments→/offices. Presenting unit2-ui-approval-questions.md."
+**Context**: UI bar met for nav completeness. Partners/Finance report backends still later units (clear toast when Create/Run hits missing API).
+
+---
+
+## Unit 2 Approved — Proceed to Unit 3
+**Timestamp**: 2026-07-21T13:00:00Z
+**User Input**: "a" (Approve Unit 2 — proceed to Unit 3)
+**AI Response**: "Unit 2 marked complete. Starting Unit 3 Embassy & LMIS Processing — Functional Design."
+**Context**: CONSTRUCTION Unit 2 COMPLETE. Beginning Unit 3 Functional Design (US-3.01–3.11, US-4.01–4.05).
+
+---
+
+## Unit 3 Functional Design — Generated
+**Timestamp**: 2026-07-21T13:05:00Z
+**AI Response**: "Created Unit 3 functional design: domain-entities, business-logic-model, business-rules, frontend-components. Presenting functional-design-approval-questions.md."
+**Context**: Awaiting user approval on Functional Design + Case Executive model + API surface choices.
+
+---
+
+## Unit 3 Functional Design — Approved
+**Timestamp**: 2026-07-21T13:05:00Z
+**User Input**: "A,A,A" (Approve FD; Case Executive mirror-only; dedicated Embassy+Lmis modules)
+**AI Response**: "Functional Design approved. Generated Unit 3 NFR Requirements + tech-stack decisions. Presenting nfr-requirements-approval-questions.md."
+**Context**: Proceeding through Construction sequence for Unit 3.
+
+---
+
+## Unit 3 NFR Requirements — Approved
+**Timestamp**: 2026-07-21T13:10:00Z
+**User Input**: "A"
+**AI Response**: "NFR Requirements approved. Generated Unit 3 NFR Design. Presenting nfr-design-approval-questions.md."
+**Context**: Intent modules, Case Executive mirror, status chains, PBT, board perf budgets designed.
+
+---
+
+## Unit 3 NFR Design — Approved
+**Timestamp**: 2026-07-21T13:20:00Z
+**User Input**: "A"
+**AI Response**: "NFR Design approved. Generated Unit 3 Infrastructure Design. Presenting infrastructure-design-approval-questions.md."
+**Context**: No Docker changes; StageEnteredAt; WorkflowDefinitionUpgrader; permission seed; engine helpers; Embassy/Lmis modules.
+
+---
+
+## Unit 3 Infrastructure Design — Approved
+**Timestamp**: 2026-07-21T13:25:00Z
+**User Input**: "A"
+**AI Response**: "Infrastructure Design approved. Created embassy-lmis-code-generation-plan.md (15 steps, 4 batches). Presenting code-generation-plan-approval-questions.md."
+**Context**: Ready for Code Generation Part 1 approval before execution.
+
+---
+
+## Unit 3 Code Generation — Batch 1 Complete
+**Timestamp**: 2026-07-21T13:40:00Z
+**User Input**: "A" (approve plan, start Batch 1)
+**AI Response**: "Implemented Steps 1–5: StageEnteredAt, engine metadata/chain/mirror cleanup, Case Executive seeder+upgrader, permissions, EF migration. Build OK, 42 tests passed. Presenting batch1-approval-questions.md."
+**Context**: Unit 3 Code Gen Batch 1 awaiting approval before Embassy/Lmis API batch.
+
+---
+
+## Unit 3 Code Generation — Batch 2 Complete
+**Timestamp**: 2026-07-21T14:00:00Z
+**User Input**: "A" (approve Batch 1, start Batch 2)
+**AI Response**: "Implemented EmbassyModule + LmisModule (intent commands, boards, validators). Build OK, 42 tests passed. Presenting batch2-approval-questions.md."
+**Context**: Awaiting approval before frontend Batch 3.
+
+## Domain Clarification — Partner Agency (Directive 1126/2018)
+**Timestamp**: 2026-07-22T06:46:00Z
+**User Input**: Clarified AppSheet OFFICE = destination partner; shared Directive 1126/2018 (agency levels, ትስስር caps, Art. 40, agreements). Confirmed "okay" to document.
+**AI Response**: "Wrote docs/PARTNER_AGENCY_COMPLIANCE.md; linked from AGENCY_SAAS_DESIGN_GUIDE; renamed intake label to Partner Agency. Out of scope for Unit 3."
+**Context**: Partners unit later; Unit 3 Batch 2 still awaiting approval.
+
+## AI-DLC Docs Update — Partners / Tenant Licensing
+**Timestamp**: 2026-07-22T06:57:00Z
+**User Input**: "so update the ai dlc docs based this things" (catalog+tenant links, levels, Art. 40, provision gaps, Directive 1126/2018)
+**AI Response**: "Added inception/requirements/partner-agency-and-tenant-licensing.md; updated FR-01/08, US-8.03/8.03a/8.07, Unit 6 UoW, application-design, components/methods, TenantInfo domain entity, candidate UI field notes, docs mirror, aidlc-state."
+**Context**: Unit 3 Batch 2 still awaiting approval; Partners work deferred to Unit 6.
+
+## Unit 3 Code Generation — Batch 3 Complete
+**Timestamp**: 2026-07-22T07:00:00Z
+**User Input**: "lets continue with unit 3" (approve Batch 2, start Batch 3)
+**AI Response**: "Implemented embassy/lmis API clients, StatusUpdateSheet, row actions, pages /workflow/embassy|case-executive|lmis, Case Executive nav. tsc OK. Presenting batch3-approval-questions.md."
+**Context**: Awaiting Batch 3 approval before tests + code-summary (Batch 4).
+
+## Unit 3 Code Generation — Batch 4 Complete (Unit 3 DONE)
+**Timestamp**: 2026-07-22T07:10:00Z
+**User Input**: "A" (approve Batch 3, start Batch 4)
+**AI Response**: "Added EmbassyLmisServiceTests + EmbassyLmisProperties (TEST-30–38); code-summary.md. Full suite 58/58 passed. Presenting unit3-completion-questions.md."
+**Context**: Awaiting Unit 3 completion approval before Unit 4.
+
+## Unit 3 Approved — Start Unit 4 Functional Design
+**Timestamp**: 2026-07-22T07:12:00Z
+**User Input**: "a" (approve Unit 3 complete, proceed to Unit 4)
+**AI Response**: "Unit 3 closed. Opened Unit 4 Travel/Departure/Arrival functional design plan with Q1–Q6 (modules, exceptions, Canceled, notify, commission, arrival ledger)."
+**Context**: Awaiting answers in travel-arrival-functional-design-plan.md
+
+## Unit 4 Functional Design — Artifacts Generated
+**Timestamp**: 2026-07-22T08:30:00Z
+**User Input**: "done" (answers locked: modules A, exceptions A, Not Departed D/reason+fork, notify A, commission shell B, arrival ledger A)
+**AI Response**: "Generated Unit 4 FD (domain-entities, business-logic-model, business-rules, frontend-components). Q6 soft-copy overridden to A. Presenting functional-design-approval-questions.md."
+**Context**: Awaiting Unit 4 FD approval before NFR Requirements.
+
+## Unit 4 Functional Design — Approved; NFR Requirements Generated
+**Timestamp**: 2026-07-22T08:35:00Z
+**User Input**: "done" (FD approval Q1=A, Q2=A, Q3=A)
+**AI Response**: "FD approved. Generated Unit 4 NFR Requirements + tech-stack decisions. Presenting nfr-requirements-approval-questions.md."
+**Context**: Awaiting Unit 4 NFR Requirements approval before NFR Design.
+
+## Unit 4 NFR Requirements — Approved; NFR Design Generated
+**Timestamp**: 2026-07-22T08:40:00Z
+**User Input**: "A" (approve NFR Requirements)
+**AI Response**: "Generated Unit 4 NFR Design (intent APIs, countdown, atomic forks, exception/commission persistence, PBT). Presenting nfr-design-approval-questions.md."
+**Context**: Awaiting Unit 4 NFR Design approval before Infrastructure Design.
+
+## Unit 4 NFR Design — Approved; Infrastructure Design Generated
+**Timestamp**: 2026-07-22T08:45:00Z
+**User Input**: "A" (approve NFR Design)
+**AI Response**: "Generated Unit 4 Infrastructure Design (tenant tables, upgrader, travel.* perms, NoOp notifier, module/route checklist). Presenting infrastructure-design-approval-questions.md."
+**Context**: Awaiting Unit 4 Infrastructure Design approval before Code Generation plan.
+
+## Unit 4 Infrastructure Design — Approved; Code Generation Plan Created
+**Timestamp**: 2026-07-22T08:50:00Z
+**User Input**: "A" (approve Infrastructure Design)
+**AI Response**: "Created travel-arrival-code-generation-plan.md (17 steps, 4 batches). Presenting code-generation-plan-approval-questions.md."
+**Context**: Awaiting plan approval before Batch 1.
+
+## Unit 4 Code Gen — Batch 1 Complete
+**Timestamp**: 2026-07-22T08:55:00Z
+**User Input**: "A" (approve code generation plan, start Batch 1)
+**AI Response**: "Implemented Steps 1–6: Exception/Commission entities, TenantDbContext + migration, EnsureUnit4ArtifactsAsync, NoOpCandidateNotifier. Build OK, 58 tests passed. Presenting batch1-approval-questions.md."
+**Context**: Awaiting Batch 1 approval before Travel/Arrival/Exception API Batch 2.
+
+## Unit 4 Code Gen — Batch 2 Complete
+**Timestamp**: 2026-07-22T09:00:00Z
+**User Input**: "a" (approve Batch 1, start Batch 2)
+**AI Response**: "Implemented TravelModule + ArrivalModule + ExceptionModule (boards, intents, exception workspace, Commission shell). Build OK. Presenting batch2-approval-questions.md."
+**Context**: Awaiting Batch 2 approval before frontend Batch 3.
+
+## Unit 4 Code Gen — Batch 3 Complete
+**Timestamp**: 2026-07-22T09:15:00Z
+**User Input**: "A" (approve Batch 2, start Batch 3)
+**AI Response**: "Implemented travel/arrival/exceptions API clients, row actions, boards at /workflow/tickets|departures|arrivals|exceptions, commissions stub. tsc OK. Presenting batch3-approval-questions.md."
+**Context**: Awaiting Batch 3 approval before tests + code-summary (Batch 4).
+
+## Unit 4 Code Gen — Batch 4 Complete (Unit 4 DONE)
+**Timestamp**: 2026-07-22T09:25:00Z
+**User Input**: "A" (approve Batch 3, start Batch 4)
+**AI Response**: "Added TravelArrivalServiceTests + TravelArrivalProperties; engine visibility fix for RemoveFromSource=false; code-summary.md. Full suite 80/80 passed. Presenting unit4-completion-questions.md."
+**Context**: Awaiting Unit 4 completion approval.
+
+## Unit 4 Approved — Start Unit 5 Functional Design
+**Timestamp**: 2026-07-22T09:30:00Z
+**User Input**: "A" (approve Unit 4 complete, proceed to Unit 5)
+**AI Response**: "Unit 4 closed. Opened Unit 5 Finance & Commission functional design plan with Q1–Q6 (scope, shell, journals, FX, modules, init trigger)."
+**Context**: Awaiting answers in finance-commission-functional-design-plan.md
+
+## Unit 5 Functional Design — Artifacts Generated
+**Timestamp**: 2026-07-22T09:35:00Z
+**User Input**: "done" (Q1–Q6 all A: commission-first, extend shell, always journal, ETB+FX, two modules, Unit 4 init)
+**AI Response**: "Generated Unit 5 FD (domain, BL, rules, frontend). Presenting functional-design-approval-questions.md."
+**Context**: Awaiting Unit 5 FD approval before NFR Requirements.
+
+## Unit 5 Functional Design — Approved; NFR Requirements Generated
+**Timestamp**: 2026-07-22T09:40:00Z
+**User Input**: "A,A" (approve FD; Cash/Revenue journal model)
+**AI Response**: "Generated Unit 5 NFR Requirements + tech-stack decisions. Presenting nfr-requirements-approval-questions.md."
+**Context**: Awaiting Unit 5 NFR Requirements approval before NFR Design.
+
+## Unit 5 NFR Requirements — Approved; NFR Design Generated
+**Timestamp**: 2026-07-22T09:45:00Z
+**User Input**: "A" (approve NFR Requirements)
+**AI Response**: "Generated Unit 5 NFR Design (APIs, Cash/Revenue posting, FX, recalc, CoA seed, PBT). Presenting nfr-design-approval-questions.md."
+**Context**: Awaiting Unit 5 NFR Design approval before Infrastructure Design.
+
+## Unit 5 NFR Design — Approved; Infrastructure Design Generated
+**Timestamp**: 2026-07-22T09:50:00Z
+**User Input**: "A" (approve NFR Design)
+**AI Response**: "Generated Unit 5 Infrastructure Design (schema, CoA seed, modules, frontend checklist). Presenting infrastructure-design-approval-questions.md."
+**Context**: Awaiting Unit 5 Infrastructure Design approval before Code Generation plan.
+
+## Unit 5 Infrastructure Design — Approved; Code Generation Plan Created
+**Timestamp**: 2026-07-22T09:55:00Z
+**User Input**: "A" (approve Infrastructure Design)
+**AI Response**: "Created finance-commission-code-generation-plan.md (17 steps, 4 batches). Presenting code-generation-plan-approval-questions.md."
+**Context**: Awaiting plan approval before Batch 1.
+
+## Unit 5 Code Gen Plan — Approved; Batch 1 Complete
+**Timestamp**: 2026-07-22T06:40:00Z
+**User Input**: "A" (approve Code Generation Plan)
+**AI Response**: "Executed Batch 1 (entities, migration AddFinanceCommissionTables, CoA seed, Journal/FX services, DI). FX reuses platform ExchangeRates. Presenting batch1-approval-questions.md."
+**Context**: Awaiting Batch 1 approval before Batch 2 APIs.
+
+## Unit 5 Code Gen — Batch 1 Approved; Batch 2 Complete
+**Timestamp**: 2026-07-27T09:24:00Z
+**User Input**: "a" (approve Batch 1, start Batch 2)
+**AI Response**: "Implemented Steps 7–11: Commission board/detail/report queries; UpsertFees, RecordPayment (+ journal tx), Open/Resolve Dispute; Accounting accounts/journals/rates + UpsertExchangeRate. Build OK. Presenting batch2-approval-questions.md."
+**Context**: Awaiting Batch 2 approval before Frontend Batch 3.
+
+## Unit 5 Code Gen — Batch 2 Approved; Batch 3 Complete
+**Timestamp**: 2026-07-27T09:44:00Z
+**User Input**: "A" (approve Batch 2, start Batch 3)
+**AI Response**: "Implemented Steps 12–14: commissions/accounting API clients; status badge, fee editor, payment sheet, dispute panel; board/detail/rates/journal pages; accounting CoA overview + nav. Presenting batch3-approval-questions.md."
+**Context**: Awaiting Batch 3 approval before Tests Batch 4.
+
+## Unit 5 Code Gen — Batch 3 Approved; Batch 4 Started
+**Timestamp**: 2026-07-27T12:50:00Z
+**User Input**: "A" (approve Batch 3, start Batch 4)
+**AI Response**: "Batch 4 started: running backend tests (example-based + FsCheck) and creating `aidlc-docs/construction/finance-commission/code/code-summary.md`. After tests, update Unit 5 completion state."
+**Context**: Awaiting Batch 4 completion (Tests + summary).
+
+## Unit 5 Code Gen — Batch 4 Complete
+**Timestamp**: 2026-07-27T13:24:00Z
+**User Input**: "A" (approve Batch 3, start Batch 4)
+**AI Response**: "Batch 4 complete: 97/97 backend tests (FinanceCommission example + FsCheck), fixed RecordPayment double-count bug, code summary written, Playwright 28/28 with API running. Presenting unit5-completion-questions.md."
+**Context**: Awaiting Unit 5 completion approval.
+
+## Unit 5 — COMPLETE; Unit 6 FD Plan Started
+**Timestamp**: 2026-07-27T15:47:00Z
+**User Input**: "A" (approve Unit 5 complete, proceed to Unit 6)
+**AI Response**: "Marked Unit 5 complete. Created agency-erp-functional-design-plan.md and functional-design-plan-approval-questions.md (Q1–Q6). Brownfield audit: partners catalog/links, tenant licensing on provision, offices, basic overview already in codebase."
+**Context**: Awaiting Unit 6 functional design plan approval before generating FD artifacts.
+
+## Unit 6 Functional Design — Artifacts Generated
+**Timestamp**: 2026-07-28T07:44:00Z
+**User Input**: "A,A,A,A,AA" (Q1–Q6 all A: phased partners+licensing, harden brownfield, provision+edit+HQ, /admin/partners, funnel v1, defer staff/audit)
+**AI Response**: "Generated Unit 6 FD (domain, BL, rules, frontend). Presenting functional-design-approval-questions.md (approve + licensed-country link enforce)."
+**Context**: Awaiting Unit 6 FD approval before NFR Requirements.
+
+## Unit 6 Functional Design — Approved; NFR Requirements Generated
+**Timestamp**: 2026-07-29T16:42:00Z
+**User Input**: "a,a" (approve FD; enforce licensed-country on partner link create)
+**AI Response**: "Generated Unit 6 NFR Requirements + tech-stack decisions. Presenting nfr-requirements-approval-questions.md."
+**Context**: Awaiting Unit 6 NFR Requirements approval before NFR Design.
+
+## Unit 6 NFR Requirements — Approved; NFR Design Generated
+**Timestamp**: 2026-07-29T17:31:00Z
+**User Input**: "A" (approve NFR Requirements)
+**AI Response**: "Generated Unit 6 NFR Design (partner hardening, license+HQ seed, funnel API, PBT TEST-60–68). Presenting nfr-design-approval-questions.md."
+**Context**: Awaiting Unit 6 NFR Design approval before Infrastructure Design.
+
+## Unit 6 NFR Design — Approved; Infrastructure Design Generated
+**Timestamp**: 2026-07-29T17:43:00Z
+**User Input**: "A" (approve NFR Design)
+**AI Response**: "Generated Unit 6 Infrastructure Design (brownfield: licensed-country gate, HQ Department seed, dashboard funnel, /admin/partners; no new services). Presenting infrastructure-design-approval-questions.md."
+**Context**: Awaiting Unit 6 Infrastructure Design approval before Code Generation plan.
+
+## Unit 6 Infrastructure Design — Approved; Code Generation Plan Created
+**Timestamp**: 2026-07-29T17:45:00Z
+**User Input**: "A" (approve Infrastructure Design)
+**AI Response**: "Created agency-erp-code-generation-plan.md (15 steps, 4 batches). Presenting code-generation-plan-approval-questions.md."
+**Context**: Awaiting plan approval before Batch 1.
+
+## Unit 6 Code Gen Plan — Approved; Batch 1 Complete
+**Timestamp**: 2026-07-29T17:46:00Z
+**User Input**: "A" (approve Code Generation Plan)
+**AI Response**: "Executed Batch 1: licensed-country gate on partner links; HqOfficeSeedService + provision hook; tenant PUT license dates/status; CreateDepartment TenantId. Build OK. Presenting batch1-approval-questions.md."
+**Context**: Awaiting Batch 1 approval before Batch 2 (Dashboard funnel).
+
+## Unit 6 Code Gen — Batch 1 Approved; Batch 2 Complete
+**Timestamp**: 2026-07-29T17:55:00Z
+**User Input**: "A" (approve Batch 1, start Batch 2)
+**AI Response**: "Implemented GetPipelineFunnelQuery + DashboardModule GET /api/dashboard/pipeline-funnel (candidate.read). Build OK. Presenting batch2-approval-questions.md."
+**Context**: Awaiting Batch 2 approval before Frontend Batch 3.
+
+## Unit 6 Code Gen — Batch 2 Approved; Batch 3 Complete
+**Timestamp**: 2026-07-29T18:05:00Z
+**User Input**: "A" (approve Batch 2, start Batch 3)
+**AI Response**: "Shipped frontend Batch 3: API clients, /admin/partners + nav, hardened /partners, tenant license edit sheet, Overview PipelineFunnel. Playwright run reported. Presenting batch3-approval-questions.md."
+**Context**: Awaiting Batch 3 approval before Batch 4 (tests + summary).
+
+## Unit 6 Code Gen — Batch 3 Approved; Batch 4 Complete
+**Timestamp**: 2026-07-29T20:00:00Z
+**User Input**: "A" (approve Batch 3, start Batch 4)
+**AI Response**: "Added PartnerLinkRules; AgencyErpServiceTests + AgencyErpProperties (TEST-60–68); code-summary; Playwright funnel + /admin/partners. Backend 116/116; Playwright 30 passed. Presenting batch4 + unit6-completion questions."
+**Context**: Awaiting Unit 6 completion approval.
+
+## Unit 6 COMPLETE; Unit 7 FD Plan Started
+**Timestamp**: 2026-07-29T20:48:00Z
+**User Input**: "a" (approve Unit 6 complete)
+**AI Response**: "Unit 6 closed. Started Unit 7 Bot & Notifications: functional design plan + plan-approval questions (phased Telegram/SignalR vs full scope)."
+**Context**: Awaiting Unit 7 FD plan answers (Q1–Q6).
+
+## Unit 7 FD Plan Approved; FD Artifacts Ready
+**Timestamp**: 2026-07-29T20:58:00Z
+**User Input**: "a,a,a,a,a" (Q1–Q5=A; Q6 treated as A recommended)
+**AI Response**: "Generated Unit 7 FD (entities, BL, rules, frontend). Presenting functional-design-approval-questions.md."
+**Context**: Awaiting FD approval before NFR Requirements.
+
+## Unit 7 FD Approved; NFR Requirements Ready
+**Timestamp**: 2026-07-29T21:13:00Z
+**User Input**: "A,A" (approve FD; env-only token)
+**AI Response**: "Wrote Unit 7 NFR requirements + tech-stack decisions (PERF/SEC/RES/TEST-70–78, Telegram.Bot + long-poll). Presenting nfr-requirements-approval-questions.md."
+**Context**: Awaiting NFR Requirements approval before NFR Design.
+
+## Unit 7 NFR Requirements Approved; NFR Design Ready
+**Timestamp**: 2026-07-29T23:14:00Z
+**User Input**: "a" (approve NFR Requirements)
+**AI Response**: "Wrote Unit 7 NFR Design (poller, BotModule, push/notifier, PBT map). Presenting nfr-design-approval-questions.md."
+**Context**: Awaiting NFR Design approval before Infrastructure Design.
+
+## Unit 7 NFR Design Approved; Infrastructure Design Ready
+**Timestamp**: 2026-07-29T23:22:00Z
+**User Input**: "A" (approve NFR Design)
+**AI Response**: "Wrote Unit 7 Infrastructure Design (platform tables, Telegram.Bot DI, BotModule, no new containers). Presenting infrastructure-design-approval-questions.md."
+**Context**: Awaiting Infrastructure Design approval before Code Generation plan.
+
+## Unit 7 Infrastructure Design Approved; Code Generation Plan Ready
+**Timestamp**: 2026-07-30T12:43:00Z
+**User Input**: "a" (approve Infrastructure Design)
+**AI Response**: "Wrote Unit 7 Code Generation Plan (18 steps, 4 batches: config/entities -> Telegram backend -> frontend/SignalR -> tests/docs). Presenting code-generation-plan-approval-questions.md."
+**Context**: Awaiting Code Generation Plan approval before Batch 1 execution.
+
+## Unit 7 Code Generation Plan Approved; Batch 1 Complete
+**Timestamp**: 2026-07-30T12:45:00Z
+**User Input**: "A" (approve Code Generation Plan)
+**AI Response**: "Implemented Batch 1: Telegram config binding, bot foundation entities, PlatformDbContext updates, and platform migration/indexes. Build OK. Presenting batch1-approval-questions.md."
+**Context**: Awaiting Batch 1 approval before Batch 2 (Telegram backend services).
+
+## Unit 7 Batch 1 Approved; Batch 2 Complete
+**Timestamp**: 2026-07-30T12:48:00Z
+**User Input**: "A" (approve Batch 1)
+**AI Response**: "Implemented Batch 2: Telegram gateway/poller, link/status/lang/cv command flow, TelegramCandidateNotifier, stage-change push, and BotModule APIs. Build OK. Presenting batch2-approval-questions.md."
+**Context**: Awaiting Batch 2 approval before Batch 3 (frontend bot admin/settings + SignalR mount).
+
+
+## Unit 7 Batch 2 Approved; Batch 3 Complete
+**Timestamp**: 2026-07-30T12:52:00Z
+**User Input**: "A" (approve Batch 2)
+**AI Response**: "Implemented Batch 3: bot API client, /admin/bot, settings Telegram link UX, SignalR provider/listener mount, nav entry. Playwright 31/31. Presenting batch3-approval-questions.md."
+**Context**: Awaiting Batch 3 approval before Batch 4 (tests + summary).
+
+## Unit 7 Batch 3 Approved; Batch 4 Complete
+**Timestamp**: 2026-07-30T13:05:00Z
+**User Input**: "A" (approve Batch 3)
+**AI Response**: "Implemented Batch 4: BotNotificationRules, example + FsCheck TEST-70–78, Playwright bot/settings coverage, code-summary. Backend 135/135, Playwright 32/32. Presenting batch4-approval-questions.md."
+**Context**: Awaiting Batch 4 approval to close Unit 7.
+
+## Unit 7 Approved; Unit 8 (Reporting & Analytics) Code Complete
+**Timestamp**: 2026-08-16T00:00:00Z
+**User Input**: "work on remaining + add other simple/professional ERP things"
+**AI Response**: "Closed Unit 7. Built Unit 8 (final): backend Reports module with Excel (ClosedXML) + PDF (QuestPDF) export, dashboard metrics/trends, compliance alerts, my-tasks — all derived from existing tables (no new entity/migration). Frontend: command-center dashboard (recharts), ⌘K command palette (cmdk), reports pages with export, compliance center, my-work. Added Playwright specs + AI-DLC docs (construction/reporting-analytics/)."
+**Context**: Scope confirmed via questions — all four ERP enhancements + on-demand export (no scheduling/email). Backend build clean; suite 134 stable/135 (1 pre-existing flaky DisputeValidators FsCheck, passes on rerun). Frontend tsc clean for new/changed files. Flagged pre-existing OCR TS build error (passport-ocr.ts) blocking next build. Awaiting user review to close final unit.
+
+## UI Standardization, Simpler Forms, Configurable Flow, Multi-Role Testing
+**Timestamp**: 2026-08-17T12:00:00Z
+**User Input**: "forms should be simple ... all pages should have the same style of table and action and colors ... test the flow by logging in with different accounts ... flow should be configurable (registering/contract by one person in one agency, two roles in another)" + "empty pages should show a datatable with no data" + "complete all the phases"
+**AI Response**: "Delivered in 5 phases: (0) design-system foundation (status tones, StatusBadge, PageHeader, form-kit, ui-standards doc); (1) standards rolled across all pages — unified status colors incl. board TrackChip, fixed double-padding on 24 pages, 21 pages to PageHeader, all raw tables to shared primitives, DataTable empty states replacing blank/alert pages; (2) 'Save now' quick registration + fixed a submit-interception bug; (3) workflow step builder (transition update/delete + stage delete APIs, role-assignment UI, role-blocked steps now hidden not disabled); (4) per-role users seeded and tested — permission matrix, live step-gating proof, 7-role Playwright suite."
+**Context**: Backend 146/146; frontend tsc clean; Playwright 47/47. Demo workflow config and test data restored after testing; rt.* role users left seeded for future testing. Follow-up noted: candidate-form labels lack htmlFor/id association.
+
+## Partner Management (capacity, agreement expiry, placement tracking, billing)
+**Timestamp**: 2026-08-17T18:00:00Z
+**User Input**: "work on the partner — contract with partners based on the level (number of partners), show expire when contract ends, associate with the person so we know where the person went, and billing since they pay the commission"
+**AI Response**: "Added PartnerAgreementRules (single source of truth for expiry), a shared PartnerLinkValidator now enforced in Register/UpdateCandidate, computed agreement state on the link endpoints with usableOnly filtering, GET /partners/capacity, GET /partners/{id}/candidates and /billing (commission rollup derived via candidate join), and partner+licence expiry in the Compliance centre. Frontend: agreement chips + capacity strip on /partners and a new /partners/[id] with Candidates and Billing tabs."
+**Context**: Found and fixed two compliance holes — expired agreements were offered at intake, and intake never validated that the agency held a link to the chosen partner at all. Decisions: derive billing via candidate join (no migration); block+hide expired links. Backend 162/162; Playwright 49/49; cross-tenant leak check passed. Docs: construction/partner-management/code-summary.md.
+
+## Telegram Bot Testing — 4 defects found and fixed (incl. a cross-tenant session leak)
+**Timestamp**: 2026-08-17T20:00:00Z
+**User Input**: "now let test the telegram bot part"
+**AI Response**: "Tested everything that does not require a live Telegram token: 19 bot unit tests, the bot APIs, the /admin/bot page, the Settings link-code UX, and the stage-change push chain (proved end-to-end by simulating a linked user — a Telegram delivery row was recorded with status Failed, correct without a token). Found and fixed: (1) CRITICAL cross-tenant session leak — the Next.js proxy's global unkeyed 5s session cache served one user's access token to another; (2) GET /api/bot/deliveries 500'd without query params; (3) BadHttpRequestException surfaced as 500 instead of 400; (4) AgencyOwner lacked bot.configure/bot.use so the tenant admin could not use the bot, and Settings was nav-gated to system.admin only."
+**Context**: The session leak was discovered by investigating an intermittently failing partners e2e test rather than dismissing it as flaky — it reproduced as one tenant seeing another tenant's data. Backend 162/162; Playwright 49/49 on three consecutive runs (previously flaky). End-to-end Telegram send/receive still requires a real bot token in Telegram:BotToken (env), which the operator must set themselves.

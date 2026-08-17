@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
-using SimbaFlow.Infrastructure.Persistence;
 
 namespace SimbaFlow.Infrastructure.Identity;
 
@@ -12,10 +12,10 @@ namespace SimbaFlow.Infrastructure.Identity;
 /// </summary>
 public class PasswordHistoryValidator : IPasswordValidator<ApplicationUser>
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly IConfiguration _configuration;
 
-    public PasswordHistoryValidator(ApplicationDbContext context, IConfiguration configuration)
+    public PasswordHistoryValidator(IPlatformDbContext context, IConfiguration configuration)
     {
         _context = context;
         _configuration = configuration;

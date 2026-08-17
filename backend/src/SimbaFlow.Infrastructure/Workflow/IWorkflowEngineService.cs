@@ -17,7 +17,26 @@ public interface IWorkflowEngineService
 
     /// <summary>Update a status field within the current stage (e.g., medical status).</summary>
     Task<StatusUpdateResult> UpdateStatusAsync(
-        Guid candidateId, string trackName, string newValue, Guid userId, string userName, string? notes = null, CancellationToken ct = default);
+        Guid candidateId,
+        string trackName,
+        string newValue,
+        Guid userId,
+        string userName,
+        string? notes = null,
+        IReadOnlyDictionary<string, string>? metadata = null,
+        bool saveChanges = true,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Apply multiple status updates in one transaction (e.g. Insurance Paid → Available).
+    /// Mirror views are evaluated once after the final change.
+    /// </summary>
+    Task<StatusUpdateResult> UpdateStatusChainAsync(
+        Guid candidateId,
+        IReadOnlyList<StatusChange> changes,
+        Guid userId,
+        string userName,
+        CancellationToken ct = default);
 
     /// <summary>Compute available actions for a candidate given the user's roles.</summary>
     Task<List<AvailableAction>> GetAvailableActionsAsync(
@@ -69,6 +88,19 @@ public class WorkflowState
                 {
                     StatusValues[track.GetString()!] = val.GetString()!;
                 }
+
+                // Merge optional metadata keys into denormalized status bag
+                foreach (var prop in evt.Data.RootElement.EnumerateObject())
+                {
+                    if (prop.Name is "trackName" or "oldValue" or "newValue")
+                        continue;
+                    if (prop.Value.ValueKind == System.Text.Json.JsonValueKind.String)
+                        StatusValues[prop.Name] = prop.Value.GetString() ?? "";
+                    else if (prop.Value.ValueKind is System.Text.Json.JsonValueKind.Number
+                             or System.Text.Json.JsonValueKind.True
+                             or System.Text.Json.JsonValueKind.False)
+                        StatusValues[prop.Name] = prop.Value.ToString();
+                }
                 break;
 
             case Domain.Enums.WorkflowEventType.MirrorViewActivated:
@@ -88,6 +120,12 @@ public class WorkflowState
 
 public record TransitionResult(bool IsSuccess, string? Error = null);
 public record StatusUpdateResult(bool IsSuccess, string? Error = null);
+
+public record StatusChange(
+    string TrackName,
+    string NewValue,
+    string? Notes = null,
+    IReadOnlyDictionary<string, string>? Metadata = null);
 
 public record AvailableAction(
     Guid TransitionRuleId,

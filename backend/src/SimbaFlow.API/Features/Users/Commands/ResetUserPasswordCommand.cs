@@ -32,16 +32,22 @@ public class ResetUserPasswordValidator : AbstractValidator<ResetUserPasswordCom
 public class ResetUserPasswordHandler : IRequestHandler<ResetUserPasswordCommand, Result>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ICurrentUserService _currentUser;
 
-    public ResetUserPasswordHandler(UserManager<ApplicationUser> userManager)
+    public ResetUserPasswordHandler(UserManager<ApplicationUser> userManager, ICurrentUserService currentUser)
     {
         _userManager = userManager;
+        _currentUser = currentUser;
     }
 
     public async Task<Result> Handle(ResetUserPasswordCommand request, CancellationToken ct)
     {
         var user = await _userManager.FindByIdAsync(request.UserId.ToString());
         if (user is null)
+            return Result.Failure("User not found", 404);
+
+        // SECURITY: tenant admins may only reset passwords for users in their own tenant.
+        if (!UserAccessGuard.CanManage(_currentUser, user))
             return Result.Failure("User not found", 404);
 
         // Generate reset token and reset password

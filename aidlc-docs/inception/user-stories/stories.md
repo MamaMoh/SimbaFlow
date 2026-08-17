@@ -1027,19 +1027,38 @@ And I can edit or deactivate offices
 And offices are used as filter criteria throughout the system
 ```
 
-### US-8.03: Manage Partner Agencies
+### US-8.03: Manage Partner Agency Links (Tenant)
 **As an** Agency Owner (Amir),
-**I want to** maintain a directory of overseas partner agencies and employers,
-**So that** candidates can be linked to their destination employer.
+**I want to** link overseas partner agencies from the platform catalog and record agreements,
+**So that** candidates can only be assigned to partners we are licensed/allowed to work with.
 
 **Acceptance Criteria:**
 ```gherkin
 Given I am Agency Owner or Office Manager
-When I navigate to Partner Directory
-Then I see all partner agencies/employers for my agency
-And I can add: company name, country, contact person, phone, email, address
-And partners appear in candidate registration as "Office Name" options
-And I can view all candidates linked to a specific partner
+When I navigate to Partners
+Then I see partners linked to my agency (not the full global catalog alone)
+And I can link a partner from the platform catalog for a destination country
+And I must set agreement start/end dates (typically ~2 year term) and status Active|Expired|Suspended
+And the system rejects the link if it would exceed my agency level’s ትስስር cap for that country (Directive 1126/2018 Arts. 18–22)
+And the system rejects the link if the partner’s Art. 40 capacity (Low=2 / Med=4 / High=8 Ethiopian agencies) is full
+And Expired/Suspended partners do not appear in candidate registration
+And candidate registration Partner Agency options are only my Active links filtered by Country of Travel
+And I can view candidates linked to a specific partner
+```
+
+### US-8.03a: Manage Partner Catalog (Platform)
+**As a** System Admin (Solomon),
+**I want to** maintain the shared overseas partner agency catalog,
+**So that** all tenants select from a single identity (enabling Art. 40 enforcement).
+
+**Acceptance Criteria:**
+```gherkin
+Given I am System Admin
+When I navigate to Admin → Partner Catalog
+Then I can create/update partners: name, country, foreign license id, contact, capacity tier (Low/Medium/High), active flag
+And partners are stored in the platform (public) schema
+And tenants cannot create duplicate master records; they only create PartnerLinks
+And deactivating a catalog partner prevents new links and hides from intake
 ```
 
 ### US-8.04: Configure Roles and Permissions
@@ -1093,21 +1112,27 @@ And I can click KPI cards to drill into detailed views
 
 ### US-8.07: Provision New Tenant/Agency
 **As a** System Admin (Solomon),
-**I want to** create a new tenant (agency) in the system,
-**So that** a new agency can start using the platform.
+**I want to** create a new tenant (agency) in the system with MoLS license metadata,
+**So that** a new agency can start using the platform under the correct agency level and country licenses.
 
 **Acceptance Criteria:**
 ```gherkin
 Given I am System Admin
 When I click "Create Agency"
-And I fill in: agency name, contact details, admin user details
+And I fill in: agency name, slug, contact details, HQ address
+And I set: agency level (1–5), license number, license issue/expiry, licensed destination countries
+And I fill admin user details
 Then a new PostgreSQL schema is created for this agency
 And the default workflow template is seeded
 And default roles and permissions are created
-And an Agency Owner user account is provisioned
+And an Agency Owner user account is provisioned with MustChangePassword = true
+And a default HQ branch office is created in the tenant schema
+And SaaS SubscriptionStatus and MoLS LicenseStatus are both set (independently)
 And the tenant is immediately accessible
 And the provisioning is audit-logged
 ```
+
+**Gap note (as of 2026-07-22):** Implemented fields are name/slug/contact/admin only. License/level/HQ office/password-force are **planned** — see `partner-agency-and-tenant-licensing.md` §6.
 
 ---
 

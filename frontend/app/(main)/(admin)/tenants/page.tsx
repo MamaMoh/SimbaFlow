@@ -27,6 +27,7 @@ import { CreateAgencySheet } from "@/components/tenants/create-agency-sheet";
 import { EditAgencySheet } from "@/components/tenants/edit-agency-sheet";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface AgencyRow {
   id: string;
@@ -36,6 +37,11 @@ interface AgencyRow {
   contactEmail: string;
   status: number;
   provisionedAt: string;
+  agencyLevel?: number;
+  maxPartnersPerCountry?: number;
+  maxCountries?: number | null;
+  licenseNumber?: string | null;
+  licensedCountryCount?: number;
 }
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -110,6 +116,22 @@ export default function TenantsPage() {
       cell: ({ getValue }) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{getValue() as string}</code>,
     },
     {
+      accessorKey: "agencyLevel",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Level" />,
+      cell: ({ row }) => {
+        const level = row.original.agencyLevel ?? "—";
+        const per = row.original.maxPartnersPerCountry;
+        return (
+          <div className="text-sm">
+            <span className="font-medium">L{level}</span>
+            {per != null ? (
+              <span className="text-muted-foreground text-xs block">≤{per}/country</span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "contactEmail",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Contact Email" />,
     },
@@ -180,11 +202,11 @@ export default function TenantsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-2xl font-bold">Agencies</h1>
-        <p className="text-sm text-muted-foreground">Manage all labour export agencies on the platform</p>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Agencies"
+        description="Manage all labour export agencies on the platform"
+      />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable

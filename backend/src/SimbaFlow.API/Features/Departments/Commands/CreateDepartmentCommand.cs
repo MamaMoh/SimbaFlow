@@ -14,7 +14,7 @@ public record CreateDepartmentCommand(
     Guid? ParentDepartmentId,
     Guid? HeadUserId) : IRequest<Result<Guid>>, IRequirePermission
 {
-    public string RequiredPermission => "department.write";
+    public string RequiredPermission => "office.write";
 }
 
 public class CreateDepartmentValidator : AbstractValidator<CreateDepartmentCommand>
@@ -30,21 +30,35 @@ public class CreateDepartmentValidator : AbstractValidator<CreateDepartmentComma
 public class CreateDepartmentHandler : IRequestHandler<CreateDepartmentCommand, Result<Guid>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public CreateDepartmentHandler(IApplicationDbContext context) => _context = context;
+    public CreateDepartmentHandler(IApplicationDbContext context, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _currentUser = currentUser;
+    }
 
     public async Task<Result<Guid>> Handle(CreateDepartmentCommand request, CancellationToken cancellationToken)
     {
-        var codeExists = await _context.Departments
-            .AnyAsync(d => d.Code == request.Code, cancellationToken);
-        if (codeExists)
+        var tenantId = _currentUser.TenantId;
+
+        var codeQuery = _context.Departments.Where(d => d.Code == request.Code && !d.IsDeleted);
+        if (tenantId is Guid tid)
+            codeQuery = codeQuery.Where(d => d.TenantId == tid);
+        else if (!_currentUser.IsSuperAdmin)
+            return Result<Guid>.Failure("Tenant context required", 400);
+
+        if (await codeQuery.AnyAsync(cancellationToken))
             return Result<Guid>.Failure("Department code already exists", 409);
 
         if (request.ParentDepartmentId.HasValue)
         {
-            var parentExists = await _context.Departments
-                .AnyAsync(d => d.Id == request.ParentDepartmentId.Value, cancellationToken);
-            if (!parentExists)
+            var parentQuery = _context.Departments
+                .Where(d => d.Id == request.ParentDepartmentId.Value && !d.IsDeleted);
+            if (tenantId is Guid parentTid)
+                parentQuery = parentQuery.Where(d => d.TenantId == parentTid);
+
+            if (!await parentQuery.AnyAsync(cancellationToken))
                 return Result<Guid>.Failure("Parent department not found", 400);
         }
 
@@ -55,6 +69,7 @@ public class CreateDepartmentHandler : IRequestHandler<CreateDepartmentCommand, 
             Description = request.Description,
             ParentDepartmentId = request.ParentDepartmentId,
             HeadUserId = request.HeadUserId,
+            TenantId = tenantId,
             IsActive = true,
         };
 

@@ -36,10 +36,10 @@ public class SuspendStaffValidator : AbstractValidator<SuspendStaffCommand>
 // --- Handler ---
 public class SuspendStaffHandler : IRequestHandler<SuspendStaffCommand, Result>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
-    public SuspendStaffHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    public SuspendStaffHandler(IPlatformDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
         _currentUserService = currentUserService;

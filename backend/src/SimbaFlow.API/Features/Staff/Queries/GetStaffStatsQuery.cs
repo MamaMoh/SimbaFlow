@@ -19,9 +19,9 @@ public record GetStaffStatsQuery : IRequest<Result<StaffStatsDto>>, IRequirePerm
 
 public class GetStaffStatsHandler : IRequestHandler<GetStaffStatsQuery, Result<StaffStatsDto>>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
 
-    public GetStaffStatsHandler(IApplicationDbContext context) => _context = context;
+    public GetStaffStatsHandler(IPlatformDbContext context) => _context = context;
 
     public async Task<Result<StaffStatsDto>> Handle(GetStaffStatsQuery request, CancellationToken ct)
     {

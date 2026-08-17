@@ -36,13 +36,13 @@ public class ChangePasswordHandler : IRequestHandler<ChangePasswordCommand, Resu
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ICurrentUserService _currentUser;
     private readonly IRefreshTokenService _refreshTokenService;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
 
     public ChangePasswordHandler(
         UserManager<ApplicationUser> userManager,
         ICurrentUserService currentUser,
         IRefreshTokenService refreshTokenService,
-        IApplicationDbContext context)
+        IPlatformDbContext context)
     {
         _userManager = userManager;
         _currentUser = currentUser;

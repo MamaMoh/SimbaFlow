@@ -53,10 +53,28 @@ public class AuthModule : ICarterModule
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // MFA setup (authenticated user enables MFA)
+        // MFA setup (authenticated user requests a new authenticator key + QR)
         group.MapPost("/mfa/setup", async (ISender sender) =>
         {
             var result = await sender.Send(new SetupMfaCommand());
+            return result.IsSuccess
+                ? Results.Ok(result)
+                : Results.Json(result, statusCode: result.StatusCode);
+        }).RequireAuthorization();
+
+        // MFA enable (confirm enrollment with the first TOTP code → turns MFA on)
+        group.MapPost("/mfa/enable", async (EnableMfaCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess
+                ? Results.Ok(result)
+                : Results.Json(result, statusCode: result.StatusCode);
+        }).RequireAuthorization();
+
+        // MFA disable (requires account password)
+        group.MapPost("/mfa/disable", async (DisableMfaCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
             return result.IsSuccess
                 ? Results.Ok(result)
                 : Results.Json(result, statusCode: result.StatusCode);

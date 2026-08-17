@@ -17,7 +17,9 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeft,
+  Search,
 } from "lucide-react";
+import { useCommandPalette } from "@/lib/stores/command-store";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,6 +30,7 @@ import { Key } from "lucide-react";
 
 export function Header() {
   const { isCollapsed, toggleCollapsed, toggleMobile } = useSidebarStore();
+  const openCommand = useCommandPalette((s) => s.setOpen);
   const { user, logout, getDisplayName, getEmail, getUsername, isLoggingOut } = useAuth();
   const [isHydrated, setIsHydrated] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -106,7 +109,18 @@ export function Header() {
 
         <div className="flex flex-1 items-center justify-between space-x-4 md:justify-end">
           <div className="w-full flex-1 md:w-auto md:flex-none">
-            {/* Search functionality to be implemented */}
+            <button
+              type="button"
+              onClick={() => openCommand(true)}
+              className="group flex h-9 w-full items-center gap-2 rounded-lg border bg-background/60 px-3 text-sm text-muted-foreground shadow-sm transition hover:border-primary/40 hover:text-foreground md:w-64"
+              aria-label="Search and navigate"
+            >
+              <Search className="h-4 w-4" />
+              <span className="flex-1 text-left">Search…</span>
+              <kbd className="pointer-events-none hidden items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-flex">
+                ⌘K
+              </kbd>
+            </button>
           </div>
 
           <nav className="flex items-center space-x-2">

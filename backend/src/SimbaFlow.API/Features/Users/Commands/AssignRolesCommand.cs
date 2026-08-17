@@ -26,22 +26,29 @@ public class AssignRolesHandler : IRequestHandler<AssignRolesCommand, Result<boo
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
     public AssignRolesHandler(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        IApplicationDbContext context)
+        IPlatformDbContext context,
+        ICurrentUserService currentUser)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<bool>> Handle(AssignRolesCommand request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(request.UserId.ToString());
         if (user is null)
+            return Result<bool>.Failure("User not found", 404);
+
+        // SECURITY: tenant admins may only assign roles to users in their own tenant.
+        if (!UserAccessGuard.CanManage(_currentUser, user))
             return Result<bool>.Failure("User not found", 404);
 
         // Resolve role names from RoleIds if provided

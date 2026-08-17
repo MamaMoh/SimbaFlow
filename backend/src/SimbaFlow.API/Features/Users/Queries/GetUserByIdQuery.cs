@@ -33,18 +33,24 @@ public record UserRoleDto(Guid Id, string Name);
 public class GetUserByIdHandler : IRequestHandler<GetUserByIdQuery, Result<UserDetailDto>>
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public GetUserByIdHandler(UserManager<ApplicationUser> userManager, IApplicationDbContext context)
+    public GetUserByIdHandler(UserManager<ApplicationUser> userManager, IPlatformDbContext context, ICurrentUserService currentUser)
     {
         _userManager = userManager;
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<UserDetailDto>> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
     {
         var user = await _userManager.FindByIdAsync(request.Id.ToString());
         if (user is null)
+            return Result<UserDetailDto>.Failure("User not found", 404);
+
+        // SECURITY: tenant admins may only view users in their own tenant.
+        if (!UserAccessGuard.CanManage(_currentUser, user))
             return Result<UserDetailDto>.Failure("User not found", 404);
 
         // Load department

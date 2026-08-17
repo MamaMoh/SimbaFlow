@@ -38,11 +38,11 @@ public class TerminateStaffValidator : AbstractValidator<TerminateStaffCommand>
 // --- Handler ---
 public class TerminateStaffHandler : IRequestHandler<TerminateStaffCommand, Result>
 {
-    private readonly IApplicationDbContext _context;
+    private readonly IPlatformDbContext _context;
     private readonly ICurrentUserService _currentUserService;
 
     public TerminateStaffHandler(
-        IApplicationDbContext context,
+        IPlatformDbContext context,
         ICurrentUserService currentUserService)
     {
         _context = context;

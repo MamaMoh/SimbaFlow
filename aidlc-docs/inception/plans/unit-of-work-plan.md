@@ -14,6 +14,7 @@ Units are sequenced by dependency — each unit builds on the foundation laid by
 - [x] Step 4: Define Unit 4 — Travel, Departure & Arrival
 - [x] Step 5: Define Unit 5 — Finance & Commission (ERP)
 - [x] Step 6: Define Unit 6 — Agency ERP (Staff, Office, Partners, Admin)
+  - **Updated 2026-07-22**: Platform Partner catalog + tenant links; MoLS agency levels / license on TenantInfo — see `inception/requirements/partner-agency-and-tenant-licensing.md`
 - [x] Step 7: Define Unit 7 — Bot & Notifications (Telegram/WhatsApp + SignalR)
 - [x] Step 8: Define Unit 8 — Reporting & Analytics
 - [x] Step 9: Generate unit-of-work.md
