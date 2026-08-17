@@ -32,7 +32,13 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
-    if (app.Environment.IsDevelopment())
+    // Migrations ran only in Development while the seeders below run unconditionally, so a fresh
+    // Production deployment seeded against an unmigrated database and crashed on startup.
+    // Self-hosted deployments opt in with Database__MigrateOnStartup=true.
+    var migrateOnStartup = app.Environment.IsDevelopment()
+        || app.Configuration.GetValue("Database:MigrateOnStartup", false);
+
+    if (migrateOnStartup)
     {
         var dbContext = services.GetRequiredService<SimbaFlow.Infrastructure.Persistence.PlatformDbContext>();
         var logger = services.GetRequiredService<ILogger<Program>>();
