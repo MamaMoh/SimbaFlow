@@ -22,9 +22,36 @@ extend **additively** with one new vhost file and never edit in place.
 Ports already taken: 80, 443, 1433, 3000, 3001, 3002, 3010, 5434, 8080, 8090.
 SimbaFlow uses **3020 / 8100 / 5435** to avoid all of them.
 
-Known pre-existing breakage on this box, unrelated to SimbaFlow: `www.laba.et` and `api.laba.et`
-return TLS errors because the `laba.et` certificate's SAN covers only `laba.et`, `admin.laba.et`
-and `owner.laba.et`.
+## Shared TLS: the `laba-multi` certificate
+
+`www.laba.et` and `api.laba.et` used to fail TLS, and the `laba.et` certificate had **no certbot
+renewal config** — it would have silently expired on 2026-09-22 and taken `laba.et`, `admin.`,
+`owner.` and `api.` down with it. Both were pre-existing, and both are fixed.
+
+Cause of the unrenewable cert: `live/laba.et/` contained **real files** where certbot expects
+symlinks into `archive/`, so certbot refused to write there (`archive directory exists for laba.et`).
+Rather than repair that in place on a live site, a fresh cert was issued under a **new name**:
+
+| | |
+|---|---|
+| Cert name | `laba-multi` (certbot-managed, renewal config present, webroot auth) |
+| Names | `laba.et`, `www.laba.et`, `admin.laba.et`, `owner.laba.et`, `api.laba.et` |
+| Referenced by | 4 `ssl_certificate` pairs in `nginx/conf.d/default.conf` |
+
+`live/laba.et/` and `archive/laba.et/` are left in place, orphaned and unreferenced — they are the
+**rollback path**: point the four `ssl_certificate` pairs in `default.conf` back at
+`/etc/letsencrypt/live/laba.et/` and reload. Do not delete them without a replacement plan.
+
+`server_name` already listed `www.laba.et`, so no vhost routing change was needed — only the cert.
+
+### Outstanding gap: nothing reloads nginx after renewal
+The `simba-certbot` entrypoint is `while :; do certbot renew; sleep 12h; done` with **no deploy
+hook**. Renewed certs are written to disk but nginx keeps serving the old ones until it restarts, so
+every cert on this box (`laba-multi`, `visa.laba.et`, `app.laba.et`) can expire in production despite
+renewing correctly. Fix with a host cron, e.g. weekly:
+```bash
+0 4 * * 1 docker exec simba-nginx nginx -s reload
+```
 
 ## Domain and TLS
 
