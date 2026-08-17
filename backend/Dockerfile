@@ -3,13 +3,15 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy solution and project files for restore
-COPY SimbaFlow.slnx .
 COPY src/SimbaFlow.API/SimbaFlow.API.csproj src/SimbaFlow.API/
 COPY src/SimbaFlow.Application/SimbaFlow.Application.csproj src/SimbaFlow.Application/
 COPY src/SimbaFlow.Domain/SimbaFlow.Domain.csproj src/SimbaFlow.Domain/
 COPY src/SimbaFlow.Infrastructure/SimbaFlow.Infrastructure.csproj src/SimbaFlow.Infrastructure/
 COPY src/SimbaFlow.Shared/SimbaFlow.Shared.csproj src/SimbaFlow.Shared/
-RUN dotnet restore
+
+# Restore the API project only. Restoring the solution would pull in the test project, whose
+# .csproj is deliberately not copied into the runtime image build context.
+RUN dotnet restore src/SimbaFlow.API/SimbaFlow.API.csproj
 
 # Copy all source and publish
 COPY . .
