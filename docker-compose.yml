@@ -71,7 +71,11 @@ services:
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXT_PUBLIC_API_URL: http://localhost:5000
-      BACKEND_URL: http://api:8080
+      # Address the API by container name, not by the compose service name. When this stack shares a
+      # docker network with another (e.g. a reverse proxy network on a multi-app host), a neighbouring
+      # stack that also has a service called "api" wins the DNS name and the frontend silently posts
+      # credentials at the wrong container.
+      BACKEND_URL: http://simbaflow-api:8080
     depends_on:
       api:
         condition: service_healthy
