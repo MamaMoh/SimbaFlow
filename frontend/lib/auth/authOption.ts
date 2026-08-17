@@ -53,7 +53,13 @@ export const authOptions: NextAuthOptions = {
     const isBrowser = typeof window !== "undefined";
     const secret = process.env.NEXTAUTH_SECRET;
     if (isBrowser) return secret || "client-side-placeholder";
-    if (!secret && process.env.NODE_ENV === "production") {
+
+    // `next build` imports this module while collecting route data, and a container image
+    // must not have secrets baked into it — so don't fail the build. The check still applies
+    // at runtime, where the secret is supplied by the environment.
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+    if (!secret && process.env.NODE_ENV === "production" && !isBuildPhase) {
       throw new Error("NEXTAUTH_SECRET is required in production");
     }
     return secret || "development-secret-key-change-in-production";
