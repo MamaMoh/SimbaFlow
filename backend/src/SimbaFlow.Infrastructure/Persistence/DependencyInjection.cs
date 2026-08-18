@@ -151,7 +151,11 @@ public static class DependencyInjection
         services.AddScoped<IJournalPostingService, JournalPostingService>();
         services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.Configure<MfaOptions>(configuration.GetSection("Mfa"));
-        services.AddHttpClient<ITelegramGateway, TelegramGateway>();
+        // Telegram puts the bot token in the URL path (api.telegram.org/bot<TOKEN>/method), and the
+        // default HttpClient logging handler writes the full request URI at Information level — which
+        // wrote the token in clear text into every log file and log shipper. Strip those loggers; the
+        // gateway logs the method name itself, which is all we need for diagnostics.
+        services.AddHttpClient<ITelegramGateway, TelegramGateway>().RemoveAllLoggers();
         services.AddSingleton<ITelegramPollerState, TelegramPollerState>();
         services.AddScoped<ITenantBotDbContextFactory, TenantBotDbContextFactory>();
         services.AddScoped<IBotLinkService, BotLinkService>();
