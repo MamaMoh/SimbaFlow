@@ -6,7 +6,6 @@ public record CandidateStatusChangedEvent(
     Guid CandidateId,
     string CandidateName,
     Guid TenantId,
-    Guid OfficeId,
     string Field,
     string? OldValue,
     string NewValue,

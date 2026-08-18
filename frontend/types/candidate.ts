@@ -50,10 +50,9 @@ export interface Candidate {
   skillBabysitting?: boolean;
   skillChildCare?: boolean;
   countryOfTravel?: string;
-  officeName?: string;
+  partnerName?: string;
   partnerAgencyId?: string | null;
   contractDate?: string;
-  officeId: string;
   photoPath?: string;
   fullPhotoPath?: string;
   visaNumber?: string;
@@ -104,7 +103,7 @@ export interface CandidateListDto {
   currentStageName?: string;
   currentStatusValues?: Record<string, string>;
   countryOfTravel?: string;
-  officeName?: string;
+  partnerName?: string;
   status: string;
   registeredAt: string;
   dateOfBirth?: string;

@@ -14,10 +14,10 @@ public class ExceptionModule : ICarterModule
             .RequireAuthorization();
 
         group.MapGet("/", async (
-            int? page, int? pageSize, string? status, string? type, Guid? officeId, ISender sender) =>
+            int? page, int? pageSize, string? status, string? type, ISender sender) =>
         {
             var result = await sender.Send(new GetExceptionCasesQuery(
-                page ?? 1, pageSize ?? 20, status, type, officeId));
+                page ?? 1, pageSize ?? 20, status, type));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

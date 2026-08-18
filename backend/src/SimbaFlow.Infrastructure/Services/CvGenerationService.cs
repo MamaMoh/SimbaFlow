@@ -31,9 +31,9 @@ public class CvGenerationService : ICvGenerationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var agency = string.IsNullOrWhiteSpace(candidate.OfficeName)
+        var agency = string.IsNullOrWhiteSpace(candidate.PartnerName)
             ? "SIMBAFLOW FOREIGN EMPLOYMENT AGENCY"
-            : candidate.OfficeName.ToUpperInvariant();
+            : candidate.PartnerName.ToUpperInvariant();
 
         var age = AgeYears(candidate.DateOfBirth);
         var dob = candidate.DateOfBirth.ToString("dd/MM/yyyy");
@@ -211,9 +211,9 @@ public class CvGenerationService : ICvGenerationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var agency = string.IsNullOrWhiteSpace(candidate.OfficeName)
+        var agency = string.IsNullOrWhiteSpace(candidate.PartnerName)
             ? "SIMBAFLOW FOREIGN EMPLOYMENT AGENCY"
-            : candidate.OfficeName.ToUpperInvariant();
+            : candidate.PartnerName.ToUpperInvariant();
 
         var document = Document.Create(container =>
         {

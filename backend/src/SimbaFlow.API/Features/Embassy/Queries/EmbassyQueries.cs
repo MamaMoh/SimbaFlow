@@ -11,7 +11,7 @@ public record EmbassyBoardRowDto(
     string FullName,
     string PassportNumber,
     string? LabourId,
-    string? OfficeName,
+    string? PartnerName,
     string? CountryOfTravel,
     Dictionary<string, string> StatusValues,
     int DaysInStage,
@@ -28,8 +28,7 @@ public record EmbassyBoardResult(
 public record GetEmbassyBoardQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null,
-    Guid? OfficeId = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
+    string? Search = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "embassy.read";
 }
@@ -53,7 +52,6 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
             request.Page,
             request.PageSize,
             request.Search,
-            request.OfficeId,
             primaryOnly: false,
             ct);
     }
@@ -63,7 +61,6 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
         int page,
         int pageSize,
         string? search,
-        Guid? officeId,
         bool primaryOnly,
         CancellationToken ct)
     {
@@ -79,9 +76,6 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
-
-        if (officeId.HasValue)
-            query = query.Where(c => c.OfficeId == officeId);
 
         var candidates = await query
             .OrderByDescending(c => c.StageEnteredAt ?? c.RegisteredAt)
@@ -106,7 +100,7 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
                 c.FullName,
                 c.PassportNumber,
                 c.LabourId,
-                c.OfficeName,
+                c.PartnerName,
                 c.CountryOfTravel,
                 status,
                 EmbassyLmisHelpers.DaysInStage(c),
@@ -123,8 +117,7 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
 public record GetCaseExecutiveBoardQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null,
-    Guid? OfficeId = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
+    string? Search = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "embassy.case_view";
 }
@@ -155,7 +148,6 @@ public class GetCaseExecutiveBoardHandler
             request.Page,
             request.PageSize,
             request.Search,
-            request.OfficeId,
             primaryOnly: false,
             ct);
     }

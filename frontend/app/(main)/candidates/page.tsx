@@ -60,7 +60,7 @@ interface CandidateRow {
   labourId: string | null;
   currentStageName: string | null;
   countryOfTravel: string | null;
-  officeName: string | null;
+  partnerName: string | null;
   status: string;
   registeredAt: string;
   dateOfBirth?: string;
@@ -238,7 +238,7 @@ export default function CandidatesPage() {
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
-        accessorKey: "officeName",
+        accessorKey: "partnerName",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },

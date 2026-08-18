@@ -27,7 +27,6 @@ public record DraftStaffProfileCommand(
     EmploymentStatus EmploymentStatus,
     DateOnly? HireDate,
     bool RequiresCoSignature,
-    Guid? PrimaryLocationId,
     // Initial identifiers (optional, can be added later)
     List<StaffIdentifierDto>? Identifiers) : IRequest<Result<Guid>>, IRequirePermission
 {
@@ -80,15 +79,6 @@ public class DraftStaffProfileHandler : IRequestHandler<DraftStaffProfileCommand
         // Generate unique staff ID
         var staffId = await GenerateStaffIdAsync(cancellationToken);
 
-        // Validate primary location if provided
-        if (request.PrimaryLocationId.HasValue)
-        {
-            var locationExists = await _context.Locations
-                .AnyAsync(l => l.Id == request.PrimaryLocationId.Value, cancellationToken);
-            if (!locationExists)
-                return Result<Guid>.Failure("Primary location not found", 400);
-        }
-
         var staffProfile = new StaffProfile
         {
             StaffId = staffId,
@@ -106,7 +96,6 @@ public class DraftStaffProfileHandler : IRequestHandler<DraftStaffProfileCommand
             EmploymentStatus = request.EmploymentStatus,
             HireDate = request.HireDate,
             RequiresCoSignature = request.RequiresCoSignature,
-            PrimaryLocationId = request.PrimaryLocationId,
             IsActive = true,
         };
 

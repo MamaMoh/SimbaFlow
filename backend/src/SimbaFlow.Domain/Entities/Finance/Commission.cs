@@ -11,7 +11,8 @@ public class Commission : BaseEntity
     public Guid CandidateId { get; set; }
     public CommissionStatus Status { get; set; } = CommissionStatus.Open;
     public string? CountryOfTravel { get; set; }
-    public string? OfficeName { get; set; }
+    /// <summary>Snapshot of the foreign partner's name at the time the commission was opened.</summary>
+    public string? PartnerName { get; set; }
     public DateOnly? ContractDate { get; set; }
     public DateTime OpenedAt { get; set; } = DateTime.UtcNow;
     public Guid OpenedByUserId { get; set; }

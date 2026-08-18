@@ -30,7 +30,7 @@ public class RegisterCandidateValidator : AbstractValidator<RegisterCandidateCom
         RuleFor(x => x.Country).MaximumLength(100).When(x => x.Country is not null);
         RuleFor(x => x.LabourId).MaximumLength(50).When(x => x.LabourId is not null);
         RuleFor(x => x.CountryOfTravel).MaximumLength(100).When(x => x.CountryOfTravel is not null);
-        RuleFor(x => x.OfficeName).MaximumLength(200).When(x => x.OfficeName is not null);
+        RuleFor(x => x.PartnerName).MaximumLength(200).When(x => x.PartnerName is not null);
         RuleFor(x => x.ContractDate)
             .Must(BeValidDateOrEmpty)
             .WithMessage("ContractDate must be a valid date (yyyy-MM-dd)")

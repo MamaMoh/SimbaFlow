@@ -112,7 +112,6 @@ using (var scope = app.Services.CreateScope())
     await PermissionSeeder.SeedDefaultTenantAsync(services);
     await AdminSeeder.SeedDefaultAdminAsync(services);
     await DepartmentSeeder.SeedDepartmentsAsync(services);
-    await LocationSeeder.SeedLocationsAsync(services);
     await PartnerAgencySeeder.SeedPartnerAgenciesAsync(services);
     await RolePermissionSeeder.SeedRolePermissionsAsync(services);
 }

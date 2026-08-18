@@ -36,7 +36,6 @@ public class CandidateStageChangedHandler : INotificationHandler<CandidateStageC
 
         await _broadcaster.BroadcastCandidateUpdateAsync(
             notification.TenantId,
-            notification.OfficeId,
             new CandidateUpdatedMessage(
                 CandidateId: notification.CandidateId,
                 ChangeType: "StageTransitioned",
@@ -50,7 +49,6 @@ public class CandidateStageChangedHandler : INotificationHandler<CandidateStageC
         {
             await _push.PushStageChangedAsync(
                 notification.TenantId,
-                notification.OfficeId,
                 notification.CandidateName,
                 notification.ToStageName,
                 cancellationToken);

@@ -25,7 +25,6 @@ public static class RolePermissionSeeder
             "commission.read", "commission.create", "commission.update",
             "accounting.read", "accounting.post", "accounting.reconcile",
             "staff.read", "staff.create", "staff.update", "staff.terminate",
-            "office.read", "office.write",
             "partner.read", "partner.create", "partner.update",
             // The agency owner administers their own tenant's bot: configure the connection,
             // monitor deliveries, and link their own Telegram account.
@@ -46,9 +45,8 @@ public static class RolePermissionSeeder
             "commission.read",
             "accounting.read",
             "staff.read",
-            "office.read",
             "partner.read",
-            // Office managers work in the field alongside agents, so they can link their own bot.
+            // Branch managers work in the field alongside agents, so they can link their own bot.
             "bot.use",
             "report.view", "report.export",
         ],

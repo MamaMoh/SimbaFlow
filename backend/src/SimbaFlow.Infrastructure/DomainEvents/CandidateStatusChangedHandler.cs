@@ -33,7 +33,6 @@ public class CandidateStatusChangedHandler : INotificationHandler<CandidateStatu
 
         await _broadcaster.BroadcastCandidateUpdateAsync(
             notification.TenantId,
-            notification.OfficeId,
             new CandidateUpdatedMessage(
                 CandidateId: notification.CandidateId,
                 ChangeType: "StatusUpdated",

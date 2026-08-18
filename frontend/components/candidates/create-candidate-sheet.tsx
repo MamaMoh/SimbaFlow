@@ -241,10 +241,9 @@ const registerCandidateSchema = z.object({
   country: opt,
   labourId: opt,
   countryOfTravel: opt,
-  officeName: opt,
+  partnerName: opt,
   partnerAgencyId: opt,
   contractDate: opt,
-  officeId: opt, // auto-assigned from available branch / user location
   // intake
   placeOfBirth: opt,
   religion: opt,
@@ -318,7 +317,7 @@ type RegisterCandidateForm = z.infer<typeof registerCandidateSchema>;
 /** Fields validated before leaving each step (empty = no gate). */
 const STEP_FIELDS: (keyof RegisterCandidateForm)[][] = [
   [],
-  ["firstName", "lastName", "passportNumber", "dateOfBirth", "gender", "officeId"],
+  ["firstName", "lastName", "passportNumber", "dateOfBirth", "gender"],
   [],
   [],
   ["email"],
@@ -346,7 +345,6 @@ const PASSPORT_TYPE = 0;
 
 const defaults: Partial<RegisterCandidateForm> = {
   gender: "",
-  officeId: "",
   partnerAgencyId: "",
   visaType: "Work",
   nationality: "Ethiopia",
@@ -651,9 +649,6 @@ export function CandidateApplicationForm({
   const isEdit = !!candidateId;
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const { data: officesResponse } = useSWR("/api/proxy/departments", fetcher, {
-    revalidateOnFocus: false,
-  });
   const { data: linkedPartnersResponse } = useSWR(
     "/api/proxy/partners?linkedOnly=true&usableOnly=true",
     fetcher,
@@ -665,10 +660,6 @@ export function CandidateApplicationForm({
     { revalidateOnFocus: false }
   );
 
-  const offices: DepartmentListItem[] = useMemo(
-    () => (officesResponse?.data || []).filter((o: DepartmentListItem) => o.isActive !== false),
-    [officesResponse?.data]
-  );
   const linkedPartners: { id: string; name: string; country: string }[] = useMemo(
     () => linkedPartnersResponse?.data || [],
     [linkedPartnersResponse?.data]
@@ -705,10 +696,6 @@ export function CandidateApplicationForm({
     resolver: zodResolver(registerCandidateSchema),
     defaultValues: defaults,
   });
-
-  const selectedOfficeId = watch("officeId");
-  // Prefer first available office when none selected (was only set when exactly 1 office existed).
-  const defaultOfficeId = offices[0]?.id ?? "";
 
   const applyPassportOcr = async (file: File) => {
     setOcrBusy(true);
@@ -755,18 +742,11 @@ export function CandidateApplicationForm({
     }
   };
 
-  useEffect(() => {
-    if (!isEdit && defaultOfficeId && !selectedOfficeId) {
-      setValue("officeId", defaultOfficeId, { shouldValidate: true });
-    }
-  }, [defaultOfficeId, selectedOfficeId, setValue, isEdit]);
-
   // Reset create form on mount
   useEffect(() => {
     if (isEdit) return;
     reset({
       ...defaults,
-      officeId: defaultOfficeId,
     });
     setPhotoFile(null);
     setFullPhotoFile(null);
@@ -801,10 +781,9 @@ export function CandidateApplicationForm({
       country: d.country || "",
       labourId: d.labourId || "",
       countryOfTravel: d.countryOfTravel || "",
-      officeName: d.officeName || "",
+      partnerName: d.partnerName || "",
       partnerAgencyId: d.partnerAgencyId || "",
       contractDate: d.contractDate || "",
-      officeId: d.officeId || "",
       placeOfBirth: d.placeOfBirth || "",
       religion: d.religion || "",
       maritalStatus: d.maritalStatus || "",
@@ -940,17 +919,6 @@ export function CandidateApplicationForm({
         return;
       }
     }
-    if (currentStep === 1 && !isEdit) {
-      const officeId = watch("officeId") || defaultOfficeId;
-      if (!officeId || officeId === "00000000-0000-0000-0000-000000000000") {
-        toast.error(
-          offices.length === 0
-            ? "Create an office under Offices before registering a candidate."
-            : "Select a registering office before continuing."
-        );
-        return;
-      }
-    }
     setCurrentStep((s) => Math.min(lastStep, s + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -1042,16 +1010,6 @@ export function CandidateApplicationForm({
 
   const onSubmit = async (data: RegisterCandidateForm) => {
     try {
-      const resolvedOfficeId = data.officeId || defaultOfficeId || "";
-      if (!isEdit && (!resolvedOfficeId || resolvedOfficeId === "00000000-0000-0000-0000-000000000000")) {
-        toast.error(
-          offices.length === 0
-            ? "Create an office under Offices before registering a candidate."
-            : "Select a registering office before saving."
-        );
-        return;
-      }
-
       const intake = buildIntake(data);
 
       if (isEdit && candidateId) {
@@ -1073,10 +1031,9 @@ export function CandidateApplicationForm({
             country: data.country || null,
             labourId: data.labourId || null,
             countryOfTravel: data.countryOfTravel || null,
-            officeName: data.officeName || null,
+            partnerName: data.partnerName || null,
             partnerAgencyId: data.partnerAgencyId || null,
             contractDate: data.contractDate || null,
-            officeId: resolvedOfficeId || null,
             intake,
           }),
         });
@@ -1112,10 +1069,9 @@ export function CandidateApplicationForm({
           country: data.country || null,
           labourId: data.labourId || null,
           countryOfTravel: data.countryOfTravel || null,
-          officeName: data.officeName || null,
+          partnerName: data.partnerName || null,
           partnerAgencyId: data.partnerAgencyId || null,
           contractDate: data.contractDate || null,
-          officeId: resolvedOfficeId,
           intake,
         }),
       });
@@ -1310,33 +1266,6 @@ export function CandidateApplicationForm({
               title="Basic Information"
               description="Name and application meta. Passport scan fills these when available."
             >
-              {offices.length > 0 ? (
-                <div className="space-y-1.5">
-                  <Label>
-                    Registering office <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={watch("officeId") || defaultOfficeId || undefined}
-                    onValueChange={(v) => setValue("officeId", v, { shouldValidate: true })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select office" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[200]">
-                      {offices.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>
-                          {o.name}
-                          {o.code ? ` (${o.code})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  No offices found. Create one under Offices so candidates can be registered.
-                </p>
-              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Application No.</Label>
@@ -2018,7 +1947,7 @@ export function CandidateApplicationForm({
                       setValue("partnerAgencyId", id, { shouldValidate: true });
                       const p = linkedPartners.find((x) => x.id === id);
                       if (p) {
-                        setValue("officeName", p.name);
+                        setValue("partnerName", p.name);
                         if (p.country) setValue("countryOfTravel", p.country);
                         if (p.country) setValue("country", p.country);
                       }
@@ -2043,7 +1972,7 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Partner name (snapshot)</Label>
-                  <Input {...register("officeName")} readOnly className="bg-muted/40" />
+                  <Input {...register("partnerName")} readOnly className="bg-muted/40" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Contract Date</Label>

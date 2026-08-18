@@ -121,7 +121,6 @@ public class WorkflowEngineServiceTests
             PassportNumber = "P12345",
             DateOfBirth = new DateOnly(1990, 1, 1),
             Gender = Gender.Female,
-            OfficeId = Guid.NewGuid(),
             CurrentStageId = intake.Id,
             CurrentStageName = intake.Name,
             Status = CandidateStatus.Active

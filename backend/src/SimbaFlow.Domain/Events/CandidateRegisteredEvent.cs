@@ -5,7 +5,6 @@ namespace SimbaFlow.Domain.Events;
 public record CandidateRegisteredEvent(
     Guid CandidateId,
     string CandidateName,
-    Guid OfficeId,
     Guid InitialStageId) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();

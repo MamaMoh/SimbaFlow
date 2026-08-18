@@ -126,7 +126,7 @@ public record ViewCandidateDto(
     Guid? CurrentStageId,
     Dictionary<string, string> StatusValues,
     string? CountryOfTravel,
-    string? OfficeName,
+    string? PartnerName,
     DateTime RegisteredAt,
     bool IsMirror);
 
@@ -138,7 +138,7 @@ public record PaginatedViewResult(
     int TotalPages);
 
 public record GetViewCandidatesQuery(
-    Guid StageId, int Page, int PageSize, string? Search, Guid? OfficeId)
+    Guid StageId, int Page, int PageSize, string? Search)
     : IRequest<Result<PaginatedViewResult>>, IRequirePermission
 {
     public string RequiredPermission => "workflow.view";
@@ -168,9 +168,6 @@ public class GetViewCandidatesHandler : IRequestHandler<GetViewCandidatesQuery, 
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
-
-        if (request.OfficeId.HasValue)
-            query = query.Where(c => c.OfficeId == request.OfficeId);
 
         var candidates = await query
             .OrderByDescending(c => c.RegisteredAt)
@@ -210,7 +207,7 @@ public class GetViewCandidatesHandler : IRequestHandler<GetViewCandidatesQuery, 
                 c.CurrentStageId,
                 status,
                 c.CountryOfTravel,
-                c.OfficeName,
+                c.PartnerName,
                 c.RegisteredAt,
                 isMirror);
         }).ToList();

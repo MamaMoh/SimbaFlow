@@ -59,8 +59,7 @@ public record GetExceptionCasesQuery(
     int Page = 1,
     int PageSize = 20,
     string? Status = null,
-    string? Type = null,
-    Guid? OfficeId = null) : IRequest<Result<ExceptionCaseListResult>>, IRequirePermission
+    string? Type = null) : IRequest<Result<ExceptionCaseListResult>>, IRequirePermission
 {
     public string RequiredPermission => "arrival.read";
 }
@@ -88,9 +87,6 @@ public class GetExceptionCasesHandler : IRequestHandler<GetExceptionCasesQuery, 
             join c in _context.Candidates.AsNoTracking() on e.CandidateId equals c.Id
             where !c.IsDeleted
             select new { Case = e, Candidate = c };
-
-        if (request.OfficeId.HasValue)
-            joined = joined.Where(x => x.Candidate.OfficeId == request.OfficeId);
 
         var total = await joined.CountAsync(ct);
         var rows = await joined

@@ -12,7 +12,7 @@ public record ArrivalBoardRowDto(
     string FullName,
     string PassportNumber,
     string? LabourId,
-    string? OfficeName,
+    string? PartnerName,
     string? CountryOfTravel,
     Dictionary<string, string> StatusValues,
     int DaysInStage,
@@ -30,8 +30,7 @@ public record ArrivalBoardResult(
 public record GetArrivalBoardQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null,
-    Guid? OfficeId = null) : IRequest<Result<ArrivalBoardResult>>, IRequirePermission
+    string? Search = null) : IRequest<Result<ArrivalBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "arrival.read";
 }
@@ -62,9 +61,6 @@ public class GetArrivalBoardHandler : IRequestHandler<GetArrivalBoardQuery, Resu
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
-
-        if (request.OfficeId.HasValue)
-            query = query.Where(c => c.OfficeId == request.OfficeId);
 
         var candidates = await query
             .OrderByDescending(c => c.StageEnteredAt ?? c.RegisteredAt)
@@ -97,7 +93,7 @@ public class GetArrivalBoardHandler : IRequestHandler<GetArrivalBoardQuery, Resu
                 c.FullName,
                 c.PassportNumber,
                 c.LabourId,
-                c.OfficeName,
+                c.PartnerName,
                 TravelArrivalHelpers.TrackValue(status, "destination") ?? c.CountryOfTravel,
                 status,
                 TravelArrivalHelpers.DaysInStage(c),

@@ -14,7 +14,7 @@ export type TravelBoardRow = {
   fullName: string;
   passportNumber: string;
   labourId?: string | null;
-  officeName?: string | null;
+  partnerName?: string | null;
   countryOfTravel?: string | null;
   statusValues: Record<string, string>;
   daysInStage: number;
@@ -77,14 +77,12 @@ export function useTicketBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
-  officeId?: string;
 }) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
-  if (params?.officeId) qs.set("officeId", params.officeId);
 
   const key = `/api/proxy/travel/ticket/board?${qs.toString()}`;
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {
@@ -105,7 +103,6 @@ export function useDepartureBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
-  officeId?: string;
   includeCanceled?: boolean;
 }) {
   const qs = new URLSearchParams({
@@ -113,7 +110,6 @@ export function useDepartureBoard(params?: {
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
-  if (params?.officeId) qs.set("officeId", params.officeId);
   if (params?.includeCanceled) qs.set("includeCanceled", "true");
 
   const key = `/api/proxy/travel/departure/board?${qs.toString()}`;

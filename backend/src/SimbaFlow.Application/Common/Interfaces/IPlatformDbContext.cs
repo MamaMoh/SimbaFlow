@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Domain.Entities.Identity;
-using SimbaFlow.Domain.Entities.Locations;
 using SimbaFlow.Domain.Entities.Partners;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Entities.Tenancy;
@@ -28,9 +27,7 @@ public interface IPlatformDbContext
     DbSet<ExchangeRate> ExchangeRates { get; }
     DbSet<PartnerAgency> PartnerAgencies { get; }
     DbSet<PartnerLink> PartnerLinks { get; }
-    DbSet<Location> Locations { get; }
     DbSet<StaffProfile> StaffProfiles { get; }
-    DbSet<StaffLocationMapping> StaffLocationMappings { get; }
     DbSet<StaffIdentifier> StaffIdentifiers { get; }
     DbSet<StaffDepartmentAffiliation> StaffDepartmentAffiliations { get; }
 

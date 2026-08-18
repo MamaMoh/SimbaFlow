@@ -64,8 +64,8 @@ export default function TicketBoardPage() {
         ),
       },
       {
-        accessorKey: "officeName",
-        header: "Office",
+        accessorKey: "partnerName",
+        header: "Partner",
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {

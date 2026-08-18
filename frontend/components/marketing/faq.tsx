@@ -16,8 +16,8 @@ const QUESTIONS = [
     a: "Bring them in during onboarding. Candidate records, passport and labour ID details, and the documents attached to them can be imported, and each one lands at whichever stage it is currently sitting in.",
   },
   {
-    q: "Do our branch offices and partner agencies get access?",
-    a: "Offices, branches and staff are modelled directly in the system, and you define the roles and permissions that govern what each of them can see or change. Partner agencies live in their own directory with their commission terms attached.",
+    q: "Do our staff and partner agencies get access?",
+    a: "Staff are modelled directly in the system, and you define the roles and permissions that govern what each of them can see or change. Partner agencies live in their own directory with their commission terms attached.",
   },
   {
     q: "Does the team have to refresh to see updates?",

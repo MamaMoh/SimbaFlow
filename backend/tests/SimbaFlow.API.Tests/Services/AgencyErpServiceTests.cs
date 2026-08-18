@@ -126,46 +126,4 @@ public class AgencyErpServiceTests
         PartnerLinkRules.AgreementDatesValid(start, start.AddDays(1)).Should().BeTrue();
         PartnerLinkRules.AgreementDatesValid(start, start.AddDays(-1)).Should().BeFalse();
     }
-
-    [Fact]
-    public async Task HqSeed_CreatesOnceWhenEmpty_Idempotent_TEST68()
-    {
-        await using var db = CreatePlatformDb();
-        var tenantId = Guid.NewGuid();
-        var seed = new HqOfficeSeedService(db, NullLogger<HqOfficeSeedService>.Instance);
-
-        await seed.EnsureDefaultHqOfficeAsync(tenantId, "Bole", "Addis Ababa", "Ethiopia");
-        await seed.EnsureDefaultHqOfficeAsync(tenantId, "Bole", "Addis Ababa", "Ethiopia");
-
-        var offices = await db.Departments
-            .Where(d => d.TenantId == tenantId && !d.IsDeleted)
-            .ToListAsync();
-        offices.Should().HaveCount(1);
-        offices[0].Code.Should().Be(HqOfficeSeedService.HqCode);
-        offices[0].Name.Should().Be(HqOfficeSeedService.HqName);
-        offices[0].Description.Should().Contain("Bole");
-    }
-
-    [Fact]
-    public async Task HqSeed_SkipsWhenOfficeAlreadyExists_TEST68b()
-    {
-        await using var db = CreatePlatformDb();
-        var tenantId = Guid.NewGuid();
-        db.Departments.Add(new Department
-        {
-            Name = "Branch A",
-            Code = "BR1",
-            TenantId = tenantId,
-            IsActive = true
-        });
-        await db.SaveChangesAsync();
-
-        var seed = new HqOfficeSeedService(db, NullLogger<HqOfficeSeedService>.Instance);
-        await seed.EnsureDefaultHqOfficeAsync(tenantId, null, null, null);
-
-        (await db.Departments.CountAsync(d => d.TenantId == tenantId && !d.IsDeleted))
-            .Should().Be(1);
-        (await db.Departments.AnyAsync(d => d.Code == HqOfficeSeedService.HqCode))
-            .Should().BeFalse();
-    }
 }

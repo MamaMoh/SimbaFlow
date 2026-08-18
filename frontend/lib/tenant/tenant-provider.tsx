@@ -17,7 +17,6 @@ interface TenantInfo {
 
 interface TenantContextValue {
   tenant: TenantInfo | null;
-  currentOffice: { id: string; name: string } | null;
   permissions: string[];
   hasPermission: (permission: string) => boolean;
   isSuperAdmin: boolean;
@@ -26,7 +25,6 @@ interface TenantContextValue {
 
 const TenantContext = createContext<TenantContextValue>({
   tenant: null,
-  currentOffice: null,
   permissions: [],
   hasPermission: () => false,
   isSuperAdmin: false,
@@ -53,7 +51,6 @@ function readIsSuperAdmin(session: unknown, claims: string[]): boolean {
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
-  const [currentOffice, setCurrentOffice] = useState<{ id: string; name: string } | null>(null);
 
   const permissions = useMemo(() => readClaims(session), [session]);
   const isSuperAdmin = useMemo(
@@ -71,9 +68,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     if (tokenPayload?.tenant) {
       setTenant(tokenPayload.tenant);
     }
-    if (tokenPayload?.office) {
-      setCurrentOffice(tokenPayload.office);
-    }
   }, [session]);
 
   const hasPermission = (permission: string): boolean => {
@@ -88,7 +82,6 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     <TenantContext.Provider
       value={{
         tenant,
-        currentOffice,
         permissions,
         hasPermission,
         isSuperAdmin,

@@ -17,11 +17,11 @@ public class CandidateModule : ICarterModule
         // List candidates (paginated, searchable, filterable)
         group.MapGet("/", async (
             int? page, int? pageSize, string? search,
-            Guid? stageId, Guid? officeId, string? countryOfTravel,
+            Guid? stageId, string? countryOfTravel,
             ISender sender) =>
         {
             var query = new GetCandidatesQuery(
-                page ?? 1, pageSize ?? 20, search, stageId, officeId, countryOfTravel);
+                page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel);
             var result = await sender.Send(query);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });

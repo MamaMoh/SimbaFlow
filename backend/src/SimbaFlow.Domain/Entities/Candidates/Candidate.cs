@@ -71,13 +71,10 @@ public class Candidate : BaseEntity
 
     // ──── Travel & Contract ────
     public string? CountryOfTravel { get; set; }
-    public string? OfficeName { get; set; }
-    /// <summary>Selected foreign partner from platform catalog (snapshot name kept in OfficeName).</summary>
+    /// <summary>Snapshot of the selected foreign partner's name from the platform catalog.</summary>
+    public string? PartnerName { get; set; }
     public Guid? PartnerAgencyId { get; set; }
     public DateOnly? ContractDate { get; set; }
-
-    // ──── Organization ────
-    public Guid OfficeId { get; set; }
 
     // ──── Documents ────
     public string? PhotoPath { get; set; }

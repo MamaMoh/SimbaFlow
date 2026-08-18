@@ -153,7 +153,6 @@ public class EmbassyLmisServiceTests
             PassportNumber = "EQ2623576",
             DateOfBirth = new DateOnly(1995, 5, 5),
             Gender = Gender.Female,
-            OfficeId = Guid.NewGuid(),
             CurrentStageId = embassy.Id,
             CurrentStageName = embassy.Name,
             Status = CandidateStatus.Active,

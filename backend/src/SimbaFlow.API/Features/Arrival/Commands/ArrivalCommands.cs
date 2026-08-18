@@ -278,7 +278,7 @@ public class AddToCommissionHandler : IRequestHandler<AddToCommissionCommand, Re
                     Status = CommissionStatus.Open,
                     CountryOfTravel = TravelArrivalHelpers.TrackValue(status, "destination")
                                       ?? candidate.CountryOfTravel,
-                    OfficeName = candidate.OfficeName,
+                    PartnerName = candidate.PartnerName,
                     ContractDate = null,
                     OpenedAt = DateTime.UtcNow,
                     OpenedByUserId = userId

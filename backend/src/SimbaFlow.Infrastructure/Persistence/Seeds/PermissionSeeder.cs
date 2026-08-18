@@ -24,10 +24,6 @@ public static class PermissionSeeder
         ("role", "role.read", "View roles and permissions"),
         ("role", "role.write", "Create/update/delete roles"),
 
-        // Departments / Offices
-        ("office", "office.read", "View offices and branches"),
-        ("office", "office.write", "Create/update/delete offices"),
-
         // Candidates
         ("candidate", "candidate.read", "View candidates"),
         ("candidate", "candidate.create", "Register new candidates"),

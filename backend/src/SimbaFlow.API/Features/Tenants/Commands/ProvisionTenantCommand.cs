@@ -39,7 +39,6 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
     private readonly ITenantSchemaMigrator _tenantMigrator;
     private readonly IWorkflowDefinitionUpgrader _workflowUpgrader;
     private readonly IFinanceSeedService _financeSeed;
-    private readonly IHqOfficeSeedService _hqOfficeSeed;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ProvisionTenantHandler> _logger;
 
@@ -50,7 +49,6 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
         ITenantSchemaMigrator tenantMigrator,
         IWorkflowDefinitionUpgrader workflowUpgrader,
         IFinanceSeedService financeSeed,
-        IHqOfficeSeedService hqOfficeSeed,
         IConfiguration configuration,
         ILogger<ProvisionTenantHandler> logger)
     {
@@ -60,7 +58,6 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
         _tenantMigrator = tenantMigrator;
         _workflowUpgrader = workflowUpgrader;
         _financeSeed = financeSeed;
-        _hqOfficeSeed = hqOfficeSeed;
         _configuration = configuration;
         _logger = logger;
     }
@@ -192,16 +189,6 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
         if (await _roleManager.RoleExistsAsync("AgencyOwner"))
         {
             await _userManager.AddToRoleAsync(adminUser, "AgencyOwner");
-        }
-
-        try
-        {
-            await _hqOfficeSeed.EnsureDefaultHqOfficeAsync(
-                tenant.Id, tenant.Address, tenant.City, tenant.Country, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to seed HQ office for tenant {TenantId}", tenant.Id);
         }
 
         _logger.LogInformation(

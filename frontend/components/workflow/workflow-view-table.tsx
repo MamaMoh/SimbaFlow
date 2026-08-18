@@ -163,8 +163,8 @@ export function WorkflowViewTable({
       cell: ({ getValue }) => (getValue() as string | null) || "—",
     },
     {
-      accessorKey: "officeName",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Office" />,
+      accessorKey: "partnerName",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
       cell: ({ getValue }) => (getValue() as string | null) || "—",
     },
     {

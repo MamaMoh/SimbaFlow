@@ -23,7 +23,6 @@ public static class ServiceExtensions
             cfg.RegisterServicesFromAssembly(typeof(ApplicationDbContext).Assembly);
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
-            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(WorkflowAuthorizationBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(PerformanceLogBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
         });

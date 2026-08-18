@@ -7,7 +7,6 @@ const AGENCY_PAGES: { path: string; heading: RegExp }[] = [
   { path: "/my-work", heading: /my work/i },
   { path: "/reports", heading: /reports/i },
   { path: "/compliance", heading: /compliance/i },
-  { path: "/offices", heading: /offices/i },
   { path: "/partners", heading: /partners/i },
   { path: "/finance/accounting", heading: /accounting/i },
   { path: "/finance/rates", heading: /exchange rates/i },

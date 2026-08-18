@@ -13,7 +13,7 @@ export type LmisBoardRow = {
   fullName: string;
   passportNumber: string;
   labourId?: string | null;
-  officeName?: string | null;
+  partnerName?: string | null;
   statusValues: Record<string, string>;
   insurance?: string | null;
   milestone?: string | null;
@@ -54,7 +54,6 @@ export function useLmisBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
-  officeId?: string;
   insurance?: string;
   milestone?: string;
   mirrorOnly?: boolean;
@@ -64,7 +63,6 @@ export function useLmisBoard(params?: {
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
-  if (params?.officeId) qs.set("officeId", params.officeId);
   if (params?.insurance) qs.set("insurance", params.insurance);
   if (params?.milestone) qs.set("milestone", params.milestone);
   if (params?.mirrorOnly) qs.set("mirrorOnly", "true");

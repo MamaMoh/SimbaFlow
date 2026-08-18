@@ -84,7 +84,7 @@ export default function CommissionDetailPage({
             </div>
             <p className="text-sm text-muted-foreground">
               Passport {commission.passportNumber}
-              {commission.officeName ? ` · ${commission.officeName}` : ""}
+              {commission.partnerName ? ` · ${commission.partnerName}` : ""}
               {commission.countryOfTravel ? ` · ${commission.countryOfTravel}` : ""}
             </p>
             <p className="text-sm">

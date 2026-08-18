@@ -54,10 +54,6 @@ public class JwtTokenService : IJwtTokenService
         if (user.DepartmentId.HasValue)
             claims.Add(new Claim("department_id", user.DepartmentId.Value.ToString()));
 
-        // Active location
-        if (user.ActiveLocationId.HasValue)
-            claims.Add(new Claim("active_location_id", user.ActiveLocationId.Value.ToString()));
-
         // Tenant (future-ready)
         if (user.TenantId.HasValue)
             claims.Add(new Claim("tenant_id", user.TenantId.Value.ToString()));

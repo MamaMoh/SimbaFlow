@@ -7,7 +7,7 @@ const PLANS = [
     name: "Starter",
     price: "$249",
     cadence: "/month",
-    blurb: "For a single office getting off spreadsheets.",
+    blurb: "For a small agency getting off spreadsheets.",
     cta: "Start a trial",
     featured: false,
     features: [

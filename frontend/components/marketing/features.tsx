@@ -25,8 +25,8 @@ const FEATURES = [
   {
     icon: Building2,
     title: "Agency ERP",
-    body: "Staff, offices, branches and partner agencies in one directory, with custom roles and permissions each agency defines for itself.",
-    points: ["Staff & offices", "Partner directory", "Custom roles"],
+    body: "Staff and partner agencies in one directory, with custom roles and permissions each agency defines for itself.",
+    points: ["Staff directory", "Partner directory", "Custom roles"],
   },
   {
     icon: Radio,

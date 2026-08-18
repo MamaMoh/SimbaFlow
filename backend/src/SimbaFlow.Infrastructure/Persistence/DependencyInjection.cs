@@ -147,7 +147,6 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowDefinitionUpgrader, WorkflowDefinitionUpgrader>();
         services.AddScoped<ICandidateNotifier, TelegramCandidateNotifier>();
         services.AddScoped<IFinanceSeedService, FinanceSeedService>();
-        services.AddScoped<IHqOfficeSeedService, HqOfficeSeedService>();
         services.AddScoped<IExchangeRateService, ExchangeRateService>();
         services.AddScoped<IJournalPostingService, JournalPostingService>();
         services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));

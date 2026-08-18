@@ -38,18 +38,12 @@ public class ApplicationUser : IdentityUser<Guid>
     /// </summary>
     public string[]? AllowedIpRanges { get; set; }
 
-    // ──── Location Context ────
-    public Guid? ActiveLocationId { get; set; }
-
     // ──── Organization ────
     public Guid? DepartmentId { get; set; }
     public Department? Department { get; set; }
 
     // ──── Multi-tenancy ────
     public Guid? TenantId { get; set; }
-
-    // ──── Office Context (Labour Export) ────
-    public Guid? OfficeId { get; set; }
 
     // ──── Language Preference ────
     public string PreferredLanguage { get; set; } = "en";

@@ -30,7 +30,6 @@ export function useCandidates(params?: {
   pageSize?: number;
   search?: string;
   stageId?: string;
-  officeId?: string;
   countryOfTravel?: string;
 }) {
   const page = params?.page ?? 1;
@@ -41,7 +40,6 @@ export function useCandidates(params?: {
   });
   if (params?.search) qs.set("search", params.search);
   if (params?.stageId) qs.set("stageId", params.stageId);
-  if (params?.officeId) qs.set("officeId", params.officeId);
   if (params?.countryOfTravel) qs.set("countryOfTravel", params.countryOfTravel);
 
   const key = `/api/proxy/candidates?${qs.toString()}`;

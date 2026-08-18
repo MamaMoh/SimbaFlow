@@ -353,7 +353,7 @@ export function DataTableToolbar<TData>({
 
                 const getIcon = () => {
                   const colId = String(column.id).toLowerCase();
-                  if (colId.includes("office") || colId.includes("agent")) {
+                  if (colId.includes("partner") || colId.includes("agent")) {
                     return <Stethoscope className="h-3.5 w-3.5 text-muted-foreground" />;
                   }
                   if (colId.includes("candidate")) {
@@ -365,7 +365,7 @@ export function DataTableToolbar<TData>({
                   return <Filter className="h-3.5 w-3.5 text-muted-foreground" />;
                 };
 
-                const useCombobox = ["office", "candidate"].includes(String(column.id));
+                const useCombobox = ["partner", "candidate"].includes(String(column.id));
                 const current = colObj.getFilterValue() as string[] | undefined;
                 const selected =
                   Array.isArray(current) && current.length ? current[0] : "";

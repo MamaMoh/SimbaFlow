@@ -23,10 +23,9 @@ public record UpdateCandidateCommand(
     string? Country,
     string? LabourId,
     string? CountryOfTravel,
-    string? OfficeName,
+    string? PartnerName,
     Guid? PartnerAgencyId = null,
     string? ContractDate = null,
-    Guid? OfficeId = null,
     CandidateIntakePayload? Intake = null) : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "candidate.update";
@@ -91,8 +90,6 @@ public class UpdateCandidateHandler : IRequestHandler<UpdateCandidateCommand, Re
             candidate.DateOfBirth = dob;
         if (request.Gender.HasValue)
             candidate.Gender = (Gender)request.Gender.Value;
-        if (request.OfficeId.HasValue && request.OfficeId.Value != Guid.Empty)
-            candidate.OfficeId = request.OfficeId.Value;
         candidate.Nationality = request.Nationality;
         candidate.PhoneNumber = request.PhoneNumber;
         candidate.Email = request.Email;
@@ -101,7 +98,7 @@ public class UpdateCandidateHandler : IRequestHandler<UpdateCandidateCommand, Re
         candidate.Country = request.Country;
         candidate.LabourId = request.LabourId;
         candidate.CountryOfTravel = request.CountryOfTravel;
-        candidate.OfficeName = request.OfficeName;
+        candidate.PartnerName = request.PartnerName;
         candidate.PartnerAgencyId = request.PartnerAgencyId;
         candidate.ContractDate = string.IsNullOrEmpty(request.ContractDate) ? null : DateOnly.Parse(request.ContractDate);
 

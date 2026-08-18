@@ -17,7 +17,6 @@ public class LmisModule : ICarterModule
             int? page,
             int? pageSize,
             string? search,
-            Guid? officeId,
             string? insurance,
             string? milestone,
             bool? mirrorOnly,
@@ -27,7 +26,6 @@ public class LmisModule : ICarterModule
                 page ?? 1,
                 pageSize ?? 20,
                 search,
-                officeId,
                 insurance,
                 milestone,
                 mirrorOnly));

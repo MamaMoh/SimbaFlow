@@ -47,8 +47,8 @@ export default function EmbassyBoardPage() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
       },
       {
-        accessorKey: "officeName",
-        header: "Partner / Office",
+        accessorKey: "partnerName",
+        header: "Partner",
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {

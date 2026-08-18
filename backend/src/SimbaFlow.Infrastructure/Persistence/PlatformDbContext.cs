@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Common;
 using SimbaFlow.Domain.Entities.Identity;
-using SimbaFlow.Domain.Entities.Locations;
 using SimbaFlow.Domain.Entities.Partners;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Entities.Tenancy;
@@ -14,7 +13,7 @@ namespace SimbaFlow.Infrastructure.Persistence;
 
 /// <summary>
 /// Platform-level DbContext. Hardcoded to "public" schema.
-/// Contains: Identity, Tenants, Permissions, Audit, Staff, Locations, Partner catalog.
+/// Contains: Identity, Tenants, Permissions, Audit, Staff, Partner catalog.
 /// This context NEVER contains tenant business data (candidates, workflow, etc.)
 /// </summary>
 public class PlatformDbContext
@@ -60,10 +59,8 @@ public class PlatformDbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ReadAuditLog> ReadAuditLogs => Set<ReadAuditLog>();
 
-    // Locations & Staff
-    public DbSet<Location> Locations => Set<Location>();
+    // Staff
     public DbSet<StaffProfile> StaffProfiles => Set<StaffProfile>();
-    public DbSet<StaffLocationMapping> StaffLocationMappings => Set<StaffLocationMapping>();
     public DbSet<StaffIdentifier> StaffIdentifiers => Set<StaffIdentifier>();
     public DbSet<StaffDepartmentAffiliation> StaffDepartmentAffiliations => Set<StaffDepartmentAffiliation>();
 

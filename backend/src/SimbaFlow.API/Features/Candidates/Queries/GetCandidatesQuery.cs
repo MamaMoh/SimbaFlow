@@ -8,7 +8,7 @@ namespace SimbaFlow.API.Features.Candidates.Queries;
 
 public record GetCandidatesQuery(
     int Page, int PageSize, string? Search,
-    Guid? StageId, Guid? OfficeId, string? CountryOfTravel) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
+    Guid? StageId, string? CountryOfTravel) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
@@ -27,7 +27,7 @@ public record CandidateListDto(
     string? LabourId,
     string? CurrentStageName,
     string? CountryOfTravel,
-    string? OfficeName,
+    string? PartnerName,
     string Status,
     DateTime RegisteredAt,
     string DateOfBirth,
@@ -69,9 +69,6 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
         if (request.StageId.HasValue)
             query = query.Where(c => c.CurrentStageId == request.StageId);
 
-        if (request.OfficeId.HasValue)
-            query = query.Where(c => c.OfficeId == request.OfficeId);
-
         if (!string.IsNullOrWhiteSpace(request.CountryOfTravel))
             query = query.Where(c => c.CountryOfTravel == request.CountryOfTravel);
 
@@ -91,7 +88,7 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 c.LabourId,
                 c.CurrentStageName,
                 c.CountryOfTravel,
-                c.OfficeName,
+                c.PartnerName,
                 c.Status.ToString(),
                 c.RegisteredAt,
                 c.DateOfBirth.ToString("yyyy-MM-dd"),
@@ -170,10 +167,9 @@ public record CandidateDetailDto(
     bool SkillBabysitting,
     bool SkillChildCare,
     string? CountryOfTravel,
-    string? OfficeName,
+    string? PartnerName,
     Guid? PartnerAgencyId,
     string? ContractDate,
-    Guid OfficeId,
     string? PhotoPath,
     string? FullPhotoPath,
     string? VisaNumber,
@@ -241,9 +237,8 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                 c.ReferenceNo, c.Remark, c.CookingLevel,
                 c.SkillCleaning, c.SkillWashing, c.SkillCooking, c.SkillIroning,
                 c.SkillSewing, c.SkillBabysitting, c.SkillChildCare,
-                c.CountryOfTravel, c.OfficeName, c.PartnerAgencyId,
+                c.CountryOfTravel, c.PartnerName, c.PartnerAgencyId,
                 c.ContractDate.HasValue ? c.ContractDate.Value.ToString("yyyy-MM-dd") : null,
-                c.OfficeId,
                 c.PhotoPath, c.FullPhotoPath,
                 c.VisaNumber, c.VisaType, c.SponsorName, c.SponsorIdNumber,
                 c.SponsorPhone, c.SponsorAddress, c.SponsorArabicName, c.AgentName,

@@ -14,11 +14,9 @@ public class SignalRBroadcaster : ISignalRBroadcaster
         _logger = logger;
     }
 
-    public async Task BroadcastCandidateUpdateAsync(Guid tenantId, Guid? officeId, CandidateUpdatedMessage message)
+    public async Task BroadcastCandidateUpdateAsync(Guid tenantId, CandidateUpdatedMessage message)
     {
-        var group = officeId.HasValue
-            ? $"tenant:{tenantId}:office:{officeId}"
-            : $"tenant:{tenantId}";
+        var group = $"tenant:{tenantId}";
 
         await _hubContext.Clients.Group(group).SendAsync("candidateUpdated", message);
 

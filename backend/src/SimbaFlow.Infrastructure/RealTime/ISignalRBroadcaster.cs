@@ -6,7 +6,7 @@ namespace SimbaFlow.Infrastructure.RealTime;
 public interface ISignalRBroadcaster
 {
     /// <summary>Broadcast a candidate status change to all users in the tenant.</summary>
-    Task BroadcastCandidateUpdateAsync(Guid tenantId, Guid? officeId, CandidateUpdatedMessage message);
+    Task BroadcastCandidateUpdateAsync(Guid tenantId, CandidateUpdatedMessage message);
 
     /// <summary>Send a personal notification to a specific user.</summary>
     Task SendPersonalNotificationAsync(string userId, PersonalNotificationMessage message);

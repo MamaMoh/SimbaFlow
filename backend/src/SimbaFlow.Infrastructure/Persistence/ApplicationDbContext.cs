@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Common;
 using SimbaFlow.Domain.Entities.Identity;
-using SimbaFlow.Domain.Entities.Locations;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Entities.Tenancy;
 using SimbaFlow.Infrastructure.Audit;
@@ -54,12 +53,9 @@ public class ApplicationDbContext
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ReadAuditLog> ReadAuditLogs => Set<ReadAuditLog>();
 
-    // Locations
-    public DbSet<Location> Locations => Set<Location>();
 
     // Staff
     public DbSet<StaffProfile> StaffProfiles => Set<StaffProfile>();
-    public DbSet<StaffLocationMapping> StaffLocationMappings => Set<StaffLocationMapping>();
     public DbSet<StaffIdentifier> StaffIdentifiers => Set<StaffIdentifier>();
     public DbSet<StaffDepartmentAffiliation> StaffDepartmentAffiliations => Set<StaffDepartmentAffiliation>();
 

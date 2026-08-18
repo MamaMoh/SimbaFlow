@@ -12,7 +12,7 @@ public record LmisBoardRowDto(
     string FullName,
     string PassportNumber,
     string? LabourId,
-    string? OfficeName,
+    string? PartnerName,
     Dictionary<string, string> StatusValues,
     string? Insurance,
     string? Milestone,
@@ -32,7 +32,6 @@ public record GetLmisBoardQuery(
     int Page = 1,
     int PageSize = 20,
     string? Search = null,
-    Guid? OfficeId = null,
     string? Insurance = null,
     string? Milestone = null,
     bool? MirrorOnly = null) : IRequest<Result<LmisBoardResult>>, IRequirePermission
@@ -66,9 +65,6 @@ public class GetLmisBoardHandler : IRequestHandler<GetLmisBoardQuery, Result<Lmi
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
-
-        if (request.OfficeId.HasValue)
-            query = query.Where(c => c.OfficeId == request.OfficeId);
 
         var candidates = await query
             .OrderByDescending(c => c.StageEnteredAt ?? c.RegisteredAt)
@@ -114,7 +110,7 @@ public class GetLmisBoardHandler : IRequestHandler<GetLmisBoardQuery, Result<Lmi
             x.Candidate.FullName,
             x.Candidate.PassportNumber,
             x.Candidate.LabourId,
-            x.Candidate.OfficeName,
+            x.Candidate.PartnerName,
             x.Status,
             x.Insurance,
             x.Milestone,

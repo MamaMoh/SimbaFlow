@@ -49,7 +49,6 @@ public class FinanceCommissionServiceTests
             PassportNumber = "EP1234567",
             DateOfBirth = new DateOnly(1995, 1, 1),
             Gender = Gender.Male,
-            OfficeId = Guid.NewGuid(),
             Status = CandidateStatus.Active,
             RegisteredAt = DateTime.UtcNow
         };
@@ -59,7 +58,7 @@ public class FinanceCommissionServiceTests
         {
             CandidateId = candidate.Id,
             Status = CommissionStatus.Open,
-            OfficeName = "Riyadh Partner",
+            PartnerName = "Riyadh Partner",
             CountryOfTravel = "Saudi Arabia",
             OpenedAt = DateTime.UtcNow,
             OpenedByUserId = userId

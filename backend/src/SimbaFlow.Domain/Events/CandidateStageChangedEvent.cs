@@ -6,7 +6,6 @@ public record CandidateStageChangedEvent(
     Guid CandidateId,
     string CandidateName,
     Guid TenantId,
-    Guid OfficeId,
     Guid? FromStageId,
     string? FromStageName,
     Guid ToStageId,

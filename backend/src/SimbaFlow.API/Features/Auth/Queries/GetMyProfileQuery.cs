@@ -25,7 +25,6 @@ public record MyProfileDto(
     bool TwoFactorEnabled,
     Guid? DepartmentId,
     string? DepartmentName,
-    Guid? ActiveLocationId,
     IReadOnlyList<string> Permissions,
     IReadOnlyList<string> Roles);
 
@@ -80,6 +79,6 @@ public class GetMyProfileHandler : IRequestHandler<GetMyProfileQuery, Result<MyP
             user.Id, user.UserName!, user.FullName, user.FirstName, user.LastName,
             user.MiddleName, user.Email!, user.PhoneNumber, user.ProfileImageUrl,
             user.IsSuperAdmin, user.TwoFactorEnabled, user.DepartmentId, departmentName,
-            user.ActiveLocationId, permissions, roles));
+            permissions, roles));
     }
 }

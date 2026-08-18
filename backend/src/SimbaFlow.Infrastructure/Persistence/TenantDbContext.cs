@@ -89,7 +89,6 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.HasIndex(c => c.LabourId).IsUnique()
                 .HasFilter("labour_id IS NOT NULL");
             entity.HasIndex(c => c.CurrentStageId);
-            entity.HasIndex(c => c.OfficeId);
             entity.HasIndex(c => new { c.CurrentStageId, c.StageEnteredAt });
             entity.Property(c => c.CurrentStatusValues).HasConversion(jsonDocConverter);
             entity.Property(c => c.VisibleInStages)
@@ -208,7 +207,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.HasIndex(c => c.OpenedAt)
                 .HasFilter("is_deleted = FALSE");
             entity.Property(c => c.CountryOfTravel).HasMaxLength(128);
-            entity.Property(c => c.OfficeName).HasMaxLength(256);
+            entity.Property(c => c.PartnerName).HasMaxLength(256);
             entity.Property(c => c.TotalFeesAmount).HasPrecision(18, 2);
             entity.Property(c => c.TotalPaidAmount).HasPrecision(18, 2);
             entity.Property(c => c.BalanceAmount).HasPrecision(18, 2);

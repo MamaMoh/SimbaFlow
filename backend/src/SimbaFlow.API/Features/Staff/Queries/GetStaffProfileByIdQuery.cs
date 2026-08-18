@@ -30,8 +30,6 @@ public record StaffProfileDetailDto(
     bool? UserIsActive,
     bool? RequireMfa,
     DateTime? LastLoginAt,
-    Guid? PrimaryLocationId,
-    string? PrimaryLocationName,
     List<StaffIdentifierDto> Identifiers,
     List<StaffAffiliationDto> Affiliations,
     DateTime CreatedAt,
@@ -79,7 +77,6 @@ public class GetStaffProfileByIdHandler : IRequestHandler<GetStaffProfileByIdQue
             .AsNoTracking()
             .Include(s => s.Identifiers.Where(i => !i.IsDeleted))
             .Include(s => s.DepartmentAffiliations.Where(a => !a.IsDeleted))
-            .Include(s => s.PrimaryLocation)
             .FirstOrDefaultAsync(s => s.Id == request.Id, ct);
 
         if (profile is null)
@@ -141,8 +138,6 @@ public class GetStaffProfileByIdHandler : IRequestHandler<GetStaffProfileByIdQue
             userIsActive,
             requireMfa,
             lastLoginAt,
-            profile.PrimaryLocationId,
-            profile.PrimaryLocation?.Name,
             profile.Identifiers.Select(i => new StaffIdentifierDto(
                 i.Id,
                 i.IdentifierType.ToString(),

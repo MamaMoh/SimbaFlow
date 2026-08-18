@@ -13,8 +13,7 @@ public record CommissionBoardRowDto(
     string PassportNumber,
     string Status,
     string? CountryOfTravel,
-    string? OfficeName,
-    Guid? OfficeId,
+    string? PartnerName,
     DateTime OpenedAt,
     decimal TotalFeesAmount,
     decimal TotalPaidAmount,
@@ -30,7 +29,6 @@ public record GetCommissionBoardQuery(
     int Page = 1,
     int PageSize = 50,
     string? Status = null,
-    Guid? OfficeId = null,
     string? Country = null,
     string? Search = null) : IRequest<Result<CommissionBoardResult>>, IRequirePermission
 {
@@ -60,9 +58,6 @@ public class GetCommissionBoardHandler
             Enum.TryParse<CommissionStatus>(request.Status, true, out var status))
             query = query.Where(x => x.Commission.Status == status);
 
-        if (request.OfficeId is Guid officeId)
-            query = query.Where(x => x.Candidate.OfficeId == officeId);
-
         if (!string.IsNullOrWhiteSpace(request.Country))
         {
             var country = request.Country.Trim();
@@ -78,7 +73,7 @@ public class GetCommissionBoardHandler
                 x.Candidate.FirstName.ToLower().Contains(s)
                 || x.Candidate.LastName.ToLower().Contains(s)
                 || x.Candidate.PassportNumber.ToLower().Contains(s)
-                || (x.Commission.OfficeName != null && x.Commission.OfficeName.ToLower().Contains(s)));
+                || (x.Commission.PartnerName != null && x.Commission.PartnerName.ToLower().Contains(s)));
         }
 
         var total = await query.CountAsync(ct);
@@ -101,8 +96,7 @@ public class GetCommissionBoardHandler
                 x.Candidate.PassportNumber,
                 Status = x.Commission.Status.ToString(),
                 CountryOfTravel = x.Commission.CountryOfTravel ?? x.Candidate.CountryOfTravel,
-                OfficeName = x.Commission.OfficeName ?? x.Candidate.OfficeName,
-                x.Candidate.OfficeId,
+                PartnerName = x.Commission.PartnerName ?? x.Candidate.PartnerName,
                 x.Commission.OpenedAt,
                 x.Commission.TotalFeesAmount,
                 x.Commission.TotalPaidAmount,
@@ -119,8 +113,7 @@ public class GetCommissionBoardHandler
             x.PassportNumber,
             x.Status,
             x.CountryOfTravel,
-            x.OfficeName,
-            x.OfficeId,
+            x.PartnerName,
             x.OpenedAt,
             x.TotalFeesAmount,
             x.TotalPaidAmount,
@@ -167,7 +160,7 @@ public record CommissionDetailDto(
     string PassportNumber,
     string Status,
     string? CountryOfTravel,
-    string? OfficeName,
+    string? PartnerName,
     DateTime OpenedAt,
     decimal TotalFeesAmount,
     decimal TotalPaidAmount,
@@ -232,7 +225,7 @@ public class GetCommissionByIdHandler
             row.Candidate.PassportNumber,
             row.Commission.Status.ToString(),
             row.Commission.CountryOfTravel ?? row.Candidate.CountryOfTravel,
-            row.Commission.OfficeName ?? row.Candidate.OfficeName,
+            row.Commission.PartnerName ?? row.Candidate.PartnerName,
             row.Commission.OpenedAt,
             row.Commission.TotalFeesAmount,
             row.Commission.TotalPaidAmount,
@@ -243,21 +236,20 @@ public class GetCommissionByIdHandler
     }
 }
 
-public record CommissionOfficeReportRowDto(
-    string OfficeName,
+public record CommissionPartnerReportRowDto(
+    string PartnerName,
     int Count,
     decimal TotalFeesEtb,
     decimal TotalPaidEtb,
     decimal BalanceEtb);
 
 public record CommissionReportResult(
-    List<CommissionOfficeReportRowDto> Rows,
+    List<CommissionPartnerReportRowDto> Rows,
     decimal GrandTotalFeesEtb,
     decimal GrandTotalPaidEtb,
     decimal GrandBalanceEtb);
 
 public record GetCommissionReportQuery(
-    Guid? OfficeId = null,
     DateOnly? From = null,
     DateOnly? To = null) : IRequest<Result<CommissionReportResult>>, IRequirePermission
 {
@@ -280,9 +272,6 @@ public class GetCommissionReportHandler
             where !c.IsDeleted && !cand.IsDeleted
             select new { Commission = c, Candidate = cand };
 
-        if (request.OfficeId is Guid officeId)
-            query = query.Where(x => x.Candidate.OfficeId == officeId);
-
         if (request.From is DateOnly from)
         {
             var fromDt = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
@@ -296,14 +285,14 @@ public class GetCommissionReportHandler
         }
 
         var rows = await query
-            .GroupBy(x => x.Commission.OfficeName ?? x.Candidate.OfficeName ?? "(Unspecified)")
-            .Select(g => new CommissionOfficeReportRowDto(
+            .GroupBy(x => x.Commission.PartnerName ?? x.Candidate.PartnerName ?? "(Unspecified)")
+            .Select(g => new CommissionPartnerReportRowDto(
                 g.Key,
                 g.Count(),
                 g.Sum(x => x.Commission.TotalFeesAmount),
                 g.Sum(x => x.Commission.TotalPaidAmount),
                 g.Sum(x => x.Commission.BalanceAmount)))
-            .OrderBy(r => r.OfficeName)
+            .OrderBy(r => r.PartnerName)
             .ToListAsync(ct);
 
         return Result<CommissionReportResult>.Success(new CommissionReportResult(

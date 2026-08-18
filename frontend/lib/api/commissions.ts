@@ -14,8 +14,7 @@ export type CommissionBoardRow = {
   passportNumber: string;
   status: string;
   countryOfTravel: string | null;
-  officeName: string | null;
-  officeId: string | null;
+  partnerName: string | null;
   openedAt: string;
   totalFeesAmount: number;
   totalPaidAmount: number;
@@ -61,7 +60,7 @@ export type CommissionDetail = {
   passportNumber: string;
   status: string;
   countryOfTravel: string | null;
-  officeName: string | null;
+  partnerName: string | null;
   openedAt: string;
   totalFeesAmount: number;
   totalPaidAmount: number;
@@ -112,7 +111,6 @@ export function useCommissionBoard(params?: {
   page?: number;
   pageSize?: number;
   status?: string;
-  officeId?: string;
   country?: string;
   search?: string;
 }) {
@@ -121,7 +119,6 @@ export function useCommissionBoard(params?: {
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.status) qs.set("status", params.status);
-  if (params?.officeId) qs.set("officeId", params.officeId);
   if (params?.country) qs.set("country", params.country);
   if (params?.search) qs.set("search", params.search);
 

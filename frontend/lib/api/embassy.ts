@@ -14,7 +14,7 @@ export type EmbassyBoardRow = {
   fullName: string;
   passportNumber: string;
   labourId?: string | null;
-  officeName?: string | null;
+  partnerName?: string | null;
   countryOfTravel?: string | null;
   statusValues: Record<string, string>;
   daysInStage: number;
@@ -51,14 +51,13 @@ async function postJson(url: string, body?: unknown): Promise<void> {
 
 function boardKey(
   path: string,
-  params?: { page?: number; pageSize?: number; search?: string; officeId?: string }
+  params?: { page?: number; pageSize?: number; search?: string }
 ) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
-  if (params?.officeId) qs.set("officeId", params.officeId);
   return `/api/proxy/${path}?${qs.toString()}`;
 }
 
@@ -66,7 +65,6 @@ export function useEmbassyBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
-  officeId?: string;
 }) {
   const key = boardKey("embassy/board", params);
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {
@@ -87,7 +85,6 @@ export function useCaseExecutiveBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
-  officeId?: string;
 }) {
   const key = boardKey("embassy/case-executive/board", params);
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {

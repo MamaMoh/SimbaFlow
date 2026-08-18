@@ -215,13 +215,13 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
     {
         var candidateByOffice = await _context.Candidates.AsNoTracking()
             .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active)
-            .GroupBy(c => c.OfficeName ?? "—")
+            .GroupBy(c => c.PartnerName ?? "—")
             .Select(g => new { Office = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
         var commissionByOffice = await _context.Commissions.AsNoTracking()
             .Where(c => !c.IsDeleted)
-            .GroupBy(c => c.OfficeName ?? "—")
+            .GroupBy(c => c.PartnerName ?? "—")
             .Select(g => new { Office = g.Key, Owed = g.Sum(x => x.BalanceAmount) })
             .ToListAsync(ct);
 
@@ -259,7 +259,7 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
             .Select(c => new
             {
                 c.FirstName, c.LastName, c.PassportNumber,
-                c.CurrentStageName, c.OfficeName, c.StageEnteredAt
+                c.CurrentStageName, c.PartnerName, c.StageEnteredAt
             })
             .Take(500)
             .ToListAsync(ct);
@@ -270,7 +270,7 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
             ["passport"] = c.PassportNumber,
             ["stage"] = c.CurrentStageName ?? "—",
             ["days"] = (int)Math.Floor((now - c.StageEnteredAt!.Value).TotalDays),
-            ["office"] = c.OfficeName ?? "—"
+            ["office"] = c.PartnerName ?? "—"
         }).ToList();
 
         return new ReportTable(

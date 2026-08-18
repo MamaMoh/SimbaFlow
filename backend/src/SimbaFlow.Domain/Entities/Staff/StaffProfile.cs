@@ -1,6 +1,5 @@
 using SimbaFlow.Domain.Common;
 using SimbaFlow.Domain.Entities.Identity;
-using SimbaFlow.Domain.Entities.Locations;
 using SimbaFlow.Domain.Enums;
 
 namespace SimbaFlow.Domain.Entities.Staff;
@@ -60,10 +59,6 @@ public class StaffProfile : BaseEntity
 
     public bool IsActive { get; set; } = true;
 
-    // ──── Location Context ────
-    public Guid? PrimaryLocationId { get; set; }
-    public Location? PrimaryLocation { get; set; }
-
     // ──── Legacy (to be migrated to StaffDepartmentAffiliation) ────
     /// <summary>
     /// Deprecated: Use StaffDepartmentAffiliations for proper temporal department tracking.
@@ -80,7 +75,6 @@ public class StaffProfile : BaseEntity
     public string? LicenseNumber { get; set; }
 
     // ──── Navigation Properties ────
-    public ICollection<StaffLocationMapping> LocationMappings { get; set; } = [];
     public ICollection<StaffIdentifier> Identifiers { get; set; } = [];
     public ICollection<StaffDepartmentAffiliation> DepartmentAffiliations { get; set; } = [];
 }

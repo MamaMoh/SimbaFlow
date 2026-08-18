@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Identity;
-using SimbaFlow.Domain.Entities.Locations;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Entities.Tenancy;
 using SimbaFlow.Domain.Entities.Workflow;
@@ -25,12 +24,8 @@ public interface IApplicationDbContext
     DbSet<SystemConfiguration> SystemConfigurations { get; }
     DbSet<ExchangeRate> ExchangeRates { get; }
 
-    // Locations
-    DbSet<Location> Locations { get; }
-
     // Staff
     DbSet<StaffProfile> StaffProfiles { get; }
-    DbSet<StaffLocationMapping> StaffLocationMappings { get; }
     DbSet<StaffIdentifier> StaffIdentifiers { get; }
     DbSet<StaffDepartmentAffiliation> StaffDepartmentAffiliations { get; }
 

@@ -139,12 +139,6 @@ export const navigation: NavItem[] = [
     ],
   },
   {
-    name: "Offices",
-    href: "/offices",
-    icon: require("lucide-react").Building2,
-    claims: ["office.read", "system.admin"],
-  },
-  {
     name: "Partners",
     href: "/partners",
     icon: require("lucide-react").Handshake,

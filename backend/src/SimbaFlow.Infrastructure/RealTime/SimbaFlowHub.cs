@@ -6,7 +6,7 @@ namespace SimbaFlow.Infrastructure.RealTime;
 
 /// <summary>
 /// Central SignalR hub for real-time candidate and notification updates.
-/// Users are grouped by tenant and office for scoped broadcasting.
+/// Users are grouped by tenant for scoped broadcasting.
 /// </summary>
 [Authorize]
 public class SimbaFlowHub : Hub
@@ -21,22 +21,18 @@ public class SimbaFlowHub : Hub
     public override async Task OnConnectedAsync()
     {
         var tenantId = Context.User?.FindFirst("tenant_id")?.Value;
-        var officeId = Context.User?.FindFirst("office_id")?.Value;
         var userId = Context.UserIdentifier;
 
         if (tenantId is not null)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, $"tenant:{tenantId}");
-
-            if (officeId is not null)
-                await Groups.AddToGroupAsync(Context.ConnectionId, $"tenant:{tenantId}:office:{officeId}");
         }
 
         if (userId is not null)
             await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{userId}");
 
-        _logger.LogDebug("Client connected: {ConnectionId}, Tenant: {TenantId}, Office: {OfficeId}",
-            Context.ConnectionId, tenantId, officeId);
+        _logger.LogDebug("Client connected: {ConnectionId}, Tenant: {TenantId}",
+            Context.ConnectionId, tenantId);
 
         await base.OnConnectedAsync();
     }

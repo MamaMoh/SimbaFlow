@@ -19,16 +19,14 @@ public class CandidateSignalRHandlerTests
             broadcaster, push, NullLogger<CandidateStageChangedHandler>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var officeId = Guid.NewGuid();
         var evt = new CandidateStageChangedEvent(
-            Guid.NewGuid(), "Ada Lovelace", tenantId, officeId,
+            Guid.NewGuid(), "Ada Lovelace", tenantId,
             Guid.NewGuid(), "Intake", Guid.NewGuid(), "Embassy", "tester");
 
         await handler.Handle(evt, CancellationToken.None);
 
         await broadcaster.Received(1).BroadcastCandidateUpdateAsync(
             tenantId,
-            officeId,
             Arg.Is<CandidateUpdatedMessage>(m =>
                 m.ChangeType == "StageTransitioned"
                 && m.Field == "currentStage"
@@ -36,7 +34,7 @@ public class CandidateSignalRHandlerTests
                 && m.NewValue == "Embassy"));
 
         await push.Received(1).PushStageChangedAsync(
-            tenantId, officeId, "Ada Lovelace", "Embassy", Arg.Any<CancellationToken>());
+            tenantId, "Ada Lovelace", "Embassy", Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -47,16 +45,14 @@ public class CandidateSignalRHandlerTests
             broadcaster, NullLogger<CandidateStatusChangedHandler>.Instance);
 
         var tenantId = Guid.NewGuid();
-        var officeId = Guid.NewGuid();
         var evt = new CandidateStatusChangedEvent(
-            Guid.NewGuid(), "Ada Lovelace", tenantId, officeId,
+            Guid.NewGuid(), "Ada Lovelace", tenantId,
             "medical", "Pending", "Fit", "tester");
 
         await handler.Handle(evt, CancellationToken.None);
 
         await broadcaster.Received(1).BroadcastCandidateUpdateAsync(
             tenantId,
-            officeId,
             Arg.Is<CandidateUpdatedMessage>(m =>
                 m.ChangeType == "StatusUpdated"
                 && m.Field == "medical"
@@ -73,14 +69,14 @@ public class CandidateSignalRHandlerTests
             broadcaster, push, NullLogger<CandidateStageChangedHandler>.Instance);
 
         var evt = new CandidateStageChangedEvent(
-            Guid.NewGuid(), "X", Guid.Empty, Guid.NewGuid(),
+            Guid.NewGuid(), "X", Guid.Empty,
             null, null, Guid.NewGuid(), "Embassy", "tester");
 
         await handler.Handle(evt, CancellationToken.None);
 
         await broadcaster.DidNotReceiveWithAnyArgs()
-            .BroadcastCandidateUpdateAsync(default, default, default!);
+            .BroadcastCandidateUpdateAsync(default, default!);
         await push.DidNotReceiveWithAnyArgs()
-            .PushStageChangedAsync(default, default, default!, default, default);
+            .PushStageChangedAsync(default, default!, default, default);
     }
 }

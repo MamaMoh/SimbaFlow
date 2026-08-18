@@ -25,7 +25,6 @@ test.describe("Candidates intake", () => {
 
     // Identity fields are on step 2
     await page.getByRole("button", { name: /^next$/i }).click();
-    await expect(page.getByText(/registering office/i)).toBeVisible();
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
   });

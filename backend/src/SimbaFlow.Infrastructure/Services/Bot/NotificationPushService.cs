@@ -14,7 +14,7 @@ namespace SimbaFlow.Infrastructure.Services.Bot;
 
 public interface INotificationPushService
 {
-    Task PushStageChangedAsync(Guid tenantId, Guid? officeId, string candidateName, string? toStageName, CancellationToken ct = default);
+    Task PushStageChangedAsync(Guid tenantId, string candidateName, string? toStageName, CancellationToken ct = default);
 }
 
 public sealed class NotificationPushService : INotificationPushService
@@ -42,7 +42,7 @@ public sealed class NotificationPushService : INotificationPushService
         _logger = logger;
     }
 
-    public async Task PushStageChangedAsync(Guid tenantId, Guid? officeId, string candidateName, string? toStageName, CancellationToken ct = default)
+    public async Task PushStageChangedAsync(Guid tenantId, string candidateName, string? toStageName, CancellationToken ct = default)
     {
         var recipients = await _userManager.Users
             .Where(u => u.TenantId == tenantId && u.BotLinked && u.TelegramChatId != null && !u.IsDeleted)

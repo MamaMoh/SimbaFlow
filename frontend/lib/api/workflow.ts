@@ -22,7 +22,7 @@ export type ViewCandidateDto = {
   currentStageId?: string | null;
   statusValues: Record<string, string>;
   countryOfTravel?: string | null;
-  officeName?: string | null;
+  partnerName?: string | null;
   registeredAt: string;
   isMirror: boolean;
 };
@@ -107,7 +107,7 @@ export function useWorkflowDefinition() {
 
 export function useViewCandidates(
   stageId: string | undefined,
-  params?: { page?: number; pageSize?: number; search?: string; officeId?: string }
+  params?: { page?: number; pageSize?: number; search?: string }
 ) {
   const page = params?.page ?? 1;
   const pageSize = params?.pageSize ?? 50;
@@ -116,7 +116,6 @@ export function useViewCandidates(
     pageSize: String(pageSize),
   });
   if (params?.search) qs.set("search", params.search);
-  if (params?.officeId) qs.set("officeId", params.officeId);
 
   const key = stageId
     ? `/api/proxy/workflow/views/${stageId}/candidates?${qs.toString()}`

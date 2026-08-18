@@ -381,7 +381,7 @@ export default function CandidateDetailPage() {
 
           <ProfileSection title="Travel & contract">
             <Field label="Country of travel" value={candidate.countryOfTravel} />
-            <Field label="Partner agency" value={candidate.officeName} />
+            <Field label="Partner agency" value={candidate.partnerName} />
             <Field label="Contract date" value={candidate.contractDate} />
             <Field
               label="Registered"
