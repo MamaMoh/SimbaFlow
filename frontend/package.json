@@ -87,7 +87,6 @@
     "tesseract.js": "^7.0.0",
     "use-sync-external-store": "latest",
     "vaul": "^1.1.2",
-    "world-countries": "^5.1.0",
     "zod": "3.25.67",
     "zustand": "latest"
   },

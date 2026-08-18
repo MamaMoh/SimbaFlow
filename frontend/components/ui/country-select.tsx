@@ -1,14 +1,17 @@
 "use client";
 
 import * as React from "react";
-import countries from "world-countries";
+import { COUNTRY_DATA } from "@/lib/data/countries";
 import { Combobox } from "@/components/ui/combobox";
 
 /**
- * Searchable country picker backed by the `world-countries` dataset.
+ * Searchable country picker.
  *
  * The caller stores the ISO 3166-1 alpha-2 code; the display name is derived, so a
  * form never has to keep code and name in sync by hand.
+ *
+ * Data comes from a pre-generated 9 KB list rather than the full `world-countries`
+ * package — see lib/data/countries.ts for why.
  */
 
 export interface CountryOption {
@@ -17,10 +20,12 @@ export interface CountryOption {
   flag: string;
 }
 
-/** Alphabetical, built once at module load. */
-export const COUNTRIES: CountryOption[] = countries
-  .map((c) => ({ code: c.cca2, name: c.name.common, flag: c.flag }))
-  .sort((a, b) => a.name.localeCompare(b.name));
+/** Already alphabetical in the generated file. */
+export const COUNTRIES: CountryOption[] = COUNTRY_DATA.map(([code, name, flag]) => ({
+  code,
+  name,
+  flag,
+}));
 
 const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c]));
 

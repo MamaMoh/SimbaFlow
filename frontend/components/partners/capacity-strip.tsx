@@ -1,6 +1,7 @@
 "use client";
 
 import { usePartnerCapacity } from "@/lib/api/partners";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,7 +10,10 @@ import { cn } from "@/lib/utils";
  * need to see it before they run out.
  */
 export function CapacityStrip({ enabled = true }: { enabled?: boolean }) {
-  const { data, error } = usePartnerCapacity(enabled);
+  // Capacity is per-agency. A platform admin has no tenant, so the endpoint would
+  // answer 400 "Tenant context required" — don't ask in the first place.
+  const { isSuperAdmin } = usePermissions();
+  const { data, error } = usePartnerCapacity(enabled && !isSuperAdmin);
   if (error || !data) return null;
 
   const countryLimit = data.maxLicensedCountries;
