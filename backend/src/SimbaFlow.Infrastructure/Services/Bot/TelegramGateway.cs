@@ -12,6 +12,8 @@ public interface ITelegramGateway
     Task<TelegramBotIdentity?> GetMeAsync(CancellationToken ct = default);
     Task<IReadOnlyList<TelegramUpdate>> GetUpdatesAsync(long offset, int timeoutSeconds, CancellationToken ct = default);
     Task<string?> SendMessageAsync(string chatId, string text, CancellationToken ct = default);
+    /// <summary>Sends a message with a Telegram reply_markup payload (e.g. a persistent keyboard).</summary>
+    Task<string?> SendMessageAsync(string chatId, string text, string? replyMarkupJson, CancellationToken ct = default);
     Task<string?> SendDocumentAsync(string chatId, byte[] content, string fileName, string caption, CancellationToken ct = default);
 }
 
@@ -80,13 +82,18 @@ public sealed class TelegramGateway : ITelegramGateway
         return list;
     }
 
-    public async Task<string?> SendMessageAsync(string chatId, string text, CancellationToken ct = default)
+    public Task<string?> SendMessageAsync(string chatId, string text, CancellationToken ct = default)
+        => SendMessageAsync(chatId, text, null, ct);
+
+    public async Task<string?> SendMessageAsync(string chatId, string text, string? replyMarkupJson, CancellationToken ct = default)
     {
         var form = new Dictionary<string, string>
         {
             ["chat_id"] = chatId,
             ["text"] = text
         };
+        if (!string.IsNullOrWhiteSpace(replyMarkupJson))
+            form["reply_markup"] = replyMarkupJson;
         var root = await PostFormAsync("sendMessage", form, ct);
         return ExtractMessageId(root);
     }

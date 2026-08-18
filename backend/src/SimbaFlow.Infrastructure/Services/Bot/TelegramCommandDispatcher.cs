@@ -47,9 +47,11 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
 
         var text = update.Text.Trim();
-        if (text.StartsWith("/link ", StringComparison.OrdinalIgnoreCase))
+        var parsed = BotCommandRules.Parse(text);
+
+        if (parsed.Command == BotCommand.Link)
         {
-            var code = text["/link ".Length..].Trim();
+            var code = parsed.Argument;
             var result = await _botLinkService.ConsumeLinkCodeAsync(update.ChatId, code, ct);
             await _telegram.SendMessageAsync(update.ChatId,
                 result.IsSuccess ? "Telegram linked successfully." : result.Error ?? "Link failed.",
@@ -57,18 +59,13 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
-        if (string.Equals(text, "/start", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(text, "/register", StringComparison.OrdinalIgnoreCase))
+        if (parsed.Command == BotCommand.Start)
         {
             await _telegram.SendMessageAsync(update.ChatId,
-                "Use the web app to generate a link code, then send /link CODE here.\n\n"
-                + "Once linked:\n"
-                + "/status <passport> — candidate stage\n"
-                + "/cv <passport> — download CV\n"
-                + "/stats — pipeline numbers (managers)\n"
-                + "/stats week | month | year — new registrations\n"
-                + "/stats <stage> — one stage, e.g. /stats embassy\n"
-                + "/lang en | am — change language",
+                "Welcome to SimbaFlow.\n\n"
+                + "To get started, open the web app, generate a link code under Settings, "
+                + "then send it here as:\n/link CODE",
+                BotCommandRules.KeyboardJson,
                 ct);
             return;
         }
@@ -84,9 +81,15 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
-        if (text.StartsWith("/lang ", StringComparison.OrdinalIgnoreCase))
+        if (parsed.Command == BotCommand.Language)
         {
-            var requested = text["/lang ".Length..].Trim();
+            var requested = parsed.Argument;
+            if (string.IsNullOrWhiteSpace(requested))
+            {
+                await _telegram.SendMessageAsync(update.ChatId,
+                    "Send /lang en for English or /lang am for Amharic.", ct);
+                return;
+            }
             var resolved = BotNotificationRules.ResolveLanguage(requested, user.PreferredLanguage);
             if (!BotNotificationRules.IsValidLanguage(requested))
             {
@@ -104,15 +107,33 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
+        if (parsed.Command == BotCommand.Help)
+        {
+            await _telegram.SendMessageAsync(update.ChatId,
+                BotCommandRules.HelpText(user.PreferredLanguage == "am"),
+                BotCommandRules.KeyboardJson,
+                ct);
+            return;
+        }
+
         if (!user.TenantId.HasValue)
         {
             await _telegram.SendMessageAsync(update.ChatId, "No tenant is linked to this user.", ct);
             return;
         }
 
-        if (text.StartsWith("/status ", StringComparison.OrdinalIgnoreCase))
+        // A bare passport number or name is treated as a lookup — staff type that by instinct.
+        if (parsed.Command == BotCommand.Status || parsed.Command == BotCommand.Search)
         {
-            var query = text["/status ".Length..].Trim();
+            var query = parsed.Argument;
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                await _telegram.SendMessageAsync(update.ChatId,
+                    user.PreferredLanguage == "am"
+                        ? "የፓስፖርት ቁጥር ወይም ስም ይላኩ።"
+                        : "Send a passport number or a name.", ct);
+                return;
+            }
             await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId.Value, ct);
             var candidate = await tenantDb.Candidates
                 .AsNoTracking()
@@ -132,9 +153,9 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
-        if (text.StartsWith("/cv ", StringComparison.OrdinalIgnoreCase))
+        if (parsed.Command == BotCommand.Cv)
         {
-            var passport = text["/cv ".Length..].Trim();
+            var passport = parsed.Argument;
             await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId.Value, ct);
             var candidate = await tenantDb.Candidates
                 .AsNoTracking()
@@ -151,8 +172,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
-        if (text.Equals("/stats", StringComparison.OrdinalIgnoreCase) ||
-            text.StartsWith("/stats ", StringComparison.OrdinalIgnoreCase))
+        if (parsed.Command == BotCommand.Stats)
         {
             var am = user.PreferredLanguage == "am";
 
@@ -167,8 +187,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 return;
             }
 
-            var argument = text.Length > "/stats".Length ? text["/stats".Length..] : null;
-            var (period, stageQuery) = BotStatsRules.ParseArgument(argument);
+            var (period, stageQuery) = BotStatsRules.ParseArgument(parsed.Argument);
 
             await using var statsDb = await _tenantFactory.CreateAsync(user.TenantId.Value, ct);
             var active = statsDb.Candidates.AsNoTracking()
@@ -292,14 +311,17 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         if (text.StartsWith("/medical", StringComparison.OrdinalIgnoreCase) ||
             text.StartsWith("/arrived", StringComparison.OrdinalIgnoreCase))
         {
-            await _telegram.SendMessageAsync(update.ChatId, "This command is deferred in v1. Please use the web app.", ct);
+            await _telegram.SendMessageAsync(update.ChatId,
+                user.PreferredLanguage == "am"
+                    ? "ይህ ከድር መተግበሪያው ይከናወናል።"
+                    : "Please do this from the web app.",
+                ct);
             return;
         }
 
         await _telegram.SendMessageAsync(update.ChatId,
-            user.PreferredLanguage == "am"
-                ? "ትዕዛዙ አልታወቀም። ያሉት: /status <ፓስፖርት>, /cv <ፓስፖርት>, /stats, /lang en|am"
-                : "Unknown command. Available: /status <passport>, /cv <passport>, /stats, /lang en|am",
+            BotCommandRules.UnknownReply(user.PreferredLanguage == "am"),
+            BotCommandRules.KeyboardJson,
             ct);
         _logger.LogDebug("Unhandled telegram command from {ChatId}: {Text}", update.ChatId, text);
     }
