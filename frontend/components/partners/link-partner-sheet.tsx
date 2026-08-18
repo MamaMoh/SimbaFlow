@@ -28,7 +28,6 @@ type CatalogPartner = {
   name: string;
   country: string;
   countryCode: string;
-  capacityTier: string;
 };
 
 export function LinkPartnerSheet({
@@ -95,7 +94,7 @@ export function LinkPartnerSheet({
         <SheetHeader>
           <SheetTitle>Link partner to my agency</SheetTitle>
           <SheetDescription>
-            Creates a ትስስር agreement. Enforces your MoLS level caps and Art. 40 partner capacity.
+            Signs an agreement with a foreign partner. Your agency level caps how many partners you may hold per country.
           </SheetDescription>
         </SheetHeader>
         <div className="mt-4 flex flex-1 flex-col gap-4">
@@ -108,7 +107,7 @@ export function LinkPartnerSheet({
               <SelectContent position="popper" className="z-[200]">
                 {partners.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.name} · {p.country} ({p.capacityTier})
+                    {p.name} · {p.country}
                   </SelectItem>
                 ))}
               </SelectContent>

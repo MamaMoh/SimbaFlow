@@ -26,16 +26,6 @@ public class AgencyErpServiceTests
         return new PlatformDbContext(options, currentUser);
     }
 
-    [Fact]
-    public void Art40_RejectsWhenAtCapacity_TEST60()
-    {
-        PartnerLinkRules.Art40HasCapacity(0, PartnerCapacityTier.Low).Should().BeTrue();
-        PartnerLinkRules.Art40HasCapacity(1, PartnerCapacityTier.Low).Should().BeTrue();
-        PartnerLinkRules.Art40HasCapacity(2, PartnerCapacityTier.Low).Should().BeFalse();
-        AgencyLevelRules.Art40MaxEthiopianAgencies(PartnerCapacityTier.Low).Should().Be(2);
-        AgencyLevelRules.Art40MaxEthiopianAgencies(PartnerCapacityTier.Medium).Should().Be(4);
-        AgencyLevelRules.Art40MaxEthiopianAgencies(PartnerCapacityTier.High).Should().Be(8);
-    }
 
     [Fact]
     public void LevelPerCountry_RejectsAtCap_TEST61()
@@ -100,7 +90,6 @@ public class AgencyErpServiceTests
             Name = "Al Nour",
             CountryCode = "AE",
             CountryName = "United Arab Emirates",
-            CapacityTier = PartnerCapacityTier.Medium,
             IsActive = true
         });
         db.PartnerLinks.Add(new PartnerLink

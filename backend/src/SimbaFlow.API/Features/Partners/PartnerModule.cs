@@ -44,7 +44,8 @@ public class PartnerModule : ICarterModule
                         Country = p.CountryName,
                         p.CountryCode,
                         p.ContactEmail,
-                        p.CapacityTier,
+                        p.ContactPhone,
+                        p.Address,
                         p.ForeignLicenseId,
                         LinkId = link.Id,
                         link.AgreementStart,
@@ -65,9 +66,9 @@ public class PartnerModule : ICarterModule
                         r.Country,
                         r.CountryCode,
                         r.ContactEmail,
+                        r.ContactPhone,
+                        r.Address,
                         Status = r.LinkStatus.ToString(),
-                        CapacityTier = r.CapacityTier.ToString(),
-                        MaxEthiopianAgencies = AgencyLevelRules.Art40MaxEthiopianAgencies(r.CapacityTier),
                         r.ForeignLicenseId,
                         r.LinkId,
                         AgreementStart = r.AgreementStart.ToString("yyyy-MM-dd"),
@@ -105,9 +106,9 @@ public class PartnerModule : ICarterModule
                     Country = p.CountryName,
                     p.CountryCode,
                     p.ContactEmail,
+                    p.ContactPhone,
+                    p.Address,
                     Status = p.IsActive ? "Active" : "Inactive",
-                    CapacityTier = p.CapacityTier.ToString(),
-                    MaxEthiopianAgencies = AgencyLevelRules.Art40MaxEthiopianAgencies(p.CapacityTier),
                     p.ForeignLicenseId
                 })
                 .ToListAsync();
@@ -138,9 +139,6 @@ public class PartnerModule : ICarterModule
                     p.ContactPhone,
                     p.Address,
                     p.ForeignLicenseId,
-                    CapacityTier = p.CapacityTier.ToString(),
-                    CapacityTierValue = (int)p.CapacityTier,
-                    MaxEthiopianAgencies = AgencyLevelRules.Art40MaxEthiopianAgencies(p.CapacityTier),
                     ActiveLinks = linked,
                     Status = p.IsActive ? "Active" : "Inactive",
                     p.Notes
@@ -165,9 +163,6 @@ public class PartnerModule : ICarterModule
                 CountryCode = body.CountryCode.Trim().ToUpperInvariant(),
                 CountryName = string.IsNullOrWhiteSpace(body.CountryName) ? body.CountryCode.Trim() : body.CountryName.Trim(),
                 ForeignLicenseId = body.ForeignLicenseId?.Trim(),
-                CapacityTier = Enum.IsDefined(typeof(PartnerCapacityTier), body.CapacityTier)
-                    ? (PartnerCapacityTier)body.CapacityTier
-                    : PartnerCapacityTier.Medium,
                 ContactEmail = body.ContactEmail?.Trim(),
                 ContactPhone = body.ContactPhone?.Trim(),
                 Address = body.Address?.Trim(),
@@ -197,8 +192,6 @@ public class PartnerModule : ICarterModule
             if (!string.IsNullOrWhiteSpace(body.CountryCode)) partner.CountryCode = body.CountryCode.Trim().ToUpperInvariant();
             if (!string.IsNullOrWhiteSpace(body.CountryName)) partner.CountryName = body.CountryName.Trim();
             if (body.ForeignLicenseId is not null) partner.ForeignLicenseId = body.ForeignLicenseId.Trim();
-            if (body.CapacityTier is int tier && Enum.IsDefined(typeof(PartnerCapacityTier), tier))
-                partner.CapacityTier = (PartnerCapacityTier)tier;
             if (body.ContactEmail is not null) partner.ContactEmail = body.ContactEmail.Trim();
             if (body.ContactPhone is not null) partner.ContactPhone = body.ContactPhone.Trim();
             if (body.Address is not null) partner.Address = body.Address.Trim();
@@ -240,7 +233,6 @@ public class PartnerModule : ICarterModule
                     LinkStatus = link.Status,
                     link.AgreementStart,
                     link.AgreementEnd,
-                    p.CapacityTier,
                 }).ToListAsync();
 
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -260,7 +252,6 @@ public class PartnerModule : ICarterModule
                         Status = r.LinkStatus.ToString(),
                         AgreementStart = r.AgreementStart.ToString("yyyy-MM-dd"),
                         AgreementEnd = r.AgreementEnd.ToString("yyyy-MM-dd"),
-                        CapacityTier = r.CapacityTier.ToString(),
                         AgreementState = state.ToString(),
                         DaysRemaining = days,
                         AgreementLabel = PartnerAgreementRules.Describe(state, days),
@@ -299,17 +290,6 @@ public class PartnerModule : ICarterModule
                 l.TenantId == tenantId && l.PartnerAgencyId == partner.Id && !l.IsDeleted);
             if (exists)
                 return Results.Json(new { isSuccess = false, error = "This partner is already linked to the agency" }, statusCode: 409);
-
-            // Art. 40 — foreign partner capacity
-            var art40Cap = AgencyLevelRules.Art40MaxEthiopianAgencies(partner.CapacityTier);
-            var art40Used = await context.PartnerLinks.CountAsync(l =>
-                l.PartnerAgencyId == partner.Id && !l.IsDeleted && l.Status == PartnerLinkStatus.Active);
-            if (!PartnerLinkRules.Art40HasCapacity(art40Used, partner.CapacityTier))
-                return Results.Json(new
-                {
-                    isSuccess = false,
-                    error = $"Art. 40: this partner ({partner.CapacityTier}) may link to at most {art40Cap} Ethiopian agencies (currently {art40Used})."
-                }, statusCode: 400);
 
             // Agency level — partners per country + max countries
             var (maxPerCountry, maxCountries) = AgencyLevelRules.GetCaps(tenant.AgencyLevel);
@@ -563,7 +543,6 @@ public record CreatePartnerRequest(
     string Name,
     string CountryCode,
     string? CountryName,
-    int CapacityTier = 1,
     string? ForeignLicenseId = null,
     string? ContactEmail = null,
     string? ContactPhone = null,
@@ -574,7 +553,6 @@ public record UpdatePartnerRequest(
     string? Name,
     string? CountryCode,
     string? CountryName,
-    int? CapacityTier,
     string? ForeignLicenseId,
     string? ContactEmail,
     string? ContactPhone,

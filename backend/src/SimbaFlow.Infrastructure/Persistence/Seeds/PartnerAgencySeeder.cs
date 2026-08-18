@@ -12,18 +12,18 @@ namespace SimbaFlow.Infrastructure.Persistence.Seeds;
 /// </summary>
 public static class PartnerAgencySeeder
 {
-    private static readonly (string Name, string Code, string Country, PartnerCapacityTier Tier, string? License)[] SeedData =
+    private static readonly (string Name, string Code, string Country, string? License)[] SeedData =
     [
-        ("Etenaa Resources Co.", "SA", "Saudi Arabia", PartnerCapacityTier.High, "SA-MOL-48291"),
-        ("Al Nour Manpower LLC", "AE", "United Arab Emirates", PartnerCapacityTier.Medium, "UAE-MOHRE-11902"),
-        ("Kuwait Home Care Agency", "KW", "Kuwait", PartnerCapacityTier.Low, "KW-PAM-3301"),
-        ("Qatar Domestic Services", "QA", "Qatar", PartnerCapacityTier.Medium, "QA-ADLSA-7740"),
-        ("Bahrain Staffing Partners", "BH", "Bahrain", PartnerCapacityTier.Low, "BH-LMRA-5512"),
-        ("Jordan Care Recruitment", "JO", "Jordan", PartnerCapacityTier.Medium, "JO-MOL-2208"),
-        ("Oman Gulf Manpower", "OM", "Oman", PartnerCapacityTier.Low, "OM-MOL-981"),
-        ("Riyadh Premier Domestic", "SA", "Saudi Arabia", PartnerCapacityTier.Medium, "SA-MOL-51002"),
-        ("Dubai Household Services", "AE", "United Arab Emirates", PartnerCapacityTier.High, "UAE-MOHRE-22011"),
-        ("Lebanon Domestic Link", "LB", "Lebanon", PartnerCapacityTier.Low, "LB-MOL-441"),
+        ("Etenaa Resources Co.", "SA", "Saudi Arabia", "SA-MOL-48291"),
+        ("Al Nour Manpower LLC", "AE", "United Arab Emirates", "UAE-MOHRE-11902"),
+        ("Kuwait Home Care Agency", "KW", "Kuwait", "KW-PAM-3301"),
+        ("Qatar Domestic Services", "QA", "Qatar", "QA-ADLSA-7740"),
+        ("Bahrain Staffing Partners", "BH", "Bahrain", "BH-LMRA-5512"),
+        ("Jordan Care Recruitment", "JO", "Jordan", "JO-MOL-2208"),
+        ("Oman Gulf Manpower", "OM", "Oman", "OM-MOL-981"),
+        ("Riyadh Premier Domestic", "SA", "Saudi Arabia", "SA-MOL-51002"),
+        ("Dubai Household Services", "AE", "United Arab Emirates", "UAE-MOHRE-22011"),
+        ("Lebanon Domestic Link", "LB", "Lebanon", "LB-MOL-441"),
     ];
 
     public static async Task SeedPartnerAgenciesAsync(IServiceProvider services)
@@ -43,7 +43,7 @@ public static class PartnerAgencySeeder
             .ToHashSet();
 
         var added = 0;
-        foreach (var (name, code, country, tier, license) in SeedData)
+        foreach (var (name, code, country, license) in SeedData)
         {
             var key = $"{code}|{name}".ToUpperInvariant();
             if (existingKeys.Contains(key)) continue;
@@ -53,7 +53,6 @@ public static class PartnerAgencySeeder
                 Name = name,
                 CountryCode = code,
                 CountryName = country,
-                CapacityTier = tier,
                 ForeignLicenseId = license,
                 IsActive = true,
                 ContactEmail = $"ops@{code.ToLowerInvariant()}.partner.example"

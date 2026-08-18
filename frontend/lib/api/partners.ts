@@ -7,8 +7,8 @@ export type PartnerRow = {
   countryCode: string;
   contactEmail: string | null;
   status: string;
-  capacityTier: string;
-  maxEthiopianAgencies: number;
+  contactPhone?: string | null;
+  address?: string | null;
   foreignLicenseId: string | null;
   linkId?: string;
   agreementStart?: string;

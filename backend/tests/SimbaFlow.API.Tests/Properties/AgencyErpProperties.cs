@@ -6,23 +6,10 @@ using SimbaFlow.Domain.Services;
 namespace SimbaFlow.API.Tests.Properties;
 
 /// <summary>
-/// FsCheck properties for Unit 6 Agency ERP invariants (TEST-60–68).
+/// FsCheck properties for Unit 6 Agency ERP invariants (TEST-61–68).
 /// </summary>
 public class AgencyErpProperties
 {
-    /// <summary>TEST-60: Active Art. 40 links never exceed tier max.</summary>
-    [Property(MaxTest = 80)]
-    public bool Art40NeverExceeded(NonNegativeInt used, PositiveInt tierPick)
-    {
-        var tier = (PartnerCapacityTier)(tierPick.Get % 3); // Low/Medium/High = 0/1/2 typically
-        if (!Enum.IsDefined(typeof(PartnerCapacityTier), tier))
-            tier = PartnerCapacityTier.Medium;
-        var cap = AgencyLevelRules.Art40MaxEthiopianAgencies(tier);
-        var count = used.Get % (cap + 5); // include over-cap cases
-        var ok = PartnerLinkRules.Art40HasCapacity(count, tier);
-        return ok == (count < cap);
-    }
-
     /// <summary>TEST-61: Per-country partner count respects level cap.</summary>
     [Property(MaxTest = 80)]
     public bool LevelPartnersPerCountry(PositiveInt levelPick, NonNegativeInt sameCountry)
@@ -99,16 +86,6 @@ public class AgencyErpProperties
         var start = DateOnly.FromDateTime(startDt.Date);
         var end = start.AddDays(Math.Clamp(dayOffset, -30, 400));
         return PartnerLinkRules.AgreementDatesValid(start, end) == (end >= start);
-    }
-
-    /// <summary>TEST-68: HQ seed condition — only when office count is zero.</summary>
-    [Property(MaxTest = 40)]
-    public bool HqSeedOnlyWhenEmpty(NonNegativeInt officeCount)
-    {
-        var count = officeCount.Get % 5;
-        var shouldSeed = count == 0;
-        // Mirrors HqOfficeSeedService.AnyAsync(tenant offices)
-        return shouldSeed == (count == 0);
     }
 
     private static int ClampLevel(int pick) =>

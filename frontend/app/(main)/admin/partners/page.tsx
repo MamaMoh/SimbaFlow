@@ -62,18 +62,12 @@ export default function AdminPartnersPage() {
         ),
       },
       {
-        accessorKey: "capacityTier",
+        accessorKey: "contactPhone",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Art. 40 tier" />
+          <DataTableColumnHeader column={column} title="Phone" />
         ),
         cell: ({ row }) => (
-          <span className="text-sm">
-            {row.original.capacityTier}
-            <span className="text-muted-foreground">
-              {" "}
-              (≤{row.original.maxEthiopianAgencies} ET agencies)
-            </span>
-          </span>
+          <span className="text-sm">{row.original.contactPhone || "—"}</span>
         ),
       },
       {
@@ -128,7 +122,7 @@ export default function AdminPartnersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Partner catalog"
-        description={<>Shared overseas partner master data (Art. 40). Agencies link from{" "}
+        description={<>Shared catalog of foreign partner agencies. Agencies link from{" "}
 <a href="/partners" className="underline underline-offset-2">
 Partners
 </a>
@@ -148,7 +142,7 @@ Partners
       <PageAlert
         variant="info"
         title="Platform catalog"
-        description="Creating a partner here makes it available for all agencies to link. Do not create tenant-specific duplicates."
+        description="Partners added here are available to every agency. Check before adding a duplicate."
       />
 
       {error ? (

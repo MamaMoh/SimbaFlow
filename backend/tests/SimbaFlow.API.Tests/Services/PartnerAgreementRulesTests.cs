@@ -97,11 +97,4 @@ public class PartnerAgreementRulesTests
         AgencyLevelRules.GetCaps(5).Should().Be((4, (int?)2));
     }
 
-    [Fact]
-    public void Art40Caps_MatchDirective()
-    {
-        AgencyLevelRules.Art40MaxEthiopianAgencies(PartnerCapacityTier.Low).Should().Be(2);
-        AgencyLevelRules.Art40MaxEthiopianAgencies(PartnerCapacityTier.Medium).Should().Be(4);
-        AgencyLevelRules.Art40MaxEthiopianAgencies(PartnerCapacityTier.High).Should().Be(8);
-    }
 }

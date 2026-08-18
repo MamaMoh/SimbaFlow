@@ -44,8 +44,8 @@ export default function BotAdminPage() {
 
       <PageAlert
         variant="info"
-        title="Telegram-first rollout"
-        description="WhatsApp and rule-builder UI are deferred. Token remains server-managed via environment configuration."
+        title="Telegram"
+        description="The bot token is managed on the server."
       />
 
       {error ? <LoadError message={error.message} onRetry={() => mutate()} /> : null}
@@ -96,8 +96,8 @@ export default function BotAdminPage() {
         </div>
         <PageAlert
           variant="info"
-          title="Planned later"
-          description="The API placeholders exist, but send/receive flow and credentials UI are intentionally deferred."
+          title="Not available yet"
+          description="WhatsApp messaging is not enabled."
         />
       </div>
 

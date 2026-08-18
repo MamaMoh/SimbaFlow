@@ -32,7 +32,7 @@ export default function AccountingPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Accounting"
-        description="Chart of accounts and links to commissions / FX. Statements, bank recon, and tax are deferred."
+        description="Chart of accounts, commissions and exchange rates."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild size="sm" variant="outline" className="h-8">
@@ -47,8 +47,8 @@ export default function AccountingPage() {
 
       <PageAlert
         variant="info"
-        title="Unit 5 scope"
-        description="Payment journals post Cash Dr / Revenue Cr. Full ledger UI, bank reconciliation, P&L/BS/TB, and tax ship later."
+        title="Payment journals"
+        description="Each payment posts to cash and revenue."
       />
 
       {error ? (

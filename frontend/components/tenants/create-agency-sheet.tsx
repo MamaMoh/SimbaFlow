@@ -268,8 +268,7 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                 MoLS license &amp; level
               </h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Level (ደረጃ) sets how many foreign partner agencies the tenant may link per country
-                (Directive 1126/2018 Arts. 18–22).
+                Level sets how many foreign partners the agency may hold per country.
               </p>
               <div className="space-y-4">
                 <div className="space-y-1.5">

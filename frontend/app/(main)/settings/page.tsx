@@ -99,8 +99,8 @@ export default function SettingsPage() {
         <>
           <PageAlert
             variant="info"
-            title="Core settings form"
-            description="Password change is available from your profile. Tenant preference persistence requires a settings API (later unit)."
+            title="Account settings"
+            description="Change your password from your profile."
           />
 
           <form
@@ -154,7 +154,7 @@ export default function SettingsPage() {
           <PageAlert
             variant="info"
             title="How linking works"
-            description="Generate a one-time code here, then send it to the Telegram bot using /link CODE."
+            description="Generate a code here, then send it to the bot as /link CODE."
           />
 
           {linkCode ? (

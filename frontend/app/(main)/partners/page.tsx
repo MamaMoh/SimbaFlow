@@ -33,9 +33,8 @@ type PartnerRow = {
   country: string;
   countryCode: string;
   contactEmail: string | null;
+  contactPhone?: string | null;
   status: string;
-  capacityTier: string;
-  maxEthiopianAgencies: number;
   foreignLicenseId: string | null;
   linkId?: string;
   agreementStart?: string;
@@ -126,18 +125,12 @@ export default function PartnersPage() {
         ),
       },
       {
-        accessorKey: "capacityTier",
+        accessorKey: "contactPhone",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Art. 40 tier" />
+          <DataTableColumnHeader column={column} title="Phone" />
         ),
         cell: ({ row }) => (
-          <span className="text-sm">
-            {row.original.capacityTier}
-            <span className="text-muted-foreground">
-              {" "}
-              (≤{row.original.maxEthiopianAgencies} ET)
-            </span>
-          </span>
+          <span className="text-sm">{row.original.contactPhone || "—"}</span>
         ),
       },
       {
@@ -233,8 +226,7 @@ export default function PartnersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Partners"
-        description="Link overseas partners to your agency (ትስስር). Platform catalog management is under
-Partner catalog."
+        description="Foreign agencies your agency has agreements with."
         actions={
           <div className="flex flex-wrap gap-2">
             {canCreateCatalog ? (

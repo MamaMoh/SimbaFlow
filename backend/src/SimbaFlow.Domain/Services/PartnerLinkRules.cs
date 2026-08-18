@@ -8,8 +8,6 @@ namespace SimbaFlow.Domain.Services;
 /// </summary>
 public static class PartnerLinkRules
 {
-    public static bool Art40HasCapacity(int activeLinkCount, PartnerCapacityTier tier) =>
-        activeLinkCount < AgencyLevelRules.Art40MaxEthiopianAgencies(tier);
 
     public static bool LevelHasPerCountryCapacity(int activeSameCountryCount, int agencyLevel)
     {

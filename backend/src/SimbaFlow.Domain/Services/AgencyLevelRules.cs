@@ -22,14 +22,6 @@ public static class AgencyLevelRules
             _ => (0, 0)
         };
 
-    public static int Art40MaxEthiopianAgencies(PartnerCapacityTier tier) =>
-        tier switch
-        {
-            PartnerCapacityTier.Low => 2,
-            PartnerCapacityTier.Medium => 4,
-            PartnerCapacityTier.High => 8,
-            _ => 0
-        };
 
     public static string Describe(int agencyLevel)
     {

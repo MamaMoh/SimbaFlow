@@ -1,11 +1,11 @@
 using SimbaFlow.Domain.Common;
-using SimbaFlow.Domain.Enums;
 
 namespace SimbaFlow.Domain.Entities.Partners;
 
 /// <summary>
 /// Platform catalog of foreign (receiving-country) partner agencies.
-/// Shared across tenants; Art. 40 capacity is enforced on PartnerLink create.
+/// Shared across tenants. Foreign partners have no cap on how many Ethiopian agencies they
+/// work with; the only regulatory cap is on the Ethiopian side, by agency level.
 /// </summary>
 public class PartnerAgency : BaseEntity
 {
@@ -17,8 +17,6 @@ public class PartnerAgency : BaseEntity
     public string CountryName { get; set; } = string.Empty;
 
     public string? ForeignLicenseId { get; set; }
-
-    public PartnerCapacityTier CapacityTier { get; set; } = PartnerCapacityTier.Medium;
 
     public string? ContactEmail { get; set; }
 
