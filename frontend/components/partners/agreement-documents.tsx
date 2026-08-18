@@ -120,6 +120,7 @@ export function AgreementDocuments({
               <input
                 ref={fileRef}
                 type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.docx"
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
@@ -135,6 +136,7 @@ export function AgreementDocuments({
                 <Upload className="mr-2 h-4 w-4" />
                 {busy ? "Uploading…" : "Upload contract"}
               </Button>
+              <p className="mt-1 text-xs text-muted-foreground">PDF, DOCX, JPG or PNG</p>
             </div>
           </div>
         </div>

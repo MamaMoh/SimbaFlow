@@ -594,9 +594,21 @@ public class PartnerModule : ICarterModule
             if (file is null || file.Length == 0)
                 return Results.Json(new { isSuccess = false, error = "File is required" }, statusCode: 400);
 
-            await using var stream = file.OpenReadStream();
-            var storedPath = await storage.UploadAsync(
-                tenantId.ToString(), linkId, file.FileName, file.ContentType, stream);
+            string storedPath;
+            await using (var stream = file.OpenReadStream())
+            {
+                try
+                {
+                    storedPath = await storage.UploadAsync(
+                        tenantId.ToString(), linkId, file.FileName, file.ContentType, stream);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // Rejected file type / size. That is the caller's mistake, not a server fault —
+                    // returning 500 here told the user nothing about what to do differently.
+                    return Results.Json(new { isSuccess = false, error = ex.Message }, statusCode: 400);
+                }
+            }
 
             var doc = new PartnerAgreementDocument
             {
