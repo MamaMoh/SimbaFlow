@@ -17,6 +17,7 @@ export type ArrivalBoardRow = {
   countryOfTravel?: string | null;
   statusValues: Record<string, string>;
   daysInStage: number;
+  daysSinceRegistered: number;
   commissionLinked: boolean;
   hasOpenException: boolean;
   registeredAt: string;

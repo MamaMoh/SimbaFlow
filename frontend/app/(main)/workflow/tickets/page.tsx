@@ -1,5 +1,7 @@
 "use client";
 
+import { PendingCell } from "@/components/data-table/pending-cell";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -54,7 +56,12 @@ export default function TicketBoardPage() {
       {
         id: "flightDate",
         header: "Flight date",
-        cell: ({ row }) => row.original.statusValues?.flight_date || "—",
+        cell: ({ row }) => (
+          <PendingCell
+            value={row.original.statusValues?.flight_date}
+            pendingLabel="Not booked"
+          />
+        ),
       },
       {
         id: "ticket",
@@ -127,7 +134,8 @@ export default function TicketBoardPage() {
               Loading…
             </div>
           ) : (
-            <DataTable table={table} paginated emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS." />
+            <DataTable
+        exportFileName="tickets" table={table} paginated emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS." />
           )}
         </div>
       )}

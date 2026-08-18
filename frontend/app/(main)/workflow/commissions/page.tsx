@@ -159,6 +159,7 @@ export default function CommissionsPage() {
       {!error ? (
         <div className="rounded-lg border bg-card p-4 shadow-sm">
           <DataTable
+        exportFileName="commissions"
             table={table}
             paginated
             emptyMessage="No commissions yet — open one from the Arrivals board (Add to Commission)."

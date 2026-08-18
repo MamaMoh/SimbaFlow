@@ -281,6 +281,7 @@ export default function PartnersPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+        exportFileName="partners"
           table={table}
           emptyMessage="No partners linked yet — link a foreign agency from the catalog so staff can select it when registering candidates."
           enableGlobalFilter

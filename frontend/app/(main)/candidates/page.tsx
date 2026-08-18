@@ -324,6 +324,7 @@ export default function CandidatesPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+        exportFileName="candidates"
           table={table}
           emptyMessage="No candidates yet — register a candidate to start the pipeline."
           enableGlobalFilter={true}

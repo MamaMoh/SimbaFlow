@@ -18,6 +18,7 @@ export type LmisBoardRow = {
   insurance?: string | null;
   milestone?: string | null;
   daysInStage: number;
+  daysSinceRegistered: number;
   isMirror: boolean;
   source: string;
   registeredAt: string;

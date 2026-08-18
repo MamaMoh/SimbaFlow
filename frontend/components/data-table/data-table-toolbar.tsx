@@ -28,7 +28,10 @@ import {
   User,
   Stethoscope,
   CheckCircle2,
+  Download,
 } from "lucide-react";
+import { toast } from "sonner";
+import { exportTableToCsv } from "@/components/data-table/export-csv";
 import { useDebounce } from "@/hooks/use-debounce";
 import {
   Tooltip,
@@ -78,6 +81,8 @@ interface DataTableToolbarProps<TData> {
   newRowLink?: string;
   deleteRowsAction?: React.MouseEventHandler<HTMLButtonElement>;
   toolbarEndActions?: React.ReactNode;
+  /** When set, shows an Export button that downloads the current view as CSV. */
+  exportFileName?: string;
   onToggleFullscreen?: () => void;
   isFullscreen?: boolean;
   onPrint?: (allData: any[], selectedRows: any[]) => void;
@@ -103,6 +108,7 @@ export function DataTableToolbar<TData>({
   newRowLink,
   deleteRowsAction,
   toolbarEndActions,
+  exportFileName,
   onToggleFullscreen,
   isFullscreen,
   onPrint,
@@ -567,6 +573,21 @@ export function DataTableToolbar<TData>({
             </AppTooltip>
           )}
 
+          {exportFileName ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                const n = exportTableToCsv(table, exportFileName);
+                toast.success(`Exported ${n} row${n === 1 ? "" : "s"}`);
+              }}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          ) : null}
           {toolbarEndActions}
 
           {/* Fullscreen */}

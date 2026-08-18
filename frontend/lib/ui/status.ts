@@ -111,6 +111,23 @@ export function remainingDays(days?: number | null): { tone: StatusTone; label: 
   return { tone: "info", label: `${days}d` };
 }
 
+/**
+ * Case age → tone.
+ *
+ * The number alone doesn't help a supervisor scanning 200 rows; the colour is the signal. Two
+ * weeks is treated as healthy, a month as slipping, beyond that as needing intervention. These
+ * thresholds are deliberately in one place so every board agrees on what "late" means.
+ */
+export const AGE_WARNING_DAYS = 14;
+export const AGE_CRITICAL_DAYS = 30;
+
+export function ageTone(days?: number | null): StatusTone {
+  if (days == null) return "neutral";
+  if (days >= AGE_CRITICAL_DAYS) return "danger";
+  if (days >= AGE_WARNING_DAYS) return "warning";
+  return "success";
+}
+
 /** Human labels for the workflow tracks stored in candidate status values. */
 export const TRACK_LABELS: Record<string, string> = {
   medical: "Medical",

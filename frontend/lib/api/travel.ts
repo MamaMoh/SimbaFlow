@@ -18,6 +18,7 @@ export type TravelBoardRow = {
   countryOfTravel?: string | null;
   statusValues: Record<string, string>;
   daysInStage: number;
+  daysSinceRegistered: number;
   remainingDays?: number | null;
   isCanceled: boolean;
   registeredAt: string;

@@ -18,6 +18,7 @@ export type EmbassyBoardRow = {
   countryOfTravel?: string | null;
   statusValues: Record<string, string>;
   daysInStage: number;
+  daysSinceRegistered: number;
   isMirror: boolean;
   registeredAt: string;
 };

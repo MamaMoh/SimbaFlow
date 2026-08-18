@@ -15,6 +15,7 @@ public record EmbassyBoardRowDto(
     string? CountryOfTravel,
     Dictionary<string, string> StatusValues,
     int DaysInStage,
+    int DaysSinceRegistered,
     bool IsMirror,
     DateTime RegisteredAt);
 
@@ -104,6 +105,7 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
                 c.CountryOfTravel,
                 status,
                 EmbassyLmisHelpers.DaysInStage(c),
+                EmbassyLmisHelpers.DaysSinceRegistered(c),
                 isMirror,
                 c.RegisteredAt);
         }).ToList();

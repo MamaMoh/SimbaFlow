@@ -15,6 +15,7 @@ public record TravelBoardRowDto(
     string? CountryOfTravel,
     Dictionary<string, string> StatusValues,
     int DaysInStage,
+    int DaysSinceRegistered,
     int? RemainingDays,
     bool IsCanceled,
     DateTime RegisteredAt);
@@ -108,6 +109,7 @@ public class GetTicketBoardHandler : IRequestHandler<GetTicketBoardQuery, Result
             TravelArrivalHelpers.TrackValue(x.Status, "destination") ?? x.Candidate.CountryOfTravel,
             x.Status,
             TravelArrivalHelpers.DaysInStage(x.Candidate),
+            TravelArrivalHelpers.DaysSinceRegistered(x.Candidate),
             x.Remaining,
             x.Canceled,
             x.Candidate.RegisteredAt)).ToList();

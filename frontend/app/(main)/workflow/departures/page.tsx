@@ -158,7 +158,8 @@ export default function DepartureBoardPage() {
               Loading…
             </div>
           ) : (
-            <DataTable table={table} paginated emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets." />
+            <DataTable
+        exportFileName="departures" table={table} paginated emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets." />
           )}
         </div>
       )}

@@ -150,7 +150,8 @@ export default function ExceptionsListPage() {
               Loading…
             </div>
           ) : (
-            <DataTable table={table} paginated emptyMessage="No exception cases — Returned/Runaway cases will appear here." />
+            <DataTable
+        exportFileName="exceptions" table={table} paginated emptyMessage="No exception cases — Returned/Runaway cases will appear here." />
           )}
         </div>
       )}

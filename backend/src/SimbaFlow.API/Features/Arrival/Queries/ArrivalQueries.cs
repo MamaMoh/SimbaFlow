@@ -16,6 +16,7 @@ public record ArrivalBoardRowDto(
     string? CountryOfTravel,
     Dictionary<string, string> StatusValues,
     int DaysInStage,
+    int DaysSinceRegistered,
     bool CommissionLinked,
     bool HasOpenException,
     DateTime RegisteredAt);
@@ -97,6 +98,7 @@ public class GetArrivalBoardHandler : IRequestHandler<GetArrivalBoardQuery, Resu
                 TravelArrivalHelpers.TrackValue(status, "destination") ?? c.CountryOfTravel,
                 status,
                 TravelArrivalHelpers.DaysInStage(c),
+                TravelArrivalHelpers.DaysSinceRegistered(c),
                 linked,
                 openSet.Contains(c.Id),
                 c.RegisteredAt);

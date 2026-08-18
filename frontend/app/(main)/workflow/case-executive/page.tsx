@@ -8,6 +8,7 @@ import {
   getPaginationRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
+import { AgeCell } from "@/components/data-table/age-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Input } from "@/components/ui/input";
@@ -67,8 +68,15 @@ export default function CaseExecutiveBoardPage() {
       },
       {
         accessorKey: "daysInStage",
-        header: "Days waiting",
-        cell: ({ getValue }) => getValue() as number,
+        header: "Waiting",
+        cell: ({ getValue }) => <AgeCell days={getValue() as number} />,
+      },
+      {
+        accessorKey: "daysSinceRegistered",
+        header: "Case age",
+        cell: ({ getValue }) => (
+          <AgeCell days={getValue() as number} title="Days since the candidate was registered" />
+        ),
       },
       {
         id: "actions",
@@ -136,6 +144,7 @@ export default function CaseExecutiveBoardPage() {
           </div>
         ) : (
           <DataTable
+        exportFileName="case-executive"
             table={table}
             enableGlobalFilter={false}
             paginated

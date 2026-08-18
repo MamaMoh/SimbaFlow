@@ -8,6 +8,8 @@ import {
   getPaginationRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
+import { AgeCell } from "@/components/data-table/age-cell";
+import { PendingCell } from "@/components/data-table/pending-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -76,8 +78,25 @@ export default function EmbassyBoardPage() {
       },
       {
         accessorKey: "daysInStage",
-        header: "Days",
-        cell: ({ getValue }) => getValue() as number,
+        header: "In stage",
+        cell: ({ getValue }) => <AgeCell days={getValue() as number} />,
+      },
+      {
+        accessorKey: "daysSinceRegistered",
+        header: "Case age",
+        cell: ({ getValue }) => (
+          <AgeCell days={getValue() as number} title="Days since the candidate was registered" />
+        ),
+      },
+      {
+        id: "tasheerAppointment",
+        header: "Tasheer appt.",
+        cell: ({ row }) => (
+          <PendingCell
+            value={row.original.statusValues?.tasheer_appointment_date}
+            pendingLabel="No appointment"
+          />
+        ),
       },
       {
         id: "badges",
@@ -167,6 +186,7 @@ export default function EmbassyBoardPage() {
           </div>
         ) : (
           <DataTable
+        exportFileName="embassy"
             table={table}
             enableGlobalFilter={false}
             paginated

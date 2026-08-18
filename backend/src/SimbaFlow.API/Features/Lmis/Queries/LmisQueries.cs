@@ -17,6 +17,7 @@ public record LmisBoardRowDto(
     string? Insurance,
     string? Milestone,
     int DaysInStage,
+    int DaysSinceRegistered,
     bool IsMirror,
     string Source,
     DateTime RegisteredAt);
@@ -115,6 +116,7 @@ public class GetLmisBoardHandler : IRequestHandler<GetLmisBoardQuery, Result<Lmi
             x.Insurance,
             x.Milestone,
             EmbassyLmisHelpers.DaysInStage(x.Candidate),
+            EmbassyLmisHelpers.DaysSinceRegistered(x.Candidate),
             x.IsMirror,
             x.IsMirror ? "Mirror" : "Primary",
             x.Candidate.RegisteredAt)).ToList();

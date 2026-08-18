@@ -30,6 +30,8 @@ export interface DataTableProps<TData, TValue> {
   viewHidden?: boolean;
   paginationProps?: PaginationProps;
   toolbarEndActions?: React.ReactNode;
+  /** Filename stem for the toolbar's CSV export; omit to hide the button. */
+  exportFileName?: string;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onPrint?: (allData: any[], selectedRows: any[]) => void;
@@ -55,6 +57,7 @@ export function DataTable<TData, TValue>(
     viewHidden = false,
     paginationProps = {},
     toolbarEndActions,
+  exportFileName,
     isFullscreen,
     onToggleFullscreen,
     onPrint,
@@ -72,6 +75,7 @@ export function DataTable<TData, TValue>(
     >
       {!viewHidden && (
         <DataTableToolbar
+          exportFileName={exportFileName}
           table={table}
           filterableColumns={filterableColumns}
           searchableColumns={searchableColumns}

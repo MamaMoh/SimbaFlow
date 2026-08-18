@@ -8,6 +8,7 @@ import {
   getPaginationRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
+import { AgeCell } from "@/components/data-table/age-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +62,15 @@ export default function ArrivalBoardPage() {
       },
       {
         accessorKey: "daysInStage",
-        header: "Days",
+        header: "In stage",
+        cell: ({ getValue }) => <AgeCell days={getValue() as number} />,
+      },
+      {
+        accessorKey: "daysSinceRegistered",
+        header: "Case age",
+        cell: ({ getValue }) => (
+          <AgeCell days={getValue() as number} title="Days since the candidate was registered" />
+        ),
       },
       {
         id: "flags",
@@ -136,7 +145,8 @@ export default function ArrivalBoardPage() {
               Loading…
             </div>
           ) : (
-            <DataTable table={table} paginated emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures." />
+            <DataTable
+        exportFileName="arrivals" table={table} paginated emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures." />
           )}
         </div>
       )}

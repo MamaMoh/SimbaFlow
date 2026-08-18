@@ -65,6 +65,10 @@ internal static class TravelArrivalHelpers
         return Math.Max(0, (int)(DateTime.UtcNow.Date - from.Date).TotalDays);
     }
 
+    /// <summary>Days since the candidate entered the pipeline (whole-file age).</summary>
+    public static int DaysSinceRegistered(Candidate candidate) =>
+        Math.Max(0, (int)(DateTime.UtcNow.Date - candidate.RegisteredAt.Date).TotalDays);
+
     public static int? RemainingDays(Dictionary<string, string> status)
     {
         var raw = TrackValue(status, "flight_date");

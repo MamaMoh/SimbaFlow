@@ -48,4 +48,12 @@ internal static class EmbassyLmisHelpers
         var from = candidate.StageEnteredAt ?? candidate.RegisteredAt;
         return Math.Max(0, (int)(DateTime.UtcNow.Date - from.Date).TotalDays);
     }
+
+    /// <summary>
+    /// Days since the candidate entered the pipeline — the whole-file age, not the age in the
+    /// current stage. A candidate shuffled between stages looks fresh by DaysInStage while having
+    /// been open for months, which is exactly the case supervisors need to see.
+    /// </summary>
+    public static int DaysSinceRegistered(Candidate candidate) =>
+        Math.Max(0, (int)(DateTime.UtcNow.Date - candidate.RegisteredAt.Date).TotalDays);
 }
