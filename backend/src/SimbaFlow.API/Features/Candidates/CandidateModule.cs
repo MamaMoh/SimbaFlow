@@ -2,6 +2,8 @@ using Carter;
 using MediatR;
 using SimbaFlow.API.Features.Candidates.Commands;
 using SimbaFlow.API.Features.Candidates.Queries;
+using Microsoft.EntityFrameworkCore;
+using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 
 namespace SimbaFlow.API.Features.Candidates;
@@ -58,6 +60,32 @@ public class CandidateModule : ICarterModule
         });
 
         // Upload document (documentType from query or form field)
+        // Listing was never mapped even though GetCandidateDocumentsHandler existed, so the
+        // Documents tab answered 405 and stayed empty however many files were uploaded.
+        group.MapGet("/{candidateId:guid}/documents", async (Guid candidateId, ISender sender) =>
+        {
+            var result = await sender.Send(new GetCandidateDocumentsQuery(candidateId));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapGet("/{candidateId:guid}/documents/{documentId:guid}", async (
+            Guid candidateId,
+            Guid documentId,
+            ITenantDbContext context,
+            IFileStorageService storage) =>
+        {
+            var doc = await context.CandidateDocuments.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Id == documentId && d.CandidateId == candidateId && !d.IsDeleted);
+            if (doc is null)
+                return Results.Json(Result.Failure("Document not found", 404), statusCode: 404);
+
+            var stream = await storage.DownloadAsync(doc.FilePath);
+            if (stream is null)
+                return Results.Json(Result.Failure("File is missing from storage", 404), statusCode: 404);
+
+            return Results.File(stream, doc.ContentType, doc.OriginalFileName);
+        });
+
         group.MapPost("/{candidateId:guid}/documents", async (
             Guid candidateId, HttpRequest httpRequest, ISender sender) =>
         {
