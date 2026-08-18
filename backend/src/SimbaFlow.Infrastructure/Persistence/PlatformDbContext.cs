@@ -54,6 +54,7 @@ public class PlatformDbContext
     // Partner catalog (platform)
     public DbSet<PartnerAgency> PartnerAgencies => Set<PartnerAgency>();
     public DbSet<PartnerLink> PartnerLinks => Set<PartnerLink>();
+    public DbSet<PartnerAgreementDocument> PartnerAgreementDocuments => Set<PartnerAgreementDocument>();
 
     // Audit
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -177,6 +178,22 @@ public class PlatformDbContext
                 .WithMany()
                 .HasForeignKey(l => l.PartnerAgencyId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<PartnerAgreementDocument>(entity =>
+        {
+            entity.ToTable("PartnerAgreementDocuments");
+            // Reads are always (link + tenant), never link alone — the tenant column is the boundary.
+            entity.HasIndex(d => new { d.PartnerLinkId, d.TenantId });
+            entity.Property(d => d.FileName).HasMaxLength(256);
+            entity.Property(d => d.OriginalFileName).HasMaxLength(256);
+            entity.Property(d => d.ContentType).HasMaxLength(128);
+            entity.Property(d => d.FilePath).HasMaxLength(1024);
+            entity.Property(d => d.Title).HasMaxLength(256);
+            entity.HasOne(d => d.PartnerLink)
+                .WithMany()
+                .HasForeignKey(d => d.PartnerLinkId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

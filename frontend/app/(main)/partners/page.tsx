@@ -56,7 +56,8 @@ export default function PartnersPage() {
     hasPermission("partner.update") ||
     hasPermission("system.admin");
   /** Catalog create lives on /admin/partners — SuperAdmin only here as shortcut */
-  const canCreateCatalog = isSuperAdmin;
+  // Agencies register their own foreign partners; partner.create is what the API checks.
+  const canCreateCatalog = hasPermission("partner.create") || isSuperAdmin;
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");

@@ -6,10 +6,12 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { botApi, useBotDeliveries, useBotStatus } from "@/lib/api/bot";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { BotLinkCard } from "@/components/bot/bot-link-card";
 
 export default function BotAdminPage() {
   const { hasPermission } = usePermissions();
   const canManage = hasPermission("bot.configure") || hasPermission("system.admin");
+  const canUseBot = hasPermission("bot.use") || canManage;
   const canViewDeliveries =
     hasPermission("notification.configure") || hasPermission("system.admin");
 
@@ -88,6 +90,8 @@ export default function BotAdminPage() {
           <PageAlert variant="error" title="Last error" description={status.lastError} />
         ) : null}
       </div>
+
+      {canUseBot ? <BotLinkCard /> : null}
 
       <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
         <div>

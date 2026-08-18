@@ -9,6 +9,7 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { botApi, useBotStatus } from "@/lib/api/bot";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { BotLinkCard } from "@/components/bot/bot-link-card";
 
 export default function SettingsPage() {
   const { hasPermission } = usePermissions();
@@ -127,58 +128,7 @@ export default function SettingsPage() {
         </>
       ) : null}
 
-      {canUseBot ? (
-        <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold">Telegram bot</h2>
-            <p className="text-sm text-muted-foreground">
-              Link your Telegram chat to receive personal updates and candidate notifications.
-            </p>
-          </div>
-
-          {botStatusError ? (
-            <LoadError message={botStatusError.message} onRetry={() => mutateBotStatus()} />
-          ) : null}
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Configured</div>
-              <div className="mt-1 text-sm font-medium">{botStatus?.configured ? "Yes" : "No"}</div>
-            </div>
-            <div className="rounded-md border p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">Bot username</div>
-              <div className="mt-1 text-sm font-medium">{botStatus?.botUsername || "—"}</div>
-            </div>
-          </div>
-
-          <PageAlert
-            variant="info"
-            title="How linking works"
-            description="Generate a code here, then send it to the bot as /link CODE."
-          />
-
-          {linkCode ? (
-            <div className="rounded-md border border-dashed p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">One-time code</div>
-              <div className="mt-1 text-2xl font-semibold tracking-widest">{linkCode}</div>
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <Button
-              type="button"
-              onClick={onGenerateLinkCode}
-              disabled={linking}
-              className="bg-green-800 hover:bg-green-900"
-            >
-              {linking ? "Working…" : "Generate link code"}
-            </Button>
-            <Button type="button" variant="outline" onClick={onUnlink} disabled={linking}>
-              Unlink bot
-            </Button>
-          </div>
-        </div>
-      ) : null}
+      {canUseBot ? <BotLinkCard /> : null}
     </div>
   );
 }

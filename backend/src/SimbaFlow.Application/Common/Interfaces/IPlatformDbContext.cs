@@ -27,6 +27,7 @@ public interface IPlatformDbContext
     DbSet<ExchangeRate> ExchangeRates { get; }
     DbSet<PartnerAgency> PartnerAgencies { get; }
     DbSet<PartnerLink> PartnerLinks { get; }
+    DbSet<PartnerAgreementDocument> PartnerAgreementDocuments { get; }
     DbSet<StaffProfile> StaffProfiles { get; }
     DbSet<StaffIdentifier> StaffIdentifiers { get; }
     DbSet<StaffDepartmentAffiliation> StaffDepartmentAffiliations { get; }

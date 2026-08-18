@@ -536,6 +536,133 @@ public class PartnerModule : ICarterModule
                 }
             });
         });
+
+        // ──── Agreement documents (signed contracts with the foreign partner) ────
+        // Every query filters on TenantId as well as the link id. The link id is a public-schema
+        // key, so on its own it is not a tenant boundary.
+
+        group.MapGet("/links/{linkId:guid}/documents", async (
+            Guid linkId,
+            IPlatformDbContext context,
+            ICurrentUserService user) =>
+        {
+            if (!user.HasPermission("partner.read"))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+            if (user.TenantId is not Guid tenantId)
+                return Results.Json(new { isSuccess = false, error = "Tenant context required" }, statusCode: 400);
+
+            var docs = await context.PartnerAgreementDocuments.AsNoTracking()
+                .Where(d => d.PartnerLinkId == linkId && d.TenantId == tenantId && !d.IsDeleted)
+                .OrderByDescending(d => d.UploadedAt)
+                .Select(d => new
+                {
+                    d.Id,
+                    d.Title,
+                    d.OriginalFileName,
+                    d.ContentType,
+                    d.FileSizeBytes,
+                    d.UploadedAt,
+                    d.UploadedBy
+                })
+                .ToListAsync();
+
+            return Results.Ok(new { isSuccess = true, data = docs });
+        });
+
+        group.MapPost("/links/{linkId:guid}/documents", async (
+            Guid linkId,
+            HttpRequest httpRequest,
+            IPlatformDbContext context,
+            IFileStorageService storage,
+            ICurrentUserService user) =>
+        {
+            if (!user.HasPermission("partner.update") && !user.HasPermission("partner.create"))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+            if (user.TenantId is not Guid tenantId)
+                return Results.Json(new { isSuccess = false, error = "Tenant context required" }, statusCode: 400);
+
+            var link = await context.PartnerLinks.AsNoTracking()
+                .FirstOrDefaultAsync(l => l.Id == linkId && l.TenantId == tenantId && !l.IsDeleted);
+            if (link is null)
+                return Results.Json(new { isSuccess = false, error = "Agreement not found" }, statusCode: 404);
+
+            if (!httpRequest.HasFormContentType)
+                return Results.Json(new { isSuccess = false, error = "Expected multipart form data" }, statusCode: 400);
+
+            var form = await httpRequest.ReadFormAsync();
+            var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+            if (file is null || file.Length == 0)
+                return Results.Json(new { isSuccess = false, error = "File is required" }, statusCode: 400);
+
+            await using var stream = file.OpenReadStream();
+            var storedPath = await storage.UploadAsync(
+                tenantId.ToString(), linkId, file.FileName, file.ContentType, stream);
+
+            var doc = new PartnerAgreementDocument
+            {
+                PartnerLinkId = linkId,
+                TenantId = tenantId,
+                Title = form["title"].FirstOrDefault(),
+                FileName = Path.GetFileName(storedPath),
+                OriginalFileName = file.FileName,
+                ContentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
+                FilePath = storedPath,
+                FileSizeBytes = file.Length,
+                UploadedBy = user.UserName
+            };
+            context.PartnerAgreementDocuments.Add(doc);
+            await context.SaveChangesAsync();
+
+            return Results.Created($"/api/partners/links/{linkId}/documents/{doc.Id}",
+                new { isSuccess = true, data = doc.Id });
+        }).DisableAntiforgery();
+
+        group.MapGet("/links/{linkId:guid}/documents/{documentId:guid}", async (
+            Guid linkId,
+            Guid documentId,
+            IPlatformDbContext context,
+            IFileStorageService storage,
+            ICurrentUserService user) =>
+        {
+            if (!user.HasPermission("partner.read"))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+            if (user.TenantId is not Guid tenantId)
+                return Results.Json(new { isSuccess = false, error = "Tenant context required" }, statusCode: 400);
+
+            var doc = await context.PartnerAgreementDocuments.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.Id == documentId && d.PartnerLinkId == linkId
+                                          && d.TenantId == tenantId && !d.IsDeleted);
+            if (doc is null)
+                return Results.Json(new { isSuccess = false, error = "Document not found" }, statusCode: 404);
+
+            var stream = await storage.DownloadAsync(doc.FilePath);
+            if (stream is null)
+                return Results.Json(new { isSuccess = false, error = "File is missing from storage" }, statusCode: 404);
+
+            return Results.File(stream, doc.ContentType, doc.OriginalFileName);
+        });
+
+        group.MapDelete("/links/{linkId:guid}/documents/{documentId:guid}", async (
+            Guid linkId,
+            Guid documentId,
+            IPlatformDbContext context,
+            ICurrentUserService user) =>
+        {
+            if (!user.HasPermission("partner.update"))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+            if (user.TenantId is not Guid tenantId)
+                return Results.Json(new { isSuccess = false, error = "Tenant context required" }, statusCode: 400);
+
+            var doc = await context.PartnerAgreementDocuments
+                .FirstOrDefaultAsync(d => d.Id == documentId && d.PartnerLinkId == linkId
+                                          && d.TenantId == tenantId && !d.IsDeleted);
+            if (doc is null)
+                return Results.Json(new { isSuccess = false, error = "Document not found" }, statusCode: 404);
+
+            doc.IsDeleted = true;
+            await context.SaveChangesAsync();
+            return Results.Ok(new { isSuccess = true });
+        });
     }
 }
 

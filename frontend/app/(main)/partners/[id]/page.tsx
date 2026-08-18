@@ -15,6 +15,8 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { indexColumn } from "@/components/data-table/index-column";
 import { NameCell } from "@/components/data-table/name-cell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import useSWR from "swr";
+import { AgreementDocuments } from "@/components/partners/agreement-documents";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
@@ -38,6 +40,18 @@ export default function PartnerDetailPage() {
   const canRead = hasPermission("partner.read") || hasPermission("system.admin");
   const canSeeBilling =
     hasPermission("commission.read") || hasPermission("system.admin");
+
+  const canEditDocs = hasPermission("partner.update") || hasPermission("partner.create");
+
+  // Documents hang off the agreement, not the partner, so resolve this agency's link id.
+  const { data: linkedResp } = useSWR(
+    !permsLoading && canRead ? "/api/proxy/partners?linkedOnly=true" : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false }
+  );
+  const linkId: string | undefined = (linkedResp?.data || []).find(
+    (p: { id: string; linkId?: string }) => p.id === id
+  )?.linkId;
 
   const candidates = usePartnerCandidates(id, !permsLoading && canRead);
   const billing = usePartnerBilling(id, !permsLoading && canSeeBilling);
@@ -216,12 +230,19 @@ export default function PartnerDetailPage() {
           <TabsTrigger value="candidates" className="px-4">
             Candidates
           </TabsTrigger>
+          <TabsTrigger value="documents" className="px-4">
+            Contract documents
+          </TabsTrigger>
           {canSeeBilling && (
             <TabsTrigger value="billing" className="px-4">
               Billing
             </TabsTrigger>
           )}
         </TabsList>
+
+        <TabsContent value="documents" className="mt-4">
+          <AgreementDocuments linkId={linkId} canEdit={canEditDocs} />
+        </TabsContent>
 
         <TabsContent value="candidates" className="mt-4">
           {candidates.error ? (
