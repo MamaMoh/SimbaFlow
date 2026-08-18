@@ -296,7 +296,18 @@ export default function CandidatesPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    initialState: { pagination: { pageSize: 10 } },
+    initialState: {
+      pagination: { pageSize: 10 },
+      // These are filled in later stages, so on a fresh list every row shows "—" and the real
+      // columns get pushed off the right edge. Available from the View menu when wanted.
+      columnVisibility: {
+        occupation: false,
+        sponsorName: false,
+        visaNumber: false,
+        agentName: false,
+        labourId: false,
+      },
+    },
   });
 
   if (permsLoading) {

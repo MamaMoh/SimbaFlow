@@ -115,8 +115,8 @@ export function DocumentUploader({
 
       <Button
         type="button"
-        variant="secondary"
         size="sm"
+        className="bg-green-800 text-white hover:bg-green-900"
         disabled={uploading}
         onClick={() => {
           const input = document.querySelector<HTMLInputElement>(

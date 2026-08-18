@@ -222,8 +222,8 @@ function parseMeasure(value?: string | null): string {
 }
 
 const registerCandidateSchema = z.object({
-  firstName: z.string().min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  firstName: z.string().min(1, "First name is required").min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(1, "Last name is required").min(2, "Last name must be at least 2 characters"),
   middleName: opt,
   localFullName: opt,
   passportNumber: z
@@ -2003,7 +2003,7 @@ export function CandidateApplicationForm({
             )}
           </div>
 
-          <div className="sticky bottom-0 z-30 mt-2 rounded-xl border border-slate-200/90 bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/90">
+          <div className="sticky bottom-0 z-30 mt-6 rounded-xl border border-slate-200/90 bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/90">
             <div className="flex items-center justify-between gap-3">
               <Button type="button" variant="outline" onClick={goBack}>
                 Cancel

@@ -57,7 +57,7 @@ export default function RootLayout({
               </Suspense>
             </ApiErrorBoundary>
             <NavigationLoading />
-            <Toaster />
+            <Toaster position="top-right" richColors closeButton />
             <LogoutOverlay />
           </ThemeProvider>
         </AuthProvider>
