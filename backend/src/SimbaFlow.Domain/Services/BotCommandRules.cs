@@ -74,6 +74,20 @@ public static class BotCommandRules
         return new BotCommandParse(command, arg);
     }
 
+    /// <summary>
+    /// True when the message is just a 6-digit link code. Staff paste the code on its own far more
+    /// often than they type "/link 123456", and without this it falls through to candidate search
+    /// and answers "this chat is not linked yet" — for every code they generate, forever.
+    /// </summary>
+    public static bool LooksLikeLinkCode(string? raw)
+    {
+        var text = (raw ?? string.Empty).Trim();
+        if (text.Length != 6) return false;
+        foreach (var c in text)
+            if (!char.IsAsciiDigit(c)) return false;
+        return true;
+    }
+
     public static string HelpText(bool amharic) => amharic
         ? "የሚከተሉትን መጠቀም ይችላሉ:\n\n"
           + "• የፓስፖርት ቁጥር ወይም ስም ብቻ ይላኩ — እጩውን እናገኛለን\n"

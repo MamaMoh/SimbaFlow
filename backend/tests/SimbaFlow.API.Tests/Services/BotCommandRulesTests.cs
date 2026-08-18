@@ -85,6 +85,22 @@ public class BotCommandRulesTests
         json.RootElement.GetProperty("keyboard").GetArrayLength().Should().Be(2);
     }
 
+    [Theory]
+    [InlineData("123456", true)]
+    [InlineData(" 987654 ", true)]
+    [InlineData("12345", false)]     // too short
+    [InlineData("1234567", false)]   // too long
+    [InlineData("12345a", false)]    // not all digits
+    [InlineData("EP123456", false)]  // a passport, not a code
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void RecognisesABareLinkCode(string? input, bool expected)
+    {
+        // Staff paste the code on its own; if this returns false the message falls through to
+        // candidate search and the bot answers "this chat is not linked yet" forever.
+        BotCommandRules.LooksLikeLinkCode(input).Should().Be(expected);
+    }
+
     [Fact]
     public void HelpTextIsLocalisedAndMentionsBareSearch()
     {

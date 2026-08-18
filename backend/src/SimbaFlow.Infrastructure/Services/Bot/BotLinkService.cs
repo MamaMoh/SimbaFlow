@@ -33,12 +33,22 @@ public sealed class BotLinkService : IBotLinkService
         if (user is null)
             return Result<LinkCodeDto>.Failure("User not found", 404);
 
+        // Generating a new code must retire the old ones, otherwise every code this user ever
+        // generated stays valid for its full 10 minutes and "generate a new code" quietly widens
+        // the window instead of replacing it.
+        var now = DateTime.UtcNow;
+        var superseded = await _platform.BotRegistrationChallenges
+            .Where(x => x.UserId == userId && x.ConsumedAt == null && x.ExpiresAt > now && !x.IsDeleted)
+            .ToListAsync(ct);
+        foreach (var old in superseded)
+            old.ExpiresAt = now;
+
         var code = Random.Shared.Next(100000, 999999).ToString();
         var challenge = new BotRegistrationChallenge
         {
             UserId = userId,
             Code = code,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+            ExpiresAt = now.AddMinutes(10)
         };
 
         _platform.BotRegistrationChallenges.Add(challenge);
@@ -59,7 +69,7 @@ public sealed class BotLinkService : IBotLinkService
                 !x.IsDeleted, ct);
 
         if (challenge is null)
-            return Result.Failure("Link code is invalid or expired", 400);
+            return Result.Failure("That code is not valid any more. Generate a new one in the web app under Settings, then send it here.", 400);
 
         var user = await _platform.ApplicationUsers
             .FirstOrDefaultAsync(x => x.Id == challenge.UserId && !x.IsDeleted, ct);

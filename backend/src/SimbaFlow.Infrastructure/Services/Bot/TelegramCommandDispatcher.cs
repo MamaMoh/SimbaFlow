@@ -49,12 +49,23 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         var text = update.Text.Trim();
         var parsed = BotCommandRules.Parse(text);
 
-        if (parsed.Command == BotCommand.Link)
+        // "/link 123456" and a bare "123456" both mean the same thing to the person typing it.
+        if (parsed.Command == BotCommand.Link || BotCommandRules.LooksLikeLinkCode(text))
         {
-            var code = parsed.Argument;
+            var code = parsed.Command == BotCommand.Link ? parsed.Argument : text;
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                await _telegram.SendMessageAsync(update.ChatId,
+                    "Send the 6-digit code from the web app, e.g. /link 123456", ct);
+                return;
+            }
+
             var result = await _botLinkService.ConsumeLinkCodeAsync(update.ChatId, code, ct);
             await _telegram.SendMessageAsync(update.ChatId,
-                result.IsSuccess ? "Telegram linked successfully." : result.Error ?? "Link failed.",
+                result.IsSuccess
+                    ? "Linked. You can now send a passport number or a name to look someone up."
+                    : result.Error ?? "Link failed.",
+                result.IsSuccess ? BotCommandRules.KeyboardJson : null,
                 ct);
             return;
         }
