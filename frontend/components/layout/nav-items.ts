@@ -163,6 +163,12 @@ export const navigation: NavItem[] = [
     claims: ["bot.configure", "system.admin"],
   },
   {
+    name: "Errors",
+    href: "/admin/errors",
+    icon: require("lucide-react").AlertOctagon,
+    claims: ["system.admin"],
+  },
+  {
     name: "Tenants",
     href: "/tenants",
     icon: require("lucide-react").Server,

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Common;
+using SimbaFlow.Domain.Entities.Audit;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Partners;
 using SimbaFlow.Domain.Entities.Staff;
@@ -54,6 +55,7 @@ public class PlatformDbContext
     // Partner catalog (platform)
     public DbSet<PartnerAgency> PartnerAgencies => Set<PartnerAgency>();
     public DbSet<PartnerLink> PartnerLinks => Set<PartnerLink>();
+    public DbSet<ErrorEvent> ErrorEvents => Set<ErrorEvent>();
     public DbSet<PartnerAgreementDocument> PartnerAgreementDocuments => Set<PartnerAgreementDocument>();
 
     // Audit

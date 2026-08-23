@@ -75,18 +75,10 @@ public static class BotCommandRules
     }
 
     /// <summary>
-    /// True when the message is just a 6-digit link code. Staff paste the code on its own far more
-    /// often than they type "/link 123456", and without this it falls through to candidate search
-    /// and answers "this chat is not linked yet" — for every code they generate, forever.
+    /// True when a message is just a link code, so a bare paste links the chat instead of falling
+    /// through to candidate search and answering "this chat is not linked yet" forever.
     /// </summary>
-    public static bool LooksLikeLinkCode(string? raw)
-    {
-        var text = (raw ?? string.Empty).Trim();
-        if (text.Length != 6) return false;
-        foreach (var c in text)
-            if (!char.IsAsciiDigit(c)) return false;
-        return true;
-    }
+    public static bool LooksLikeLinkCode(string? raw) => BotLinkCodeRules.LooksLikeLinkCode(raw);
 
     public static string HelpText(bool amharic) => amharic
         ? "የሚከተሉትን መጠቀም ይችላሉ:\n\n"

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SimbaFlow.Domain.Entities.Audit;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Partners;
 using SimbaFlow.Domain.Entities.Staff;
@@ -27,6 +28,7 @@ public interface IPlatformDbContext
     DbSet<ExchangeRate> ExchangeRates { get; }
     DbSet<PartnerAgency> PartnerAgencies { get; }
     DbSet<PartnerLink> PartnerLinks { get; }
+    DbSet<ErrorEvent> ErrorEvents { get; }
     DbSet<PartnerAgreementDocument> PartnerAgreementDocuments { get; }
     DbSet<StaffProfile> StaffProfiles { get; }
     DbSet<StaffIdentifier> StaffIdentifiers { get; }

@@ -1,6 +1,7 @@
 using System.Net;
 using FluentValidation;
 using SimbaFlow.Application.Common.Exceptions;
+using SimbaFlow.Application.Common.Interfaces;
 
 namespace SimbaFlow.API.Middleware;
 
@@ -57,6 +58,20 @@ public class GlobalExceptionHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unhandled exception occurred");
+
+            // Persist it so a 500 is discoverable without someone tailing container logs.
+            // Resolved per-request because the tracker touches the database.
+            try
+            {
+                var tracker = context.RequestServices.GetService<IErrorTracker>();
+                if (tracker is not null)
+                    await tracker.CaptureAsync(ex, context.Request.Path, context.Request.Method, 500);
+            }
+            catch
+            {
+                // Recording must never replace the response the caller is owed.
+            }
+
             context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new { IsSuccess = false, Error = "An internal server error occurred" });

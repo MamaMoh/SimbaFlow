@@ -73,8 +73,8 @@ export function BotLinkCard() {
         title="Three steps"
         description={
           botName
-            ? `Generate a code, open @${botName} on Telegram, and send the 6 digits.`
-            : "Generate a code, open the SimbaFlow bot on Telegram, and send the 6 digits."
+            ? `Generate a code, open @${botName} on Telegram, and send it as a message.`
+            : "Generate a code, open the SimbaFlow bot on Telegram, and send it as a message."
         }
       />
 

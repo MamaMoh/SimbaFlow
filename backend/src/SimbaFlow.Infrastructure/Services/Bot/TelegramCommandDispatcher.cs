@@ -56,7 +56,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             if (string.IsNullOrWhiteSpace(code))
             {
                 await _telegram.SendMessageAsync(update.ChatId,
-                    "Send the 6-digit code from the web app, e.g. /link 123456", ct);
+                    "Send the code from the web app, e.g. /link ABCD2345", ct);
                 return;
             }
 

@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Infrastructure.Options;
+using SimbaFlow.Infrastructure.Services.Diagnostics;
 using SimbaFlow.Infrastructure.Services.Email;
 using SimbaFlow.Infrastructure.Audit;
 using SimbaFlow.Infrastructure.BackgroundJobs;
@@ -152,6 +153,7 @@ public static class DependencyInjection
         services.AddScoped<IJournalPostingService, JournalPostingService>();
         services.Configure<EmailOptions>(configuration.GetSection("Email:ET"));
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<IErrorTracker, ErrorTracker>();
         services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.Configure<MfaOptions>(configuration.GetSection("Mfa"));
         // Telegram puts the bot token in the URL path (api.telegram.org/bot<TOKEN>/method), and the

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SimbaFlow.Application.Common.Interfaces;
@@ -58,7 +59,7 @@ public class BotNotificationServiceTests
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        var link = new BotLinkService(db, NullLogger<BotLinkService>.Instance);
+        var link = new BotLinkService(db, new MemoryCache(new MemoryCacheOptions()), NullLogger<BotLinkService>.Instance);
 
         var created = await link.CreateLinkCodeAsync(user.Id);
         created.IsSuccess.Should().BeTrue();
@@ -163,7 +164,7 @@ public class BotNotificationServiceTests
         db.Users.Add(user);
         await db.SaveChangesAsync();
 
-        var link = new BotLinkService(db, NullLogger<BotLinkService>.Instance);
+        var link = new BotLinkService(db, new MemoryCache(new MemoryCacheOptions()), NullLogger<BotLinkService>.Instance);
         var result = await link.UnlinkCurrentUserAsync(user.Id);
         result.IsSuccess.Should().BeTrue();
         user.BotLinked.Should().BeFalse();

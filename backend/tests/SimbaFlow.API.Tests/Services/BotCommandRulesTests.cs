@@ -86,12 +86,15 @@ public class BotCommandRulesTests
     }
 
     [Theory]
-    [InlineData("123456", true)]
-    [InlineData(" 987654 ", true)]
-    [InlineData("12345", false)]     // too short
-    [InlineData("1234567", false)]   // too long
-    [InlineData("12345a", false)]    // not all digits
-    [InlineData("EP123456", false)]  // a passport, not a code
+    [InlineData("ABCD2345", true)]
+    [InlineData(" abcd2345 ", true)]   // typed lower-case on a phone
+    [InlineData("ABCD-2345", true)]    // pasted with a separator
+    [InlineData("123456", false)]      // the old six-digit format is no longer a code
+    [InlineData("ABCD234", false)]     // too short
+    [InlineData("ABCD23456", false)]   // too long
+    [InlineData("ABCD2340", false)]    // 0 is not in the alphabet
+    [InlineData("ABCDI345", false)]    // I is not in the alphabet
+    [InlineData("EP1234567", false)]   // a passport must never be read as a link attempt
     [InlineData("", false)]
     [InlineData(null, false)]
     public void RecognisesABareLinkCode(string? input, bool expected)
