@@ -57,6 +57,15 @@ public static class ServiceExtensions
                 opt.QueueLimit = 0;
             });
 
+            // Password reset accepts an arbitrary email from an anonymous caller. Keep it tight:
+            // enough for a person who mistypes their address, far too slow to enumerate accounts.
+            options.AddFixedWindowLimiter("auth", opt =>
+            {
+                opt.PermitLimit = 5;
+                opt.Window = TimeSpan.FromMinutes(15);
+                opt.QueueLimit = 0;
+            });
+
             options.AddFixedWindowLimiter("refresh", opt =>
             {
                 opt.PermitLimit = 30;

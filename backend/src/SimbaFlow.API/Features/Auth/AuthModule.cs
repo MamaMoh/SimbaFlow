@@ -36,6 +36,20 @@ public class AuthModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         }).RequireAuthorization();
 
+        // Anonymous by necessity — the caller has no session. Both are rate-limited: this is the
+        // one pair of endpoints that accepts an arbitrary email and does work with it.
+        group.MapPost("/forgot-password", async (ForgotPasswordCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        }).AllowAnonymous().RequireRateLimiting("auth");
+
+        group.MapPost("/reset-password", async (ResetPasswordCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        }).AllowAnonymous().RequireRateLimiting("auth");
+
         group.MapPost("/change-password", async (ChangePasswordCommand command, ISender sender) =>
         {
             var result = await sender.Send(command);
