@@ -21,6 +21,8 @@ public record EmbassyBoardRowDto(
 
 public record EmbassyBoardResult(
     List<EmbassyBoardRowDto> Items,
+    /// <summary>The stage this board represents — the UI filters actions to it.</summary>
+    Guid StageId,
     int TotalCount,
     int Page,
     int PageSize,
@@ -112,7 +114,7 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Result<EmbassyBoardResult>.Success(
-            new EmbassyBoardResult(items, total, page, pageSize, totalPages));
+            new EmbassyBoardResult(items, stageId, total, page, pageSize, totalPages));
     }
 }
 

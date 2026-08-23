@@ -29,7 +29,7 @@ export default function EmbassyBoardPage() {
   const canView = hasPermission("embassy.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
 
-  const { candidates, totalCount, isLoading, error, mutate } = useEmbassyBoard({
+  const { candidates, totalCount, isLoading, error, mutate, stageId } = useEmbassyBoard({
     search: search || undefined,
     pageSize: 50,
   });
@@ -129,7 +129,7 @@ export default function EmbassyBoardPage() {
         id: "actions",
         header: () => <div className="text-center">Actions</div>,
         cell: ({ row }) => (
-          <EmbassyRowActions candidate={row.original} onMutate={() => mutate()} />
+          <EmbassyRowActions candidate={row.original} onMutate={() => mutate()} stageId={stageId} />
         ),
       },
     ],

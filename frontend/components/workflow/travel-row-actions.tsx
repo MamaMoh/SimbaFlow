@@ -13,6 +13,7 @@ import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { travelApi, type TravelBoardRow } from "@/lib/api/travel";
 import { useAvailableActions } from "@/lib/api/workflow";
+import { citiesFor, todayIso } from "@/lib/data/destination-cities";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
 import { Eye, MoreHorizontal } from "lucide-react";
@@ -24,12 +25,15 @@ type Props = {
   candidate: TravelBoardRow;
   onMutate: () => void;
   board: "ticket" | "departure";
+  /** Stage this board represents; scopes the workflow buttons to it. */
+  stageId?: string;
 };
 
-export function TravelRowActions({ candidate, onMutate, board }: Props) {
+export function TravelRowActions({ candidate, onMutate, board, stageId }: Props) {
+  const cities = citiesFor(candidate.countryOfTravel);
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("travel.update") || hasPermission("system.admin");
-  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id);
+  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
   const [mode, setMode] = useState<Mode>(null);
 
   const s = candidate.statusValues ?? {};
@@ -92,8 +96,20 @@ export function TravelRowActions({ candidate, onMutate, board }: Props) {
           title="Book ticket"
           description={candidate.fullName}
           fields={[
-            { name: "destination", label: "Destination", type: "text", required: true },
-            { name: "flightDate", label: "Flight date", type: "date", required: true },
+            // Free text produced "RIYADH"/"Riyadh"/"riyad" for the same place, so offer the cities
+            // of the candidate's destination country. Unmapped countries keep a text box rather
+            // than blocking the booking.
+            cities.length > 0
+              ? {
+                  name: "destination",
+                  label: `Destination city (${candidate.countryOfTravel})`,
+                  type: "select" as const,
+                  required: true,
+                  options: cities.map((c) => ({ value: c, label: c })),
+                }
+              : { name: "destination", label: "Destination", type: "text" as const, required: true },
+            // A flight cannot be booked into the past.
+            { name: "flightDate", label: "Flight date", type: "date" as const, required: true, min: todayIso() },
             { name: "ticketRef", label: "Ticket ref", type: "text" },
           ]}
           submitLabel="Save booking"

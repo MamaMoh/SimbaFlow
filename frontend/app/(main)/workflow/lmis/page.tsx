@@ -39,7 +39,7 @@ export default function LmisBoardPage() {
   const [milestone, setMilestone] = useState<string>("all");
   const [mirrorOnly, setMirrorOnly] = useState<string>("all");
 
-  const { candidates, totalCount, isLoading, error, mutate } = useLmisBoard({
+  const { candidates, totalCount, isLoading, error, mutate, stageId } = useLmisBoard({
     search: search || undefined,
     insurance: insurance === "all" ? undefined : insurance,
     milestone: milestone === "all" ? undefined : milestone,
@@ -109,7 +109,7 @@ export default function LmisBoardPage() {
         id: "actions",
         header: () => <div className="text-center">Actions</div>,
         cell: ({ row }) => (
-          <LmisRowActions candidate={row.original} onMutate={() => mutate()} />
+          <LmisRowActions candidate={row.original} onMutate={() => mutate()} stageId={stageId} />
         ),
       },
     ],

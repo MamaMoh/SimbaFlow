@@ -9,12 +9,13 @@ namespace SimbaFlow.API.Features.Workflow.Queries;
 
 public record AvailableActionDto(
     Guid TransitionRuleId,
+    Guid SourceStageId,
     string ButtonLabel,
     string? ButtonIcon,
     bool IsEnabled,
     string? DisabledReason);
 
-public record GetAvailableActionsQuery(Guid CandidateId)
+public record GetAvailableActionsQuery(Guid CandidateId, Guid? SourceStageId = null)
     : IRequest<Result<List<AvailableActionDto>>>, IRequirePermission
 {
     public string RequiredPermission => "workflow.view";
@@ -39,8 +40,15 @@ public class GetAvailableActionsHandler : IRequestHandler<GetAvailableActionsQue
             _currentUser.Roles.ToArray(),
             cancellationToken);
 
+        // A candidate is visible on several boards at once through mirror stages, and the engine
+        // returns the transitions of every one of them. Unfiltered, the LMIS board offered
+        // "To LMIS" and the Departure/Arrival boards offered "To Ticket" — each board must only
+        // offer the steps that leave its own stage.
+        if (request.SourceStageId is Guid stageId)
+            actions = actions.Where(a => a.SourceStageId == stageId).ToList();
+
         var dtos = actions.Select(a => new AvailableActionDto(
-            a.TransitionRuleId, a.ButtonLabel, a.ButtonIcon, a.IsEnabled, a.DisabledReason)).ToList();
+            a.TransitionRuleId, a.SourceStageId, a.ButtonLabel, a.ButtonIcon, a.IsEnabled, a.DisabledReason)).ToList();
 
         return Result<List<AvailableActionDto>>.Success(dtos);
     }

@@ -23,6 +23,8 @@ public record ArrivalBoardRowDto(
 
 public record ArrivalBoardResult(
     List<ArrivalBoardRowDto> Items,
+    /// <summary>The stage this board represents — the UI filters actions to it.</summary>
+    Guid StageId,
     int TotalCount,
     int Page,
     int PageSize,
@@ -106,6 +108,6 @@ public class GetArrivalBoardHandler : IRequestHandler<GetArrivalBoardQuery, Resu
 
         var totalPages = (int)Math.Ceiling(total / (double)request.PageSize);
         return Result<ArrivalBoardResult>.Success(
-            new ArrivalBoardResult(items, total, request.Page, request.PageSize, totalPages));
+            new ArrivalBoardResult(items, stage.Id, total, request.Page, request.PageSize, totalPages));
     }
 }

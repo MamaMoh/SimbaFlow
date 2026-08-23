@@ -34,16 +34,18 @@ type Props = {
   onMutate: () => void;
   /** case-executive board: only submit */
   variant?: "embassy" | "case-executive";
+  /** Stage this board represents; scopes the workflow buttons to it. */
+  stageId?: string;
 };
 
-export function EmbassyRowActions({ candidate, onMutate, variant = "embassy" }: Props) {
+export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "embassy" }: Props) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("embassy.update") || hasPermission("system.admin");
   const canCaseSubmit =
     hasPermission("embassy.case_submit") || hasPermission("system.admin");
   const canOutcome =
     hasPermission("embassy.visa_outcome") || hasPermission("system.admin");
-  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id);
+  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const [mode, setMode] = useState<Mode>(null);
   const medical = candidate.statusValues?.medical ?? "";

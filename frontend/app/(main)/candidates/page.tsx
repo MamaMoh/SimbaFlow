@@ -80,7 +80,9 @@ export default function CandidatesPage() {
   const canRead =
     hasPermission("candidate.read") || hasPermission("system.admin");
   const canWrite =
-    hasPermission("candidate.write") || hasPermission("system.admin");
+    hasPermission("candidate.create") ||
+    hasPermission("candidate.update") ||
+    hasPermission("system.admin");
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");

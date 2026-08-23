@@ -24,6 +24,8 @@ export type EmbassyBoardRow = {
 };
 
 type PaginatedBoard = {
+  /** Stage this board represents; scopes workflow buttons to it. */
+  stageId: string;
   items: EmbassyBoardRow[];
   totalCount: number;
   page: number;
@@ -74,6 +76,7 @@ export function useEmbassyBoard(params?: {
   useBoardRealtime(mutate);
 
   return {
+    stageId: data?.data?.stageId,
     candidates: data?.data?.items ?? [],
     totalCount: data?.data?.totalCount ?? 0,
     isLoading,

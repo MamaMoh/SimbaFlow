@@ -24,6 +24,8 @@ export type ArrivalBoardRow = {
 };
 
 type PaginatedBoard = {
+  /** Stage this board represents; scopes workflow buttons to it. */
+  stageId: string;
   items: ArrivalBoardRow[];
   totalCount: number;
   page: number;
@@ -68,6 +70,7 @@ export function useArrivalBoard(params?: {
   useTravelBoardRealtime(mutate);
 
   return {
+    stageId: data?.data?.stageId,
     candidates: data?.data?.items ?? [],
     totalCount: data?.data?.totalCount ?? 0,
     isLoading,

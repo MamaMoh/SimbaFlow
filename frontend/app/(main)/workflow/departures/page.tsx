@@ -30,7 +30,7 @@ export default function DepartureBoardPage() {
   const [search, setSearch] = useState("");
   const [includeCanceled, setIncludeCanceled] = useState(false);
 
-  const { candidates, totalCount, isLoading, error, mutate } = useDepartureBoard({
+  const { candidates, totalCount, isLoading, error, mutate, stageId } = useDepartureBoard({
     search: search || undefined,
     pageSize: 50,
     includeCanceled,
@@ -92,6 +92,7 @@ export default function DepartureBoardPage() {
         header: () => <div className="text-center">Actions</div>,
         cell: ({ row }) => (
           <TravelRowActions
+            stageId={stageId}
             candidate={row.original}
             onMutate={() => mutate()}
             board="departure"

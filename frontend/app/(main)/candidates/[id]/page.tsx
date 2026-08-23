@@ -203,7 +203,7 @@ export default function CandidateDetailPage() {
 
           {/* One primary action + a ⋯ menu for the rest — same pattern as table rows. */}
           <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-            {hasPermission("candidate.write") || hasPermission("system.admin") ? (
+            {hasPermission("candidate.update") || hasPermission("system.admin") ? (
               <Button asChild size="sm">
                 <Link href={`/candidates/${id}/edit`}>
                   <Pencil className="mr-1.5 h-4 w-4" />

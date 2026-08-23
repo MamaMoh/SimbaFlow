@@ -129,6 +129,8 @@ public record StatusChange(
 
 public record AvailableAction(
     Guid TransitionRuleId,
+    /// <summary>Stage this transition leaves from — a board must only offer its own stage's steps.</summary>
+    Guid SourceStageId,
     string ButtonLabel,
     string? ButtonIcon,
     bool IsEnabled,

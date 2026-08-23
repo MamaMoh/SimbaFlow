@@ -134,8 +134,16 @@ export function useViewCandidates(
   };
 }
 
-export function useAvailableActions(candidateId: string | undefined) {
-  const key = candidateId ? `/api/proxy/workflow/${candidateId}/actions` : null;
+/**
+ * Available workflow steps for a candidate.
+ *
+ * Pass `stageId` when calling from a board: a candidate is visible on several boards at once via
+ * mirror stages, and without it every board offers every other board's buttons.
+ */
+export function useAvailableActions(candidateId: string | undefined, stageId?: string) {
+  const key = candidateId
+    ? `/api/proxy/workflow/${candidateId}/actions${stageId ? `?stageId=${stageId}` : ""}`
+    : null;
   const { data, error, isLoading, mutate } = useSWR<ApiResult<AvailableAction[]>>(key, fetcher, {
     revalidateOnFocus: false,
   });

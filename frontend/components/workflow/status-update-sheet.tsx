@@ -24,7 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 export type StatusField =
-  | { name: string; label: string; type: "text" | "date" | "textarea"; required?: boolean; placeholder?: string }
+  | { name: string; label: string; type: "text" | "date" | "textarea"; required?: boolean; placeholder?: string; min?: string }
   | { name: string; label: string; type: "select"; required?: boolean; options: { value: string; label: string }[] };
 
 type StatusUpdateSheetProps = {
@@ -120,6 +120,7 @@ export function StatusUpdateSheet({
               ) : (
                 <Input
                   type={field.type}
+                  min={"min" in field ? field.min : undefined}
                   value={values[field.name] || ""}
                   onChange={(e) => setField(field.name, e.target.value)}
                   placeholder={field.placeholder}

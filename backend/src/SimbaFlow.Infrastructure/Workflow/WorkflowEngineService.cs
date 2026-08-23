@@ -437,6 +437,7 @@ public class WorkflowEngineService : IWorkflowEngineService
 
             actions.Add(new AvailableAction(
                 rule.Id,
+                rule.SourceStageId,
                 rule.ButtonLabel,
                 rule.ButtonIcon,
                 enabled,

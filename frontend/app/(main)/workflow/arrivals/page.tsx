@@ -28,7 +28,7 @@ export default function ArrivalBoardPage() {
   const canView = hasPermission("arrival.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
 
-  const { candidates, totalCount, isLoading, error, mutate } = useArrivalBoard({
+  const { candidates, totalCount, isLoading, error, mutate, stageId } = useArrivalBoard({
     search: search || undefined,
     pageSize: 50,
   });
@@ -94,7 +94,7 @@ export default function ArrivalBoardPage() {
         id: "actions",
         header: () => <div className="text-center">Actions</div>,
         cell: ({ row }) => (
-          <ArrivalRowActions candidate={row.original} onMutate={() => mutate()} />
+          <ArrivalRowActions candidate={row.original} onMutate={() => mutate()} stageId={stageId} />
         ),
       },
     ],

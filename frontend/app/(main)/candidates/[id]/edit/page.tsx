@@ -9,7 +9,7 @@ export default function EditCandidateApplicationPage() {
   const { id } = useParams<{ id: string }>();
   const { hasPermission, isLoading } = usePermissions();
   const canWrite =
-    hasPermission("candidate.write") ||
+    hasPermission("candidate.update") ||
     hasPermission("candidate.update") ||
     hasPermission("system.admin");
 

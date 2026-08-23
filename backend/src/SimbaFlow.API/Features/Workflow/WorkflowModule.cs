@@ -14,9 +14,9 @@ public class WorkflowModule : ICarterModule
             .RequireAuthorization();
 
         // Get available actions for a candidate
-        group.MapGet("/{candidateId:guid}/actions", async (Guid candidateId, ISender sender) =>
+        group.MapGet("/{candidateId:guid}/actions", async (Guid candidateId, Guid? stageId, ISender sender) =>
         {
-            var result = await sender.Send(new GetAvailableActionsQuery(candidateId));
+            var result = await sender.Send(new GetAvailableActionsQuery(candidateId, stageId));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

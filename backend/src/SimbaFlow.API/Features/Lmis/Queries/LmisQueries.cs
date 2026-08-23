@@ -24,6 +24,8 @@ public record LmisBoardRowDto(
 
 public record LmisBoardResult(
     List<LmisBoardRowDto> Items,
+    /// <summary>The stage this board represents — the UI filters actions to it.</summary>
+    Guid StageId,
     int TotalCount,
     int Page,
     int PageSize,
@@ -123,6 +125,6 @@ public class GetLmisBoardHandler : IRequestHandler<GetLmisBoardQuery, Result<Lmi
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Result<LmisBoardResult>.Success(
-            new LmisBoardResult(items, total, page, pageSize, totalPages));
+            new LmisBoardResult(items, lmis.Id, total, page, pageSize, totalPages));
     }
 }

@@ -28,7 +28,7 @@ export default function TicketBoardPage() {
   const canView = hasPermission("travel.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
 
-  const { candidates, totalCount, isLoading, error, mutate } = useTicketBoard({
+  const { candidates, totalCount, isLoading, error, mutate, stageId } = useTicketBoard({
     search: search || undefined,
     pageSize: 50,
   });
@@ -80,6 +80,7 @@ export default function TicketBoardPage() {
         header: () => <div className="text-center">Actions</div>,
         cell: ({ row }) => (
           <TravelRowActions
+            stageId={stageId}
             candidate={row.original}
             onMutate={() => mutate()}
             board="ticket"

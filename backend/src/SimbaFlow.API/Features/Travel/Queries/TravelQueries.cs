@@ -22,6 +22,8 @@ public record TravelBoardRowDto(
 
 public record TravelBoardResult(
     List<TravelBoardRowDto> Items,
+    /// <summary>The stage this board represents — the UI filters actions to it.</summary>
+    Guid StageId,
     int TotalCount,
     int Page,
     int PageSize,
@@ -116,7 +118,7 @@ public class GetTicketBoardHandler : IRequestHandler<GetTicketBoardQuery, Result
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
         return Result<TravelBoardResult>.Success(
-            new TravelBoardResult(items, total, page, pageSize, totalPages));
+            new TravelBoardResult(items, stageId, total, page, pageSize, totalPages));
     }
 }
 

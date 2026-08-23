@@ -126,6 +126,20 @@ const optionalPositiveNumber = z
     message: "Must be a valid number greater than 0",
   });
 
+
+/**
+ * Gender arrives as 0/1 from the API but has also been seen as "Male"/"Female" text. The Select's
+ * options are "0"/"1", so anything else silently rendered as an empty box and the user had to pick
+ * again — losing what was already saved if they then pressed save.
+ */
+function normalizeGender(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "";
+  const s = String(value).trim().toLowerCase();
+  if (s === "1" || s === "female" || s === "f") return "1";
+  if (s === "0" || s === "male" || s === "m") return "0";
+  return "";
+}
+
 const RELIGIONS = [
   "Orthodox",
   "Muslim",
@@ -344,7 +358,8 @@ const FULL_PHOTO_TYPE = 8;
 const PASSPORT_TYPE = 0;
 
 const defaults: Partial<RegisterCandidateForm> = {
-  gender: "",
+  // Nearly every candidate is female; pre-selecting saves a click on every registration.
+  gender: "1",
   partnerAgencyId: "",
   visaType: "Work",
   nationality: "Ethiopia",
@@ -772,7 +787,7 @@ export function CandidateApplicationForm({
       localFullName: d.localFullName || "",
       passportNumber: d.passportNumber || "",
       dateOfBirth: d.dateOfBirth || "",
-      gender: d.gender != null ? String(d.gender) : "",
+      gender: normalizeGender(d.gender),
       nationality: d.nationality || "Ethiopia",
       phoneNumber: d.phoneNumber || "",
       email: d.email || "",
@@ -1159,12 +1174,10 @@ export function CandidateApplicationForm({
 
       <form
         onSubmit={(e) => {
-          if (currentStep < lastStep) {
-            e.preventDefault();
-            void goToNextStep();
-            return;
-          }
-          void handleSubmit(onSubmit)(e);
+          // Never let a stray Enter keypress save the record. Saving is an explicit button press;
+          // Enter only ever advances a step.
+          e.preventDefault();
+          if (currentStep < lastStep) void goToNextStep();
         }}
         className="flex flex-col gap-4"
       >
@@ -2043,7 +2056,12 @@ export function CandidateApplicationForm({
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting} className="bg-emerald-800 hover:bg-emerald-900 text-white">
+                  <Button
+                    type="button"
+                    onClick={() => void handleSubmit(onSubmit)()}
+                    disabled={isSubmitting}
+                    className="bg-emerald-800 hover:bg-emerald-900 text-white"
+                  >
                     {isSubmitting ? "Saving…" : isEdit ? "Save Changes" : "Save"}
                   </Button>
                 )}

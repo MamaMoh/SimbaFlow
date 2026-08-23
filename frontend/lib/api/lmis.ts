@@ -25,6 +25,8 @@ export type LmisBoardRow = {
 };
 
 type PaginatedBoard = {
+  /** Stage this board represents; scopes workflow buttons to it. */
+  stageId: string;
   items: LmisBoardRow[];
   totalCount: number;
   page: number;
@@ -75,6 +77,7 @@ export function useLmisBoard(params?: {
   useBoardRealtime(mutate);
 
   return {
+    stageId: data?.data?.stageId,
     candidates: data?.data?.items ?? [],
     totalCount: data?.data?.totalCount ?? 0,
     isLoading,

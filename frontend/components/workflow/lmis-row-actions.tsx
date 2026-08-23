@@ -28,13 +28,15 @@ import { Eye, MoreHorizontal, Upload } from "lucide-react";
 type Props = {
   candidate: LmisBoardRow;
   onMutate: () => void;
+  /** Stage this board represents; scopes the workflow buttons to it. */
+  stageId?: string;
 };
 
-export function LmisRowActions({ candidate, onMutate }: Props) {
+export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("lmis.update") || hasPermission("system.admin");
   const canDoc = hasPermission("lmis.document") || hasPermission("lmis.update") || hasPermission("system.admin");
-  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id);
+  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const [paidOpen, setPaidOpen] = useState(false);
   const [milestoneOpen, setMilestoneOpen] = useState(false);

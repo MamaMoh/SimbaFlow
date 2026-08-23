@@ -19,12 +19,14 @@ import Link from "next/link";
 type Props = {
   candidate: ArrivalBoardRow;
   onMutate: () => void;
+  /** Stage this board represents; scopes the workflow buttons to it. */
+  stageId?: string;
 };
 
-export function ArrivalRowActions({ candidate, onMutate }: Props) {
+export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("arrival.update") || hasPermission("system.admin");
-  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id);
+  const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const arrival = candidate.statusValues?.arrival ?? "";
   const linked = candidate.commissionLinked;

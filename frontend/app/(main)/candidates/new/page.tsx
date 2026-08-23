@@ -7,7 +7,7 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 export default function NewCandidateApplicationPage() {
   const { hasPermission, isLoading } = usePermissions();
   const canWrite =
-    hasPermission("candidate.write") ||
+    hasPermission("candidate.create") ||
     hasPermission("candidate.create") ||
     hasPermission("system.admin");
 
