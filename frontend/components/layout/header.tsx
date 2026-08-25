@@ -98,17 +98,20 @@ export function Header() {
           </Button>
         </AppTooltip>
 
-        <div className="mr-6 flex items-center gap-3">
-          <h1 className="font-semibold text-lg text-foreground">
+        <div className="mr-2 md:mr-6 flex min-w-0 items-center gap-2 md:gap-3">
+          <h1 className="font-semibold text-lg text-foreground shrink-0">
             <span className="text-primary">
               SimbaFlow
             </span>
           </h1>
-          <TenantBadge />
+          {/* Tenant badge is redundant on a phone — the same context shows in the menu. */}
+          <span className="hidden sm:inline-flex min-w-0">
+            <TenantBadge />
+          </span>
         </div>
 
-        <div className="flex flex-1 items-center justify-between space-x-4 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-4 md:justify-end">
+          <div className="min-w-0 w-full flex-1 md:w-auto md:flex-none">
             <button
               type="button"
               onClick={() => openCommand(true)}
@@ -123,7 +126,7 @@ export function Header() {
             </button>
           </div>
 
-          <nav className="flex items-center space-x-2">
+          <nav className="flex shrink-0 items-center gap-1 sm:gap-2">
             <ThemeToggle />
             <AppTooltip content="Notifications">
               <Button
