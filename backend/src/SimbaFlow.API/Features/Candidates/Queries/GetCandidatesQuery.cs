@@ -8,7 +8,9 @@ namespace SimbaFlow.API.Features.Candidates.Queries;
 
 public record GetCandidatesQuery(
     int Page, int PageSize, string? Search,
-    Guid? StageId, string? CountryOfTravel) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
+    Guid? StageId, string? CountryOfTravel,
+    // null → active only (default). "all" → every status. Otherwise a specific status name.
+    string? Status = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
@@ -52,7 +54,13 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
     {
         var query = _context.Candidates
             .AsNoTracking()
-            .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
+            .Where(c => !c.IsDeleted);
+
+        if (string.IsNullOrWhiteSpace(request.Status))
+            query = query.Where(c => c.Status == CandidateStatus.Active);
+        else if (!request.Status.Equals("all", StringComparison.OrdinalIgnoreCase)
+                 && Enum.TryParse<CandidateStatus>(request.Status, true, out var wanted))
+            query = query.Where(c => c.Status == wanted);
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {

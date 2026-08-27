@@ -136,8 +136,18 @@ public class RecordMedicalResultHandler : IRequestHandler<RecordMedicalResultCom
         var result = await _engine.UpdateStatusAsync(
             request.CandidateId, "medical", normalized, userId,
             _currentUser.UserName ?? "unknown", request.Notes, ct: ct);
+        if (!result.IsSuccess)
+            return Result.Failure(result.Error ?? "Failed", 400);
 
-        return result.IsSuccess ? Result.Success() : Result.Failure(result.Error ?? "Failed", 400);
+        // An unfit medical ends the file — mark the candidate inactive so they drop off the active
+        // boards instead of lingering as work in progress.
+        if (normalized == "Unfit")
+        {
+            candidate.Status = Domain.Enums.CandidateStatus.Inactive;
+            await _context.SaveChangesAsync(ct);
+        }
+
+        return Result.Success();
     }
 }
 

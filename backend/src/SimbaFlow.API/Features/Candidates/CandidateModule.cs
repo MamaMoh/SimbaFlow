@@ -19,11 +19,11 @@ public class CandidateModule : ICarterModule
         // List candidates (paginated, searchable, filterable)
         group.MapGet("/", async (
             int? page, int? pageSize, string? search,
-            Guid? stageId, string? countryOfTravel,
+            Guid? stageId, string? countryOfTravel, string? status,
             ISender sender) =>
         {
             var query = new GetCandidatesQuery(
-                page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel);
+                page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel, status);
             var result = await sender.Send(query);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });

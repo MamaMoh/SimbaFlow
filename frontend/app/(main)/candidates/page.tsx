@@ -86,6 +86,7 @@ export default function CandidatesPage() {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -94,7 +95,7 @@ export default function CandidatesPage() {
 
   const { data, error, isLoading, mutate } = useSWR(
     !permsLoading && canRead
-      ? `/api/proxy/candidates?page=1&pageSize=100${globalFilter ? `&search=${encodeURIComponent(globalFilter)}` : ""}`
+      ? `/api/proxy/candidates?page=1&pageSize=100${globalFilter ? `&search=${encodeURIComponent(globalFilter)}` : ""}${statusFilter !== "active" ? `&status=${statusFilter}` : ""}`
       : null,
     fetcher,
     { revalidateOnFocus: false }
@@ -337,6 +338,7 @@ export default function CandidatesPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+          onRowClick={(row: { id: string }) => router.push(`/candidates/${row.id}`)}
         exportFileName="candidates"
           table={table}
           emptyMessage="No candidates yet — register a candidate to start the pipeline."
@@ -345,6 +347,23 @@ export default function CandidatesPage() {
           paginated={true}
           toolbarEndActions={
             <div className="flex items-center gap-2">
+              <div className="flex rounded-md border p-0.5" role="group" aria-label="Filter by status">
+                {(["active", "inactive", "all"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={
+                      "rounded px-2.5 py-1 text-xs font-medium capitalize transition " +
+                      (statusFilter === s
+                        ? "bg-green-800 text-white"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
               {selectedIds.length > 0 ? (
                 <Button
                   size="sm"

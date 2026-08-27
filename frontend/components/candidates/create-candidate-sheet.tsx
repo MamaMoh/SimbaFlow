@@ -163,6 +163,12 @@ const OCCUPATIONS = [
 
 const LANGUAGE_LEVELS = ["None", "Fair", "Good", "Excellent"] as const;
 
+/** Preset options plus the current value if it isn't already one — prevents a saved value that
+ *  predates the preset list from showing as an empty dropdown on edit. */
+function withValue(list: readonly string[], current?: string | null): string[] {
+  return current && !list.includes(current) ? [current, ...list] : [...list];
+}
+
 const LANGUAGE_OPTIONS = [
   "English",
   "Arabic",
@@ -1333,7 +1339,9 @@ export function CandidateApplicationForm({
                   <Label>Application No.</Label>
                   <Input
                     {...register("applicationNo")}
-                    placeholder="Enter application number"
+                    readOnly
+                    placeholder={isEdit ? "" : "Assigned automatically on save"}
+                    className="bg-muted/40"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1508,7 +1516,7 @@ export function CandidateApplicationForm({
                       <SelectValue placeholder="Select religion" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {RELIGIONS.map((r) => (
+                      {withValue(RELIGIONS, watch("religion")).map((r) => (
                         <SelectItem key={r} value={r}>
                           {r}
                         </SelectItem>
@@ -1773,7 +1781,7 @@ export function CandidateApplicationForm({
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent position="popper" className="z-[200]">
-                          {LANGUAGE_LEVELS.map((l) => (
+                          {withValue(LANGUAGE_LEVELS, row.level).map((l) => (
                             <SelectItem key={l} value={l}>
                               {l}
                             </SelectItem>
@@ -1873,7 +1881,7 @@ export function CandidateApplicationForm({
                       <SelectValue placeholder="Select level" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {LANGUAGE_LEVELS.map((l) => (
+                      {withValue(LANGUAGE_LEVELS, watch("cookingLevel")).map((l) => (
                         <SelectItem key={l} value={l}>
                           {l}
                         </SelectItem>

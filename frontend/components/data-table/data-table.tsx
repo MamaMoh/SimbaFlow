@@ -32,6 +32,8 @@ export interface DataTableProps<TData, TValue> {
   toolbarEndActions?: React.ReactNode;
   /** Filename stem for the toolbar's CSV export; omit to hide the button. */
   exportFileName?: string;
+  /** Navigate/act when a row body is clicked (ignores clicks on buttons, links, inputs). */
+  onRowClick?: (row: TData) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onPrint?: (allData: any[], selectedRows: any[]) => void;
@@ -58,6 +60,7 @@ export function DataTable<TData, TValue>(
     paginationProps = {},
     toolbarEndActions,
   exportFileName,
+  onRowClick,
     isFullscreen,
     onToggleFullscreen,
     onPrint,
@@ -121,6 +124,15 @@ export function DataTable<TData, TValue>(
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={(e) => {
+                    if (!onRowClick) return;
+                    // Don't hijack clicks on interactive controls inside the row.
+                    if ((e.target as HTMLElement).closest(
+                      'button, a, input, label, [role="checkbox"], [role="menuitem"], [data-no-row-click]'
+                    )) return;
+                    onRowClick(row.original as TData);
+                  }}
                 >
                   {row.getVisibleCells().map((cell: any) => (
                     <TableCell key={cell.id}>
