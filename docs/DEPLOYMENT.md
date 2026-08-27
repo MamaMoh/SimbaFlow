@@ -116,9 +116,40 @@ cd /opt/simbaflow && docker compose build && docker compose up -d
 Database migrations run on startup because `Database__MigrateOnStartup=true` is set in the compose
 file for this deployment.
 
+## Backups
+
+`deployment/backup.sh` (installed at `/opt/simbaflow/backup.sh`) runs nightly from cron at
+**02:30 UTC**. Each run dumps the database from the container, gzips it to
+`/root/simbaflow-backups`, **restore-tests the fresh dump** by loading it into a throwaway database
+and checking a known table came back (a backup that has never been restored is not a backup), drops
+the scratch database, prunes copies older than 30 days, and logs to `/var/log/simbaflow-backup.log`.
+It fails loudly — non-zero exit, ERROR in the log — if the dump is empty or will not restore.
+
+```bash
+/opt/simbaflow/backup.sh            # run one on demand
+tail /var/log/simbaflow-backup.log  # see the last runs
+crontab -l                          # the nightly schedule
+```
+
+**Off-server copy is not yet configured.** The dumps live on the same disk as the database, so they
+survive a bad deploy or a dropped table but NOT the loss of this host. To ship them off-box, set a
+destination and the script rsyncs each dump there too:
+
+```bash
+# in cron or a wrapper, before calling backup.sh:
+export REMOTE_DEST="user@backup-host:/simbaflow"   # any rsync/scp target, or an rclone remote
+```
+
+Pick a destination (a second Hetzner box, an S3/B2 bucket via rclone, etc.) and this becomes a true
+off-site backup. Until then it is local-only.
+
 ## Still to do before real production use
 1. **Change the seeded admin password** (`admin` / `Admin@123!`) — now reachable from the public
    internet, so this is the top priority.
 2. **Decide `Mfa:Enforce`** — MFA is implemented but off by default, and the enrolment UI is not built.
-3. **Backups** for the `simbaflow-db` volume.
-4. **Disk** is at 85%; prune old images periodically (`docker image prune`).
+3. **Off-server backup destination** — nightly restore-tested backups run locally (see above); set
+   `REMOTE_DEST` to get them off this disk.
+4. **SMTP password** — email/password-reset is built and deployed; it needs the Zoho password in
+   `/opt/simbaflow/.env` as `SMTP_PASSWORD` (and `SMTP_SENDER` if the authenticating mailbox is not
+   `support@laba.et`).
+5. **Disk** is at 83%; prune old images periodically (`docker image prune`).
