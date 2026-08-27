@@ -61,7 +61,7 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
   if (board === "ticket") {
     return (
       <div className="flex justify-center">
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Row actions">
               <MoreHorizontal className="h-4 w-4" />

@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/loading/loading-components";
 import { ImmediateLoading } from "@/components/loading/immediate-loading";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { CommandPalette } from "@/components/command/command-palette";
+import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-gradient-to-br from-background to-muted/40">
       <CommandPalette />
+      <PointerEventsGuard />
       <Sidebar className="bg-card/95 border-r shadow-xl" />
       <div className="flex-1 flex flex-col min-w-0 bg-background/90">
         <Header />

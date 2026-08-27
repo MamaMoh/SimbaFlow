@@ -72,7 +72,7 @@ export function CandidateListActions({
   const busy = !!isGeneratingCv || !!pendingRuleId;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

@@ -72,7 +72,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
 
   return (
     <div className="flex justify-center">
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
