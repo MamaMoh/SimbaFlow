@@ -90,7 +90,7 @@ public class EmbassyModule : ICarterModule
     }
 }
 
-public record BookMedicalRequest(DateOnly AppointmentDate, string FacilityName, string? Notes);
+public record BookMedicalRequest(DateOnly? AppointmentDate = null, string? FacilityName = null, string? Notes = null);
 public record MedicalResultRequest(string Result, string? Notes);
 public record BookTasheerRequest(DateOnly AppointmentDate, string? Notes);
 public record TasheerResultRequest(string Result, string? Notes);

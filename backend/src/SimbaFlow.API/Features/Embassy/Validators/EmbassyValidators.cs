@@ -8,8 +8,8 @@ public class BookMedicalValidator : AbstractValidator<BookMedicalCommand>
     public BookMedicalValidator()
     {
         RuleFor(x => x.CandidateId).NotEmpty();
-        RuleFor(x => x.AppointmentDate).NotEmpty();
-        RuleFor(x => x.FacilityName).NotEmpty().MaximumLength(200);
+        // Appointment date and facility are optional now — booking is just a Booked/Not-booked flag.
+        RuleFor(x => x.FacilityName).MaximumLength(200).When(x => x.FacilityName is not null);
     }
 }
 

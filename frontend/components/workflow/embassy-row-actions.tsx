@@ -130,6 +130,26 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                       Set visa Ready
                     </DropdownMenuItem>
                   )}
+                  {/*
+                    Submission also belongs here, not only on the Case Executive board. Without it
+                    a candidate at visa Ready has no action on this board at all, which reads as
+                    the pipeline being broken rather than as work sitting with another desk.
+                  */}
+                  {canCaseSubmit && visa === "Ready" && (
+                    <DropdownMenuItem onClick={() => setMode("visa-submit")}>
+                      Submit documentation
+                    </DropdownMenuItem>
+                  )}
+                  {!canCaseSubmit && visa === "Ready" && (
+                    <DropdownMenuItem disabled className="items-start">
+                      <span className="flex min-w-0 flex-col">
+                        <span>Submit documentation</span>
+                        <span className="text-xs leading-snug text-muted-foreground">
+                          Needs the Case Executive permission
+                        </span>
+                      </span>
+                    </DropdownMenuItem>
+                  )}
                   {canOutcome && visa === "Submitted" && (
                     <DropdownMenuItem onClick={() => setMode("visa-outcome")}>
                       Visa outcome

@@ -8,8 +8,10 @@ namespace SimbaFlow.API.Features.Embassy.Commands;
 
 public record BookMedicalCommand(
     Guid CandidateId,
-    DateOnly AppointmentDate,
-    string FacilityName,
+    // Appointment date and facility are optional — agencies just mark medical booked / not booked.
+    // Kept nullable rather than removed so any older caller still compiles.
+    DateOnly? AppointmentDate = null,
+    string? FacilityName = null,
     string? Notes = null) : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "embassy.update";
@@ -47,11 +49,11 @@ public class BookMedicalHandler : IRequestHandler<BookMedicalCommand, Result>
             return Result.Failure($"Cannot book medical from status '{medical}'. Expected Pending or Unfit.", 400);
         }
 
-        var meta = new Dictionary<string, string>
-        {
-            ["medical_appointment_date"] = request.AppointmentDate.ToString("yyyy-MM-dd"),
-            ["medical_facility"] = request.FacilityName
-        };
+        var meta = new Dictionary<string, string>();
+        if (request.AppointmentDate is DateOnly d)
+            meta["medical_appointment_date"] = d.ToString("yyyy-MM-dd");
+        if (!string.IsNullOrWhiteSpace(request.FacilityName))
+            meta["medical_facility"] = request.FacilityName;
 
         var result = await _engine.UpdateStatusAsync(
             request.CandidateId, "medical", "Booked", userId,
