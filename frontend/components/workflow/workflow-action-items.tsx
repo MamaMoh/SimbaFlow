@@ -27,7 +27,6 @@ export function WorkflowActionItems({
 
   const run = async (action: AvailableAction) => {
     if (!action.isEnabled || pendingId) return;
-    if (!window.confirm(`Execute “${action.buttonLabel}”?`)) return;
     setPendingId(action.transitionRuleId);
     try {
       await executeTransition(candidateId, action.transitionRuleId);
@@ -47,22 +46,26 @@ export function WorkflowActionItems({
           key={action.transitionRuleId}
           disabled={!action.isEnabled || pendingId === action.transitionRuleId}
           title={!action.isEnabled ? action.disabledReason ?? undefined : undefined}
+          className="items-start"
           onSelect={(e) => {
             e.preventDefault();
             void run(action);
           }}
         >
           {pendingId === action.transitionRuleId ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 mt-0.5 h-4 w-4 shrink-0 animate-spin" />
           ) : (
-            <ArrowRight className="mr-2 h-4 w-4" />
+            <ArrowRight className="mr-2 mt-0.5 h-4 w-4 shrink-0" />
           )}
-          {action.buttonLabel}
-          {!action.isEnabled && action.disabledReason ? (
-            <span className="ml-2 text-xs text-muted-foreground">
-              ({action.disabledReason})
-            </span>
-          ) : null}
+          <span className="flex min-w-0 flex-col">
+            <span>{action.buttonLabel}</span>
+            {/* The blocker is spelled out, so a greyed-out step says what it is waiting on. */}
+            {!action.isEnabled && action.disabledReason ? (
+              <span className="text-xs leading-snug text-muted-foreground">
+                {action.disabledReason}
+              </span>
+            ) : null}
+          </span>
         </DropdownMenuItem>
       ))}
     </>

@@ -233,7 +233,8 @@ public record WorkflowDefinitionDto(
     int Version,
     bool IsActive,
     List<WorkflowStageDto> Stages,
-    List<WorkflowTransitionRuleDto> TransitionRules);
+    List<WorkflowTransitionRuleDto> TransitionRules,
+    List<MirrorViewRuleDto> MirrorViewRules);
 
 public record WorkflowStageDto(
     Guid Id,
@@ -264,6 +265,20 @@ public record WorkflowTransitionRuleDto(
     bool RemoveFromSource,
     bool IsActive);
 
+/// <summary>
+/// A mirror makes a candidate visible on a second board without moving them off the first —
+/// Embassy → LMIS being the one agencies retune most, since whether tasheer must be booked
+/// before LMIS registration is a government rule that varies by destination.
+/// </summary>
+public record MirrorViewRuleDto(
+    Guid Id,
+    Guid SourceStageId,
+    string SourceStageName,
+    Guid TargetStageId,
+    string TargetStageName,
+    object? Conditions,
+    bool IsActive);
+
 public record GetWorkflowDefinitionQuery
     : IRequest<Result<WorkflowDefinitionDto>>, IRequirePermission
 {
@@ -292,6 +307,14 @@ public class GetWorkflowDefinitionHandler : IRequestHandler<GetWorkflowDefinitio
         if (definition is null)
             return Result<WorkflowDefinitionDto>.Failure("No active workflow definition found.", 404);
 
+        var stageNames = definition.Stages.ToDictionary(s => s.Id, s => s.Name);
+        var stageIds = stageNames.Keys.ToList();
+
+        var mirrors = await _context.MirrorViewRules
+            .AsNoTracking()
+            .Where(r => !r.IsDeleted && stageIds.Contains(r.WorkflowStageId))
+            .ToListAsync(cancellationToken);
+
         var dto = new WorkflowDefinitionDto(
             definition.Id,
             definition.Name,
@@ -317,6 +340,18 @@ public class GetWorkflowDefinitionHandler : IRequestHandler<GetWorkflowDefinitio
                     r.Id, r.SourceStageId, r.TargetStageId, r.ButtonLabel, r.ButtonIcon, r.SortOrder,
                     r.Conditions.RootElement.Clone(),
                     r.RequiredFields, r.AllowedRoles, r.RemoveFromSource, r.IsActive))
+                .ToList(),
+            mirrors
+                .Select(m => new MirrorViewRuleDto(
+                    m.Id,
+                    m.WorkflowStageId,
+                    stageNames.TryGetValue(m.WorkflowStageId, out var src) ? src : "",
+                    m.TargetStageId,
+                    stageNames.TryGetValue(m.TargetStageId, out var tgt) ? tgt : "",
+                    m.Conditions.RootElement.Clone(),
+                    m.IsActive))
+                .OrderBy(m => m.SourceStageName)
+                .ThenBy(m => m.TargetStageName)
                 .ToList());
 
         return Result<WorkflowDefinitionDto>.Success(dto);

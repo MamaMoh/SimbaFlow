@@ -8,10 +8,16 @@ import { StageEditor } from "@/components/workflow/stage-editor";
 import { CreateTransitionSheet } from "@/components/workflow/create-transition-sheet";
 import { useWorkflowDefinition } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
-import type { ConditionGroup, WorkflowStage, WorkflowTransitionRule } from "@/types/workflow";
+import type {
+  ConditionGroup,
+  MirrorViewRule,
+  WorkflowStage,
+  WorkflowTransitionRule,
+} from "@/types/workflow";
 import { Loader2, Pencil, Plus } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TransitionEditor } from "@/components/workflow/transition-editor";
+import { MirrorRuleEditor } from "@/components/workflow/mirror-rule-editor";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "sonner";
 
@@ -42,6 +48,8 @@ export function WorkflowConfigEditor() {
   const [defaultSourceId, setDefaultSourceId] = useState<string | undefined>();
   const [editingTransition, setEditingTransition] =
     useState<WorkflowTransitionRule | null>(null);
+  const [mirrorEditorOpen, setMirrorEditorOpen] = useState(false);
+  const [editingMirror, setEditingMirror] = useState<MirrorViewRule | null>(null);
 
   /** Soft-delete a step (transition) after confirmation. */
   const deleteTransition = async (t: WorkflowTransitionRule) => {
@@ -59,6 +67,29 @@ export function WorkflowConfigEditor() {
       mutate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to remove step");
+    }
+  };
+
+  /** Remove a mirror; the backend re-checks every candidate afterwards. */
+  const deleteMirror = async (m: MirrorViewRule) => {
+    if (
+      !window.confirm(
+        `Stop mirroring ${m.sourceStageName} candidates onto ${m.targetStageName}?`
+      )
+    )
+      return;
+    try {
+      const res = await fetch(`/api/proxy/workflow/config/mirrors/${m.id}`, {
+        method: "DELETE",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body?.isSuccess === false) {
+        throw new Error(body?.error || "Failed to remove mirror");
+      }
+      toast.success("Mirror removed");
+      mutate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to remove mirror");
     }
   };
 
@@ -87,6 +118,7 @@ export function WorkflowConfigEditor() {
   }, [stages]);
 
   const transitions: WorkflowTransitionRule[] = definition?.transitionRules ?? [];
+  const mirrors: MirrorViewRule[] = definition?.mirrorViewRules ?? [];
 
   if (permsLoading) {
     return (
@@ -336,6 +368,99 @@ export function WorkflowConfigEditor() {
           </div>
         )}
       </section>
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Board mirroring</h2>
+            <p className="text-sm text-muted-foreground">
+              Which candidates show up on a second board without leaving the first. Government
+              rules differ by destination — some require tasheer before LMIS registration,
+              others only a fit medical — so these conditions are yours to set.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingMirror(null);
+              setMirrorEditorOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New mirror
+          </Button>
+        </div>
+
+        {mirrors.length === 0 ? (
+          <PageAlert
+            variant="info"
+            title="No mirrors configured"
+            description="Candidates will only ever appear on the board matching their current step."
+          />
+        ) : (
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>From board</TableHead>
+                  <TableHead>Also appears on</TableHead>
+                  <TableHead>When</TableHead>
+                  <TableHead>Active</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mirrors.map((m) => (
+                  <TableRow key={m.id}>
+                    <TableCell className="font-medium">{m.sourceStageName}</TableCell>
+                    <TableCell>{m.targetStageName}</TableCell>
+                    <TableCell className="max-w-xs truncate text-muted-foreground">
+                      {formatConditions(m.conditions)}
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        tone={m.isActive ? "success" : "neutral"}
+                        label={m.isActive ? "Yes" : "No"}
+                      />
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingMirror(m);
+                          setMirrorEditorOpen(true);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => void deleteMirror(m)}
+                      >
+                        Remove
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
+      <MirrorRuleEditor
+        open={mirrorEditorOpen}
+        onOpenChange={(o) => {
+          setMirrorEditorOpen(o);
+          if (!o) setEditingMirror(null);
+        }}
+        rule={editingMirror}
+        stages={stages}
+        onSaved={() => mutate()}
+      />
 
       <TransitionEditor
         open={!!editingTransition}

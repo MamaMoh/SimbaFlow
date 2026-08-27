@@ -41,6 +41,14 @@ public interface IWorkflowEngineService
     /// <summary>Compute available actions for a candidate given the user's roles.</summary>
     Task<List<AvailableAction>> GetAvailableActionsAsync(
         Guid candidateId, string[] userRoles, CancellationToken ct = default);
+
+    /// <summary>
+    /// Re-run mirror rules for every live candidate. Mirrors normally only fire on a status
+    /// change, so without this an admin who relaxes a rule sees nothing happen until each
+    /// candidate is touched again.
+    /// </summary>
+    /// <returns>Number of candidates whose board visibility changed.</returns>
+    Task<int> ReapplyMirrorViewsAsync(Guid userId, string userName, CancellationToken ct = default);
 }
 
 public class WorkflowState

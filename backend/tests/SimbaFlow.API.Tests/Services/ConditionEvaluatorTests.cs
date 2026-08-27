@@ -149,4 +149,109 @@ public class ConditionEvaluatorTests
             new Dictionary<string, string?> { ["passportNumber"] = "AB123" })
             .Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData("fit")]
+    [InlineData("FIT")]
+    [InlineData(" Fit ")]
+    public void Evaluate_Eq_IgnoresCaseAndSurroundingSpace(string stored)
+    {
+        var conditions = JsonDocument.Parse(
+            """{"operator":"AND","rules":[{"field":"medical","op":"eq","value":"Fit"}]}""");
+
+        ConditionEvaluator.Evaluate(conditions, new Dictionary<string, string>
+        {
+            ["medical"] = stored
+        }).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Evaluate_In_IgnoresCase()
+    {
+        var conditions = JsonDocument.Parse(
+            """{"operator":"OR","rules":[{"field":"visa","op":"in","value":["Ready","Submitted"]}]}""");
+
+        ConditionEvaluator.Evaluate(conditions, new Dictionary<string, string>
+        {
+            ["visa"] = "submitted"
+        }).Should().BeTrue();
+    }
+
+    [Fact]
+    public void TryEvaluate_Met_HasNoReason()
+    {
+        var conditions = JsonDocument.Parse(
+            """{"operator":"AND","rules":[{"field":"visa","op":"eq","value":"Issued"}]}""");
+
+        var met = ConditionEvaluator.TryEvaluate(
+            conditions,
+            new Dictionary<string, string> { ["visa"] = "Issued" },
+            null,
+            out var reason);
+
+        met.Should().BeTrue();
+        reason.Should().BeNull();
+    }
+
+    [Fact]
+    public void TryEvaluate_Blocked_NamesFieldExpectedAndActual()
+    {
+        var conditions = JsonDocument.Parse(
+            """{"operator":"AND","rules":[{"field":"visa","op":"eq","value":"Issued"}]}""");
+
+        var met = ConditionEvaluator.TryEvaluate(
+            conditions,
+            new Dictionary<string, string> { ["visa"] = "Ready" },
+            null,
+            out var reason);
+
+        met.Should().BeFalse();
+        reason.Should().Be("Visa must be Issued (currently Ready)");
+    }
+
+    [Fact]
+    public void TryEvaluate_Blocked_MissingValueReadsAsNotSet()
+    {
+        var conditions = JsonDocument.Parse(
+            """{"operator":"AND","rules":[{"field":"tasheer","op":"eq","value":"Book Done"}]}""");
+
+        ConditionEvaluator.TryEvaluate(
+            conditions, new Dictionary<string, string>(), null, out var reason)
+            .Should().BeFalse();
+
+        reason.Should().Be("Tasheer must be Book Done (currently not set)");
+    }
+
+    [Fact]
+    public void TryEvaluate_AndGroup_ReportsOnlyTheFailingRule()
+    {
+        var conditions = JsonDocument.Parse(
+            """
+            {"operator":"AND","rules":[
+              {"field":"medical","op":"eq","value":"Fit"},
+              {"field":"tasheer","op":"eq","value":"Book Done"}
+            ]}
+            """);
+
+        ConditionEvaluator.TryEvaluate(
+            conditions,
+            new Dictionary<string, string> { ["medical"] = "Fit" },
+            null,
+            out var reason).Should().BeFalse();
+
+        reason.Should().Be("Tasheer must be Book Done (currently not set)");
+    }
+
+    [Fact]
+    public void TryEvaluate_UnderscoredField_ReadsAsWords()
+    {
+        var conditions = JsonDocument.Parse(
+            """{"operator":"AND","rules":[{"field":"flight_date","op":"not_empty"}]}""");
+
+        ConditionEvaluator.TryEvaluate(
+            conditions, new Dictionary<string, string>(), null, out var reason)
+            .Should().BeFalse();
+
+        reason.Should().Be("Flight date is required");
+    }
 }

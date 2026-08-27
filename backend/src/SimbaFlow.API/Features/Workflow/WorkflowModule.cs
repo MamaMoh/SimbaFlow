@@ -125,6 +125,22 @@ public class WorkflowModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // Create or update a mirror rule (which board a candidate also appears on, and when)
+        configGroup.MapPost("/mirrors", async (UpsertMirrorViewRuleRequest request, ISender sender) =>
+        {
+            var result = await sender.Send(new UpsertMirrorViewRuleCommand(
+                request.Id, request.SourceStageId, request.TargetStageId,
+                request.Conditions, request.IsActive));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Remove a mirror rule
+        configGroup.MapDelete("/mirrors/{mirrorId:guid}", async (Guid mirrorId, ISender sender) =>
+        {
+            var result = await sender.Send(new DeleteMirrorViewRuleCommand(mirrorId));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // Configure parallel tracks for a stage
         configGroup.MapPut("/stages/{stageId:guid}/tracks", async (
             Guid stageId, List<ParallelTrackInput> tracks, ISender sender) =>
@@ -136,6 +152,12 @@ public class WorkflowModule : ICarterModule
 }
 
 // Request DTOs
+public record UpsertMirrorViewRuleRequest(
+    Guid? Id,
+    Guid SourceStageId,
+    Guid TargetStageId,
+    System.Text.Json.JsonElement Conditions,
+    bool IsActive);
 public record ExecuteTransitionRequest(Guid TransitionRuleId, string? Notes);
 public record UpdateStatusRequest(string TrackName, string NewValue, string? Notes);
 public record UpdateStageRequest(string Name, string? Description, int SortOrder, int StageType);

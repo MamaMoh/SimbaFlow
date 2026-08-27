@@ -342,7 +342,204 @@ public class DeleteStageHandler : IRequestHandler<DeleteStageCommand, Result>
             .ToListAsync(ct);
         foreach (var r in related) r.IsDeleted = true;
 
+        // Same for mirrors, or the stage keeps pulling candidates onto a board that no longer exists.
+        var mirrors = await _context.MirrorViewRules
+            .Where(m => !m.IsDeleted &&
+                (m.WorkflowStageId == request.StageId || m.TargetStageId == request.StageId))
+            .ToListAsync(ct);
+        foreach (var m in mirrors) m.IsDeleted = true;
+
         await _context.SaveChangesAsync(ct);
+        return Result.Success(204);
+    }
+}
+
+// ──── Mirror view rules ────
+//
+// A mirror puts a candidate on a second board without moving them off the first. The
+// Embassy → LMIS mirror is the one agencies retune: whether tasheer must be booked before
+// LMIS registration is a government rule that differs by destination country, so it has to
+// be editable rather than baked into the seed.
+
+public record UpsertMirrorViewRuleCommand(
+    Guid? Id,
+    Guid SourceStageId,
+    Guid TargetStageId,
+    JsonElement Conditions,
+    bool IsActive) : IRequest<Result<Guid>>, IRequirePermission
+{
+    public string RequiredPermission => "workflow.configure";
+}
+
+public class UpsertMirrorViewRuleHandler : IRequestHandler<UpsertMirrorViewRuleCommand, Result<Guid>>
+{
+    private readonly ITenantDbContext _context;
+    private readonly IWorkflowEngineService _engine;
+    private readonly ICurrentUserService _currentUser;
+
+    public UpsertMirrorViewRuleHandler(
+        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _engine = engine;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result<Guid>> Handle(UpsertMirrorViewRuleCommand request, CancellationToken ct)
+    {
+        if (request.SourceStageId == request.TargetStageId)
+            return Result<Guid>.Failure("A step cannot mirror into itself.", 400);
+
+        var stages = await _context.WorkflowStages
+            .Where(s => !s.IsDeleted &&
+                (s.Id == request.SourceStageId || s.Id == request.TargetStageId))
+            .Select(s => s.Id)
+            .ToListAsync(ct);
+
+        if (!stages.Contains(request.SourceStageId) || !stages.Contains(request.TargetStageId))
+            return Result<Guid>.Failure("Source or target step not found.", 404);
+
+        var conditions = ParseConditions(request.Conditions, out var conditionError);
+        if (conditions is null)
+            return Result<Guid>.Failure(conditionError!, 400);
+
+        MirrorViewRule rule;
+
+        if (request.Id.HasValue)
+        {
+            var existing = await _context.MirrorViewRules
+                .FirstOrDefaultAsync(r => r.Id == request.Id.Value && !r.IsDeleted, ct);
+            if (existing is null)
+                return Result<Guid>.Failure("Mirror rule not found.", 404);
+            rule = existing;
+        }
+        else
+        {
+            var duplicate = await _context.MirrorViewRules.AnyAsync(r =>
+                !r.IsDeleted &&
+                r.WorkflowStageId == request.SourceStageId &&
+                r.TargetStageId == request.TargetStageId, ct);
+            if (duplicate)
+                return Result<Guid>.Failure(
+                    "A mirror between these two steps already exists. Edit that one instead.", 409);
+
+            rule = new MirrorViewRule();
+            _context.MirrorViewRules.Add(rule);
+        }
+
+        rule.WorkflowStageId = request.SourceStageId;
+        rule.TargetStageId = request.TargetStageId;
+        rule.Conditions = conditions;
+        rule.IsActive = request.IsActive;
+
+        await _context.SaveChangesAsync(ct);
+
+        // Apply the new rule to candidates already in flight, otherwise the change appears to
+        // do nothing until each candidate's status is next touched.
+        if (Guid.TryParse(_currentUser.UserId, out var userId))
+            await _engine.ReapplyMirrorViewsAsync(userId, _currentUser.UserName ?? "system", ct);
+
+        return Result<Guid>.Success(rule.Id);
+    }
+
+    /// <summary>
+    /// Conditions are hand-editable JSON, so a malformed shape has to be rejected with a message
+    /// the admin can act on rather than blowing up later inside the evaluator.
+    /// </summary>
+    private static JsonDocument? ParseConditions(JsonElement element, out string? error)
+    {
+        error = null;
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            error = "Conditions must be a JSON object.";
+            return null;
+        }
+
+        if (element.TryGetProperty("rules", out var rules))
+        {
+            if (rules.ValueKind != JsonValueKind.Array)
+            {
+                error = "\"rules\" must be an array.";
+                return null;
+            }
+
+            foreach (var rule in rules.EnumerateArray())
+            {
+                if (!rule.TryGetProperty("field", out var field) ||
+                    field.ValueKind != JsonValueKind.String ||
+                    string.IsNullOrWhiteSpace(field.GetString()))
+                {
+                    error = "Every rule needs a non-empty \"field\".";
+                    return null;
+                }
+
+                if (!rule.TryGetProperty("op", out var op) || op.ValueKind != JsonValueKind.String)
+                {
+                    error = "Every rule needs an \"op\".";
+                    return null;
+                }
+
+                var opName = op.GetString();
+                if (opName is not ("eq" or "neq" or "in" or "not_empty" or "empty"))
+                {
+                    error = $"Unsupported operator \"{opName}\". Use eq, neq, in, not_empty or empty.";
+                    return null;
+                }
+
+                if (opName is "eq" or "neq" or "in")
+                {
+                    if (!rule.TryGetProperty("value", out var value))
+                    {
+                        error = $"Operator \"{opName}\" needs a \"value\".";
+                        return null;
+                    }
+
+                    if (opName == "in" && value.ValueKind != JsonValueKind.Array)
+                    {
+                        error = "Operator \"in\" needs an array \"value\".";
+                        return null;
+                    }
+                }
+            }
+        }
+
+        return JsonDocument.Parse(element.GetRawText());
+    }
+}
+
+public record DeleteMirrorViewRuleCommand(Guid Id) : IRequest<Result>, IRequirePermission
+{
+    public string RequiredPermission => "workflow.configure";
+}
+
+public class DeleteMirrorViewRuleHandler : IRequestHandler<DeleteMirrorViewRuleCommand, Result>
+{
+    private readonly ITenantDbContext _context;
+    private readonly IWorkflowEngineService _engine;
+    private readonly ICurrentUserService _currentUser;
+
+    public DeleteMirrorViewRuleHandler(
+        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _engine = engine;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result> Handle(DeleteMirrorViewRuleCommand request, CancellationToken ct)
+    {
+        var rule = await _context.MirrorViewRules
+            .FirstOrDefaultAsync(r => r.Id == request.Id && !r.IsDeleted, ct);
+        if (rule is null)
+            return Result.Failure("Mirror rule not found.", 404);
+
+        rule.IsDeleted = true;
+        await _context.SaveChangesAsync(ct);
+
+        if (Guid.TryParse(_currentUser.UserId, out var userId))
+            await _engine.ReapplyMirrorViewsAsync(userId, _currentUser.UserName ?? "system", ct);
+
         return Result.Success(204);
     }
 }

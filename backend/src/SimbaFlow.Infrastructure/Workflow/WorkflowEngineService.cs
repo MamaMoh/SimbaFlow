@@ -420,10 +420,11 @@ public class WorkflowEngineService : IWorkflowEngineService
                 continue;
             }
 
-            if (!ConditionEvaluator.Evaluate(rule.Conditions, state.StatusValues, candidateFields))
+            if (!ConditionEvaluator.TryEvaluate(
+                    rule.Conditions, state.StatusValues, candidateFields, out var blockedBy))
             {
                 enabled = false;
-                disabledReason = "Conditions not met";
+                disabledReason = blockedBy;
             }
             else
             {
@@ -479,14 +480,64 @@ public class WorkflowEngineService : IWorkflowEngineService
         await Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Re-run mirror rules across the whole caseload. Used after an admin edits a mirror rule,
+    /// since mirrors are otherwise only evaluated as a side effect of a status change.
+    /// </summary>
+    public async Task<int> ReapplyMirrorViewsAsync(
+        Guid userId, string userName, CancellationToken ct = default)
+    {
+        var candidateIds = await _context.Candidates
+            .AsNoTracking()
+            .Where(c => !c.IsDeleted)
+            .Select(c => c.Id)
+            .ToListAsync(ct);
+
+        var changed = 0;
+
+        foreach (var candidateId in candidateIds)
+        {
+            var candidate = await _context.Candidates
+                .FirstOrDefaultAsync(c => c.Id == candidateId, ct);
+            if (candidate is null)
+                continue;
+
+            var state = await GetCurrentStateAsync(candidateId, ct);
+            if (!state.StageId.HasValue)
+                continue;
+
+            var before = new HashSet<Guid>(state.VisibleInStages);
+            await EvaluateMirrorViewsAsync(candidate, state, userId, userName, ct);
+
+            if (!before.SetEquals(state.VisibleInStages))
+            {
+                candidate.VisibleInStages = state.VisibleInStages.ToArray();
+                changed++;
+            }
+        }
+
+        if (changed > 0)
+            await _context.SaveChangesAsync(ct);
+
+        return changed;
+    }
+
     private async Task EvaluateMirrorViewsAsync(
         Candidate candidate, WorkflowState state, Guid userId, string userName, CancellationToken ct)
     {
         if (!state.StageId.HasValue)
             return;
 
+        // A candidate can sit on a board through a mirror rather than by being in that stage, and
+        // the rules hanging off that board still have to run. Scoping this to the current stage
+        // alone stranded anyone who reached Embassy as a mirror: their Embassy → LMIS rule was
+        // never evaluated, so they could never appear on LMIS.
+        var sourceStageIds = new HashSet<Guid> { state.StageId.Value };
+        foreach (var visible in state.VisibleInStages)
+            sourceStageIds.Add(visible);
+
         var rules = await _context.MirrorViewRules
-            .Where(r => r.WorkflowStageId == state.StageId && r.IsActive && !r.IsDeleted)
+            .Where(r => sourceStageIds.Contains(r.WorkflowStageId) && r.IsActive && !r.IsDeleted)
             .ToListAsync(ct);
 
         var candidateFields = BuildCandidateFields(candidate);

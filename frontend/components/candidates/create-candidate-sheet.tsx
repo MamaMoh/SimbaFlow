@@ -34,6 +34,7 @@ import {
   BookOpen,
   ArrowLeft,
   ArrowRight,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -179,6 +180,22 @@ const LANGUAGE_OPTIONS = [
 
 type LanguageRow = { id: string; language: string; level: string };
 
+/**
+ * Ethiopian passports are issued for a fixed term, so the issue date is simply
+ * the expiry date less the validity period. MRZ only carries the expiry date,
+ * which is why the issue date has to be derived rather than read.
+ */
+function deriveIssueFromExpiry(expiry: string, validityYears: number): string {
+  if (!expiry) return "";
+  const parts = expiry.split("-");
+  if (parts.length !== 3) return "";
+  const [y, m, d] = parts.map(Number);
+  if (!y || !m || !d) return "";
+  const issue = new Date(Date.UTC(y - validityYears, m - 1, d));
+  if (Number.isNaN(issue.getTime())) return "";
+  return issue.toISOString().slice(0, 10);
+}
+
 function newLanguageRow(language = "", level = ""): LanguageRow {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -277,7 +294,7 @@ const registerCandidateSchema = z.object({
   houseNo: opt,
   occupation: opt,
   qualification: opt,
-  monthlySalary: optionalPositiveNumber,
+  monthlySalary: opt,
   contractPeriod: opt,
   englishLevel: opt,
   arabicLevel: opt,
@@ -686,6 +703,9 @@ export function CandidateApplicationForm({
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrStatus, setOcrStatus] = useState("");
   const [ocrPercent, setOcrPercent] = useState(0);
+  // Raised after every scan: MRZ reads are good but never authoritative.
+  const [ocrNeedsReview, setOcrNeedsReview] = useState(false);
+  const [passportValidityYears, setPassportValidityYears] = useState(5);
   const [languageRows, setLanguageRows] = useState<LanguageRow[]>(() => [
     newLanguageRow("English", ""),
     newLanguageRow("Arabic", ""),
@@ -732,15 +752,21 @@ export function CandidateApplicationForm({
       if (result.passportExpiryDate) setValue("passportExpiryDate", result.passportExpiryDate);
       if (result.passportPlaceOfIssue) setValue("passportPlaceOfIssue", result.passportPlaceOfIssue);
       if (result.placeOfBirth) setValue("placeOfBirth", result.placeOfBirth);
-      if (result.passportIssueDate) setValue("passportIssueDate", result.passportIssueDate);
+      // The MRZ carries no issue date, so derive it from the expiry and the
+      // passport's validity term whenever the scan could not read one.
+      const issueDate =
+        result.passportIssueDate ||
+        deriveIssueFromExpiry(result.passportExpiryDate || "", passportValidityYears);
+      if (issueDate) setValue("passportIssueDate", issueDate);
       if (result.passportType) setValue("passportType", result.passportType);
       setOcrPercent(100);
-      setOcrStatus("Passport data verified");
-      toast.success(
-        result.confidence === "high"
-          ? "Passport scanned — basic details filled in"
-          : "Passport scanned — please verify the filled fields"
-      );
+      setOcrStatus("Passport data filled in");
+      setOcrNeedsReview(true);
+      toast.warning("Passport scanned — check every field before saving", {
+        description:
+          "OCR misreads names, dates and passport numbers often enough that each value needs a human check against the booklet.",
+        duration: 8000,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Passport scan failed");
     } finally {
@@ -985,7 +1011,7 @@ export function CandidateApplicationForm({
     sponsorAddress: data.sponsorAddress || null,
     sponsorArabicName: data.sponsorArabicName || null,
     agentName: data.agentName || null,
-    applicationNo: isEdit ? data.applicationNo || null : null,
+    applicationNo: data.applicationNo || null,
     fileNo: data.fileNo || null,
     wakalaNo: data.wakalaNo || null,
     contractNo: data.contractNo || null,
@@ -1062,7 +1088,7 @@ export function CandidateApplicationForm({
         toast.success("Candidate updated");
         onSaved?.();
         mutate((key: unknown) => typeof key === "string" && key.includes("/candidates"));
-        router.push(`/candidates/${candidateId}`);
+        router.push("/candidates");
         return;
       }
 
@@ -1115,7 +1141,7 @@ export function CandidateApplicationForm({
 
       onSaved?.();
       mutate((key: unknown) => typeof key === "string" && key.includes("/candidates"));
-      router.push(`/candidates/${newId}`);
+      router.push("/candidates");
     } catch {
       toast.error(isEdit ? "Update failed. Please try again." : "Registration failed. Please try again.");
     }
@@ -1181,6 +1207,29 @@ export function CandidateApplicationForm({
         }}
         className="flex flex-col gap-4"
       >
+          {ocrNeedsReview ? (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="font-medium">Scanned data needs checking</p>
+                <p className="mt-0.5 text-[13px] opacity-90">
+                  These fields came from the passport scan. Names, dates and the passport number
+                  are the ones OCR most often gets wrong — compare each against the booklet before
+                  saving.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 px-2 text-xs"
+                onClick={() => setOcrNeedsReview(false)}
+              >
+                Checked
+              </Button>
+            </div>
+          ) : null}
+
           {/* Step 1 — Documents */}
           <div className={cn("space-y-4", currentStep !== 0 && "hidden")}>
             <FormSection
@@ -1283,14 +1332,8 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Application No.</Label>
                   <Input
-                    value={
-                      isEdit
-                        ? watch("applicationNo") || "—"
-                        : "Auto-generated on save"
-                    }
-                    readOnly
-                    disabled
-                    className="bg-muted/50 text-muted-foreground"
+                    {...register("applicationNo")}
+                    placeholder="Enter application number"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1370,12 +1413,48 @@ export function CandidateApplicationForm({
                   <Input {...register("placeOfBirth")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Date of Issue</Label>
-                  <Input type="date" {...register("passportIssueDate")} />
+                  <Label>Passport Validity</Label>
+                  <Select
+                    value={String(passportValidityYears)}
+                    onValueChange={(v) => {
+                      const years = Number(v);
+                      setPassportValidityYears(years);
+                      const expiry = watch("passportExpiryDate");
+                      if (expiry)
+                        setValue("passportIssueDate", deriveIssueFromExpiry(expiry, years));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[200]">
+                      <SelectItem value="5">5 years</SelectItem>
+                      <SelectItem value="10">10 years</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Date of Expiry</Label>
-                  <Input type="date" {...register("passportExpiryDate")} />
+                  <Input
+                    type="date"
+                    {...register("passportExpiryDate", {
+                      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                        const expiry = e.target.value;
+                        if (expiry)
+                          setValue(
+                            "passportIssueDate",
+                            deriveIssueFromExpiry(expiry, passportValidityYears)
+                          );
+                      },
+                    })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Date of Issue</Label>
+                  <Input type="date" {...register("passportIssueDate")} />
+                  <p className="text-[11px] text-muted-foreground">
+                    Expiry less {passportValidityYears} years — override if the booklet differs.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>
@@ -1756,10 +1835,9 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Salary (ETB / SAR)</Label>
                   <Input
-                    type="number"
-                    min={1}
-                    step={1}
-                    inputMode="decimal"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="e.g. 1200 SAR"
                     {...register("monthlySalary")}
                   />
                   {errors.monthlySalary && (

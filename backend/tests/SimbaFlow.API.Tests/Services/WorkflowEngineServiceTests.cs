@@ -229,4 +229,52 @@ public class WorkflowEngineServiceTests
         result.IsSuccess.Should().BeFalse();
         result.Error.Should().Contain("role");
     }
+
+    [Fact]
+    public async Task ReapplyMirrorViews_RelaxedRule_PullsWaitingCandidateOntoTargetBoard()
+    {
+        var (db, engine, userId) = CreateSut();
+        var (_, intake, embassy, rule, candidate) = await SeedBasicAsync(db);
+
+        await engine.ExecuteTransitionAsync(candidate.Id, rule.Id, userId, "tester");
+
+        // Medical passes but tasheer is never booked, so the seeded AND rule keeps the
+        // candidate off LMIS.
+        await engine.UpdateStatusAsync(candidate.Id, "medical", "Fit", userId, "tester");
+
+        var mirror = await db.MirrorViewRules.FirstAsync();
+        var lmisStageId = mirror.TargetStageId;
+
+        var beforeState = await engine.GetCurrentStateAsync(candidate.Id);
+        beforeState.VisibleInStages.Should().NotContain(lmisStageId);
+
+        // The agency's destination country does not require tasheer before LMIS.
+        mirror.Conditions = JsonDocument.Parse(
+            """{"operator":"AND","rules":[{"field":"medical","op":"eq","value":"Fit"}]}""");
+        await db.SaveChangesAsync();
+
+        var changed = await engine.ReapplyMirrorViewsAsync(userId, "tester");
+
+        changed.Should().Be(1);
+        var afterState = await engine.GetCurrentStateAsync(candidate.Id);
+        afterState.VisibleInStages.Should().Contain(lmisStageId);
+    }
+
+    [Fact]
+    public async Task EvaluateMirrorViews_StatusStoredInDifferentCase_StillMirrors()
+    {
+        var (db, engine, userId) = CreateSut();
+        var (_, _, _, rule, candidate) = await SeedBasicAsync(db);
+
+        await engine.ExecuteTransitionAsync(candidate.Id, rule.Id, userId, "tester");
+
+        // Values written through different screens vary in case; the mirror must still fire.
+        await engine.UpdateStatusAsync(candidate.Id, "medical", "fit", userId, "tester");
+        await engine.UpdateStatusAsync(candidate.Id, "tasheer", "BOOK DONE", userId, "tester");
+
+        var lmisStageId = (await db.MirrorViewRules.FirstAsync()).TargetStageId;
+        var state = await engine.GetCurrentStateAsync(candidate.Id);
+
+        state.VisibleInStages.Should().Contain(lmisStageId);
+    }
 }

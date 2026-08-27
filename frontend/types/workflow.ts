@@ -6,6 +6,22 @@ export interface WorkflowDefinition {
   isActive: boolean;
   stages: WorkflowStage[];
   transitionRules: WorkflowTransitionRule[];
+  mirrorViewRules: MirrorViewRule[];
+}
+
+/**
+ * A mirror shows a candidate on a second board without moving them off the first.
+ * Embassy → LMIS is the one agencies retune, because whether tasheer must be booked
+ * before LMIS registration is a government rule that varies by destination.
+ */
+export interface MirrorViewRule {
+  id: string;
+  sourceStageId: string;
+  sourceStageName: string;
+  targetStageId: string;
+  targetStageName: string;
+  conditions: ConditionGroup;
+  isActive: boolean;
 }
 
 export interface WorkflowStage {
