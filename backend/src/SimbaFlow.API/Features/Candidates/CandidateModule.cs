@@ -144,6 +144,15 @@ public class CandidateModule : ICarterModule
         });
 
         // Generate Enjaz / visa application form
+        // Generate the MoLS standard employment contract
+        group.MapPost("/{candidateId:guid}/contract", async (Guid candidateId, ISender sender) =>
+        {
+            var result = await sender.Send(new GenerateContractCommand(candidateId));
+            return result.IsSuccess
+                ? Results.File(result.Data!, "application/pdf", $"contract_{candidateId}.pdf")
+                : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapPost("/{candidateId:guid}/visa-form", async (Guid candidateId, ISender sender) =>
         {
             var result = await sender.Send(new GenerateVisaFormCommand(candidateId));
