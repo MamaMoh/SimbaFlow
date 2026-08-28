@@ -153,7 +153,11 @@ public sealed class ContractGenerationService : IContractGenerationService
                     }
 
                     // ── Signatures ──
-                    root.Item().PaddingTop(18).Text("Signatures: · التوقيعات").FontSize(10).Bold();
+                    root.Item().PaddingTop(18).Row(r =>
+                    {
+                        r.RelativeItem().Text("Signatures").FontSize(10).Bold();
+                        r.RelativeItem().AlignRight().Text("التوقيعات").FontSize(10).Bold();
+                    });
                     root.Item().PaddingTop(10).Row(r =>
                     {
                         SignatureSlot(r, "Domestic Service Worker", "العامل المنزلي");
@@ -203,5 +207,4 @@ public sealed class ContractGenerationService : IContractGenerationService
         });
     }
 
-    /// <summary>Arabic needs a font that actually carries the glyphs; fall back through the usual paths.</summary>
 }

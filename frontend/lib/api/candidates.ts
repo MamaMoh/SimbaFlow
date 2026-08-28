@@ -168,6 +168,13 @@ export async function generateCandidateVisaForm(candidateId: string): Promise<Bl
   return readPdfBlob(res, "Visa form generation failed");
 }
 
+export async function generateCandidateContract(candidateId: string): Promise<Blob> {
+  return readPdfBlob(
+    await fetch(`/api/proxy/candidates/${candidateId}/contract`, { method: "POST" }),
+    "Contract generation failed",
+  );
+}
+
 export async function deleteCandidate(id: string): Promise<void> {
   const res = await fetch(`/api/proxy/candidates/${id}`, { method: "DELETE" });
   if (!res.ok) {

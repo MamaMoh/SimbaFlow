@@ -10,6 +10,7 @@ import {
   useCandidateTimeline,
   generateCandidateCv,
   generateCandidateVisaForm,
+  generateCandidateContract,
 } from "@/lib/api/candidates";
 import { useAvailableActions, useWorkflowState } from "@/lib/api/workflow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +36,7 @@ import {
   MoreHorizontal,
   Pencil,
   Stamp,
+  FileSignature,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -46,6 +48,7 @@ export default function CandidateDetailPage() {
   const { hasPermission } = usePermissions();
   const [generatingCv, setGeneratingCv] = useState(false);
   const [generatingVisa, setGeneratingVisa] = useState(false);
+  const [generatingContract, setGeneratingContract] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
 
   const { candidate, isLoading, mutate: mutateCandidate } = useCandidate(id);
@@ -150,6 +153,20 @@ export default function CandidateDetailPage() {
     }
   };
 
+  const handleGenerateContract = async () => {
+    setGeneratingContract(true);
+    try {
+      const blob = await generateCandidateContract(candidate.id);
+      openPdfInNewTab(blob);
+      mutateDocs();
+      toast.success("Employment contract generated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Contract generation failed");
+    } finally {
+      setGeneratingContract(false);
+    }
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <div>
@@ -250,6 +267,20 @@ export default function CandidateDetailPage() {
                     <Stamp className="mr-2 h-4 w-4" />
                   )}
                   Generate visa form
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={generatingContract}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    void handleGenerateContract();
+                  }}
+                >
+                  {generatingContract ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileSignature className="mr-2 h-4 w-4" />
+                  )}
+                  Generate contract
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
