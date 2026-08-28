@@ -211,8 +211,14 @@ public class CvGenerationService : ICvGenerationService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Modelled on the Saudi Embassy visa / enjaze form the agencies already circulate: a single
+        // bilingual page with the applicant, passport, visa and sponsor blocks, a purpose-of-travel
+        // line and a certification with a signature slot.
+        static string D(DateOnly? d) => d?.ToString("dd/MM/yyyy") ?? "—";
+        static string V(string? s) => string.IsNullOrWhiteSpace(s) ? "—" : s;
+
         var agency = string.IsNullOrWhiteSpace(candidate.PartnerName)
-            ? "SIMBAFLOW FOREIGN EMPLOYMENT AGENCY"
+            ? "FOREIGN EMPLOYMENT AGENCY"
             : candidate.PartnerName.ToUpperInvariant();
 
         var document = Document.Create(container =>
@@ -220,53 +226,109 @@ public class CvGenerationService : ICvGenerationService
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(20);
-                page.DefaultTextStyle(x => x.FontFamily(FontFamily).FontSize(9).FontColor(Colors.Black));
+                page.Margin(22);
+                page.DefaultTextStyle(x => x.FontFamily(FontFamily).FontSize(8.5f).FontColor(Colors.Black));
 
                 page.Content().Column(root =>
                 {
-                    root.Item().AlignCenter().Text(agency).FontSize(13).Bold().FontColor(AgencyBlue);
-                    root.Item().PaddingTop(4).AlignCenter()
-                        .Text("Visa / Sponsor Form · نموذج التأشيرة والكفيل")
-                        .FontSize(11).Bold();
+                    root.Item().Row(head =>
+                    {
+                        head.RelativeItem().Column(c =>
+                        {
+                            c.Item().Text(agency).FontSize(12).Bold().FontColor(AgencyBlue);
+                            c.Item().Text("Embassy of Saudi Arabia · Consular Section").FontSize(8);
+                            c.Item().Text("سفارة المملكة العربية السعودية · القسم القنصلي").FontSize(8);
+                        });
+                        head.ConstantItem(60).Column(c =>
+                        {
+                            c.Item().AlignRight().Text("Visa No. / رقم التأشيرة").FontSize(6.5f).FontColor(Colors.Grey.Darken2);
+                            c.Item().AlignRight().Text(V(candidate.VisaNumber)).FontSize(9).Bold();
+                        });
+                    });
 
-                    root.Item().PaddingTop(12).Row(r =>
+                    root.Item().PaddingTop(6).AlignCenter()
+                        .Text("VISA APPLICATION · طلب تأشيرة").FontSize(11).Bold();
+
+                    // Applicant + photo
+                    root.Item().PaddingTop(10).Row(r =>
                     {
                         r.RelativeItem().Border(0.8f).BorderColor(Border).Column(box =>
                         {
                             SectionBar(box, "Applicant", "مقدم الطلب");
                             BilingualRow(box, "Full Name", "الاسم الكامل", candidate.FullName.ToUpperInvariant());
-                            BilingualRow(box, "Passport No.", "رقم الجواز", candidate.PassportNumber);
-                            BilingualRow(box, "Nationality", "الجنسية", candidate.Nationality ?? "—");
-                            BilingualRow(box, "Date of Birth", "تاريخ الميلاد",
-                                candidate.DateOfBirth.ToString("dd/MM/yyyy"));
-                            BilingualRow(box, "Phone", "الهاتف", candidate.PhoneNumber ?? "—");
+                            BilingualRow(box, "Date of Birth", "تاريخ الميلاد", candidate.DateOfBirth.ToString("dd/MM/yyyy"));
+                            BilingualRow(box, "Place of Birth", "مكان الميلاد", V(candidate.PlaceOfBirth));
+                            BilingualRow(box, "Nationality", "الجنسية", V(candidate.Nationality));
+                            BilingualRow(box, "Sex", "الجنس", candidate.Gender.ToString());
+                            BilingualRow(box, "Marital Status", "الحالة الاجتماعية", V(candidate.MaritalStatus));
+                            BilingualRow(box, "Religion", "الديانة", V(candidate.Religion));
+                            BilingualRow(box, "Qualification", "المؤهل العلمي", V(candidate.Qualification));
+                            BilingualRow(box, "Profession", "المهنة", V(candidate.Occupation));
+                            BilingualRow(box, "Home Address", "عنوان السكن",
+                                Truncate(string.Join(", ", new[] { candidate.Address, candidate.City }.Where(s => !string.IsNullOrWhiteSpace(s))), 60));
                         });
 
                         r.ConstantItem(110).PaddingLeft(8).Border(0.8f).BorderColor(Border)
-                            .Height(130).Background(Colors.Grey.Lighten4)
+                            .Height(150).Background(Colors.Grey.Lighten4)
                             .AlignCenter().AlignMiddle()
                             .Element(e => PlaceImage(e, photoBytes, "PHOTO"));
                     });
 
-                    root.Item().PaddingTop(10).Border(0.8f).BorderColor(Border).Column(box =>
+                    // Passport
+                    root.Item().PaddingTop(8).Border(0.8f).BorderColor(Border).Column(box =>
                     {
-                        SectionBar(box, "Visa Details", "بيانات التأشيرة");
-                        BilingualRow(box, "Visa No.", "رقم التأشيرة", candidate.VisaNumber ?? "—");
-                        BilingualRow(box, "Visa Type", "نوع التأشيرة", candidate.VisaType ?? "Work");
-                        BilingualRow(box, "Destination", "دولة العمل", candidate.CountryOfTravel ?? "—");
+                        SectionBar(box, "Passport", "الجواز");
+                        box.Item().Row(r =>
+                        {
+                            r.RelativeItem().Column(c => {
+                                BilingualRow(c, "Passport No.", "رقم الجواز", candidate.PassportNumber);
+                                BilingualRow(c, "Place of Issue", "مكان الإصدار", V(candidate.PassportPlaceOfIssue));
+                            });
+                            r.RelativeItem().Column(c => {
+                                BilingualRow(c, "Date of Issue", "تاريخ الإصدار", D(candidate.PassportIssueDate));
+                                BilingualRow(c, "Date of Expiry", "تاريخ الانتهاء", D(candidate.PassportExpiryDate));
+                            });
+                        });
                     });
 
-                    root.Item().PaddingTop(10).Border(0.8f).BorderColor(Border).Column(box =>
+                    // Visa + purpose
+                    root.Item().PaddingTop(8).Border(0.8f).BorderColor(Border).Column(box =>
                     {
-                        SectionBar(box, "Sponsor Details", "بيانات الكفيل");
-                        BilingualRow(box, "Sponsor Name", "اسم الكفيل", candidate.SponsorName ?? "—");
-                        BilingualRow(box, "Sponsor (Arabic)", "اسم الكفيل عربي", candidate.SponsorArabicName ?? "—");
-                        BilingualRow(box, "Sponsor ID", "رقم الكفيل", candidate.SponsorIdNumber ?? "—");
-                        BilingualRow(box, "Sponsor Phone", "هاتف الكفيل", candidate.SponsorPhone ?? "—");
-                        BilingualRow(box, "Sponsor Address", "عنوان الكفيل",
-                            Truncate(candidate.SponsorAddress ?? "—", 60));
-                        BilingualRow(box, "Agent", "الوكيل", candidate.AgentName ?? "—");
+                        SectionBar(box, "Visa", "التأشيرة");
+                        BilingualRow(box, "Visa No.", "رقم التأشيرة", V(candidate.VisaNumber));
+                        BilingualRow(box, "Visa Type", "نوع التأشيرة", V(candidate.VisaType) == "—" ? "Work" : candidate.VisaType!);
+                        BilingualRow(box, "Destination", "دولة العمل", V(candidate.CountryOfTravel));
+                        BilingualRow(box, "Purpose of Travel", "الغرض من السفر", "Work · عمل");
+                    });
+
+                    // Sponsor
+                    root.Item().PaddingTop(8).Border(0.8f).BorderColor(Border).Column(box =>
+                    {
+                        SectionBar(box, "Sponsor", "الكفيل");
+                        BilingualRow(box, "Sponsor Name", "اسم الكفيل", V(candidate.SponsorName));
+                        BilingualRow(box, "Sponsor (Arabic)", "اسم الكفيل عربي", V(candidate.SponsorArabicName));
+                        BilingualRow(box, "Sponsor ID", "رقم الكفيل", V(candidate.SponsorIdNumber));
+                        BilingualRow(box, "Sponsor Phone", "هاتف الكفيل", V(candidate.SponsorPhone));
+                        BilingualRow(box, "Agent", "الوكيل", V(candidate.AgentName));
+                    });
+
+                    // Certification + signature
+                    root.Item().PaddingTop(10)
+                        .Text("The undersigned certifies that all information provided is correct and undertakes to abide by the laws of the Kingdom during the period of residence.")
+                        .FontSize(7.5f).Italic();
+                    root.Item().PaddingTop(2).AlignRight()
+                        .Text("أقر أدناه بأن كل المعلومات صحيحة وسألتزم بقوانين المملكة أثناء فترة إقامتي بها.")
+                        .FontSize(7.5f).Italic();
+
+                    root.Item().PaddingTop(16).Row(r =>
+                    {
+                        r.RelativeItem().Column(c => {
+                            c.Item().Text($"Date / التاريخ: {DateTime.UtcNow:dd/MM/yyyy}").FontSize(8);
+                        });
+                        r.RelativeItem().AlignRight().Column(c => {
+                            c.Item().Text("Signature / التوقيع: ______________").FontSize(8);
+                            c.Item().PaddingTop(2).Text(candidate.FullName.ToUpperInvariant()).FontSize(8).Bold();
+                        });
                     });
                 });
             });
@@ -275,6 +337,7 @@ public class CvGenerationService : ICvGenerationService
         return Task.FromResult(document.GeneratePdf());
     }
 
+    /// <summary>Fill the work/skills-height slot; prefer height so portrait full-body photos use the space.</summary>
     private static void PlaceImage(IContainer e, byte[]? bytes, string placeholder)
     {
         if (bytes is { Length: > 0 })
@@ -283,7 +346,6 @@ public class CvGenerationService : ICvGenerationService
             e.Text(placeholder).FontSize(8).FontColor(Colors.Grey.Medium);
     }
 
-    /// <summary>Fill the work/skills-height slot; prefer height so portrait full-body photos use the space.</summary>
     private static void PlaceFullBodyImage(IContainer e, byte[]? bytes)
     {
         if (bytes is { Length: > 0 })
