@@ -183,8 +183,37 @@ public class WorkflowEngineService : IWorkflowEngineService
                 .Where(r => r.WorkflowStageId == rule.SourceStageId && !r.IsDeleted)
                 .Select(r => r.TargetStageId)
                 .ToListAsync(ct);
+
+            // Record each clearing as an event. GetCurrentStateAsync rebuilds visibility by
+            // replaying the stream and then unions the stored column into it, so a removal that
+            // exists only in the column is undone the moment anything reads the state back: the
+            // candidate reappears on the board they just left, and the next status update writes
+            // that stale set back. Only MirrorViewDeactivated takes a stage out of a replay.
             foreach (var mirrorTargetId in sourceMirrorTargets)
-                visible.Remove(mirrorTargetId);
+            {
+                if (!visible.Remove(mirrorTargetId)) continue;
+
+                var clearedName = await _context.WorkflowStages
+                    .AsNoTracking()
+                    .Where(s => s.Id == mirrorTargetId)
+                    .Select(s => s.Name)
+                    .FirstOrDefaultAsync(ct);
+
+                _context.WorkflowEvents.Add(new WorkflowEvent
+                {
+                    CandidateId = candidate.Id,
+                    SequenceNumber = ++nextSeq,
+                    EventType = WorkflowEventType.MirrorViewDeactivated,
+                    FromStageId = rule.SourceStageId,
+                    FromStageName = fromStageName,
+                    ToStageId = mirrorTargetId,
+                    ToStageName = clearedName,
+                    Data = JsonDocument.Parse(JsonSerializer.Serialize(
+                        new { clearedBy = "transition", transitionRuleId = rule.Id })),
+                    UserId = userId,
+                    UserName = userName
+                });
+            }
         }
         else if (fromStageId.HasValue)
         {
