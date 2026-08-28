@@ -21,7 +21,6 @@ public sealed class ContractGenerationService : IContractGenerationService
     private static readonly Color Ink = Color.FromHex("#111111");
     private static readonly Color Rule = Color.FromHex("#333333");
     private static readonly Color LabelBg = Color.FromHex("#F2F2F2");
-    private static readonly string FontFamily = ResolveFontFamily();
 
     public Task<byte[]> GenerateAsync(
         Candidate candidate, ContractParties parties, CancellationToken ct = default)
@@ -49,7 +48,7 @@ public sealed class ContractGenerationService : IContractGenerationService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(30);
-                page.DefaultTextStyle(x => x.FontFamily(FontFamily).FontSize(8.5f).FontColor(Ink));
+                page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(8.5f).FontColor(Ink));
 
                 page.Footer().Row(r =>
                 {
@@ -203,34 +202,4 @@ public sealed class ContractGenerationService : IContractGenerationService
     }
 
     /// <summary>Arabic needs a font that actually carries the glyphs; fall back through the usual paths.</summary>
-    private static string ResolveFontFamily()
-    {
-        var candidates = new[]
-        {
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-            "/Library/Fonts/Arial Unicode.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf",
-            "C:/Windows/Fonts/arialuni.ttf",
-            "C:/Windows/Fonts/arial.ttf"
-        };
-
-        const string customName = "SimbaFlowContractFont";
-        foreach (var path in candidates)
-        {
-            if (!File.Exists(path)) continue;
-            try
-            {
-                using var stream = File.OpenRead(path);
-                QuestPDF.Drawing.FontManager.RegisterFontWithCustomName(customName, stream);
-                return customName;
-            }
-            catch
-            {
-                // try the next candidate
-            }
-        }
-
-        return Fonts.Calibri;
-    }
 }

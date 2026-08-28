@@ -16,7 +16,6 @@ public class CvGenerationService : ICvGenerationService
     private static readonly Color AgencyBlue = Color.FromHex("#1B4F9C");
     private static readonly Color Border = Color.FromHex("#222222");
     private static readonly Color LabelBg = Color.FromHex("#F5F3F1");
-    private static readonly string FontFamily = ResolveFontFamily();
 
     static CvGenerationService()
     {
@@ -57,7 +56,7 @@ public class CvGenerationService : ICvGenerationService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily(FontFamily).FontSize(8).FontColor(Colors.Black));
+                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
 
                 page.Content().Column(root =>
                 {
@@ -227,7 +226,7 @@ public class CvGenerationService : ICvGenerationService
             {
                 page.Size(PageSizes.A4);
                 page.Margin(22);
-                page.DefaultTextStyle(x => x.FontFamily(FontFamily).FontSize(8.5f).FontColor(Colors.Black));
+                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(8.5f).FontColor(Colors.Black));
 
                 page.Content().Column(root =>
                 {
@@ -354,35 +353,6 @@ public class CvGenerationService : ICvGenerationService
             e.Text("FULL PHOTO").FontSize(8).FontColor(Colors.Grey.Medium);
     }
 
-    private static string ResolveFontFamily()
-    {
-        var candidates = new[]
-        {
-            "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
-            "/Library/Fonts/Arial Unicode.ttf",
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "C:/Windows/Fonts/arialuni.ttf",
-            "C:/Windows/Fonts/arial.ttf"
-        };
-
-        const string customName = "SimbaFlowCvFont";
-        foreach (var path in candidates)
-        {
-            if (!File.Exists(path)) continue;
-            try
-            {
-                using var stream = File.OpenRead(path);
-                FontManager.RegisterFontWithCustomName(customName, stream);
-                return customName;
-            }
-            catch
-            {
-                // try next
-            }
-        }
-
-        return "Arial";
-    }
 
     private static void SectionBar(ColumnDescriptor col, string en, string ar)
     {

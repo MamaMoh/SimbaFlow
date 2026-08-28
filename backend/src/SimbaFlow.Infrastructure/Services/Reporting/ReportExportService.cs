@@ -87,7 +87,7 @@ public class ReportExportService : IReportExportService
             {
                 page.Size(PageSizes.A4.Landscape());
                 page.Margin(28);
-                page.DefaultTextStyle(t => t.FontSize(9).FontFamily(Fonts.Calibri));
+                page.DefaultTextStyle(t => t.FontSize(9).FontFamily(Documents.DocumentFonts.Chain));
 
                 page.Header().Column(col =>
                 {

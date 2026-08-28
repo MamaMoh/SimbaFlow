@@ -20,8 +20,9 @@ RUN dotnet publish src/SimbaFlow.API -c Release -o /app/publish --no-restore
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
 
-# Install curl for health checks
-RUN apk add --no-cache curl
+# curl for health checks; Noto Arabic/Ethiopic because the generated contract and visa form are
+# bilingual and QuestPDF only bundles Lato, which has no Arabic or Ethiopic glyphs.
+RUN apk add --no-cache curl font-noto-arabic font-noto-ethiopic
 
 # Create non-root user
 RUN adduser -D -h /app appuser
