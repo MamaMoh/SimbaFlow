@@ -113,6 +113,11 @@ public class EmbassyLmisProperties
     [Property(MaxTest = 30)]
     public bool RejectionReasonRequired_WhenRejected(NonEmptyString reason)
     {
+        // FsCheck's NonEmptyString includes whitespace-only strings such as " ", which the
+        // validator rejects on purpose — a blank reason is no reason. Only non-blank input is a
+        // valid rejection reason, so that is what this property is about.
+        if (string.IsNullOrWhiteSpace(reason.Get)) return true;
+
         var withReason = new RecordVisaOutcomeValidator()
             .Validate(new RecordVisaOutcomeCommand(Guid.NewGuid(), "Rejected", reason.Get));
         var without = new RecordVisaOutcomeValidator()

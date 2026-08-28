@@ -67,6 +67,14 @@ public static class DocumentFonts
         MissingScripts = missing;
     }
 
+    /// <summary>
+    /// Forces the static constructor to run. The chain is only read inside the render lambda, which
+    /// QuestPDF invokes *after* its licence check — so a generator that touches DocumentFonts only
+    /// there gets the licence set too late and throws. Generators call this from their own static
+    /// constructor instead.
+    /// </summary>
+    public static void EnsureInitialized() { }
+
     private static bool TryRegister(string name, string[] paths)
     {
         foreach (var path in paths)

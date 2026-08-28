@@ -22,6 +22,8 @@ public sealed class ContractGenerationService : IContractGenerationService
     private static readonly Color Rule = Color.FromHex("#333333");
     private static readonly Color LabelBg = Color.FromHex("#F2F2F2");
 
+    static ContractGenerationService() => DocumentFonts.EnsureInitialized();
+
     public Task<byte[]> GenerateAsync(
         Candidate candidate, ContractParties parties, CancellationToken ct = default)
     {
