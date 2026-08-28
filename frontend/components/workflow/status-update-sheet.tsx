@@ -83,11 +83,11 @@ export function StatusUpdateSheet({
   return (
     <Sheet open={open} onOpenChange={handleOpen}>
       <SheetContent className="sm:max-w-md flex flex-col">
-        <SheetHeader>
+        <SheetHeader className="px-6 pt-6">
           <SheetTitle>{title}</SheetTitle>
           {description && <SheetDescription>{description}</SheetDescription>}
         </SheetHeader>
-        <div className="flex-1 space-y-4 py-4 overflow-y-auto">
+        <div className="flex-1 space-y-4 px-6 py-4 overflow-y-auto">
           {fields.map((field) => (
             <div key={field.name} className="space-y-1.5">
               <Label>
@@ -130,7 +130,7 @@ export function StatusUpdateSheet({
           ))}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
-        <SheetFooter>
+        <SheetFooter className="px-6">
           <Button type="button" variant="outline" onClick={() => handleOpen(false)}>
             Cancel
           </Button>
