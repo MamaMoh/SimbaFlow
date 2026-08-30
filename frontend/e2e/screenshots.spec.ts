@@ -45,7 +45,6 @@ test.describe("UI screenshots", () => {
         timeout: 120_000,
       })
       .toMatch(/EP8273953/i);
-    await page.getByRole("button", { name: /^next$/i }).click();
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
     await page.screenshot({ path: path.join(shotDir, "05-passport-ocr-filled.png"), fullPage: true });
 

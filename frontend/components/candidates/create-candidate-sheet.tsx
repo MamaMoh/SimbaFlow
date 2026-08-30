@@ -33,7 +33,6 @@ import {
   ScanLine,
   BookOpen,
   ArrowLeft,
-  ArrowRight,
   AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
@@ -41,7 +40,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { CountrySelect } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
-import { Stepper, StepperStep } from "@/components/ui/stepper";
 import { Progress } from "@/components/ui/progress";
 import type { DepartmentListItem } from "@/lib/schemas/department";
 import {
@@ -51,28 +49,18 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-const APPLICATION_STEPS = [
-  {
-    title: "Documents",
-    description: "Passport & photos",
-  },
-  {
-    title: "Identity",
-    description: "Name & passport",
-  },
-  {
-    title: "Family",
-    description: "Optional · contacts & COC",
-  },
-  {
-    title: "Experience",
-    description: "Optional · languages & skills",
-  },
-  {
-    title: "Placement",
-    description: "Sponsor & travel",
-  },
-] as const;
+/**
+ * A small header introduces each group of cards so a long single page still reads as sections
+ * rather than one undifferentiated wall of inputs.
+ */
+function SectionHeading({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className="flex items-baseline gap-3 border-b border-slate-200 pb-2">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">{title}</h2>
+      <span className="text-xs text-muted-foreground">{hint}</span>
+    </div>
+  );
+}
 
 function FormSection({
   icon: Icon,
@@ -351,14 +339,7 @@ const registerCandidateSchema = z.object({
 
 type RegisterCandidateForm = z.infer<typeof registerCandidateSchema>;
 
-/** Fields validated before leaving each step (empty = no gate). */
-const STEP_FIELDS: (keyof RegisterCandidateForm)[][] = [
-  [],
-  ["firstName", "lastName", "passportNumber", "dateOfBirth", "gender"],
-  [],
-  [],
-  ["email"],
-];
+
 
 /** The minimum a candidate needs to exist — everything else can be added later. */
 const ESSENTIAL_FIELDS = [
@@ -722,8 +703,6 @@ export function CandidateApplicationForm({
     fullPhoto: boolean;
     passport: boolean;
   }>({ photo: false, fullPhoto: false, passport: false });
-  const [currentStep, setCurrentStep] = useState(0);
-  const lastStep = APPLICATION_STEPS.length - 1;
 
   const {
     register,
@@ -801,7 +780,6 @@ export function CandidateApplicationForm({
     setLanguageRows([newLanguageRow("English", ""), newLanguageRow("Arabic", "")]);
     setGenerateVisaAfterSave(true);
     setExistingMedia({ photo: false, fullPhoto: false, passport: false });
-    setCurrentStep(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, reset]);
 
@@ -952,22 +930,24 @@ export function CandidateApplicationForm({
     (v) => typeof v === "string" && v.trim().length > 0,
   );
 
-  const goToPreviousStep = () => {
-    setCurrentStep((s) => Math.max(0, s - 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const goToNextStep = async () => {
-    const fields = STEP_FIELDS[currentStep] ?? [];
-    if (fields.length > 0) {
-      const ok = await trigger(fields);
-      if (!ok) {
-        toast.error("Please fix the highlighted fields before continuing.");
-        return;
+  /**
+   * With every field on one page, a failed save has to say *where* the problem is — otherwise the
+   * offending input can be several screens away with nothing to point at it.
+   */
+  const saveWithValidation = async () => {
+    const ok = await trigger([...ESSENTIAL_FIELDS, "email"]);
+    if (!ok) {
+      toast.error("Some required details are missing — check the highlighted fields.");
+      const firstInvalid = document.querySelector<HTMLElement>("[aria-invalid='true']");
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstInvalid.focus({ preventScroll: true });
+      } else {
+        document.getElementById("identity")?.scrollIntoView({ behavior: "smooth" });
       }
+      return;
     }
-    setCurrentStep((s) => Math.min(lastStep, s + 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    await handleSubmit(onSubmit)();
   };
 
   const buildIntake = (data: RegisterCandidateForm) => ({
@@ -1183,35 +1163,19 @@ export function CandidateApplicationForm({
           </h1>
           <p className="text-sm text-muted-foreground">
             {isEdit
-              ? "Update the application step by step — documents, identity, family, experience, then placement."
-              : "Only name, passport, date of birth and gender are required. Fill those and press “Save now” — the rest can be added any time later."}
+              ? "Every field on one page — change anything and save."
+              : "Only name, passport, date of birth and gender are required. Fill those and save; everything else can be added at any time."}
           </p>
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200/90 bg-white px-3 py-4 shadow-sm sm:px-6">
-        <Stepper currentStep={currentStep} className="flex w-full items-start justify-between gap-1">
-          {APPLICATION_STEPS.map((step, index) => (
-            <StepperStep
-              key={step.title}
-              stepNumber={index}
-              title={step.title}
-              description={step.description}
-              currentStep={currentStep}
-              isLastStep={index === lastStep}
-            />
-          ))}
-        </Stepper>
-      </div>
-
       <form
         onSubmit={(e) => {
-          // Never let a stray Enter keypress save the record. Saving is an explicit button press;
-          // Enter only ever advances a step.
+          // Saving is an explicit button press. A stray Enter in any of the several dozen inputs
+          // must not commit a half-filled application.
           e.preventDefault();
-          if (currentStep < lastStep) void goToNextStep();
         }}
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-8"
       >
           {ocrNeedsReview ? (
             <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100">
@@ -1237,7 +1201,8 @@ export function CandidateApplicationForm({
           ) : null}
 
           {/* Step 1 — Documents */}
-          <div className={cn("space-y-4", currentStep !== 0 && "hidden")}>
+          <div id="documents" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Documents" hint="Passport scan and photos" />
             <FormSection
               icon={BookOpen}
               title="Passport scan"
@@ -1259,7 +1224,7 @@ export function CandidateApplicationForm({
                   <div>
                     <p className="text-sm font-medium text-emerald-950">Auto-fill from MRZ</p>
                     <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">
-                      After upload, scanning fills Basic Information and Passport fields. Review on the Identity step.
+                      After upload, scanning fills the Basic Information and Passport fields below. Check them against the booklet before saving.
                     </p>
                   </div>
                   <Button
@@ -1328,7 +1293,8 @@ export function CandidateApplicationForm({
           </div>
 
           {/* Step 2 — Identity */}
-          <div className={cn("space-y-4", currentStep !== 1 && "hidden")}>
+          <div id="identity" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Identity" hint="Name, passport and applicant details" />
             <FormSection
               icon={FileText}
               title="Basic Information"
@@ -1638,7 +1604,8 @@ export function CandidateApplicationForm({
           </div>
 
           {/* Step 3 — Family */}
-          <div className={cn("space-y-4", currentStep !== 2 && "hidden")}>
+          <div id="family" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Family" hint="Relatives, contacts and COC" />
             <FormSection
               icon={Users}
               title="Relative Information"
@@ -1719,7 +1686,8 @@ export function CandidateApplicationForm({
           </div>
 
           {/* Step 4 — Experience */}
-          <div className={cn("space-y-4", currentStep !== 3 && "hidden")}>
+          <div id="experience" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Experience" hint="Languages, education and skills" />
             <FormSection icon={FileText} title="Languages & Education">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">Add spoken languages and education level.</p>
@@ -1942,7 +1910,8 @@ export function CandidateApplicationForm({
           </div>
 
           {/* Step 5 — Placement */}
-          <div className={cn("space-y-4", currentStep !== 4 && "hidden")}>
+          <div id="placement" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Placement" hint="Sponsor, visa, partner and travel" />
             <FormSection
               icon={Stamp}
               title="Sponsor & Visa"
@@ -2107,50 +2076,20 @@ export function CandidateApplicationForm({
               <Button type="button" variant="outline" onClick={goBack}>
                 Cancel
               </Button>
-              <div className="flex items-center gap-2">
-                <span className="hidden text-xs text-muted-foreground sm:inline">
-                  Step {currentStep + 1} of {APPLICATION_STEPS.length}
-                </span>
-                {currentStep > 0 ? (
-                  <Button type="button" variant="outline" onClick={goToPreviousStep} className="gap-1.5">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
+              <div className="flex items-center gap-3">
+                {!essentialsComplete ? (
+                  <span className="hidden text-xs text-muted-foreground sm:inline">
+                    Name, passport, date of birth and gender are required
+                  </span>
                 ) : null}
-                {/* Escape hatch: once the essentials are filled the user can save
-                    immediately instead of stepping through the optional sections. */}
-                {currentStep > 0 && currentStep < lastStep && essentialsComplete ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isSubmitting}
-                    title="Save now and add the remaining details later"
-                    // Submit directly: the form's onSubmit turns submits into
-                    // "next step" while on an intermediate step.
-                    onClick={() => void handleSubmit(onSubmit)()}
-                  >
-                    {isSubmitting ? "Saving…" : "Save now"}
-                  </Button>
-                ) : null}
-                {currentStep < lastStep ? (
-                  <Button
-                    type="button"
-                    onClick={() => void goToNextStep()}
-                    className="gap-1.5 bg-emerald-800 hover:bg-emerald-900 text-white"
-                  >
-                    Next
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    onClick={() => void handleSubmit(onSubmit)()}
-                    disabled={isSubmitting}
-                    className="bg-emerald-800 hover:bg-emerald-900 text-white"
-                  >
-                    {isSubmitting ? "Saving…" : isEdit ? "Save Changes" : "Save"}
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  onClick={() => void saveWithValidation()}
+                  disabled={isSubmitting}
+                  className="bg-emerald-800 text-white hover:bg-emerald-900"
+                >
+                  {isSubmitting ? "Saving…" : isEdit ? "Save Changes" : "Save Application"}
+                </Button>
               </div>
             </div>
           </div>

@@ -9,7 +9,7 @@ test.describe("Candidates intake", () => {
     await login(page, CREDENTIALS.agencyOwner);
   });
 
-  test("candidates list opens stepped New Application", async ({ page }) => {
+  test("candidates list opens the New Application form", async ({ page }) => {
     await page.goto("/candidates");
     await expect(page.getByRole("heading", { name: /candidates/i })).toBeVisible();
 
@@ -23,8 +23,7 @@ test.describe("Candidates intake", () => {
     await expect(page.getByRole("heading", { name: /passport scan/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /candidate photos/i })).toBeVisible();
 
-    // Identity fields are on step 2
-    await page.getByRole("button", { name: /^next$/i }).click();
+    // Identity fields are on the same page, not behind a step
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
   });
@@ -49,7 +48,7 @@ test.describe("Candidates intake", () => {
       await scanBtn.click();
     }
 
-    // OCR fills hidden Identity-step fields; wait then open that step to review
+    // OCR fills the Identity fields, which are on the same page as the scanner
     await expect
       .poll(
         async () => page.locator('input[name="passportNumber"]').inputValue(),
@@ -57,7 +56,6 @@ test.describe("Candidates intake", () => {
       )
       .toMatch(/EP8273953/i);
 
-    await page.getByRole("button", { name: /^next$/i }).click();
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
     await expect(page.locator('input[name="lastName"]')).toHaveValue(/TESEMA/i);
     await expect(page.locator('input[name="firstName"]')).toHaveValue(/MENEN/i);
