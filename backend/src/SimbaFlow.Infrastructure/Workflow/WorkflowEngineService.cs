@@ -68,14 +68,16 @@ public class WorkflowEngineService : IWorkflowEngineService
                 state.StageName = candidate.CurrentStageName;
             }
 
-            if (state.VisibleInStages.Count == 0 && candidate.VisibleInStages.Length > 0)
+            // Board membership is not fully derivable from the stream. Entering and leaving a
+            // stage are both recorded as StageTransitioned, which carries no visibility payload,
+            // and a snapshot freezes whatever set happened to be current when it was written. So
+            // unioning replay with the column could only ever grow the set: a candidate kept every
+            // board they had ever appeared on, and the next status update wrote that back. Both
+            // write paths maintain this column on every mutation, so it is the authority; replay
+            // supplies the parts it does not hold. Fall back to replay only for rows that predate
+            // it being populated.
+            if (candidate.VisibleInStages.Length > 0)
                 state.VisibleInStages = [.. candidate.VisibleInStages];
-            else if (candidate.VisibleInStages.Length > 0)
-            {
-                // Preserve RemoveFromSource=false visibility not encoded in event replay
-                foreach (var stageId in candidate.VisibleInStages)
-                    state.VisibleInStages.Add(stageId);
-            }
 
             if (state.StatusValues.Count == 0 &&
                 candidate.CurrentStatusValues is not null &&

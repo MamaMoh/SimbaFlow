@@ -8,13 +8,16 @@ using Xunit;
 namespace SimbaFlow.API.Tests.Services;
 
 /// <summary>
-/// Board membership is rebuilt by replaying the event stream, and the reader then unions the
-/// candidate's stored column into the result. That union means the visible set can only ever grow
-/// during a replay: anything the engine removed without writing an event comes back on the next
-/// read, and the next status update persists it. So every removal has to be in the stream.
+/// These pin down what an event replay can and cannot tell you about board membership.
 ///
-/// These cover the replay itself. The existing model test covered the in-memory cleanup, which was
-/// always right — the gap was between that cleanup and what the stream recorded.
+/// The answer is: not enough on its own. Entering a stage and leaving it are both StageTransitioned
+/// events carrying no visibility payload, so a replay only ever sees mirror activations and
+/// deactivations. That is why the candidate's stored column is the authority for which boards a
+/// candidate appears on, and why the reader must take that column rather than merge into it —
+/// merging could only add, so candidates accumulated every board they had ever been on.
+///
+/// The pre-existing model test covered the engine's in-memory cleanup, which was always correct.
+/// The gap was between that cleanup and what a later read could reconstruct.
 /// </summary>
 public class WorkflowReplayTests
 {
@@ -52,9 +55,8 @@ public class WorkflowReplayTests
     [Fact]
     public void MovingOffAStageDoesNotByItselfClearItsMirrors()
     {
-        // A StageTransitioned event carries no visibility information, so the engine has to write
-        // the deactivations explicitly. This is the fact the fix depends on — if it ever changes,
-        // the extra events become redundant rather than load-bearing.
+        // The fact the whole design rests on: a transition says nothing about visibility, so a
+        // replay cannot know the candidate stopped being mirrored here.
         var state = WorkflowState.Initial();
         state.Apply(Mirror(1, WorkflowEventType.MirrorViewActivated, Lmis));
         state.Apply(Transition(2, Embassy, Lmis));
@@ -72,8 +74,8 @@ public class WorkflowReplayTests
         state.Apply(Mirror(4, WorkflowEventType.MirrorViewDeactivated, Lmis));
         state.Apply(Transition(5, Embassy, Lmis));
 
-        // Nothing stale survives, so the union with the stored column is a no-op rather than a
-        // resurrection of every board this candidate ever appeared on.
+        // Deactivations are the only thing that removes a stage from a replay, which is what keeps
+        // the timeline honest about when a candidate left each board.
         state.VisibleInStages.Should().BeEmpty();
     }
 
