@@ -127,7 +127,26 @@ Recovery is one idempotent command on the host, safe to run at any time and neve
 It restores both vhosts from `/root/vhosts/`, repoints `default.conf` back to `laba-multi`, and
 reloads nginx only if something actually changed.
 
-**The durable fix belongs on their side** — either add these to their rsync excludes:
+Because that deploy ran twice within ten minutes — wiping the cafe developer's own
+`cafe.laba.et.conf` along with ours the second time — restoring by hand does not keep up. A
+systemd path unit now watches the directory and repairs it automatically:
+
+| | |
+|---|---|
+| `laba-vhosts.path` | watches `deployment/nginx/conf.d` for changes |
+| `laba-vhosts.service` | waits 25s for the rsync to finish, then runs `restore-vhosts.sh` |
+| Masters | `/root/vhosts/{simbaflow,visaassist,cafe.laba.et}.conf` |
+
+It only ever adds back files their tree does not contain and corrects the certificate paths; it
+removes nothing of theirs, and reloads nginx only when something actually changed. Verified by
+deleting all three vhosts and reverting the cert paths, then watching them come back and nginx
+reload on its own. `systemctl disable --now laba-vhosts.path` stops it.
+
+Note that after a wipe the sites keep serving for a while regardless — nginx holds its loaded
+config in memory, so the breakage only surfaces at the next reload or restart. A green site is
+therefore not evidence the config on disk is intact.
+
+**The durable fix still belongs on their side** — either add these to their rsync excludes:
 ```
 --exclude='deployment/nginx/conf.d/simbaflow.conf'
 --exclude='deployment/nginx/conf.d/visaassist.conf'
