@@ -99,6 +99,43 @@ Renewal is automatic — the running `simba-certbot` loop renews `app.laba.et` a
 The Telegram bot is **disabled** in this deployment (`Telegram__Enabled=false`); supply
 `Telegram__BotToken` via the environment if you enable it.
 
+## The laba.et deploy deletes this app's vhost
+
+`app.laba.et` went down on 2026-09-01 with `ERR_CERT_COMMON_NAME_INVALID`, taking `www.laba.et`,
+`api.laba.et` and both VisaAssist hostnames with it. The cause was not a certificate change:
+
+```
+rsync -avz --delete  …  E:/Personal/LabaRental/Facility-Rental/  root@91.99.100.0:/opt/simba-rental/
+```
+
+That is how the laba.et stack is deployed. `--delete` removes anything on the server that is not in
+the developer's local tree, and `simbaflow.conf` and `visaassist.conf` only ever existed on the
+server — so **every deploy of that stack deletes them**. With no vhost for `app.laba.et`, requests
+fall through to the first `server` block and are answered with the `laba.et` certificate, which does
+not name them. The same run overwrites `default.conf` with their copy, which still points at
+`live/laba.et/` — a certificate covering only `laba.et`, `admin.` and `owner.`, so `www.` and `api.`
+break at the same moment. Their exclude list covers `deployment/certbot`, which is why the
+certificates themselves survive.
+
+Recovery is one idempotent command on the host, safe to run at any time and never touching
+`cafe.laba.et.conf`:
+
+```bash
+/root/restore-vhosts.sh
+```
+
+It restores both vhosts from `/root/vhosts/`, repoints `default.conf` back to `laba-multi`, and
+reloads nginx only if something actually changed.
+
+**The durable fix belongs on their side** — either add these to their rsync excludes:
+```
+--exclude='deployment/nginx/conf.d/simbaflow.conf'
+--exclude='deployment/nginx/conf.d/visaassist.conf'
+--exclude='deployment/nginx/conf.d/cafe.laba.et.conf'
+```
+or commit the three added vhosts into their own repo so rsync stops treating them as strays. Until
+one of those happens, `restore-vhosts.sh` has to be run after each of their deploys.
+
 ## Operations
 ```bash
 ssh -i ~/.ssh/simba_deploy_key root@91.99.100.0
