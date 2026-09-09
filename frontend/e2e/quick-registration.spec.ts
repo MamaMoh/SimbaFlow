@@ -13,7 +13,7 @@ test.describe("Candidate registration", () => {
     await expect(page.getByRole("heading", { name: /new application/i })).toBeVisible();
 
     // A field from the first section and one from the last, both present without navigating.
-    await expect(page.getByRole("heading", { name: /passport scan/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /passport & photos/i })).toBeVisible();
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: /sponsor & visa/i })).toBeVisible();
 

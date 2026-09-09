@@ -22,7 +22,6 @@ import {
   Mail,
   MapPin,
   FileText,
-  Camera,
   Stamp,
   Users,
   Upload,
@@ -53,11 +52,13 @@ import Link from "next/link";
  * A small header introduces each group of cards so a long single page still reads as sections
  * rather than one undifferentiated wall of inputs.
  */
-function SectionHeading({ title, hint }: { title: string; hint: string }) {
+function SectionHeading({ title }: { title: string }) {
   return (
-    <div className="flex items-baseline gap-3 border-b border-slate-200 pb-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-900">{title}</h2>
-      <span className="text-xs text-muted-foreground">{hint}</span>
+    <div className="flex items-center gap-3 pt-2">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {title}
+      </h2>
+      <span aria-hidden className="h-px flex-1 bg-slate-200" />
     </div>
   );
 }
@@ -82,10 +83,8 @@ function FormSection({
         className
       )}
     >
-      <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3.5">
-        <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-800">
-          <Icon className="h-3.5 w-3.5" />
-        </span>
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
+        <Icon className="h-4 w-4 shrink-0 text-emerald-700" />
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
           {description ? (
@@ -415,14 +414,12 @@ function PhotoPicker({
   file,
   onChange,
   existingUrl,
-  aspect = "portrait",
 }: {
   label: string;
   hint?: string;
   file: File | null;
   onChange: (file: File | null) => void;
   existingUrl?: string | null;
-  aspect?: "portrait" | "full" | "passport";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const previewGen = useRef(0);
@@ -532,12 +529,9 @@ function PhotoPicker({
     onChange(next);
   };
 
-  const frameClass =
-    aspect === "full"
-      ? "min-h-[200px] h-52 lg:h-56"
-      : aspect === "passport"
-        ? "min-h-[220px] h-56 lg:min-h-[280px] lg:h-72"
-        : "min-h-[200px] h-52 lg:h-56";
+  // One height for all three. The passport frame used to be taller, which was fine when it sat
+  // alone but leaves the upload buttons on a ragged line now the three sit side by side.
+  const frameClass = "min-h-[200px] h-52 lg:h-56";
 
   const showImage = !!previewUrl && !loading && !broken;
 
@@ -1161,11 +1155,6 @@ export function CandidateApplicationForm({
             <User className="h-6 w-6 text-emerald-700" />
             {isEdit ? "Edit Application" : "New Application"}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {isEdit
-              ? "Every field on one page — change anything and save."
-              : "Only name, passport, date of birth and gender are required. Fill those and save; everything else can be added at any time."}
-          </p>
         </div>
       </div>
 
@@ -1202,78 +1191,31 @@ export function CandidateApplicationForm({
 
           {/* Step 1 — Documents */}
           <div id="documents" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Documents" hint="Passport scan and photos" />
-            <FormSection
-              icon={BookOpen}
-              title="Passport scan"
-              description="Upload a clear biodata page. We read the MRZ to fill name, passport number, dates, gender, and nationality."
-            >
-              <div className="grid gap-5 lg:grid-cols-12 lg:items-stretch">
-                <div className="lg:col-span-7">
+            <SectionHeading title="Documents" />
+            {/* One card, three uploads. Splitting the passport scan from the two photos left
+                each card half empty across a full-width page, and all three are the same job. */}
+            <FormSection icon={BookOpen} title="Passport & photos">
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-slate-700">Passport biodata page</Label>
                   <PhotoPicker
                     key="picker-passport"
                     label="Passport biodata page"
-                    hint="Full page with MRZ lines visible · JPEG/PNG · max 8 MB"
+                    hint="MRZ lines visible · 8 MB"
                     file={passportFile}
                     onChange={onPassportFileChange}
                     existingUrl={passportUrl}
-                    aspect="passport"
                   />
                 </div>
-                <div className="flex flex-col gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-4 lg:col-span-5">
-                  <div>
-                    <p className="text-sm font-medium text-emerald-950">Auto-fill from MRZ</p>
-                    <p className="mt-1 text-xs leading-relaxed text-emerald-900/70">
-                      After upload, scanning fills the Basic Information and Passport fields below. Check them against the booklet before saving.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="w-full gap-1.5 bg-emerald-700 hover:bg-emerald-800"
-                    disabled={!passportFile || ocrBusy}
-                    onClick={() => passportFile && void applyPassportOcr(passportFile)}
-                  >
-                    {ocrBusy ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ScanLine className="h-3.5 w-3.5" />
-                    )}
-                    {ocrBusy ? "Scanning…" : "Scan passport & fill form"}
-                  </Button>
-                  {ocrBusy ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2 text-xs text-emerald-950">
-                        <span className="truncate">{ocrStatus || "Scanning…"}</span>
-                        <span className="shrink-0 tabular-nums font-semibold">{ocrPercent}%</span>
-                      </div>
-                      <Progress value={ocrPercent} className="h-2.5 bg-emerald-100" />
-                    </div>
-                  ) : (
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      Tip: avoid glare on the bottom two MRZ lines for best results.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </FormSection>
-
-            <FormSection
-              icon={Camera}
-              title="Candidate photos"
-              description="Portrait for the CV and a full-body photo for agency forms. Separate from the passport scan above."
-            >
-              <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-xs font-medium text-slate-700">Portrait</Label>
                   <PhotoPicker
                     key="picker-portrait"
                     label="Portrait photo"
-                    hint="Head-and-shoulders · used on CV"
+                    hint="Head and shoulders · CV"
                     file={photoFile}
                     onChange={setPhotoFile}
                     existingUrl={photoUrl}
-                    aspect="portrait"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1281,24 +1223,51 @@ export function CandidateApplicationForm({
                   <PhotoPicker
                     key="picker-full"
                     label="Full-body photo"
-                    hint="Standing photo · used on agency forms"
+                    hint="Standing · agency forms"
                     file={fullPhotoFile}
                     onChange={setFullPhotoFile}
                     existingUrl={fullPhotoUrl}
-                    aspect="full"
                   />
                 </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-1.5 bg-emerald-700 hover:bg-emerald-800"
+                  disabled={!passportFile || ocrBusy}
+                  onClick={() => passportFile && void applyPassportOcr(passportFile)}
+                >
+                  {ocrBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ScanLine className="h-3.5 w-3.5" />
+                  )}
+                  {ocrBusy ? "Scanning…" : "Scan & fill form"}
+                </Button>
+                {ocrBusy ? (
+                  <div className="flex min-w-[200px] flex-1 items-center gap-2">
+                    <Progress value={ocrPercent} className="h-2 flex-1 bg-emerald-100" />
+                    <span className="shrink-0 text-xs font-semibold tabular-nums">
+                      {ocrPercent}%
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Reads the passport to fill name, number, dates and gender
+                  </span>
+                )}
               </div>
             </FormSection>
           </div>
 
           {/* Step 2 — Identity */}
           <div id="identity" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Identity" hint="Name, passport and applicant details" />
+            <SectionHeading title="Identity" />
             <FormSection
               icon={FileText}
               title="Basic Information"
-              description="Name and application meta. Passport scan fills these when available."
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1348,7 +1317,6 @@ export function CandidateApplicationForm({
             <FormSection
               icon={Stamp}
               title="Passport details"
-              description="Document numbers and dates. Confirm values after scanning."
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1449,7 +1417,6 @@ export function CandidateApplicationForm({
             <FormSection
               icon={User}
               title="Details of Applicant"
-              description="Personal profile used on CVs and agency paperwork."
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1605,11 +1572,10 @@ export function CandidateApplicationForm({
 
           {/* Step 3 — Family */}
           <div id="family" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Family" hint="Relatives, contacts and COC" />
+            <SectionHeading title="Family" />
             <FormSection
               icon={Users}
               title="Relative Information"
-              description="Emergency contact and next of kin."
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1687,7 +1653,7 @@ export function CandidateApplicationForm({
 
           {/* Step 4 — Experience */}
           <div id="experience" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Experience" hint="Languages, education and skills" />
+            <SectionHeading title="Experience" />
             <FormSection icon={FileText} title="Languages & Education">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">Add spoken languages and education level.</p>
@@ -1911,11 +1877,10 @@ export function CandidateApplicationForm({
 
           {/* Step 5 — Placement */}
           <div id="placement" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Placement" hint="Sponsor, visa, partner and travel" />
+            <SectionHeading title="Placement" />
             <FormSection
               icon={Stamp}
               title="Sponsor & Visa"
-              description="Visa and sponsor details for the destination country."
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -2004,7 +1969,7 @@ export function CandidateApplicationForm({
             <FormSection
               icon={MapPin}
               title="Partner / travel"
-              description="Select the foreign (Arab) agency you are sending this candidate to. Only partners linked to your agency appear here."
+              description="Only partners your agency has an agreement with appear here."
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5 col-span-2">

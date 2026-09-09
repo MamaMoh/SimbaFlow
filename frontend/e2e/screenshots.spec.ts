@@ -28,7 +28,7 @@ test.describe("UI screenshots", () => {
     await page.getByRole("button", { name: /\+?\s*create/i }).click({ force: true });
     await expect(page).toHaveURL(/\/candidates\/new/);
     await expect(page.getByRole("heading", { name: /new application/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /passport scan/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /passport & photos/i })).toBeVisible();
     await page.screenshot({ path: path.join(shotDir, "04-new-application.png"), fullPage: true });
 
     // Passport OCR filled — then Identity step

@@ -20,8 +20,7 @@ test.describe("Candidates intake", () => {
     await expect(page).toHaveURL(/\/candidates\/new/);
     await expect(page.getByRole("heading", { name: /new application/i })).toBeVisible();
     await expect(page.getByText("Documents", { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: /passport scan/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /candidate photos/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /passport & photos/i })).toBeVisible();
 
     // Identity fields are on the same page, not behind a step
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
@@ -34,7 +33,7 @@ test.describe("Candidates intake", () => {
     await page.goto("/candidates/new");
     await expect(page.getByRole("heading", { name: /new application/i })).toBeVisible();
 
-    const passportHeading = page.getByRole("heading", { name: /passport scan/i });
+    const passportHeading = page.getByRole("heading", { name: /passport & photos/i });
     await expect(passportHeading).toBeVisible();
 
     const fileInput = page.locator('input[type="file"]').first();
