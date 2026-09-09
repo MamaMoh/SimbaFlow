@@ -66,7 +66,7 @@ export function Features() {
               <span className="inline-grid h-10 w-10 place-items-center rounded-xl border border-[var(--mkt-line)] bg-[var(--mkt-green)]/10 text-[var(--mkt-green)] transition-colors group-hover:bg-[var(--mkt-green)]/20">
                 <feature.icon className="h-[18px] w-[18px]" />
               </span>
-              <h3 className="mt-5 text-[17px] font-semibold text-white">{feature.title}</h3>
+              <h3 className="mt-5 text-[17px] font-semibold text-[var(--mkt-strong)]">{feature.title}</h3>
               <p className="mt-2.5 text-[14px] leading-relaxed text-[var(--mkt-muted)]">{feature.body}</p>
               <ul className="mt-5 flex flex-wrap gap-1.5">
                 {feature.points.map((point) => (

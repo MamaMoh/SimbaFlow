@@ -7,8 +7,8 @@ import { Logo } from "./logo";
 
 const LINKS = [
   { href: "#platform", label: "Platform" },
-  { href: "#workflow", label: "Workflow" },
-  { href: "#security", label: "Security" },
+  { href: "#workflow", label: "Workflow engine" },
+  { href: "#security", label: "Security & architecture" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },
 ];
@@ -45,7 +45,7 @@ export function SiteNav() {
               <a
                 key={link.href}
                 href={link.href}
-                className="rounded-full px-3.5 py-2 text-[13.5px] text-[var(--mkt-muted)] transition-colors hover:bg-white/5 hover:text-white"
+                className="rounded-full px-3.5 py-2 text-[13.5px] text-[var(--mkt-muted)] transition-colors hover:bg-[var(--mkt-surface)] hover:text-[var(--mkt-strong)]"
               >
                 {link.label}
               </a>
@@ -55,13 +55,13 @@ export function SiteNav() {
           <div className="hidden items-center gap-2.5 md:flex">
             <Link
               href="/login"
-              className="rounded-full px-4 py-2 text-[13.5px] font-medium text-[var(--mkt-muted)] transition-colors hover:text-white"
+              className="rounded-full px-4 py-2 text-[13.5px] font-medium text-[var(--mkt-muted)] transition-colors hover:text-[var(--mkt-strong)]"
             >
               Sign in
             </Link>
             <a
               href="#demo"
-              className="group inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13.5px] font-semibold text-[#06110b] transition-transform hover:scale-[1.03]"
+              className="group inline-flex items-center gap-1.5 rounded-full bg-[var(--mkt-strong)] px-4 py-2 text-[13.5px] font-semibold text-white transition-transform hover:scale-[1.03]"
             >
               Book a demo
               <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -73,7 +73,7 @@ export function SiteNav() {
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--mkt-line)] text-white md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--mkt-line)] text-[var(--mkt-strong)] md:hidden"
           >
             {open ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
           </button>
@@ -97,14 +97,14 @@ export function SiteNav() {
           <div className="mt-5 flex flex-col gap-2.5">
             <Link
               href="/login"
-              className="rounded-full border border-[var(--mkt-line-strong)] py-2.5 text-center text-sm font-medium text-white"
+              className="rounded-full border border-[var(--mkt-line-strong)] py-2.5 text-center text-sm font-medium text-[var(--mkt-strong)]"
             >
               Sign in
             </Link>
             <a
               href="#demo"
               onClick={() => setOpen(false)}
-              className="rounded-full bg-white py-2.5 text-center text-sm font-semibold text-[#06110b]"
+              className="rounded-full bg-[var(--mkt-strong)] py-2.5 text-center text-sm font-semibold text-white"
             >
               Book a demo
             </a>

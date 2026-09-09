@@ -40,7 +40,7 @@ export function Faq() {
         {QUESTIONS.map((item, index) => (
           <Reveal key={item.q} delay={index * 50}>
             <details className="group">
-              <summary className="flex items-center justify-between gap-6 py-5 text-[15.5px] font-medium text-white transition-colors hover:text-[#7ff0b6]">
+              <summary className="flex items-center justify-between gap-6 py-5 text-[15.5px] font-medium text-[var(--mkt-strong)] transition-colors hover:text-[var(--mkt-green)]">
                 {item.q}
                 <Plus className="mkt-faq-icon h-4 w-4 shrink-0 text-[var(--mkt-faint)] transition-transform duration-200" />
               </summary>

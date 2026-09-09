@@ -32,7 +32,7 @@ const TRAITS = [
 
 export function Workflow() {
   return (
-    <section id="workflow" className="relative border-y border-[var(--mkt-line)] bg-[#0a120f]">
+    <section id="workflow" className="relative border-y border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)]">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-60"
@@ -65,13 +65,13 @@ export function Workflow() {
                   className={`absolute left-0 top-1.5 h-3.5 w-3.5 rounded-full border-2 lg:relative lg:top-0 lg:block ${
                     index === 0
                       ? "border-[var(--mkt-green)] bg-[var(--mkt-green)]"
-                      : "border-[var(--mkt-line-strong)] bg-[#0a120f]"
+                      : "border-[var(--mkt-line-strong)] bg-[var(--mkt-bg-raised)]"
                   }`}
                 />
                 <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--mkt-faint)] lg:mt-5">
                   Stage {index + 1}
                 </p>
-                <h3 className="mt-1 text-[16px] font-semibold text-white">{stage.name}</h3>
+                <h3 className="mt-1 text-[16px] font-semibold text-[var(--mkt-strong)]">{stage.name}</h3>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--mkt-muted)]">{stage.body}</p>
               </li>
             ))}
@@ -83,7 +83,7 @@ export function Workflow() {
             <Reveal key={trait.title} delay={index * 70}>
               <div className="mkt-card h-full p-6">
                 <trait.icon className="h-[18px] w-[18px] text-[var(--mkt-yellow)]" />
-                <h3 className="mt-4 text-[15.5px] font-semibold text-white">{trait.title}</h3>
+                <h3 className="mt-4 text-[15.5px] font-semibold text-[var(--mkt-strong)]">{trait.title}</h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--mkt-muted)]">{trait.body}</p>
               </div>
             </Reveal>

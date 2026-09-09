@@ -20,9 +20,9 @@ export function Hero() {
         <Reveal className="flex justify-center">
           <a
             href="#workflow"
-            className="group inline-flex items-center gap-2 rounded-full border border-[var(--mkt-line)] bg-white/[0.04] py-1.5 pl-1.5 pr-3.5 text-[12.5px] text-[var(--mkt-muted)] transition-colors hover:border-[var(--mkt-green)]/40 hover:text-white"
+            className="group inline-flex items-center gap-2 rounded-full border border-[var(--mkt-line)] bg-[var(--mkt-surface)] py-1.5 pl-1.5 pr-3.5 text-[12.5px] text-[var(--mkt-muted)] transition-colors hover:border-[var(--mkt-green)]/40 hover:text-[var(--mkt-strong)]"
           >
-            <span className="rounded-full bg-[var(--mkt-green)]/15 px-2 py-0.5 text-[11px] font-semibold text-[#7ff0b6]">
+            <span className="rounded-full bg-[var(--mkt-green)]/15 px-2 py-0.5 text-[11px] font-semibold text-[var(--mkt-green)]">
               New
             </span>
             Configurable workflow engine, per agency
@@ -50,14 +50,14 @@ export function Hero() {
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
               href="#demo"
-              className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-[15px] font-semibold text-[#06110b] transition-transform hover:scale-[1.02] sm:w-auto"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mkt-strong)] px-6 py-3 text-[15px] font-semibold text-white transition-transform hover:scale-[1.02] sm:w-auto"
             >
               Book a demo
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <Link
               href="/login"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--mkt-line-strong)] px-6 py-3 text-[15px] font-medium text-white transition-colors hover:bg-white/5 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-[var(--mkt-line-strong)] px-6 py-3 text-[15px] font-medium text-[var(--mkt-strong)] transition-colors hover:bg-[var(--mkt-surface)] sm:w-auto"
             >
               <PlayCircle className="h-4 w-4" />
               Sign in to your agency
@@ -80,7 +80,7 @@ export function Hero() {
           <dl className="mt-24 grid grid-cols-2 gap-x-6 gap-y-8 border-t border-[var(--mkt-line)] pt-10 lg:grid-cols-4">
             {PROOF.map((item) => (
               <div key={item.value}>
-                <dt className="text-[17px] font-semibold text-white sm:text-[19px]">{item.value}</dt>
+                <dt className="text-[17px] font-semibold text-[var(--mkt-strong)] sm:text-[19px]">{item.value}</dt>
                 <dd className="mt-1 text-[13px] leading-snug text-[var(--mkt-faint)]">{item.label}</dd>
               </div>
             ))}

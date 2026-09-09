@@ -30,7 +30,7 @@ const COLUMNS = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[var(--mkt-line)] bg-[#060b09]">
+    <footer className="border-t border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)]">
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div>
@@ -43,7 +43,7 @@ export function SiteFooter() {
 
           {COLUMNS.map((column) => (
             <div key={column.title}>
-              <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[var(--mkt-strong)]">
                 {column.title}
               </p>
               <ul className="mt-4 space-y-2.5">
@@ -51,7 +51,7 @@ export function SiteFooter() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-[13.5px] text-[var(--mkt-faint)] transition-colors hover:text-white"
+                      className="text-[13.5px] text-[var(--mkt-faint)] transition-colors hover:text-[var(--mkt-strong)]"
                     >
                       {link.label}
                     </Link>
@@ -67,10 +67,10 @@ export function SiteFooter() {
             © {new Date().getFullYear()} SimbaFlow. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-[12.5px] text-[var(--mkt-faint)]">
-            <Link href="#" className="transition-colors hover:text-white">
+            <Link href="#" className="transition-colors hover:text-[var(--mkt-strong)]">
               Privacy
             </Link>
-            <Link href="#" className="transition-colors hover:text-white">
+            <Link href="#" className="transition-colors hover:text-[var(--mkt-strong)]">
               Terms
             </Link>
             <span className="inline-flex items-center gap-1.5">

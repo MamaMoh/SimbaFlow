@@ -56,7 +56,7 @@ export function Pricing() {
   return (
     <section
       id="pricing"
-      className="relative border-y border-[var(--mkt-line)] bg-[#0a120f] px-5 py-24 sm:px-8 sm:py-32"
+      className="relative border-y border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] px-5 py-24 sm:px-8 sm:py-32"
     >
       <div className="mx-auto max-w-6xl">
         <Reveal>
@@ -73,22 +73,22 @@ export function Pricing() {
               <div
                 className={`relative h-full rounded-2xl p-7 ${
                   plan.featured
-                    ? "border border-[var(--mkt-green)]/40 bg-gradient-to-b from-[var(--mkt-green)]/12 to-white/[0.02] shadow-[0_30px_80px_-40px_rgba(18,183,106,0.6)]"
+                    ? "border border-[var(--mkt-green)]/45 bg-white shadow-[0_24px_60px_-30px_rgba(15,157,88,0.45)]"
                     : "mkt-card"
                 }`}
               >
                 {plan.featured && (
-                  <span className="absolute -top-3 left-7 inline-flex items-center gap-1.5 rounded-full bg-[var(--mkt-green)] px-3 py-1 text-[11px] font-semibold text-[#04120a]">
+                  <span className="absolute -top-3 left-7 inline-flex items-center gap-1.5 rounded-full bg-[var(--mkt-green)] px-3 py-1 text-[11px] font-semibold text-white">
                     <Sparkles className="h-3 w-3" />
                     Most chosen
                   </span>
                 )}
 
-                <h3 className="text-[15px] font-semibold text-white">{plan.name}</h3>
+                <h3 className="text-[15px] font-semibold text-[var(--mkt-strong)]">{plan.name}</h3>
                 <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--mkt-muted)]">{plan.blurb}</p>
 
                 <p className="mt-6 flex items-baseline gap-1">
-                  <span className="mkt-display text-[38px] font-semibold text-white">{plan.price}</span>
+                  <span className="mkt-display text-[38px] font-semibold text-[var(--mkt-strong)]">{plan.price}</span>
                   <span className="text-[13.5px] text-[var(--mkt-faint)]">{plan.cadence}</span>
                 </p>
 
@@ -96,8 +96,8 @@ export function Pricing() {
                   href="#demo"
                   className={`mt-6 block rounded-full py-2.5 text-center text-[14px] font-semibold transition-transform hover:scale-[1.02] ${
                     plan.featured
-                      ? "bg-white text-[#06110b]"
-                      : "border border-[var(--mkt-line-strong)] text-white hover:bg-white/5"
+                      ? "bg-[var(--mkt-strong)] text-white"
+                      : "border border-[var(--mkt-line-strong)] text-[var(--mkt-strong)] hover:bg-[var(--mkt-surface)]"
                   }`}
                 >
                   {plan.cta}
