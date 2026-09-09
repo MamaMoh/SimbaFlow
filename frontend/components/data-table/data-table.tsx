@@ -141,9 +141,19 @@ export function DataTable<TData, TValue>(
                     if (rowClickOpensActions) {
                       // Drive the row's own ⋯ trigger rather than duplicating each board's menu
                       // here — the menus differ per board and stay the single source of truth.
-                      e.currentTarget
-                        .querySelector<HTMLElement>('[aria-label="Row actions"]')
-                        ?.click();
+                      // The trigger opens on pointerdown, not click, so a plain .click() on it
+                      // does nothing; dispatch what it actually listens for.
+                      const trigger = e.currentTarget.querySelector<HTMLElement>(
+                        '[aria-label="Row actions"]',
+                      );
+                      trigger?.dispatchEvent(
+                        new PointerEvent("pointerdown", {
+                          bubbles: true,
+                          cancelable: true,
+                          button: 0,
+                          pointerType: "mouse",
+                        }),
+                      );
                       return;
                     }
                     onRowClick?.(row.original as TData);
