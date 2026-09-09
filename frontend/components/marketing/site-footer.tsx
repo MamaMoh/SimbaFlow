@@ -3,27 +3,42 @@ import { Logo } from "./logo";
 
 const COLUMNS = [
   {
-    title: "Product",
+    title: "Platform",
     links: [
-      { label: "Platform", href: "#platform" },
-      { label: "Workflow engine", href: "#workflow" },
-      { label: "Security", href: "#security" },
-      { label: "Pricing", href: "#pricing" },
+      { label: "Overview", href: "#platform" },
+      { label: "Candidate table", href: "#platform" },
+      { label: "Document vault", href: "#platform" },
+      { label: "Audit trails", href: "#security" },
+      { label: "WebSocket engine", href: "#platform" },
+    ],
+  },
+  {
+    title: "Workflow",
+    links: [
+      { label: "Intake & OCR", href: "#workflow" },
+      { label: "Embassy & Tasheer", href: "#workflow" },
+      { label: "LMIS ministry sync", href: "#workflow" },
+      { label: "Ticketing desk", href: "#workflow" },
+      { label: "Commission ledger", href: "#workflow" },
+    ],
+  },
+  {
+    title: "Security",
+    links: [
+      { label: "Schema isolation", href: "#security" },
+      { label: "MFA & role RBAC", href: "#security" },
+      { label: "Data encryption", href: "#security" },
+      { label: "Audit logs", href: "#security" },
     ],
   },
   {
     title: "Company",
     links: [
+      { label: "Pricing plans", href: "#pricing" },
+      { label: "Partner agencies", href: "#platform" },
       { label: "Book a demo", href: "#demo" },
-      { label: "Contact", href: "mailto:hello@simbaflow.com" },
+      { label: "Contact desk", href: "mailto:hello@simbaflow.com" },
       { label: "FAQ", href: "#faq" },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "Sign in", href: "/login" },
-      { label: "Reset password", href: "/forgot-password" },
     ],
   },
 ];
@@ -32,7 +47,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)]">
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div>
             <Logo />
             <p className="mt-4 max-w-xs text-[13.5px] leading-relaxed text-[var(--mkt-faint)]">
@@ -75,7 +90,7 @@ export function SiteFooter() {
             </Link>
             <span className="inline-flex items-center gap-1.5">
               <span className="mkt-pulse h-1.5 w-1.5 rounded-full bg-[var(--mkt-green)]" />
-              All systems operational
+              All systems operational · PostgreSQL 16
             </span>
           </div>
         </div>

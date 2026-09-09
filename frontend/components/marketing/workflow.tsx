@@ -3,13 +3,41 @@ import { Reveal } from "./reveal";
 import { SectionHeading } from "./section-heading";
 
 const STAGES = [
-  { name: "Intake", body: "Register the candidate, collect documents, verify the passport." },
-  { name: "Embassy", body: "Visa file, Tasheer appointment, stamping and collection." },
-  { name: "LMIS", body: "Government labour registration and clearance." },
-  { name: "Ticket", body: "Booking, fare confirmation and itinerary issue." },
-  { name: "Departure", body: "Countdown, briefing and airport handover." },
-  { name: "Arrival", body: "Employer confirmation and probation follow-up." },
-  { name: "Commission", body: "Invoice, partner split and settlement." },
+  {
+    name: "Intake",
+    milestone: "KYC & bio verification",
+    body: "Register the candidate, scan the passport with OCR, verify biographical data.",
+  },
+  {
+    name: "Embassy",
+    milestone: "Visa file & Enjaz sync",
+    body: "Enjaz slip creation, Tasheer appointments, stamping and collection.",
+  },
+  {
+    name: "LMIS",
+    milestone: "Ministry registry batch",
+    body: "Government labour ministry clearance, quota verification, batch clearances.",
+  },
+  {
+    name: "Ticket",
+    milestone: "PNR & travel schedule",
+    body: "Flight booking, PNR validation, itinerary generation and sponsor notification.",
+  },
+  {
+    name: "Departure",
+    milestone: "Pre-flight handover",
+    body: "Airport desk check-in, passenger briefing, embarkation confirmation.",
+  },
+  {
+    name: "Arrival",
+    milestone: "Sponsor sign-off",
+    body: "Employer reception confirmation, iqama issuance check, follow-up.",
+  },
+  {
+    name: "Commission",
+    milestone: "Ledger reconciled",
+    body: "Invoice sponsor and partner, split desk earnings, double-entry settlement.",
+  },
 ];
 
 const TRAITS = [
@@ -47,7 +75,7 @@ export function Workflow() {
           <SectionHeading
             eyebrow="Workflow"
             title="Your pipeline, not a template"
-            description="SimbaFlow ships with the default deployment pipeline below. Every agency then bends it to the way they actually work — stages, statuses, transition rules and the conditions that decide which action buttons appear."
+            description="SimbaFlow ships with the default overseas deployment stages below. Every agency then tailors them to match their operating procedures — rules, milestones and desk assignments."
           />
         </Reveal>
 
@@ -68,11 +96,18 @@ export function Workflow() {
                       : "border-[var(--mkt-line-strong)] bg-[var(--mkt-bg-raised)]"
                   }`}
                 />
-                <p className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--mkt-faint)] lg:mt-5">
+                <p className="flex items-baseline gap-2 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-[var(--mkt-faint)] lg:mt-5">
+                  <span className="mkt-display text-[15px] tracking-normal text-[var(--mkt-green)]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
                   Stage {index + 1}
                 </p>
                 <h3 className="mt-1 text-[16px] font-semibold text-[var(--mkt-strong)]">{stage.name}</h3>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-[var(--mkt-muted)]">{stage.body}</p>
+                {/* What the stage closes out — the words the desk actually uses for "done". */}
+                <p className="mt-2 inline-flex rounded-full border border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] px-2 py-0.5 text-[11px] text-[var(--mkt-muted)]">
+                  {stage.milestone}
+                </p>
               </li>
             ))}
           </ol>

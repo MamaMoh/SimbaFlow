@@ -8,6 +8,7 @@ import { Logo } from "./logo";
 const LINKS = [
   { href: "#platform", label: "Platform" },
   { href: "#workflow", label: "Workflow engine" },
+  { href: "#corridors", label: "Corridors" },
   { href: "#security", label: "Security & architecture" },
   { href: "#pricing", label: "Pricing" },
   { href: "#faq", label: "FAQ" },

@@ -7,47 +7,47 @@ const PLANS = [
     name: "Starter",
     price: "$249",
     cadence: "/month",
-    blurb: "For a small agency getting off spreadsheets.",
-    cta: "Start a trial",
+    blurb: "For smaller agencies stepping away from WhatsApp threads and spreadsheets.",
+    cta: "Start trial",
     featured: false,
     features: [
       "Up to 10 staff accounts",
-      "Default deployment pipeline",
-      "Candidate & document management",
-      "Real-time status updates",
-      "Email support",
+      "Default 7-stage deployment pipeline",
+      "Unlimited candidate registrations",
+      "Document vault & CV export",
+      "Standard email support",
     ],
   },
   {
     name: "Agency",
     price: "$690",
     cadence: "/month",
-    blurb: "For agencies running multiple branches and destinations.",
+    blurb: "For growing labour exporters managing multi-country desks and partner agencies.",
     cta: "Book a demo",
     featured: true,
     features: [
       "Unlimited staff accounts",
-      "Configurable stages & transition rules",
-      "Parallel tracks and custom actions",
-      "Commission & double-entry finance",
-      "Partner agency directory",
-      "Reporting with Excel & PDF export",
-      "Priority support",
+      "Fully configurable stages & transition rules",
+      "Parallel tracks (Medical & Embassy)",
+      "Commission & double-entry ledger",
+      "Partner agency directory portal",
+      "One-click Excel & PDF ministry reporting",
+      "Priority phone & WhatsApp desk support",
     ],
   },
   {
     name: "Enterprise",
     price: "Custom",
     cadence: "",
-    blurb: "For groups, franchises and platform operators.",
-    cta: "Talk to us",
+    blurb: "For large recruitment consortia, federation bodies and multi-branch groups.",
+    cta: "Contact sales",
     featured: false,
     features: [
-      "Multiple agencies under one platform admin",
-      "SSO and custom retention policies",
-      "Telegram / WhatsApp bot integration",
-      "API access and data residency options",
-      "Onboarding and migration support",
+      "Multiple agency schemas under one master admin",
+      "Single sign-on (SAML / Okta / Azure AD)",
+      "Custom Telegram & WhatsApp bot notifications",
+      "Full REST & GraphQL API access",
+      "Dedicated deployment engineer & data migration",
     ],
   },
 ];
@@ -61,9 +61,9 @@ export function Pricing() {
       <div className="mx-auto max-w-6xl">
         <Reveal>
           <SectionHeading
-            eyebrow="Pricing"
+            eyebrow="Fair enterprise pricing"
             title="Priced per agency, not per candidate"
-            description="Your busy season shouldn't cost more to run. Every plan includes the isolated schema, the audit trail and unlimited candidate records."
+            description="Your busy recruitment cycles shouldn't cost more to operate. Every plan includes the isolated PostgreSQL schema, the audit trail and unlimited candidate files."
           />
         </Reveal>
 
@@ -80,7 +80,7 @@ export function Pricing() {
                 {plan.featured && (
                   <span className="absolute -top-3 left-7 inline-flex items-center gap-1.5 rounded-full bg-[var(--mkt-green)] px-3 py-1 text-[11px] font-semibold text-white">
                     <Sparkles className="h-3 w-3" />
-                    Most chosen
+                    Most chosen by agencies
                   </span>
                 )}
 
@@ -118,7 +118,7 @@ export function Pricing() {
 
         <Reveal>
           <p className="mt-10 text-center text-[12.5px] text-[var(--mkt-faint)]">
-            All prices in USD, billed monthly. Annual billing saves two months.
+            All prices in USD. Annual upfront billing receives two months complimentary.
           </p>
         </Reveal>
       </div>

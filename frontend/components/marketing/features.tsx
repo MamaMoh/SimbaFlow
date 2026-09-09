@@ -13,38 +13,38 @@ const FEATURES = [
   {
     icon: GitBranch,
     title: "Configurable workflow engine",
-    body: "Define your own stages, statuses and transition rules. Action buttons appear only when the field conditions are met, and parallel tracks like Medical and Tasheer run side by side.",
-    points: ["Event-sourced history", "Per-agency stage rules", "Parallel tracks"],
+    body: "Define your own stages, transition criteria and action rules. Action buttons appear only when the requirements are satisfied, with parallel tracks for Medical and Tasheer.",
+    points: ["Event-sourced history", "Custom per-agency stage gates", "Parallel document tracks"],
   },
   {
     icon: FileStack,
     title: "Candidates and documents",
-    body: "Register a candidate once and carry passport details, labour ID, medicals and contracts through every stage — with a generated CV and a full status timeline attached.",
-    points: ["Passport & labour ID", "Document vault", "Auto-generated CV"],
+    body: "Register once: passport details, labour ID, GAMCA medicals and contracts carried through every stage — with generated CV formats and MRZ OCR scanning.",
+    points: ["Passport & labour ID vault", "Automated document expiry alerts", "Formatted candidate profiles"],
   },
   {
     icon: Building2,
     title: "Agency ERP",
-    body: "Staff and partner agencies in one directory, with custom roles and permissions each agency defines for itself.",
-    points: ["Staff directory", "Partner directory", "Custom roles"],
+    body: "Desk staff, branch managers and overseas recruitment partners in one directory, with precise role-based permissions your agency defines.",
+    points: ["Staff directory & task assignment", "Partner agencies portal", "Granular stage-by-stage permissions"],
   },
   {
     icon: Radio,
     title: "Real-time everywhere",
-    body: "A WebSocket connection pushes stage transitions to every open screen, so the visa desk and the travel desk are never working from a stale list.",
-    points: ["Live status changes", "Instant notifications", "No refresh needed"],
+    body: "WebSocket feeds update every desk the second a candidate is stamped, passes medical or is ticketed. No manual refreshing.",
+    points: ["Sub-second status broadcasts", "In-app notifications & badges", "Always-accurate flight manifests"],
   },
   {
     icon: Wallet,
     title: "Commission and finance",
-    body: "Track what each deployment earns with double-entry accounting, from partner splits through to settlement — tied back to the candidate that generated it.",
-    points: ["Double-entry ledger", "Partner splits", "Settlement tracking"],
+    body: "Track deployment revenue, partner commission splits and candidate expenses with double-entry reconciliation, linked back to the candidate file.",
+    points: ["Double-entry agency ledger", "Split fee calculations", "Settlement & invoice tracking"],
   },
   {
     icon: ScrollText,
     title: "Reporting and audit",
-    body: "Every operation is written to an audit trail, and the numbers your regulators and partners ask for export to Excel or PDF without a spreadsheet detour.",
-    points: ["Immutable audit log", "Excel & PDF export", "Operational analytics"],
+    body: "Every action is written to an immutable audit trail, and ministry and regulator reports export in one click to Excel or PDF.",
+    points: ["Complete who/what/when trail", "One-click Excel & PDF export", "Corridor bottleneck metrics"],
   },
 ];
 
@@ -55,7 +55,7 @@ export function Features() {
         <SectionHeading
           eyebrow="The platform"
           title="Everything the deployment desk touches"
-          description="Agencies run this work across spreadsheets, WhatsApp threads and a filing cabinet. SimbaFlow puts the whole lifecycle in one system without flattening how your agency actually operates."
+          description="Agencies juggle spreadsheets, WhatsApp groups and paper folders. SimbaFlow organises the entire overseas pipeline into one coordinated system without breaking your operating rhythm."
         />
       </Reveal>
 

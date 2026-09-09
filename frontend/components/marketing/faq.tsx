@@ -4,28 +4,24 @@ import { SectionHeading } from "./section-heading";
 
 const QUESTIONS = [
   {
-    q: "Can we keep our own stage names and process?",
-    a: "Yes — that is the point of the workflow engine. You configure stages, statuses, transition rules and the field conditions that decide which actions appear. The default pipeline is a starting point, not a constraint.",
+    q: "Can we customise stage names to match our agency process?",
+    a: "Yes, completely. SimbaFlow is a workflow engine: you configure stages, transition rules and the conditions that let a button become active. The default seven stages are a starting point you can change at any time.",
   },
   {
-    q: "How is our data separated from other agencies?",
-    a: "Every agency is provisioned its own PostgreSQL schema, and each request is scoped to that schema for its whole lifetime. There is no shared candidate table to filter, so a missed condition cannot expose another agency's data.",
+    q: "How is our candidate data protected from other agencies?",
+    a: "Every agency gets a dedicated PostgreSQL schema. We do not use shared tables with a soft filter — queries are hard-scoped to your namespace, which makes leakage between agencies structurally impossible.",
   },
   {
-    q: "What happens to the candidates we already have on file?",
-    a: "Bring them in during onboarding. Candidate records, passport and labour ID details, and the documents attached to them can be imported, and each one lands at whichever stage it is currently sitting in.",
+    q: "Can we import the candidates we already have on spreadsheets?",
+    a: "Yes. During onboarding we batch import your existing candidates, passport files and current milestone statuses, and each candidate lands directly in their active pipeline stage.",
   },
   {
-    q: "Do our staff and partner agencies get access?",
-    a: "Staff are modelled directly in the system, and you define the roles and permissions that govern what each of them can see or change. Partner agencies live in their own directory with their commission terms attached.",
+    q: "Do our overseas partner agencies get their own access?",
+    a: "Yes. Partners are invited into a portal with restricted visibility: they see only the candidates assigned to them, track visa status in real time and download the deployment documents they need.",
   },
   {
-    q: "Does the team have to refresh to see updates?",
-    a: "No. A WebSocket connection pushes stage transitions to every open screen as they happen, with a notification on the change.",
-  },
-  {
-    q: "Can we get the numbers out for regulators and partners?",
-    a: "Reporting covers the operational and financial side, and anything you can see on screen exports to Excel or PDF. Every write is also recorded in an audit trail you can hand to an auditor.",
+    q: "Does the team have to refresh the browser for status changes?",
+    a: "No. SimbaFlow holds an open WebSocket connection. When the embassy desk records a visa stamp, the ticketing and departure desks see it immediately.",
   },
 ];
 

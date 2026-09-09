@@ -12,7 +12,7 @@ const CORRIDORS = [
 /** Scrolling band of destination corridors, for visual rhythm between sections. */
 export function Ticker() {
   return (
-    <section className="border-y border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] py-8">
+    <section id="corridors" className="border-y border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] py-8">
       <p className="text-center text-[11.5px] font-semibold uppercase tracking-[0.2em] text-[var(--mkt-faint)]">
         Built for the corridors you deploy into
       </p>

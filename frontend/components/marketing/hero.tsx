@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, PlayCircle, ShieldCheck } from "lucide-react";
+import { ArrowRight, KeyRound, PlayCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { ProductPreview } from "./product-preview";
 import { Reveal } from "./reveal";
+
+/** Stated one by one rather than as a single sentence, so each reads as its own guarantee. */
+const GUARANTEES = [
+  { icon: ShieldCheck, label: "PostgreSQL schema isolation" },
+  { icon: KeyRound, label: "MFA on every account" },
+  { icon: RefreshCw, label: "Real-time WebSocket" },
+];
 
 const PROOF = [
   { value: "One board", label: "every candidate, every stage" },
@@ -23,7 +30,7 @@ export function Hero() {
             className="group inline-flex items-center gap-2 rounded-full border border-[var(--mkt-line)] bg-[var(--mkt-surface)] py-1.5 pl-1.5 pr-3.5 text-[12.5px] text-[var(--mkt-muted)] transition-colors hover:border-[var(--mkt-green)]/40 hover:text-[var(--mkt-strong)]"
           >
             <span className="rounded-full bg-[var(--mkt-green)]/15 px-2 py-0.5 text-[11px] font-semibold text-[var(--mkt-green)]">
-              New
+              SimbaFlow v3.4
             </span>
             Configurable workflow engine, per agency
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -52,7 +59,7 @@ export function Hero() {
               href="#demo"
               className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--mkt-strong)] px-6 py-3 text-[15px] font-semibold text-white transition-transform hover:scale-[1.02] sm:w-auto"
             >
-              Book a demo
+              Book a live demo
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <Link
@@ -66,10 +73,14 @@ export function Hero() {
         </Reveal>
 
         <Reveal delay={240}>
-          <p className="mt-5 flex items-center justify-center gap-2 text-center text-[12.5px] text-[var(--mkt-faint)]">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Isolated database schema per agency · MFA on every account
-          </p>
+          <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 text-[12.5px] text-[var(--mkt-faint)]">
+            {GUARANTEES.map((g) => (
+              <li key={g.label} className="flex items-center gap-2">
+                <g.icon className="h-3.5 w-3.5 text-[var(--mkt-green)]" />
+                {g.label}
+              </li>
+            ))}
+          </ul>
         </Reveal>
 
         <Reveal delay={140} className="mt-16 sm:mt-20">

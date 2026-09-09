@@ -1,69 +1,75 @@
-import { Bell, CheckCircle2, Clock3, FileText, Plane, Search, Users } from "lucide-react";
+import {
+  Banknote,
+  Bell,
+  Briefcase,
+  CalendarClock,
+  ClipboardList,
+  Download,
+  FileText,
+  LayoutGrid,
+  MapPin,
+  MoreHorizontal,
+  Plane,
+  Search,
+  SlidersHorizontal,
+  Ticket,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 
 /**
- * Stylised rendering of the candidate pipeline board.
+ * Stylised rendering of the candidates screen.
  *
- * Static markup rather than a screenshot so it stays sharp at any size and
- * keeps pace with the product without re-shooting images.
+ * Static markup rather than a screenshot: it stays sharp at any size, keeps pace with the product
+ * without re-shooting images, and the passport numbers are invented rather than real people's.
  */
 
-const COLUMNS = [
-  {
-    stage: "Intake",
-    count: 24,
-    tint: "#12b76a",
-    cards: [
-      { name: "Hanan A.", meta: "EP52••••1", tag: "Docs verified", done: true },
-      { name: "Yonas T.", meta: "EP41••••8", tag: "Medical booked" },
-    ],
-  },
-  {
-    stage: "Embassy",
-    count: 11,
-    tint: "#d99e00",
-    cards: [
-      { name: "Meseret G.", meta: "Riyadh · KSA", tag: "Tasheer pending" },
-      { name: "Abel K.", meta: "Doha · QAT", tag: "Visa stamped", done: true },
-    ],
-  },
-  {
-    stage: "LMIS",
-    count: 9,
-    tint: "#38bdf8",
-    cards: [{ name: "Sara M.", meta: "MoLS · Batch 42", tag: "Awaiting clearance" }],
-  },
-  {
-    stage: "Departure",
-    count: 6,
-    tint: "#c30f16",
-    cards: [
-      { name: "Dawit L.", meta: "ET 445 · 06:20", tag: "In 3 days" },
-      { name: "Lidya B.", meta: "ET 612 · 21:45", tag: "In 6 days" },
-    ],
-  },
+const NAV = [
+  { icon: LayoutGrid, label: "Dashboard" },
+  { icon: Users, label: "Candidates", active: true },
+  { icon: ClipboardList, label: "My Work" },
 ];
 
-const SIDEBAR = [
-  { icon: Users, label: "Candidates", active: true },
-  { icon: FileText, label: "Documents" },
-  { icon: Plane, label: "Travel" },
-  { icon: Clock3, label: "Timeline" },
+const PIPELINE = [
+  { icon: FileText, label: "New Contracts" },
+  { icon: Briefcase, label: "Embassy" },
+  { icon: ClipboardList, label: "Case Executive" },
+  { icon: FileText, label: "LMIS" },
+  { icon: Ticket, label: "Tickets" },
+  { icon: CalendarClock, label: "Departures" },
+  { icon: MapPin, label: "Arrivals" },
+  { icon: TriangleAlert, label: "Exceptions" },
+  { icon: Banknote, label: "Commissions" },
 ];
+
+const ROWS = [
+  { n: 1, name: "REGATU HASHU MEGERSO", date: "8/26/2026", passport: "EP8919142", age: 25, worksIn: "Saudi Arabia", partner: "Etenaa Resources", stage: "Embassy", tone: "amber" },
+  { n: 2, name: "MEYREMA AHMED MUHAMED", date: "8/18/2026", passport: "E00409142", age: 27, worksIn: "Kuwait", partner: "Nile Manpower", stage: "LMIS", tone: "sky" },
+  { n: 3, name: "ASTER DABA LEMA", date: "8/14/2026", passport: "EQ2648388", age: 24, worksIn: "Qatar", partner: "Horn Recruit", stage: "Embassy", tone: "amber" },
+  { n: 4, name: "MEDINA ABDU YASIN", date: "8/09/2026", passport: "E00639490", age: 31, worksIn: "UAE", partner: "Etenaa Resources", stage: "Ticket", tone: "green" },
+  { n: 5, name: "ADANECH DINKU HUNDE", date: "8/02/2026", passport: "EQ2013249", age: 22, worksIn: "Saudi Arabia", partner: "Nile Manpower", stage: "Intake", tone: "slate" },
+];
+
+const TONES: Record<string, string> = {
+  green: "border-[var(--mkt-green)]/30 bg-[var(--mkt-green)]/10 text-[var(--mkt-green)]",
+  amber: "border-[#a87f16]/30 bg-[#a87f16]/10 text-[#a87f16]",
+  sky: "border-sky-500/30 bg-sky-500/10 text-sky-700",
+  slate: "border-[var(--mkt-line-strong)] bg-[var(--mkt-surface)] text-[var(--mkt-muted)]",
+};
 
 export function ProductPreview() {
   return (
     <div className="relative">
-      {/* Glow bed under the window */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -inset-x-10 -top-6 bottom-10 rounded-[40px] opacity-70 blur-3xl"
+        className="pointer-events-none absolute -inset-x-8 -top-10 bottom-0 -z-10 blur-3xl"
         style={{
           background:
-            "radial-gradient(50% 50% at 30% 30%, rgba(18,183,106,0.28), transparent 70%), radial-gradient(45% 45% at 75% 20%, rgba(248,195,24,0.16), transparent 70%)",
+            "radial-gradient(50% 50% at 30% 30%, rgba(15,157,88,0.16), transparent 70%), radial-gradient(45% 45% at 75% 20%, rgba(168,127,22,0.1), transparent 70%)",
         }}
       />
 
-      <div className="relative overflow-hidden rounded-2xl border border-[var(--mkt-line-strong)] bg-[var(--mkt-bg-raised)] shadow-[0_30px_80px_-28px_rgba(6,32,21,0.28)]">
+      <div className="relative overflow-hidden rounded-2xl border border-[var(--mkt-line-strong)] bg-white shadow-[0_30px_80px_-28px_rgba(6,32,21,0.28)]">
         {/* Window chrome */}
         <div className="flex items-center gap-3 border-b border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] px-4 py-2.5">
           <div className="flex gap-1.5">
@@ -71,112 +77,162 @@ export function ProductPreview() {
             <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]/70" />
             <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]/70" />
           </div>
-          <div className="mx-auto hidden items-center gap-2 rounded-md border border-[var(--mkt-line)] bg-[var(--mkt-surface-strong)] px-3 py-1 text-[11px] text-[var(--mkt-faint)] sm:flex">
+          <div className="mx-auto hidden items-center gap-2 rounded-md border border-[var(--mkt-line)] bg-white px-3 py-1 text-[11px] text-[var(--mkt-faint)] sm:flex">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--mkt-green)]" />
             app.simbaflow.com/candidates
           </div>
-          <Bell className="ml-auto h-3.5 w-3.5 text-[var(--mkt-faint)] sm:ml-0" />
+          <div className="ml-auto hidden items-center gap-3 text-[10.5px] text-[var(--mkt-faint)] lg:flex">
+            <span className="flex items-center gap-1.5">
+              <span className="mkt-pulse h-1.5 w-1.5 rounded-full bg-[var(--mkt-green)]" />
+              Connected (14ms)
+            </span>
+            <span className="font-mono">tenant: nile_manpower</span>
+          </div>
+          <Bell className="ml-auto h-3.5 w-3.5 text-[var(--mkt-faint)] lg:ml-0" />
         </div>
 
         <div className="flex">
           {/* Sidebar */}
-          <aside className="hidden w-[176px] shrink-0 flex-col gap-1 border-r border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] p-3 md:flex">
-            <div className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--mkt-line)] bg-[var(--mkt-surface-strong)] px-2.5 py-1.5 text-[11px] text-[var(--mkt-faint)]">
+          <aside className="hidden w-[186px] shrink-0 flex-col gap-1 border-r border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] p-3 md:flex">
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-[var(--mkt-line)] bg-white px-2.5 py-1.5 text-[11px] text-[var(--mkt-faint)]">
               <Search className="h-3 w-3" />
               Search
             </div>
-            {SIDEBAR.map((item) => (
-              <div
+            {NAV.map((item) => (
+              <span
                 key={item.label}
-                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] ${
+                className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11.5px] ${
                   item.active
-                    ? "bg-[var(--mkt-green)]/12 text-[var(--mkt-strong)] ring-1 ring-inset ring-[var(--mkt-green)]/30"
-                    : "text-[var(--mkt-faint)]"
+                    ? "bg-[var(--mkt-green)]/12 font-medium text-[var(--mkt-strong)] ring-1 ring-inset ring-[var(--mkt-green)]/30"
+                    : "text-[var(--mkt-muted)]"
                 }`}
               >
                 <item.icon className="h-3.5 w-3.5" />
                 {item.label}
-              </div>
+              </span>
             ))}
-            <div className="mt-auto rounded-lg border border-[var(--mkt-line)] p-2.5">
-              <p className="text-[10px] uppercase tracking-widest text-[var(--mkt-faint)]">Agency</p>
-              <p className="mt-1 text-[12px] text-[var(--mkt-strong)]">Nile Manpower</p>
+
+            <p className="mt-4 px-2.5 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-[var(--mkt-faint)]">
+              Workflow pipeline
+            </p>
+            {PIPELINE.map((item) => (
+              <span
+                key={item.label}
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11.5px] text-[var(--mkt-muted)]"
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+              </span>
+            ))}
+
+            <div className="mt-4 border-t border-[var(--mkt-line)] pt-3">
+              <p className="text-[11px] font-medium text-[var(--mkt-strong)]">System Administrator</p>
+              <p className="text-[10px] text-[var(--mkt-faint)]">admin@simbaflow.local</p>
             </div>
           </aside>
 
-          {/* Board */}
-          <div className="min-w-0 flex-1 p-3.5 sm:p-5">
-            <div className="mb-4 flex items-end justify-between gap-4">
+          {/* Candidates screen */}
+          <div className="min-w-0 flex-1 p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-[13px] font-semibold text-[var(--mkt-strong)] sm:text-[15px]">Candidate pipeline</p>
-                <p className="mt-0.5 text-[11px] text-[var(--mkt-faint)]">50 active · updated just now</p>
+                <p className="text-[13px] font-semibold text-[var(--mkt-strong)] sm:text-[15px]">Candidates</p>
+                <p className="mt-0.5 text-[11px] text-[var(--mkt-faint)]">
+                  Manage candidate registrations and track pipeline progress
+                </p>
               </div>
-              <div className="hidden items-center gap-1.5 rounded-full border border-[var(--mkt-green)]/30 bg-[var(--mkt-green)]/10 px-2.5 py-1 text-[10.5px] text-[var(--mkt-green)] sm:flex">
-                <span className="mkt-pulse h-1.5 w-1.5 rounded-full bg-[var(--mkt-green)]" />
-                Live
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--mkt-line)] px-2 py-1 text-[10.5px] text-[var(--mkt-muted)]">
+                  <SlidersHorizontal className="h-3 w-3" /> View
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--mkt-line)] px-2 py-1 text-[10.5px] text-[var(--mkt-muted)]">
+                  <Download className="h-3 w-3" /> Export
+                </span>
+                <span className="rounded-md bg-[var(--mkt-green-deep)] px-2.5 py-1 text-[10.5px] font-medium text-white">
+                  + Create
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-              {COLUMNS.map((column, index) => (
-                <div
-                  key={column.stage}
-                  className={`rounded-xl border border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] p-2.5 ${
-                    index > 1 ? "hidden lg:block" : ""
+            <div className="mt-3 flex items-center gap-1 text-[10.5px]">
+              {["Active", "Inactive", "All"].map((tab, i) => (
+                <span
+                  key={tab}
+                  className={`rounded-md px-2 py-1 ${
+                    i === 0
+                      ? "bg-[var(--mkt-green)]/12 font-medium text-[var(--mkt-green-deep)]"
+                      : "text-[var(--mkt-faint)]"
                   }`}
                 >
-                  <div className="mb-2.5 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: column.tint }} />
-                    <span className="text-[11.5px] font-medium text-[var(--mkt-strong)]">{column.stage}</span>
-                    <span className="ml-auto text-[10.5px] text-[var(--mkt-faint)]">{column.count}</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {column.cards.map((card) => (
-                      <div
-                        key={card.name}
-                        className="rounded-lg border border-[var(--mkt-line)] bg-white p-2.5"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="grid h-5 w-5 place-items-center rounded-full text-[9px] font-semibold text-white"
-                            style={{ background: column.tint }}
-                          >
-                            {card.name.charAt(0)}
-                          </span>
-                          <span className="truncate text-[11.5px] text-[var(--mkt-strong)]">{card.name}</span>
-                        </div>
-                        <p className="mt-1.5 truncate text-[10px] text-[var(--mkt-faint)]">{card.meta}</p>
-                        <div className="mt-2 flex items-center gap-1 text-[10px]">
-                          {card.done ? (
-                            <CheckCircle2 className="h-3 w-3 text-[var(--mkt-green)]" />
-                          ) : (
-                            <Clock3 className="h-3 w-3 text-[var(--mkt-yellow)]" />
-                          )}
-                          <span className={card.done ? "text-[var(--mkt-green)]" : "text-[#a97a00]"}>{card.tag}</span>
-                        </div>
-                      </div>
-                    ))}
-
-                    <div className="rounded-lg border border-dashed border-[var(--mkt-line)] px-2.5 py-2 text-center text-[10px] text-[var(--mkt-faint)]">
-                      + {column.count - column.cards.length} more
-                    </div>
-                  </div>
-                </div>
+                  {tab}
+                </span>
               ))}
+            </div>
+
+            <div className="mt-3 overflow-hidden rounded-xl border border-[var(--mkt-line)]">
+              <table className="w-full border-collapse text-left">
+                <thead>
+                  <tr className="bg-[var(--mkt-bg-raised)] text-[9.5px] uppercase tracking-[0.08em] text-[var(--mkt-faint)]">
+                    <th className="px-2.5 py-2 font-semibold">#</th>
+                    <th className="px-2.5 py-2 font-semibold">Name</th>
+                    <th className="hidden px-2.5 py-2 font-semibold lg:table-cell">Passport</th>
+                    <th className="hidden px-2.5 py-2 font-semibold xl:table-cell">Age</th>
+                    <th className="hidden px-2.5 py-2 font-semibold xl:table-cell">Works in</th>
+                    <th className="hidden px-2.5 py-2 font-semibold lg:table-cell">Partner</th>
+                    <th className="px-2.5 py-2 font-semibold">Stage</th>
+                    <th className="px-2.5 py-2 text-center font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ROWS.map((row) => (
+                    <tr key={row.n} className="border-t border-[var(--mkt-line)] text-[11px]">
+                      <td className="px-2.5 py-2 text-[var(--mkt-faint)]">{row.n}</td>
+                      <td className="max-w-[180px] truncate px-2.5 py-2 font-medium text-[var(--mkt-strong)]">
+                        {row.name}
+                      </td>
+                      <td className="hidden px-2.5 py-2 font-mono text-[10.5px] text-[var(--mkt-muted)] lg:table-cell">
+                        {row.passport}
+                      </td>
+                      <td className="hidden px-2.5 py-2 text-[var(--mkt-muted)] xl:table-cell">{row.age}</td>
+                      <td className="hidden px-2.5 py-2 text-[var(--mkt-muted)] xl:table-cell">{row.worksIn}</td>
+                      <td className="hidden max-w-[130px] truncate px-2.5 py-2 text-[var(--mkt-muted)] lg:table-cell">
+                        {row.partner}
+                      </td>
+                      <td className="px-2.5 py-2">
+                        <span
+                          className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] ${TONES[row.tone]}`}
+                        >
+                          {row.stage}
+                        </span>
+                      </td>
+                      <td className="px-2.5 py-2 text-center text-[var(--mkt-faint)]">
+                        <MoreHorizontal className="mx-auto h-3.5 w-3.5" />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-[10px] text-[var(--mkt-faint)]">
+              <span>Page 1 of 1</span>
+              <span className="flex items-center gap-2">
+                <span>Rows per page 10</span>
+                <span className="rounded border border-[var(--mkt-line)] px-1.5 py-0.5">First</span>
+                <span className="rounded border border-[var(--mkt-line)] px-1.5 py-0.5">Next</span>
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Realtime toast, floating over the window */}
+      {/* Live-update badge, the one thing a static screenshot cannot show. */}
       <div className="mkt-float absolute -bottom-5 right-4 hidden items-center gap-3 rounded-xl border border-[var(--mkt-line-strong)] bg-white px-3.5 py-2.5 shadow-[0_16px_40px_-14px_rgba(6,32,21,0.25)] sm:flex">
         <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--mkt-green)]/15">
-          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--mkt-green)]" />
+          <Plane className="h-3.5 w-3.5 text-[var(--mkt-green)]" />
         </span>
-        <div className="text-left">
+        <div>
           <p className="text-[11.5px] font-medium text-[var(--mkt-strong)]">Abel K. moved to Ticket</p>
-          <p className="text-[10px] text-[var(--mkt-faint)]">Visa stamped · by Selam H.</p>
+          <p className="text-[10.5px] text-[var(--mkt-faint)]">pushed to every desk · just now</p>
         </div>
       </div>
     </div>
