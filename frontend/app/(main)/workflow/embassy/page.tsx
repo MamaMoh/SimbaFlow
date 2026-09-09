@@ -186,6 +186,7 @@ export default function EmbassyBoardPage() {
           </div>
         ) : (
           <DataTable
+            rowClickOpensActions
         exportFileName="embassy"
             table={table}
             enableGlobalFilter={false}

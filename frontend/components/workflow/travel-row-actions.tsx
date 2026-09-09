@@ -10,13 +10,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
-import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
+import {
+  WorkflowActionItems,
+  hasEnabledActions,
+} from "@/components/workflow/workflow-action-items";
 import { travelApi, type TravelBoardRow } from "@/lib/api/travel";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { citiesFor, todayIso } from "@/lib/data/destination-cities";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
-import { Eye, MoreHorizontal } from "lucide-react";
+import {
+  BellRing,
+  CircleSlash,
+  Eye,
+  MoreHorizontal,
+  Plane,
+  PlaneTakeoff,
+} from "lucide-react";
 import Link from "next/link";
 
 type Mode = "book-ticket" | "not-departed" | null;
@@ -78,11 +88,12 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setMode("book-ticket")}>
+                  <Plane className="mr-2 h-4 w-4" />
                   Book ticket
                 </DropdownMenuItem>
               </>
             )}
-            {actions.length > 0 && <DropdownMenuSeparator />}
+            {hasEnabledActions(actions) && <DropdownMenuSeparator />}
             <WorkflowActionItems
               candidateId={candidate.id}
               actions={actions}
@@ -153,6 +164,7 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
                   run(() => travelApi.markNotified(candidate.id), "Marked notified")
                 }
               >
+                <BellRing className="mr-2 h-4 w-4" />
                 Mark notified
               </DropdownMenuItem>
             )}
@@ -162,15 +174,17 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
                   run(() => travelApi.confirmDeparted(candidate.id), "Confirmed departed")
                 }
               >
+                <PlaneTakeoff className="mr-2 h-4 w-4" />
                 Confirm departed
               </DropdownMenuItem>
             )}
             {departureStatus !== "Departed" && (
               <DropdownMenuItem onClick={() => setMode("not-departed")}>
+                <CircleSlash className="mr-2 h-4 w-4" />
                 Not departed…
               </DropdownMenuItem>
             )}
-            {actions.length > 0 && <DropdownMenuSeparator />}
+            {hasEnabledActions(actions) && <DropdownMenuSeparator />}
             <WorkflowActionItems candidateId={candidate.id} actions={actions} onExecuted={refresh} />
           </DropdownMenuContent>
         </DropdownMenu>

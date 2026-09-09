@@ -144,6 +144,7 @@ export default function CaseExecutiveBoardPage() {
           </div>
         ) : (
           <DataTable
+            rowClickOpensActions
         exportFileName="case-executive"
             table={table}
             enableGlobalFilter={false}

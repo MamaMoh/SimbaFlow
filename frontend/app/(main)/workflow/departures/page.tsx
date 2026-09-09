@@ -160,6 +160,7 @@ export default function DepartureBoardPage() {
             </div>
           ) : (
             <DataTable
+            rowClickOpensActions
         exportFileName="departures" table={table} paginated emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets." />
           )}
         </div>

@@ -34,6 +34,12 @@ export interface DataTableProps<TData, TValue> {
   exportFileName?: string;
   /** Navigate/act when a row body is clicked (ignores clicks on buttons, links, inputs). */
   onRowClick?: (row: TData) => void;
+  /**
+   * Clicking a row opens that row's ⋯ menu instead of navigating. On the workflow boards the
+   * useful thing to do with a row is act on it, and the menu already leads with "View details" —
+   * so this gives the whole row a target rather than an 8px button at the far right.
+   */
+  rowClickOpensActions?: boolean;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onPrint?: (allData: any[], selectedRows: any[]) => void;
@@ -61,6 +67,7 @@ export function DataTable<TData, TValue>(
     toolbarEndActions,
   exportFileName,
   onRowClick,
+  rowClickOpensActions = false,
     isFullscreen,
     onToggleFullscreen,
     onPrint,
@@ -124,14 +131,22 @@ export function DataTable<TData, TValue>(
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className={onRowClick ? "cursor-pointer" : undefined}
+                  className={onRowClick || rowClickOpensActions ? "cursor-pointer" : undefined}
                   onClick={(e) => {
-                    if (!onRowClick) return;
+                    if (!onRowClick && !rowClickOpensActions) return;
                     // Don't hijack clicks on interactive controls inside the row.
                     if ((e.target as HTMLElement).closest(
                       'button, a, input, label, [role="checkbox"], [role="menuitem"], [data-no-row-click]'
                     )) return;
-                    onRowClick(row.original as TData);
+                    if (rowClickOpensActions) {
+                      // Drive the row's own ⋯ trigger rather than duplicating each board's menu
+                      // here — the menus differ per board and stay the single source of truth.
+                      e.currentTarget
+                        .querySelector<HTMLElement>('[aria-label="Row actions"]')
+                        ?.click();
+                      return;
+                    }
+                    onRowClick?.(row.original as TData);
                   }}
                 >
                   {row.getVisibleCells().map((cell: any) => (

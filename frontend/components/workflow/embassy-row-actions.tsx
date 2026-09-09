@@ -10,12 +10,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
-import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
+import {
+  WorkflowActionItems,
+  hasEnabledActions,
+} from "@/components/workflow/workflow-action-items";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
-import { Eye, MoreHorizontal } from "lucide-react";
+import {
+  BadgeCheck,
+  CalendarClock,
+  ClipboardCheck,
+  Eye,
+  MoreHorizontal,
+  RotateCcw,
+  Send,
+  Stamp,
+  Stethoscope,
+} from "lucide-react";
 import Link from "next/link";
 
 type Mode =
@@ -96,6 +109,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setMode("visa-submit")}>
+                  <Send className="mr-2 h-4 w-4" />
                   Submit documentation
                 </DropdownMenuItem>
               </>
@@ -107,26 +121,31 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                   <DropdownMenuSeparator />
                   {(medical === "Pending" || medical === "" || medical === "Expired") && (
                     <DropdownMenuItem onClick={() => setMode("book-medical")}>
+                      <Stethoscope className="mr-2 h-4 w-4" />
                       Book medical
                     </DropdownMenuItem>
                   )}
                   {medical === "Booked" && (
                     <DropdownMenuItem onClick={() => setMode("medical-result")}>
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
                       Record medical result
                     </DropdownMenuItem>
                   )}
                   {(tasheer === "Pending" || tasheer === "" || tasheer === "Expired") && (
                     <DropdownMenuItem onClick={() => setMode("book-tasheer")}>
+                      <CalendarClock className="mr-2 h-4 w-4" />
                       Book tasheer
                     </DropdownMenuItem>
                   )}
                   {tasheer === "Booked" && (
                     <DropdownMenuItem onClick={() => setMode("tasheer-result")}>
+                      <ClipboardCheck className="mr-2 h-4 w-4" />
                       Record tasheer result
                     </DropdownMenuItem>
                   )}
                   {medical === "Fit" && tasheer === "Book Done" && !visa && (
                     <DropdownMenuItem onClick={() => setMode("visa-ready")}>
+                      <BadgeCheck className="mr-2 h-4 w-4" />
                       Set visa Ready
                     </DropdownMenuItem>
                   )}
@@ -137,32 +156,25 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                   */}
                   {canCaseSubmit && visa === "Ready" && (
                     <DropdownMenuItem onClick={() => setMode("visa-submit")}>
+                      <Send className="mr-2 h-4 w-4" />
                       Submit documentation
-                    </DropdownMenuItem>
-                  )}
-                  {!canCaseSubmit && visa === "Ready" && (
-                    <DropdownMenuItem disabled className="items-start">
-                      <span className="flex min-w-0 flex-col">
-                        <span>Submit documentation</span>
-                        <span className="text-xs leading-snug text-muted-foreground">
-                          Needs the Case Executive permission
-                        </span>
-                      </span>
                     </DropdownMenuItem>
                   )}
                   {canOutcome && visa === "Submitted" && (
                     <DropdownMenuItem onClick={() => setMode("visa-outcome")}>
+                      <Stamp className="mr-2 h-4 w-4" />
                       Visa outcome
                     </DropdownMenuItem>
                   )}
                   {canOutcome && visa === "Rejected" && (
                     <DropdownMenuItem onClick={() => setMode("visa-resubmit")}>
+                      <RotateCcw className="mr-2 h-4 w-4" />
                       Resubmit visa
                     </DropdownMenuItem>
                   )}
                 </>
               )}
-              {actions.length > 0 && <DropdownMenuSeparator />}
+              {hasEnabledActions(actions) && <DropdownMenuSeparator />}
               <WorkflowActionItems
                 candidateId={candidate.id}
                 actions={actions}

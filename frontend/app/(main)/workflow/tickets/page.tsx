@@ -136,6 +136,7 @@ export default function TicketBoardPage() {
             </div>
           ) : (
             <DataTable
+            rowClickOpensActions
         exportFileName="tickets" table={table} paginated emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS." />
           )}
         </div>

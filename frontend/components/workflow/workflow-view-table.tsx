@@ -13,7 +13,10 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
-import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
+import {
+  WorkflowActionItems,
+  hasEnabledActions,
+} from "@/components/workflow/workflow-action-items";
 import {
   useAvailableActions,
   updateWorkflowStatus,
@@ -106,7 +109,7 @@ function RowActions({
               </DropdownMenuItem>
             </>
           ) : null}
-          {actions.length > 0 && <DropdownMenuSeparator />}
+          {hasEnabledActions(actions) && <DropdownMenuSeparator />}
           <WorkflowActionItems
             candidateId={candidate.id}
             actions={actions}
@@ -192,6 +195,7 @@ export function WorkflowViewTable({
 
   return (
     <DataTable
+            rowClickOpensActions
       table={table}
       enableGlobalFilter={false}
       paginated={true}

@@ -17,13 +17,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
-import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
+import {
+  WorkflowActionItems,
+  hasEnabledActions,
+} from "@/components/workflow/workflow-action-items";
 import { DocumentUploader } from "@/components/candidates/document-uploader";
 import { lmisApi, nextLmisMilestone, type LmisBoardRow } from "@/lib/api/lmis";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
-import { Eye, MoreHorizontal, Upload } from "lucide-react";
+import { ArrowRight, BadgeCheck, Eye, MoreHorizontal, Upload } from "lucide-react";
 
 type Props = {
   candidate: LmisBoardRow;
@@ -72,11 +75,13 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                 <DropdownMenuSeparator />
                 {(insurance === "Insurance Unpaid" || !insurance) && (
                   <DropdownMenuItem onClick={() => setPaidOpen(true)}>
+                    <BadgeCheck className="mr-2 h-4 w-4" />
                     Mark insurance paid
                   </DropdownMenuItem>
                 )}
                 {canAdvanceMilestone && (
                   <DropdownMenuItem onClick={() => setMilestoneOpen(true)}>
+                    <ArrowRight className="mr-2 h-4 w-4" />
                     Advance to {next}
                   </DropdownMenuItem>
                 )}
@@ -84,11 +89,11 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
             )}
             {canDoc && (
               <DropdownMenuItem onClick={() => setDocOpen(true)}>
-                <Upload className="mr-2 h-3.5 w-3.5" />
+                <Upload className="mr-2 h-4 w-4" />
                 Upload LMIS document
               </DropdownMenuItem>
             )}
-            {actions.length > 0 && <DropdownMenuSeparator />}
+            {hasEnabledActions(actions) && <DropdownMenuSeparator />}
             <WorkflowActionItems candidateId={candidate.id} actions={actions} onExecuted={refresh} />
           </DropdownMenuContent>
       </DropdownMenu>

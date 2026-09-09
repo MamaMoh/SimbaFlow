@@ -209,6 +209,7 @@ export default function LmisBoardPage() {
           </div>
         ) : (
           <DataTable
+            rowClickOpensActions
         exportFileName="lmis"
             table={table}
             enableGlobalFilter={false}

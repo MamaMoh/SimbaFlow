@@ -11,7 +11,17 @@ import type { AvailableAction } from "@/types/workflow";
  * Renders the candidate's available workflow transitions as items inside a row's
  * ⋯ menu, so every board exposes actions the same way instead of stacking loose
  * buttons in the Actions column.
+ *
+ * Only steps that can actually be taken are listed. A blocked step used to be shown greyed out
+ * with the blocker spelled out underneath, which turned a short menu of things you can do into a
+ * long one mostly describing things you cannot — the board chips already say where the candidate
+ * is up to.
  */
+/** True when any transition can actually be taken — use it to decide on a separator. */
+export function hasEnabledActions(actions: AvailableAction[] | undefined): boolean {
+  return (actions ?? []).some((a) => a.isEnabled);
+}
+
 export function WorkflowActionItems({
   candidateId,
   actions,
@@ -23,7 +33,8 @@ export function WorkflowActionItems({
 }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  if (!actions || actions.length === 0) return null;
+  const available = (actions ?? []).filter((a) => a.isEnabled);
+  if (available.length === 0) return null;
 
   const run = async (action: AvailableAction) => {
     if (!action.isEnabled || pendingId) return;
@@ -41,31 +52,21 @@ export function WorkflowActionItems({
 
   return (
     <>
-      {actions.map((action) => (
+      {available.map((action) => (
         <DropdownMenuItem
           key={action.transitionRuleId}
-          disabled={!action.isEnabled || pendingId === action.transitionRuleId}
-          title={!action.isEnabled ? action.disabledReason ?? undefined : undefined}
-          className="items-start"
+          disabled={pendingId === action.transitionRuleId}
           onSelect={(e) => {
             e.preventDefault();
             void run(action);
           }}
         >
           {pendingId === action.transitionRuleId ? (
-            <Loader2 className="mr-2 mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
           ) : (
-            <ArrowRight className="mr-2 mt-0.5 h-4 w-4 shrink-0" />
+            <ArrowRight className="mr-2 h-4 w-4 shrink-0" />
           )}
-          <span className="flex min-w-0 flex-col">
-            <span>{action.buttonLabel}</span>
-            {/* The blocker is spelled out, so a greyed-out step says what it is waiting on. */}
-            {!action.isEnabled && action.disabledReason ? (
-              <span className="text-xs leading-snug text-muted-foreground">
-                {action.disabledReason}
-              </span>
-            ) : null}
-          </span>
+          {action.buttonLabel}
         </DropdownMenuItem>
       ))}
     </>

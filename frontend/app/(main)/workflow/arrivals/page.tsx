@@ -146,6 +146,7 @@ export default function ArrivalBoardPage() {
             </div>
           ) : (
             <DataTable
+            rowClickOpensActions
         exportFileName="arrivals" table={table} paginated emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures." />
           )}
         </div>

@@ -8,12 +8,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
+import {
+  WorkflowActionItems,
+  hasEnabledActions,
+} from "@/components/workflow/workflow-action-items";
 import { arrivalApi, type ArrivalBoardRow } from "@/lib/api/arrival";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
-import { AlertTriangle, Eye, MoreHorizontal } from "lucide-react";
+import {
+  AlertTriangle,
+  Coins,
+  Eye,
+  MoreHorizontal,
+  PlaneLanding,
+  Undo2,
+} from "lucide-react";
 import Link from "next/link";
 
 type Props = {
@@ -68,6 +78,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                   <DropdownMenuItem
                     onClick={() => run(() => arrivalApi.confirmArrived(candidate.id), "Arrived")}
                   >
+                    <PlaneLanding className="mr-2 h-4 w-4" />
                     Confirm arrived
                   </DropdownMenuItem>
                 )}
@@ -77,6 +88,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                       run(() => arrivalApi.addToCommission(candidate.id), "Added to Commission")
                     }
                   >
+                    <Coins className="mr-2 h-4 w-4" />
                     Add to Commission
                   </DropdownMenuItem>
                 )}
@@ -90,6 +102,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                         )
                       }
                     >
+                      <Undo2 className="mr-2 h-4 w-4" />
                       Flag Returned
                     </DropdownMenuItem>
                     <DropdownMenuItem
@@ -100,6 +113,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                         )
                       }
                     >
+                      <AlertTriangle className="mr-2 h-4 w-4" />
                       Flag Runaway
                     </DropdownMenuItem>
                   </>
@@ -117,7 +131,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                 </DropdownMenuItem>
               </>
             )}
-            {actions.length > 0 && <DropdownMenuSeparator />}
+            {hasEnabledActions(actions) && <DropdownMenuSeparator />}
             <WorkflowActionItems candidateId={candidate.id} actions={actions} onExecuted={refresh} />
           </DropdownMenuContent>
       </DropdownMenu>
