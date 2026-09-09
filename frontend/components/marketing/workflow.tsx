@@ -117,7 +117,7 @@ export function Workflow() {
           {TRAITS.map((trait, index) => (
             <Reveal key={trait.title} delay={index * 70}>
               <div className="mkt-card h-full p-6">
-                <trait.icon className="h-[18px] w-[18px] text-[var(--mkt-yellow)]" />
+                <trait.icon className="h-[18px] w-[18px] text-[var(--mkt-amber-ink)]" />
                 <h3 className="mt-4 text-[15.5px] font-semibold text-[var(--mkt-strong)]">{trait.title}</h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--mkt-muted)]">{trait.body}</p>
               </div>

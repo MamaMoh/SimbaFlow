@@ -26,8 +26,8 @@ const GUARANTEES = [
 ];
 
 const TENANTS = [
-  { name: "nile_manpower", rows: "12,480 records", tint: "#12b76a" },
-  { name: "horn_recruit", rows: "8,109 records", tint: "#d99e00" },
+  { name: "nile_manpower", rows: "12,480 records", tint: "#006633" },
+  { name: "horn_recruit", rows: "8,109 records", tint: "#f8c318" },
   { name: "abyss_overseas", rows: "3,922 records", tint: "#38bdf8" },
 ];
 

@@ -18,9 +18,14 @@
   --mkt-text: #35443d;
   --mkt-muted: #5d716a;
   --mkt-faint: #84968d;
-  --mkt-green: #0f9d58;
-  --mkt-green-deep: #006633;
-  --mkt-yellow: #d99e00;
+  /* The Ethiopian flag palette the application already uses — --et-green/-yellow/-red in
+     globals.css. The accent had drifted to a brighter green during the light conversion; it is
+     the brand green again, which also holds more contrast on white than the lighter one did. */
+  --mkt-green: #006633;
+  --mkt-green-deep: #00522a;
+  --mkt-yellow: #f8c318;
+  /* Brand yellow is unreadable as text on white, so anything lettered uses this instead. */
+  --mkt-amber-ink: #8a6508;
   --mkt-red: #c30f16;
 
   background-color: var(--mkt-bg);
@@ -29,7 +34,7 @@
 }
 
 .mkt ::selection {
-  background: rgba(15, 157, 88, 0.18);
+  background: rgba(0, 102, 51, 0.16);
   color: var(--mkt-strong);
 }
 
@@ -64,9 +69,9 @@
 /* Soft brand-coloured glow behind the hero. */
 .mkt-aurora {
   background:
-    radial-gradient(58% 46% at 18% 8%, rgba(15, 157, 88, 0.1) 0%, transparent 62%),
-    radial-gradient(46% 40% at 82% 0%, rgba(217, 158, 0, 0.07) 0%, transparent 60%),
-    radial-gradient(64% 52% at 62% 46%, rgba(15, 157, 88, 0.05) 0%, transparent 66%);
+    radial-gradient(58% 46% at 18% 8%, rgba(0, 102, 51, 0.1) 0%, transparent 62%),
+    radial-gradient(46% 40% at 82% 0%, rgba(248, 195, 24, 0.1) 0%, transparent 60%),
+    radial-gradient(64% 52% at 62% 46%, rgba(0, 102, 51, 0.05) 0%, transparent 66%);
 }
 
 .mkt-grid-lines {
@@ -92,7 +97,7 @@
 }
 
 .mkt-gradient-text {
-  background: linear-gradient(100deg, #0f9d58 6%, #0b8f6a 52%, #056b3f 96%);
+  background: linear-gradient(100deg, #006633 6%, #0a7d45 54%, #00522a 96%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -110,7 +115,7 @@
 }
 
 .mkt-card:hover {
-  border-color: rgba(15, 157, 88, 0.4);
+  border-color: rgba(0, 102, 51, 0.38);
   box-shadow: 0 8px 24px rgba(6, 32, 21, 0.07);
   transform: translateY(-2px);
 }

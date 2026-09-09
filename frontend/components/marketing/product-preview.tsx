@@ -52,7 +52,7 @@ const ROWS = [
 
 const TONES: Record<string, string> = {
   green: "border-[var(--mkt-green)]/30 bg-[var(--mkt-green)]/10 text-[var(--mkt-green)]",
-  amber: "border-[#a87f16]/30 bg-[#a87f16]/10 text-[#a87f16]",
+  amber: "border-[var(--mkt-amber-ink)]/30 bg-[var(--mkt-yellow)]/20 text-[var(--mkt-amber-ink)]",
   sky: "border-sky-500/30 bg-sky-500/10 text-sky-700",
   slate: "border-[var(--mkt-line-strong)] bg-[var(--mkt-surface)] text-[var(--mkt-muted)]",
 };
