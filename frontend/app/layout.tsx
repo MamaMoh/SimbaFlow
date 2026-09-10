@@ -21,15 +21,17 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  // The globe the app signs in under. These pointed at /SimbLogo.svg, which did not exist, so
+  // every tab fell back to the browser's blank page icon. The PNG is there for anything that
+  // will not take an SVG, and iOS gets a real PNG on a white tile — it ignores SVG touch icons
+  // and paints transparency black.
   icons: {
     icon: [
       { url: "/SimbLogo.svg", type: "image/svg+xml" },
-      { url: "/SimbLogo.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
     ],
-    apple: [
-      { url: "/SimbLogo.svg", type: "image/svg+xml" },
-    ],
-    shortcut: "/SimbLogo.svg",
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
+    shortcut: "/favicon-32.png",
   },
 };
 

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="32" height="32"
+     fill="none" stroke="#006633" stroke-width="2.1"
+     stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="SimbaFlow">
+  <circle cx="12" cy="12" r="9.6"/>
+  <path d="M12 2.4a14.5 14.5 0 0 0 0 19.2 14.5 14.5 0 0 0 0-19.2"/>
+  <path d="M2.4 12h19.2"/>
+</svg>
