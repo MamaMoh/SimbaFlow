@@ -103,6 +103,15 @@
   color: transparent;
 }
 
+/* The app paints its wordmark with the flag across the letters; the site does the same so the
+   two read as one product. */
+.mkt-wordmark {
+  background: linear-gradient(90deg, #006633 0%, #f8c318 50%, #c30f16 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* --- Surfaces ----------------------------------------------------------- */
 
 .mkt-card {
