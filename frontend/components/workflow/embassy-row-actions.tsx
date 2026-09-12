@@ -253,13 +253,27 @@ function StatusSheets({
         title="Book tasheer"
         fields={[
           { name: "appointmentDate", label: "Appointment date", type: "date", required: true },
+          {
+            name: "slip",
+            label: "Appointment slip",
+            type: "select",
+            options: [
+              { value: "yes", label: "Generate and file the slip" },
+              { value: "no", label: "Skip for now" },
+            ],
+          },
           { name: "notes", label: "Notes", type: "textarea" },
         ]}
         onSubmit={(v) =>
-          run(
-            () => embassyApi.bookTasheer(candidateId, v.appointmentDate, v.notes),
-            "Tasheer booked"
-          )
+          run(async () => {
+            await embassyApi.bookTasheer(candidateId, v.appointmentDate, v.notes);
+            // Default to producing it: the slip is what the candidate carries, and the desk was
+            // otherwise retyping these details into a Word template for every appointment.
+            if (v.slip !== "no") {
+              const blob = await embassyApi.generateTasheerDocument(candidateId, v.appointmentDate);
+              window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
+            }
+          }, "Tasheer booked")
         }
       />
       <StatusUpdateSheet
