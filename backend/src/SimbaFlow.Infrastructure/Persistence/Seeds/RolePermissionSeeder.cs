@@ -45,7 +45,9 @@ public static class RolePermissionSeeder
             "commission.read",
             "accounting.read",
             "staff.read",
-            "partner.read",
+            // Partner agreements are negotiated and maintained by the office manager, so
+            // registering a partner belongs with them rather than only the agency owner.
+            "partner.read", "partner.create", "partner.update",
             // Branch managers work in the field alongside agents, so they can link their own bot.
             "bot.use",
             "report.view", "report.export",

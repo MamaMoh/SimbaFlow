@@ -10,6 +10,7 @@ import { botApi, useBotStatus } from "@/lib/api/bot";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
+import { IntakeDefaultsCard } from "@/components/settings/intake-defaults-card";
 
 export default function SettingsPage() {
   const { hasPermission } = usePermissions();
@@ -98,6 +99,8 @@ export default function SettingsPage() {
 
       {canAdmin ? (
         <>
+          <IntakeDefaultsCard />
+
           <PageAlert
             variant="info"
             title="Account settings"

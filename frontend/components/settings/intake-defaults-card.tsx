@@ -1,0 +1,109 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CountrySelect } from "@/components/ui/country-select";
+import { saveIntakeDefaults, useIntakeDefaults } from "@/lib/api/intake-defaults";
+
+/**
+ * What a blank candidate form starts with.
+ *
+ * Agencies deploy to one corridor and one job for months at a time, so the same three answers were
+ * being typed into every registration. These pre-fill a new form only — an edit always shows what
+ * was saved.
+ */
+export function IntakeDefaultsCard() {
+  const { defaults, mutate } = useIntakeDefaults(true);
+  const [gender, setGender] = useState("1");
+  const [occupation, setOccupation] = useState("");
+  const [countryOfTravel, setCountryOfTravel] = useState("");
+  const [contractPeriod, setContractPeriod] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!defaults) return;
+    setGender(defaults.gender || "1");
+    setOccupation(defaults.occupation || "");
+    setCountryOfTravel(defaults.countryOfTravel || "");
+    setContractPeriod(defaults.contractPeriod || "");
+  }, [defaults]);
+
+  const onSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await saveIntakeDefaults({ gender, occupation, countryOfTravel, contractPeriod });
+      toast.success("New candidate forms will start with these");
+      void mutate();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={onSave} className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
+      <div>
+        <h2 className="text-sm font-semibold">New candidate defaults</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Pre-filled on a new registration. Editing an existing candidate is never affected.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label>Gender</Label>
+          <Select value={gender} onValueChange={setGender}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Female</SelectItem>
+              <SelectItem value="0">Male</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="def-occupation">Occupation</Label>
+          <Input
+            id="def-occupation"
+            value={occupation}
+            onChange={(e) => setOccupation(e.target.value)}
+            placeholder="House Maid"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Country of travel</Label>
+          <CountrySelect value={countryOfTravel} onChange={setCountryOfTravel} />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="def-period">Contract period</Label>
+          <Input
+            id="def-period"
+            value={contractPeriod}
+            onChange={(e) => setContractPeriod(e.target.value)}
+            placeholder="2 Years"
+          />
+        </div>
+      </div>
+
+      <Button type="submit" disabled={saving} className="bg-green-800 text-white hover:bg-green-900">
+        {saving ? "Saving…" : "Save defaults"}
+      </Button>
+    </form>
+  );
+}

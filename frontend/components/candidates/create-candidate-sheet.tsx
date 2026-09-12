@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useIntakeDefaults } from "@/lib/api/intake-defaults";
 import { CountrySelect } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import { Progress } from "@/components/ui/progress";
@@ -908,6 +909,22 @@ export function CandidateApplicationForm({
     })();
   }, [isEdit, candidateResponse, reset, candidateId]);
 
+  // Agency defaults fill a blank form only. On an edit the saved record is the truth, and a
+  // default quietly overwriting it is exactly the bug this list already reported twice.
+  const { defaults: agencyDefaults } = useIntakeDefaults(!isEdit);
+  const agencyDefaultsApplied = useRef(false);
+  useEffect(() => {
+    if (isEdit || !agencyDefaults || agencyDefaultsApplied.current) return;
+    agencyDefaultsApplied.current = true;
+    if (agencyDefaults.gender) setValue("gender", agencyDefaults.gender);
+    if (agencyDefaults.occupation) setValue("occupation", agencyDefaults.occupation);
+    if (agencyDefaults.contractPeriod) setValue("contractPeriod", agencyDefaults.contractPeriod);
+    if (agencyDefaults.countryOfTravel) {
+      setValue("countryOfTravel", agencyDefaults.countryOfTravel);
+      setValue("country", agencyDefaults.countryOfTravel);
+    }
+  }, [agencyDefaults, isEdit, setValue]);
+
   const goBack = () => {
     if (isEdit && candidateId) router.push(`/candidates/${candidateId}`);
     else router.push("/candidates");
@@ -1652,6 +1669,147 @@ export function CandidateApplicationForm({
           </div>
 
           {/* Step 4 — Experience */}
+          <div id="placement" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Placement" />
+            <FormSection
+              icon={Stamp}
+              title="Sponsor & Visa"
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Send-to partner agency</Label>
+                  <Select
+                    value={watch("partnerAgencyId") || undefined}
+                    onValueChange={(id) => {
+                      setValue("partnerAgencyId", id, { shouldValidate: true });
+                      const p = linkedPartners.find((x) => x.id === id);
+                      if (p) {
+                        // The partner decides the destination, so it is set here rather than
+                        // asked for twice.
+                        setValue("partnerName", p.name);
+                        if (p.country) {
+                          setValue("countryOfTravel", p.country);
+                          setValue("country", p.country);
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select linked partner" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[200]">
+                      {linkedPartners.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name} · {p.country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {linkedPartners.length === 0 ? (
+                    <p className="text-xs text-amber-800">
+                      No partners linked. An agency owner should link partners under Partners first.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contract date</Label>
+                  <Input type="date" {...register("contractDate")} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Visa No.</Label>
+                  <Input {...register("visaNumber")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor Name</Label>
+                  <Input {...register("sponsorName")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor ID</Label>
+                  <Input {...register("sponsorIdNumber")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor Phone</Label>
+                  <Input {...register("sponsorPhone")} />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Sponsor Address</Label>
+                  <Input {...register("sponsorAddress")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor Arabic</Label>
+                  <Input {...register("sponsorArabicName")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Arab agent / local agent</Label>
+                  <Input
+                    placeholder="Agent name at the foreign agency"
+                    {...register("agentName")}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>National ID</Label>
+                  <Input {...register("nationalId")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Visa Type</Label>
+                  <Select
+                    value={watch("visaType") || undefined}
+                    onValueChange={(v) => setValue("visaType", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[200]">
+                      {VISA_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Email</Label>
+                  <Input type="email" {...register("email")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Labour ID</Label>
+                  <Input {...register("labourId")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Biometric ID</Label>
+                  <Input {...register("biometricId")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>File No.</Label>
+                  <Input {...register("fileNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contract #</Label>
+                  <Input {...register("contractNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Wakala #</Label>
+                  <Input {...register("wakalaNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sticker Visa #</Label>
+                  <Input {...register("stickerVisaNo")} />
+                </div>
+              </div>
+            </FormSection>
+            {!isEdit && (
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  checked={generateVisaAfterSave}
+                  onCheckedChange={(v) => setGenerateVisaAfterSave(v === true)}
+                />
+                Generate visa form after save
+              </label>
+            )}
+          </div>
+
           <div id="experience" className="scroll-mt-24 space-y-4">
             <SectionHeading title="Experience" />
             <FormSection icon={FileText} title="Languages & Education">
@@ -1876,166 +2034,6 @@ export function CandidateApplicationForm({
           </div>
 
           {/* Step 5 — Placement */}
-          <div id="placement" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Placement" />
-            <FormSection
-              icon={Stamp}
-              title="Sponsor & Visa"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Visa No.</Label>
-                  <Input {...register("visaNumber")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor Name</Label>
-                  <Input {...register("sponsorName")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor ID</Label>
-                  <Input {...register("sponsorIdNumber")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor Phone</Label>
-                  <Input {...register("sponsorPhone")} />
-                </div>
-                <div className="space-y-1.5 col-span-2">
-                  <Label>Sponsor Address</Label>
-                  <Input {...register("sponsorAddress")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor Arabic</Label>
-                  <Input {...register("sponsorArabicName")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Arab agent / local agent</Label>
-                  <Input
-                    placeholder="Agent name at the foreign agency"
-                    {...register("agentName")}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>National ID</Label>
-                  <Input {...register("nationalId")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Visa Type</Label>
-                  <Select
-                    value={watch("visaType") || undefined}
-                    onValueChange={(v) => setValue("visaType", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[200]">
-                      {VISA_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input type="email" {...register("email")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Labour ID</Label>
-                  <Input {...register("labourId")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Biometric ID</Label>
-                  <Input {...register("biometricId")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>File No.</Label>
-                  <Input {...register("fileNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Contract #</Label>
-                  <Input {...register("contractNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Wakala #</Label>
-                  <Input {...register("wakalaNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sticker Visa #</Label>
-                  <Input {...register("stickerVisaNo")} />
-                </div>
-              </div>
-            </FormSection>
-            <FormSection
-              icon={MapPin}
-              title="Partner / travel"
-              description="Only partners your agency has an agreement with appear here."
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5 col-span-2">
-                  <Label>Send-to partner agency</Label>
-                  <Select
-                    value={watch("partnerAgencyId") || undefined}
-                    onValueChange={(id) => {
-                      setValue("partnerAgencyId", id, { shouldValidate: true });
-                      const p = linkedPartners.find((x) => x.id === id);
-                      if (p) {
-                        setValue("partnerName", p.name);
-                        if (p.country) setValue("countryOfTravel", p.country);
-                        if (p.country) setValue("country", p.country);
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select linked partner" />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[200]">
-                      {linkedPartners.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} · {p.country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {linkedPartners.length === 0 ? (
-                    <p className="text-xs text-amber-800">
-                      No partners linked. An agency owner should link partners under Partners first.
-                    </p>
-                  ) : null}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Partner name (snapshot)</Label>
-                  <Input {...register("partnerName")} readOnly className="bg-muted/40" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Contract Date</Label>
-                  <Input type="date" {...register("contractDate")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> Country of travel
-                  </Label>
-                  <CountrySelect
-                    value={watch("countryOfTravel") || watch("country") || ""}
-                    onChange={(v) => {
-                      setValue("countryOfTravel", v);
-                      setValue("country", v);
-                    }}
-                  />
-                </div>
-              </div>
-            </FormSection>
-            {!isEdit && (
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={generateVisaAfterSave}
-                  onCheckedChange={(v) => setGenerateVisaAfterSave(v === true)}
-                />
-                Generate visa form after save
-              </label>
-            )}
-          </div>
-
           <div className="sticky bottom-0 z-30 mt-6 rounded-xl border border-slate-200/90 bg-background/95 px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/90">
             <div className="flex items-center justify-between gap-3">
               <Button type="button" variant="outline" onClick={goBack}>
