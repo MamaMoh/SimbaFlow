@@ -151,10 +151,12 @@ export const embassyApi = {
   },
   unbookMedical: (id: string, notes?: string) =>
     postJson(`/api/proxy/embassy/candidates/${id}/medical/unbook`, { notes }),
-  bookMedical: (id: string, appointmentDate: string, facilityName: string, notes?: string) =>
+  // Date and facility are no longer asked for. They stay in the signature for older callers,
+  // but an empty string will not bind to a nullable DateOnly — it has to be null.
+  bookMedical: (id: string, appointmentDate?: string, facilityName?: string, notes?: string) =>
     postJson(`/api/proxy/embassy/candidates/${id}/medical/book`, {
-      appointmentDate,
-      facilityName,
+      appointmentDate: appointmentDate || null,
+      facilityName: facilityName || null,
       notes,
     }),
   recordMedicalResult: (id: string, result: "Fit" | "Unfit", notes?: string) =>

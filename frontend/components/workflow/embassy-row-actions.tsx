@@ -123,7 +123,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
-                        void run(() => embassyApi.bookMedical(candidate.id, "", ""), "Medical booked");
+                        void run(() => embassyApi.bookMedical(candidate.id), "Medical booked");
                       }}
                     >
                       <Stethoscope className="mr-2 h-4 w-4" />

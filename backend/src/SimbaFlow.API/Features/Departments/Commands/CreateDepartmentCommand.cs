@@ -14,7 +14,7 @@ public record CreateDepartmentCommand(
     Guid? ParentDepartmentId,
     Guid? HeadUserId) : IRequest<Result<Guid>>, IRequirePermission
 {
-    public string RequiredPermission => "office.write";
+    public string RequiredPermission => "staff.update";
 }
 
 public class CreateDepartmentValidator : AbstractValidator<CreateDepartmentCommand>

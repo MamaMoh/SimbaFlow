@@ -20,7 +20,7 @@ public record SuspendStaffCommand(
     Guid StaffProfileId,
     string Reason) : IRequest<Result>, IRequirePermission
 {
-    public string RequiredPermission => "staff.suspend";
+    public string RequiredPermission => "staff.terminate";
 }
 
 // --- Validator ---

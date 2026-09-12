@@ -15,6 +15,9 @@ import {
 import { CountrySelect } from "@/components/ui/country-select";
 import { saveIntakeDefaults, useIntakeDefaults } from "@/lib/api/intake-defaults";
 
+/** Must match the registration form's list, or the default is a value its dropdown cannot show. */
+const OCCUPATIONS = ["HOUSE MAID", "NANNY", "COOK", "DRIVER", "CLEANER", "CAREGIVER", "OTHER"];
+
 /**
  * What a blank candidate form starts with.
  *
@@ -76,13 +79,19 @@ export function IntakeDefaultsCard() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="def-occupation">Occupation</Label>
-          <Input
-            id="def-occupation"
-            value={occupation}
-            onChange={(e) => setOccupation(e.target.value)}
-            placeholder="House Maid"
-          />
+          <Label>Occupation</Label>
+          <Select value={occupation || undefined} onValueChange={setOccupation}>
+            <SelectTrigger id="def-occupation">
+              <SelectValue placeholder="Select occupation" />
+            </SelectTrigger>
+            <SelectContent>
+              {OCCUPATIONS.map((o) => (
+                <SelectItem key={o} value={o}>
+                  {o}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

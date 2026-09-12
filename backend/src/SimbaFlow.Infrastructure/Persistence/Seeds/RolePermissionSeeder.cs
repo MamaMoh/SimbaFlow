@@ -34,6 +34,8 @@ public static class RolePermissionSeeder
             "audit.read",
             "role.read", "role.write",
             "users.read", "users.write",
+            // The agency configures its own intake defaults and preferences.
+            "settings.read", "settings.write",
         ],
         ["OfficeManager"] = [
             "candidate.read", "candidate.create", "candidate.update",

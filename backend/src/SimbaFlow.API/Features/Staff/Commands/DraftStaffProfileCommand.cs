@@ -30,7 +30,7 @@ public record DraftStaffProfileCommand(
     // Initial identifiers (optional, can be added later)
     List<StaffIdentifierDto>? Identifiers) : IRequest<Result<Guid>>, IRequirePermission
 {
-    public string RequiredPermission => "staff.write";
+    public string RequiredPermission => "staff.create";
 }
 
 public record StaffIdentifierDto(

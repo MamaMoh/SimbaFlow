@@ -7,7 +7,7 @@ namespace SimbaFlow.API.Features.Departments.Queries;
 
 public record GetDepartmentsQuery : IRequest<Result<List<DepartmentListDto>>>, IRequirePermission
 {
-    public string RequiredPermission => "office.read";
+    public string RequiredPermission => "staff.read";
 }
 
 public record DepartmentListDto(

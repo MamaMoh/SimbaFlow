@@ -20,7 +20,7 @@ namespace SimbaFlow.API.Features.Candidates.Commands;
 public record WithdrawFromPipelineCommand(Guid CandidateId, string? Reason = null)
     : IRequest<Result>, IRequirePermission
 {
-    public string RequiredPermission => "workflow.transition";
+    public string RequiredPermission => "workflow.execute";
 }
 
 public class WithdrawFromPipelineHandler : IRequestHandler<WithdrawFromPipelineCommand, Result>

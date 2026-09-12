@@ -7,7 +7,7 @@ namespace SimbaFlow.API.Features.Departments.Commands;
 
 public record DeleteDepartmentCommand(Guid Id) : IRequest<Result<bool>>, IRequirePermission
 {
-    public string RequiredPermission => "office.write";
+    public string RequiredPermission => "staff.update";
 }
 
 public class DeleteDepartmentHandler : IRequestHandler<DeleteDepartmentCommand, Result<bool>>

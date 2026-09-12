@@ -21,7 +21,7 @@ public record AssignClinicalPrivilegesCommand(
     bool IsPrimary,
     string? Notes) : IRequest<Result<Guid>>, IRequirePermission
 {
-    public string RequiredPermission => "staff.privileges.write";
+    public string RequiredPermission => "staff.update";
 }
 
 // --- Validator ---
