@@ -209,6 +209,32 @@ public class CvGenerationService : ICvGenerationService
         Candidate candidate, byte[]? photoBytes = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var document = Document.Create(container => ComposeVisaPage(container, candidate, photoBytes));
+        return Task.FromResult(document.GeneratePdf());
+    }
+
+    /// <summary>
+    /// One document, one enjaze per page.
+    ///
+    /// A zip of separate PDFs is fine for filing but useless at a printer — the embassy run is
+    /// printed as a batch, so the batch has to be a single document.
+    /// </summary>
+    public Task<byte[]> GenerateVisaFormsAsync(
+        IReadOnlyList<(Candidate Candidate, byte[]? Photo)> entries,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var document = Document.Create(container =>
+        {
+            foreach (var (candidate, photo) in entries)
+                ComposeVisaPage(container, candidate, photo);
+        });
+        return Task.FromResult(document.GeneratePdf());
+    }
+
+    private static void ComposeVisaPage(
+        IDocumentContainer container, Candidate candidate, byte[]? photoBytes)
+    {
 
         // Modelled on the Saudi Embassy visa / enjaze form the agencies already circulate: a single
         // bilingual page with the applicant, passport, visa and sponsor blocks, a purpose-of-travel
@@ -220,13 +246,11 @@ public class CvGenerationService : ICvGenerationService
             ? "FOREIGN EMPLOYMENT AGENCY"
             : candidate.PartnerName.ToUpperInvariant();
 
-        var document = Document.Create(container =>
+        container.Page(page =>
         {
-            container.Page(page =>
-            {
-                page.Size(PageSizes.A4);
-                page.Margin(22);
-                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(8.5f).FontColor(Colors.Black));
+            page.Size(PageSizes.A4);
+            page.Margin(22);
+            page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(8.5f).FontColor(Colors.Black));
 
                 page.Content().Column(root =>
                 {
@@ -330,10 +354,7 @@ public class CvGenerationService : ICvGenerationService
                         });
                     });
                 });
-            });
         });
-
-        return Task.FromResult(document.GeneratePdf());
     }
 
     /// <summary>Fill the work/skills-height slot; prefer height so portrait full-body photos use the space.</summary>

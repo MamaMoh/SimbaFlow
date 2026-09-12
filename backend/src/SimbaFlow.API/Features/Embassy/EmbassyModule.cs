@@ -29,6 +29,18 @@ public class EmbassyModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // The selected candidates as a Tasheer submission sheet
+        group.MapPost("/tasheer/export", async (ExportTasheerListCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess
+                ? Results.File(
+                    result.Data!,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"tasheer-list-{DateTime.UtcNow:yyyyMMdd}.xlsx")
+                : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapPost("/candidates/{id:guid}/medical/book", async (
             Guid id, BookMedicalRequest body, ISender sender) =>
         {

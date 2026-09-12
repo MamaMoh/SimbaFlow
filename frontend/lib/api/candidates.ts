@@ -168,11 +168,35 @@ export async function generateCandidateVisaForm(candidateId: string): Promise<Bl
   return readPdfBlob(res, "Visa form generation failed");
 }
 
+export async function generateBulkVisaForms(candidateIds: string[]): Promise<Blob> {
+  const res = await fetch("/api/proxy/candidates/visa-forms/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidateIds }),
+  });
+  return readPdfBlob(res, "Could not build the enjaze forms");
+}
+
 export async function generateCandidateContract(candidateId: string): Promise<Blob> {
   return readPdfBlob(
     await fetch(`/api/proxy/candidates/${candidateId}/contract`, { method: "POST" }),
     "Contract generation failed",
   );
+}
+
+export async function setVisaDetails(
+  candidateId: string,
+  body: { visaNumber?: string; sponsorName?: string; sponsorIdNumber?: string },
+): Promise<void> {
+  const res = await fetch(`/api/proxy/candidates/${candidateId}/visa-details`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j?.error || "Could not save the visa details");
+  }
 }
 
 export async function withdrawFromPipeline(candidateId: string, reason?: string): Promise<void> {

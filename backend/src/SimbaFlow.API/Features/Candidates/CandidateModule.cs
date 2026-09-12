@@ -144,6 +144,24 @@ public class CandidateModule : ICarterModule
         });
 
         // Generate Enjaz / visa application form
+        // Visa and sponsor details captured when a candidate is marked Ready
+        group.MapPost("/{candidateId:guid}/visa-details", async (
+            Guid candidateId, VisaDetailsBody body, ISender sender) =>
+        {
+            var result = await sender.Send(new SetVisaDetailsCommand(
+                candidateId, body.VisaNumber, body.SponsorName, body.SponsorIdNumber));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // Every selected candidate's enjaze in one document, for printing the embassy run
+        group.MapPost("/visa-forms/bulk", async (GenerateBulkVisaFormsCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess
+                ? Results.File(result.Data!, "application/pdf", "enjaze-forms.pdf")
+                : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // Put a candidate back in intake after a mis-click sent them down the pipeline
         group.MapPost("/{candidateId:guid}/withdraw-from-pipeline", async (
             Guid candidateId, WithdrawBody? body, ISender sender) =>
@@ -172,3 +190,5 @@ public class CandidateModule : ICarterModule
 }
 
 public record WithdrawBody(string? Reason);
+
+public record VisaDetailsBody(string? VisaNumber, string? SponsorName, string? SponsorIdNumber);

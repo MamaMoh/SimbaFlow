@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import {
   useReactTable,
@@ -13,13 +14,16 @@ import { PendingCell } from "@/components/data-table/pending-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { EmbassyRowActions } from "@/components/workflow/embassy-row-actions";
-import { useEmbassyBoard, type EmbassyBoardRow } from "@/lib/api/embassy";
+import { embassyApi, useEmbassyBoard, type EmbassyBoardRow } from "@/lib/api/embassy";
+import { generateBulkVisaForms } from "@/lib/api/candidates";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
-import { Loader2 } from "lucide-react";
+import { Download, FileText, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
@@ -28,6 +32,8 @@ export default function EmbassyBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("embassy.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState<"tasheer" | "enjaze" | null>(null);
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useEmbassyBoard({
     search: search || undefined,
@@ -36,6 +42,28 @@ export default function EmbassyBoardPage() {
 
   const columns = useMemo<ColumnDef<EmbassyBoardRow>[]>(
     () => [
+      {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label="Select row"
+          />
+        ),
+        size: 36,
+        enableSorting: false,
+      },
       indexColumn<EmbassyBoardRow>(),
       {
         accessorKey: "fullName",
@@ -139,10 +167,57 @@ export default function EmbassyBoardPage() {
   const table = useReactTable({
     data: candidates,
     columns,
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
   });
+
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+
+  const download = (blob: Blob, name: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Tasheer appointments are booked for a group, so the batch leaves as one sheet.
+  const exportTasheer = async () => {
+    if (selectedIds.length === 0) return toast.error("Select the candidates for this Tasheer batch");
+    setBusy("tasheer");
+    try {
+      const blob = await embassyApi.exportTasheerList(selectedIds);
+      download(blob, `tasheer-list-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(`${selectedIds.length} candidate(s) exported`);
+      setRowSelection({});
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // One document, one enjaze per page — the run is printed as a batch.
+  const printEnjaze = async () => {
+    if (selectedIds.length === 0) return toast.error("Select the candidates to print enjaze for");
+    setBusy("enjaze");
+    try {
+      const blob = await generateBulkVisaForms(selectedIds);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.success(`${selectedIds.length} enjaze form(s) ready to print`);
+      setRowSelection({});
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not build the enjaze forms");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (permsLoading) {
     return (
@@ -187,8 +262,34 @@ export default function EmbassyBoardPage() {
         ) : (
           <DataTable
             rowClickOpensActions
-        exportFileName="embassy"
+            exportFileName="embassy"
             table={table}
+            toolbarEndActions={
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy !== null || selectedIds.length === 0}
+                  onClick={() => void exportTasheer()}
+                  className="gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {busy === "tasheer" ? "Exporting…" : `Tasheer list${selectedIds.length ? ` (${selectedIds.length})` : ""}`}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy !== null || selectedIds.length === 0}
+                  onClick={() => void printEnjaze()}
+                  className="gap-1.5"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  {busy === "enjaze" ? "Building…" : "Print enjaze"}
+                </Button>
+              </div>
+            }
             enableGlobalFilter={false}
             paginated
             emptyMessage="No candidates in Embassy yet — they appear here after “To Embassy” from New Contracts."

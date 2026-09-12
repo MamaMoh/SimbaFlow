@@ -23,4 +23,14 @@ public interface ICvGenerationService
         Candidate candidate,
         byte[]? photoBytes = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// One document holding an enjaze page per candidate.
+    ///
+    /// A zip of separate files is fine for filing but useless at a printer, and the embassy run is
+    /// printed as a batch.
+    /// </summary>
+    Task<byte[]> GenerateVisaFormsAsync(
+        IReadOnlyList<(Candidate Candidate, byte[]? Photo)> entries,
+        CancellationToken cancellationToken = default);
 }

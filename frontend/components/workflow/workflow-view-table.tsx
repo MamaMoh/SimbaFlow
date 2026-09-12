@@ -11,6 +11,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { withdrawFromPipeline } from "@/lib/api/candidates";
+import { MarkReadyDialog } from "@/components/workflow/mark-ready-dialog";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
@@ -24,7 +25,7 @@ import {
   type ViewCandidateDto,
 } from "@/lib/api/workflow";
 import { Button } from "@/components/ui/button";
-import { Check, Eye, Loader2, MoreHorizontal, Undo2 } from "lucide-react";
+import { Check, Eye, MoreHorizontal, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { NameCell } from "@/components/data-table/name-cell";
 import {
@@ -51,7 +52,6 @@ function RowActions({
   onMutate: () => void;
 }) {
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id);
-  const [markingReady, setMarkingReady] = useState(false);
 
   const stageName = (candidate.currentStageName ?? "").toLowerCase();
   const isNewContracts = stageName.includes("new contract");
@@ -73,21 +73,18 @@ function RowActions({
     }
   };
 
-  const markReady = async () => {
-    setMarkingReady(true);
-    try {
-      await updateWorkflowStatus(candidate.id, "status", "Ready");
-      toast.success("Marked Ready — To Embassy is now available");
-      refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not mark Ready");
-    } finally {
-      setMarkingReady(false);
-    }
-  };
+  const [readyOpen, setReadyOpen] = useState(false);
 
   return (
     <div className="flex justify-center">
+      <MarkReadyDialog
+        open={readyOpen}
+        onOpenChange={setReadyOpen}
+        candidateId={candidate.id}
+        candidateName={candidate.fullName}
+        countryOfTravel={candidate.countryOfTravel}
+        onDone={refresh}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Row actions">
@@ -104,18 +101,8 @@ function RowActions({
           {needsReady ? (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={markingReady}
-                onSelect={(e) => {
-                  e.preventDefault();
-                  void markReady();
-                }}
-              >
-                {markingReady ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="mr-2 h-4 w-4" />
-                )}
+              <DropdownMenuItem onClick={() => setReadyOpen(true)}>
+                <Check className="mr-2 h-4 w-4" />
                 Mark Ready
               </DropdownMenuItem>
             </>

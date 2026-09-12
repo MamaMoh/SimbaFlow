@@ -125,6 +125,18 @@ export function useBoardRealtime(mutate: () => void) {
 }
 
 export const embassyApi = {
+  exportTasheerList: async (candidateIds: string[]): Promise<Blob> => {
+    const res = await fetch("/api/proxy/embassy/tasheer/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ candidateIds }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || "Could not build the Tasheer list");
+    }
+    return res.blob();
+  },
   unbookMedical: (id: string, notes?: string) =>
     postJson(`/api/proxy/embassy/candidates/${id}/medical/unbook`, { notes }),
   bookMedical: (id: string, appointmentDate: string, facilityName: string, notes?: string) =>
