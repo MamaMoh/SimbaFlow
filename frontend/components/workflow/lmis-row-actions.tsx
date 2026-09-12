@@ -26,7 +26,15 @@ import { lmisApi, nextLmisMilestone, type LmisBoardRow } from "@/lib/api/lmis";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
-import { ArrowRight, BadgeCheck, Eye, MoreHorizontal, Upload } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  CircleSlash,
+  ClipboardList,
+  Eye,
+  MoreHorizontal,
+  Upload,
+} from "lucide-react";
 
 type Props = {
   candidate: LmisBoardRow;
@@ -44,6 +52,7 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const [paidOpen, setPaidOpen] = useState(false);
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(false);
 
   const insurance = candidate.insurance ?? candidate.statusValues?.insurance ?? "";
   const milestone = candidate.milestone ?? candidate.statusValues?.milestone ?? "";
@@ -53,6 +62,16 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const refresh = () => {
     mutateActions();
     onMutate();
+  };
+
+  const run = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn();
+      toast.success(ok);
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed");
+    }
   };
 
   return (
@@ -79,6 +98,20 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                     Mark insurance paid
                   </DropdownMenuItem>
                 )}
+                {insurance && insurance !== "Insurance Unpaid" && (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      void run(
+                        () => lmisApi.recordInsuranceUnpaid(candidate.id),
+                        "Insurance set back to unpaid",
+                      );
+                    }}
+                  >
+                    <CircleSlash className="mr-2 h-4 w-4" />
+                    Mark insurance unpaid
+                  </DropdownMenuItem>
+                )}
                 {canAdvanceMilestone && (
                   <DropdownMenuItem onClick={() => setMilestoneOpen(true)}>
                     <ArrowRight className="mr-2 h-4 w-4" />
@@ -86,6 +119,12 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                   </DropdownMenuItem>
                 )}
               </>
+            )}
+            {canUpdate && (
+              <DropdownMenuItem onClick={() => setPortalOpen(true)}>
+                <ClipboardList className="mr-2 h-4 w-4" />
+                Record LMIS portal status
+              </DropdownMenuItem>
             )}
             {canDoc && (
               <DropdownMenuItem onClick={() => setDocOpen(true)}>
@@ -98,6 +137,22 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
           </DropdownMenuContent>
       </DropdownMenu>
 
+      <StatusUpdateSheet
+        open={portalOpen}
+        onOpenChange={setPortalOpen}
+        title="LMIS portal status"
+        description="What the government portal shows right now, copied across."
+        fields={[
+          { name: "status", label: "Status on the portal", type: "text", required: true },
+          { name: "notes", label: "Notes", type: "textarea" },
+        ]}
+        onSubmit={async (v) => {
+          await run(
+            () => lmisApi.recordPortalStatus(candidate.id, v.status, v.notes),
+            "Portal status recorded",
+          );
+        }}
+      />
       <StatusUpdateSheet
         open={paidOpen}
         onOpenChange={setPaidOpen}

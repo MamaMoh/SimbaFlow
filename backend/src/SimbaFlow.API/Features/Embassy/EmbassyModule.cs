@@ -37,6 +37,13 @@ public class EmbassyModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        group.MapPost("/candidates/{id:guid}/medical/unbook", async (
+            Guid id, NotesRequest? body, ISender sender) =>
+        {
+            var result = await sender.Send(new UnbookMedicalCommand(id, body?.Notes));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapPost("/candidates/{id:guid}/medical/result", async (
             Guid id, MedicalResultRequest body, ISender sender) =>
         {

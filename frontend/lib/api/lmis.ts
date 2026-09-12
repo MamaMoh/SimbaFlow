@@ -87,6 +87,10 @@ export function useLmisBoard(params?: {
 }
 
 export const lmisApi = {
+  recordPortalStatus: (id: string, status: string, notes?: string) =>
+    postJson(`/api/proxy/lmis/candidates/${id}/portal-status`, { status, notes }),
+  recordInsuranceUnpaid: (id: string, notes?: string) =>
+    postJson(`/api/proxy/lmis/candidates/${id}/insurance/unpaid`, { notes }),
   recordInsurancePaid: (id: string, paymentDate?: string, notes?: string) =>
     postJson(`/api/proxy/lmis/candidates/${id}/insurance/paid`, { paymentDate, notes }),
   advanceMilestone: (id: string, milestone: string, notes?: string) =>

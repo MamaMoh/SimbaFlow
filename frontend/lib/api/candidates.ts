@@ -175,6 +175,18 @@ export async function generateCandidateContract(candidateId: string): Promise<Bl
   );
 }
 
+export async function withdrawFromPipeline(candidateId: string, reason?: string): Promise<void> {
+  const res = await fetch(`/api/proxy/candidates/${candidateId}/withdraw-from-pipeline`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || "Could not take the candidate off the pipeline");
+  }
+}
+
 export async function deleteCandidate(id: string): Promise<void> {
   const res = await fetch(`/api/proxy/candidates/${id}`, { method: "DELETE" });
   if (!res.ok) {

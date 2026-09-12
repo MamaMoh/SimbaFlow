@@ -10,6 +10,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import { withdrawFromPipeline } from "@/lib/api/candidates";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
@@ -23,7 +24,7 @@ import {
   type ViewCandidateDto,
 } from "@/lib/api/workflow";
 import { Button } from "@/components/ui/button";
-import { Check, Eye, Loader2, MoreHorizontal } from "lucide-react";
+import { Check, Eye, Loader2, MoreHorizontal, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { NameCell } from "@/components/data-table/name-cell";
 import {
@@ -60,6 +61,16 @@ function RowActions({
   const refresh = () => {
     mutateActions();
     onMutate();
+  };
+
+  const withdraw = async () => {
+    try {
+      await withdrawFromPipeline(candidate.id);
+      toast.success("Back in intake — off every board");
+      refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not take the candidate off");
+    }
   };
 
   const markReady = async () => {
@@ -109,6 +120,16 @@ function RowActions({
               </DropdownMenuItem>
             </>
           ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              void withdraw();
+            }}
+          >
+            <Undo2 className="mr-2 h-4 w-4" />
+            Take off the pipeline
+          </DropdownMenuItem>
           {hasEnabledActions(actions) && <DropdownMenuSeparator />}
           <WorkflowActionItems
             candidateId={candidate.id}
@@ -172,7 +193,7 @@ export function WorkflowViewTable({
     },
     {
       id: "actions",
-      header: () => <span className="sr-only">Actions</span>,
+      header: () => <span className="block text-center">Actions</span>,
       cell: ({ row }) => (
         <RowActions candidate={row.original} onMutate={onMutate} />
       ),

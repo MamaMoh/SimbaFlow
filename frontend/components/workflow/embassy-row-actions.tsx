@@ -20,6 +20,7 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
 import {
   BadgeCheck,
+  CircleSlash,
   CalendarClock,
   ClipboardCheck,
   Eye,
@@ -32,7 +33,6 @@ import {
 import Link from "next/link";
 
 type Mode =
-  | "book-medical"
   | "medical-result"
   | "book-tasheer"
   | "tasheer-result"
@@ -120,9 +120,25 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                 <>
                   <DropdownMenuSeparator />
                   {(medical === "Pending" || medical === "" || medical === "Expired") && (
-                    <DropdownMenuItem onClick={() => setMode("book-medical")}>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        void run(() => embassyApi.bookMedical(candidate.id, "", ""), "Medical booked");
+                      }}
+                    >
                       <Stethoscope className="mr-2 h-4 w-4" />
                       Book medical
+                    </DropdownMenuItem>
+                  )}
+                  {medical === "Booked" && (
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        void run(() => embassyApi.unbookMedical(candidate.id), "Medical unbooked");
+                      }}
+                    >
+                      <CircleSlash className="mr-2 h-4 w-4" />
+                      Mark unbooked
                     </DropdownMenuItem>
                   )}
                   {medical === "Booked" && (
@@ -202,28 +218,6 @@ function StatusSheets({
 }) {
   return (
     <>
-      <StatusUpdateSheet
-        open={mode === "book-medical"}
-        onOpenChange={(o) => !o && setMode(null)}
-        title="Book medical"
-        fields={[
-          { name: "appointmentDate", label: "Appointment date", type: "date", required: true },
-          { name: "facilityName", label: "Facility", type: "text", required: true },
-          { name: "notes", label: "Notes", type: "textarea" },
-        ]}
-        onSubmit={(v) =>
-          run(
-            () =>
-              embassyApi.bookMedical(
-                candidateId,
-                v.appointmentDate,
-                v.facilityName,
-                v.notes
-              ),
-            "Medical booked"
-          )
-        }
-      />
       <StatusUpdateSheet
         open={mode === "medical-result"}
         onOpenChange={(o) => !o && setMode(null)}

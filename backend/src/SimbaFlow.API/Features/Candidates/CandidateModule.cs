@@ -144,6 +144,14 @@ public class CandidateModule : ICarterModule
         });
 
         // Generate Enjaz / visa application form
+        // Put a candidate back in intake after a mis-click sent them down the pipeline
+        group.MapPost("/{candidateId:guid}/withdraw-from-pipeline", async (
+            Guid candidateId, WithdrawBody? body, ISender sender) =>
+        {
+            var result = await sender.Send(new WithdrawFromPipelineCommand(candidateId, body?.Reason));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // Generate the MoLS standard employment contract
         group.MapPost("/{candidateId:guid}/contract", async (Guid candidateId, ISender sender) =>
         {
@@ -162,3 +170,5 @@ public class CandidateModule : ICarterModule
         });
     }
 }
+
+public record WithdrawBody(string? Reason);

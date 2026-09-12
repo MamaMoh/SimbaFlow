@@ -17,6 +17,52 @@ public record BookMedicalCommand(
     public string RequiredPermission => "embassy.update";
 }
 
+/// <summary>
+/// Puts a medical booking back to Pending. Desks book in bulk and occasionally book the wrong
+/// candidate; without this the only way back was an unfit result, which withdraws them entirely.
+/// </summary>
+public record UnbookMedicalCommand(Guid CandidateId, string? Notes = null)
+    : IRequest<Result>, IRequirePermission
+{
+    public string RequiredPermission => "embassy.update";
+}
+
+public class UnbookMedicalHandler : IRequestHandler<UnbookMedicalCommand, Result>
+{
+    private readonly ITenantDbContext _context;
+    private readonly IWorkflowEngineService _engine;
+    private readonly ICurrentUserService _currentUser;
+
+    public UnbookMedicalHandler(
+        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _engine = engine;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result> Handle(UnbookMedicalCommand request, CancellationToken ct)
+    {
+        var candidate = await _context.Candidates
+            .FirstOrDefaultAsync(c => c.Id == request.CandidateId && !c.IsDeleted, ct);
+        if (candidate is null) return Result.Failure("Candidate not found", 404);
+
+        var state = await _engine.GetCurrentStateAsync(request.CandidateId, ct);
+        var medical = state.StatusValues.GetValueOrDefault("medical") ?? "";
+        if (!medical.Equals("Booked", StringComparison.OrdinalIgnoreCase))
+            return Result.Failure($"Only a booked medical can be unbooked; this one is '{medical}'.", 400);
+
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return Result.Failure("Sign in again — no user context.", 401);
+
+        var update = await _engine.UpdateStatusAsync(
+            request.CandidateId, "medical", "Pending", userId,
+            _currentUser.UserName ?? "unknown", request.Notes, ct: ct);
+
+        return update.IsSuccess ? Result.Success() : Result.Failure(update.Error!, 400);
+    }
+}
+
 public class BookMedicalHandler : IRequestHandler<BookMedicalCommand, Result>
 {
     private readonly ITenantDbContext _context;

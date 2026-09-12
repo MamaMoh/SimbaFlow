@@ -125,6 +125,8 @@ export function useBoardRealtime(mutate: () => void) {
 }
 
 export const embassyApi = {
+  unbookMedical: (id: string, notes?: string) =>
+    postJson(`/api/proxy/embassy/candidates/${id}/medical/unbook`, { notes }),
   bookMedical: (id: string, appointmentDate: string, facilityName: string, notes?: string) =>
     postJson(`/api/proxy/embassy/candidates/${id}/medical/book`, {
       appointmentDate,

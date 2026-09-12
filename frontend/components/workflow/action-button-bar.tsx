@@ -31,9 +31,6 @@ export function ActionButtonBar({
   const handleClick = async (action: AvailableAction) => {
     if (!action.isEnabled || pendingId) return;
 
-    const confirmed = window.confirm(`Execute “${action.buttonLabel}”?`);
-    if (!confirmed) return;
-
     setPendingId(action.transitionRuleId);
     try {
       await executeTransition(candidateId, action.transitionRuleId);

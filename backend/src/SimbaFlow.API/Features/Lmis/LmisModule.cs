@@ -40,6 +40,20 @@ public class LmisModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        group.MapPost("/candidates/{id:guid}/insurance/unpaid", async (
+            Guid id, NotesBody? body, ISender sender) =>
+        {
+            var result = await sender.Send(new RecordInsuranceUnpaidCommand(id, body?.Notes));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapPost("/candidates/{id:guid}/portal-status", async (
+            Guid id, PortalStatusBody body, ISender sender) =>
+        {
+            var result = await sender.Send(new RecordLmisStatusCommand(id, body.Status, body.Notes));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapPost("/candidates/{id:guid}/milestone", async (
             Guid id, MilestoneRequest body, ISender sender) =>
         {
@@ -52,3 +66,6 @@ public class LmisModule : ICarterModule
 
 public record InsurancePaidRequest(DateOnly? PaymentDate, string? Notes);
 public record MilestoneRequest(string Milestone, string? Notes);
+
+public record NotesBody(string? Notes);
+public record PortalStatusBody(string Status, string? Notes);
