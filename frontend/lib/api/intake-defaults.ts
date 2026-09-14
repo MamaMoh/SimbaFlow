@@ -3,6 +3,10 @@ import useSWR from "swr";
 export type IntakeDefaults = {
   gender: string;
   occupation: string;
+  religion: string;
+  nationality: string;
+  passportType: string;
+  maritalStatus: string;
   countryOfTravel: string;
   contractPeriod: string;
 };

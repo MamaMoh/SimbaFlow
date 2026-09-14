@@ -25,7 +25,11 @@ public class IntakeDefaults
 {
     /// <summary>"0" male, "1" female — matching the Gender enum the form posts.</summary>
     public string Gender { get; set; } = "1";
-    public string Occupation { get; set; } = "House Maid";
+    public string Occupation { get; set; } = "HOUSE MAID";
+    public string Religion { get; set; } = "";
+    public string Nationality { get; set; } = "Ethiopia";
+    public string PassportType { get; set; } = "Normal";
+    public string MaritalStatus { get; set; } = "Single";
     public string CountryOfTravel { get; set; } = "";
     public string ContractPeriod { get; set; } = "2 Years";
 }

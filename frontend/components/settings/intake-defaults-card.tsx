@@ -17,6 +17,9 @@ import { saveIntakeDefaults, useIntakeDefaults } from "@/lib/api/intake-defaults
 
 /** Must match the registration form's list, or the default is a value its dropdown cannot show. */
 const OCCUPATIONS = ["HOUSE MAID", "NANNY", "COOK", "DRIVER", "CLEANER", "CAREGIVER", "OTHER"];
+const RELIGIONS = ["Orthodox", "Muslim", "Non-Muslim", "Protestant", "Catholic", "Other"];
+const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"];
+const PASSPORT_TYPES = ["Normal", "Official", "Diplomatic", "Service"];
 
 /**
  * What a blank candidate form starts with.
@@ -29,6 +32,10 @@ export function IntakeDefaultsCard() {
   const { defaults, mutate } = useIntakeDefaults(true);
   const [gender, setGender] = useState("1");
   const [occupation, setOccupation] = useState("");
+  const [religion, setReligion] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [passportType, setPassportType] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
   const [countryOfTravel, setCountryOfTravel] = useState("");
   const [contractPeriod, setContractPeriod] = useState("");
   const [saving, setSaving] = useState(false);
@@ -37,6 +44,10 @@ export function IntakeDefaultsCard() {
     if (!defaults) return;
     setGender(defaults.gender || "1");
     setOccupation(defaults.occupation || "");
+    setReligion(defaults.religion || "");
+    setNationality(defaults.nationality || "");
+    setPassportType(defaults.passportType || "");
+    setMaritalStatus(defaults.maritalStatus || "");
     setCountryOfTravel(defaults.countryOfTravel || "");
     setContractPeriod(defaults.contractPeriod || "");
   }, [defaults]);
@@ -45,7 +56,16 @@ export function IntakeDefaultsCard() {
     e.preventDefault();
     setSaving(true);
     try {
-      await saveIntakeDefaults({ gender, occupation, countryOfTravel, contractPeriod });
+      await saveIntakeDefaults({
+        gender,
+        occupation,
+        religion,
+        nationality,
+        passportType,
+        maritalStatus,
+        countryOfTravel,
+        contractPeriod,
+      });
       toast.success("New candidate forms will start with these");
       void mutate();
     } catch (err) {
@@ -92,6 +112,53 @@ export function IntakeDefaultsCard() {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Religion</Label>
+          <Select value={religion || undefined} onValueChange={setReligion}>
+            <SelectTrigger id="def-religion">
+              <SelectValue placeholder="Select religion" />
+            </SelectTrigger>
+            <SelectContent>
+              {RELIGIONS.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Marital status</Label>
+          <Select value={maritalStatus || undefined} onValueChange={setMaritalStatus}>
+            <SelectTrigger id="def-marital">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {MARITAL_STATUSES.map((m) => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Passport type</Label>
+          <Select value={passportType || undefined} onValueChange={setPassportType}>
+            <SelectTrigger id="def-passport-type">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              {PASSPORT_TYPES.map((x) => (
+                <SelectItem key={x} value={x}>{x}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Nationality</Label>
+          <CountrySelect value={nationality} onChange={setNationality} />
         </div>
 
         <div className="space-y-1.5">

@@ -23,7 +23,7 @@ test.describe("Candidates intake", () => {
     await expect(page.getByRole("heading", { name: /passport & photos/i })).toBeVisible();
 
     // Identity fields are on the same page, not behind a step
-    await expect(page.locator('input[name="firstName"]')).toBeVisible();
+    await expect(page.locator('input[name="givenNames"]')).toBeVisible();
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
   });
 
@@ -57,7 +57,7 @@ test.describe("Candidates intake", () => {
 
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
     await expect(page.locator('input[name="lastName"]')).toHaveValue(/TESEMA/i);
-    await expect(page.locator('input[name="firstName"]')).toHaveValue(/MENEN/i);
+    await expect(page.locator('input[name="givenNames"]')).toHaveValue(/MENEN/i);
     const dob = await page.locator('input[name="dateOfBirth"]').inputValue();
     const issue = await page.locator('input[name="passportIssueDate"]').inputValue();
     if (issue) expect(issue).not.toBe(dob);

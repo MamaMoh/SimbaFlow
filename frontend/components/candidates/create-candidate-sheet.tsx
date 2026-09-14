@@ -22,6 +22,7 @@ import {
   Mail,
   MapPin,
   FileText,
+  ChevronDown,
   Stamp,
   Users,
   Upload,
@@ -64,6 +65,12 @@ function SectionHeading({ title }: { title: string }) {
   );
 }
 
+/**
+ * A card that folds away. The form is long by nature, and once a section is filled it is mostly in
+ * the way — collapsing it lets someone working down the page keep the next thing in view.
+ *
+ * Open by default: a new registration should show its work, not hide it behind eight closed cards.
+ */
 function FormSection({
   icon: Icon,
   title,
@@ -77,6 +84,8 @@ function FormSection({
   children: ReactNode;
   className?: string;
 }) {
+  const [open, setOpen] = useState(true);
+
   return (
     <section
       className={cn(
@@ -84,7 +93,12 @@ function FormSection({
         className
       )}
     >
-      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2.5 border-b border-slate-100 px-4 py-3 text-left transition-colors hover:bg-slate-50/70"
+      >
         <Icon className="h-4 w-4 shrink-0 text-emerald-700" />
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold tracking-tight text-slate-900">{title}</h3>
@@ -92,8 +106,14 @@ function FormSection({
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
           ) : null}
         </div>
-      </div>
-      <div className="space-y-4 px-4 py-4">{children}</div>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-slate-400 transition-transform",
+            !open && "-rotate-90",
+          )}
+        />
+      </button>
+      {open ? <div className="space-y-4 px-4 py-4">{children}</div> : null}
     </section>
   );
 }
@@ -132,6 +152,7 @@ function normalizeGender(value: unknown): string {
 const RELIGIONS = [
   "Orthodox",
   "Muslim",
+  "Non-Muslim",
   "Protestant",
   "Catholic",
   "Other",
@@ -185,7 +206,9 @@ function deriveIssueFromExpiry(expiry: string, validityYears: number): string {
   if (parts.length !== 3) return "";
   const [y, m, d] = parts.map(Number);
   if (!y || !m || !d) return "";
-  const issue = new Date(Date.UTC(y - validityYears, m - 1, d));
+  // A passport runs to the day before its anniversary: issued 15/03/2024, expires 14/03/2029.
+  // Subtracting the term alone lands a day early.
+  const issue = new Date(Date.UTC(y - validityYears, m - 1, d + 1));
   if (Number.isNaN(issue.getTime())) return "";
   return issue.toISOString().slice(0, 10);
 }
@@ -258,7 +281,7 @@ const registerCandidateSchema = z.object({
     .regex(/^[A-Za-z0-9]+$/, "Alphanumeric only"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.string().min(1, "Gender is required"),
-  nationality: opt,
+  nationality: z.string().min(1, "Nationality is required"),
   phoneNumber: opt,
   email: z.string().email().optional().or(z.literal("")),
   address: opt,
@@ -272,7 +295,7 @@ const registerCandidateSchema = z.object({
   // intake
   placeOfBirth: opt,
   religion: opt,
-  maritalStatus: opt,
+  maritalStatus: z.string().min(1, "Marital status is required"),
   numberOfChildren: optionalNonNegInt,
   height: optionalPositiveNumber,
   weight: optionalPositiveNumber,
@@ -286,7 +309,7 @@ const registerCandidateSchema = z.object({
   subcity: opt,
   woreda: opt,
   houseNo: opt,
-  occupation: opt,
+  occupation: z.string().min(1, "Occupation is required"),
   qualification: opt,
   monthlySalary: opt,
   contractPeriod: opt,
@@ -687,6 +710,7 @@ export function CandidateApplicationForm({
   const [ocrPercent, setOcrPercent] = useState(0);
   // Raised after every scan: MRZ reads are good but never authoritative.
   const [ocrNeedsReview, setOcrNeedsReview] = useState(false);
+
   const [passportValidityYears, setPassportValidityYears] = useState(5);
   const [languageRows, setLanguageRows] = useState<LanguageRow[]>(() => [
     newLanguageRow("English", ""),
@@ -711,6 +735,20 @@ export function CandidateApplicationForm({
     resolver: zodResolver(registerCandidateSchema),
     defaultValues: defaults,
   });
+
+  /**
+   * First and middle name are entered together, the way a passport prints them, and split on the
+   * last space when saving. Staff were guessing where the break fell, and OCR guessed differently
+   * again, so the two fields disagreed on the same person.
+   */
+  const firstName = watch("firstName");
+  const middleName = watch("middleName");
+  const givenNames = [firstName, middleName].filter(Boolean).join(" ");
+  const setGivenNames = (value: string) => {
+    const parts = value.trim().split(/\s+/).filter(Boolean);
+    setValue("firstName", parts.length ? parts[0] : "", { shouldValidate: true });
+    setValue("middleName", parts.slice(1).join(" "));
+  };
 
   const applyPassportOcr = async (file: File) => {
     setOcrBusy(true);
@@ -918,6 +956,10 @@ export function CandidateApplicationForm({
     agencyDefaultsApplied.current = true;
     if (agencyDefaults.gender) setValue("gender", agencyDefaults.gender);
     if (agencyDefaults.occupation) setValue("occupation", agencyDefaults.occupation);
+    if (agencyDefaults.religion) setValue("religion", agencyDefaults.religion);
+    if (agencyDefaults.nationality) setValue("nationality", agencyDefaults.nationality);
+    if (agencyDefaults.passportType) setValue("passportType", agencyDefaults.passportType);
+    if (agencyDefaults.maritalStatus) setValue("maritalStatus", agencyDefaults.maritalStatus);
     if (agencyDefaults.contractPeriod) setValue("contractPeriod", agencyDefaults.contractPeriod);
     if (agencyDefaults.countryOfTravel) {
       setValue("countryOfTravel", agencyDefaults.countryOfTravel);
@@ -1304,16 +1346,21 @@ export function CandidateApplicationForm({
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>
-                    First Name <span className="text-red-500">*</span>
+                    Given name(s) <span className="text-red-500">*</span>
                   </Label>
-                  <Input {...register("firstName")} />
+                  <Input
+                    name="givenNames"
+                    value={givenNames}
+                    onChange={(e) => setGivenNames(e.target.value)}
+                    placeholder="First and father's name"
+                  />
+                  {/* The split values still travel with the form; the single box is only the
+                      way they are entered. */}
+                  <input type="hidden" {...register("firstName")} />
+                  <input type="hidden" {...register("middleName")} />
                   {errors.firstName && (
                     <p className="text-xs text-destructive">{errors.firstName.message}</p>
                   )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Middle Name</Label>
-                  <Input {...register("middleName")} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>
@@ -1741,13 +1788,6 @@ export function CandidateApplicationForm({
                   <Input {...register("sponsorArabicName")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Arab agent / local agent</Label>
-                  <Input
-                    placeholder="Agent name at the foreign agency"
-                    {...register("agentName")}
-                  />
-                </div>
-                <div className="space-y-1.5">
                   <Label>National ID</Label>
                   <Input {...register("nationalId")} />
                 </div>
@@ -1776,26 +1816,6 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Labour ID</Label>
                   <Input {...register("labourId")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Biometric ID</Label>
-                  <Input {...register("biometricId")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>File No.</Label>
-                  <Input {...register("fileNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Contract #</Label>
-                  <Input {...register("contractNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Wakala #</Label>
-                  <Input {...register("wakalaNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sticker Visa #</Label>
-                  <Input {...register("stickerVisaNo")} />
                 </div>
               </div>
             </FormSection>
@@ -1926,10 +1946,10 @@ export function CandidateApplicationForm({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Country</Label>
-                  <Input
-                    {...register("worksIn")}
-                    placeholder="Country worked in"
+                  <Label>Country worked in</Label>
+                  <CountrySelect
+                    value={watch("worksIn") || ""}
+                    onChange={(v) => setValue("worksIn", v)}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1947,17 +1967,6 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Contract Period</Label>
                   <Input {...register("contractPeriod")} placeholder="2 Years" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Country of Travel</Label>
-                  <CountrySelect
-                    value={watch("countryOfTravel") || ""}
-                    onChange={(v) => setValue("countryOfTravel", v)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Reference No.</Label>
-                  <Input {...register("referenceNo")} />
                 </div>
               </div>
             </FormSection>

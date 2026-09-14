@@ -5,7 +5,15 @@ using SimbaFlow.Domain.Entities.Tenancy;
 
 namespace SimbaFlow.API.Features.Tenants;
 
-public record IntakeDefaultsBody(string Gender, string Occupation, string CountryOfTravel, string ContractPeriod);
+public record IntakeDefaultsBody(
+    string Gender,
+    string Occupation,
+    string Religion,
+    string Nationality,
+    string PassportType,
+    string MaritalStatus,
+    string CountryOfTravel,
+    string ContractPeriod);
 
 /// <summary>
 /// The values a blank candidate form starts with, per agency.
@@ -48,6 +56,10 @@ public class IntakeDefaultsModule : ICarterModule
                 {
                     Gender = body.Gender is "0" or "1" ? body.Gender : "1",
                     Occupation = (body.Occupation ?? "").Trim(),
+                    Religion = (body.Religion ?? "").Trim(),
+                    Nationality = (body.Nationality ?? "").Trim(),
+                    PassportType = (body.PassportType ?? "").Trim(),
+                    MaritalStatus = (body.MaritalStatus ?? "").Trim(),
                     CountryOfTravel = (body.CountryOfTravel ?? "").Trim(),
                     ContractPeriod = (body.ContractPeriod ?? "").Trim(),
                 },
