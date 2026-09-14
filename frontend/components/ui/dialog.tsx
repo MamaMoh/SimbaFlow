@@ -46,19 +46,64 @@ function DialogOverlay({
   );
 }
 
+/**
+ * Radix renders Select, Dropdown and Popover lists in their own portal, outside this dialog's DOM,
+ * so picking an option reads as an interaction *outside* the dialog and dismisses it before the
+ * value lands. Checking the event target does not help: the list has already unmounted by the time
+ * the dismiss handler runs, so the target no longer says where the click began.
+ *
+ * Instead the pointerdown is recorded in the capture phase, while the list is still mounted.
+ */
+export function usePopperInteractionGuard() {
+  const lastPopperDown = React.useRef(0);
+
+  React.useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const node = event.target as HTMLElement | null;
+      if (
+        node?.closest?.(
+          "[data-radix-popper-content-wrapper],[data-slot='select-content'],[data-slot='select-item'],[role='listbox'],[role='option']",
+        )
+      ) {
+        lastPopperDown.current = Date.now();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, []);
+
+  // The dismiss fires on pointerup, a few milliseconds after the down it belongs to.
+  return () => Date.now() - lastPopperDown.current < 500;
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onPointerDownOutside,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
+  const cameFromPopper = usePopperInteractionGuard();
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onPointerDownOutside={(event) => {
+          if (cameFromPopper()) event.preventDefault();
+          onPointerDownOutside?.(event);
+        }}
+        onInteractOutside={(event) => {
+          if (cameFromPopper()) event.preventDefault();
+          onInteractOutside?.(event);
+        }}
+        // A modal dialog has no business closing because focus moved — which is what a Select
+        // does when it opens its list and again when it hands focus back.
+        onFocusOutside={(event) => event.preventDefault()}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
           className,

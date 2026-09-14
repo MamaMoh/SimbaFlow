@@ -5,6 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { usePopperInteractionGuard } from "@/components/ui/dialog";
 import clsx from "clsx";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
@@ -50,6 +51,8 @@ function SheetContent({
   className,
   children,
   side = "right",
+  onPointerDownOutside,
+  onInteractOutside,
   widthClassName, // <-- NEW
   overlayClassName, // <-- NEW (forwarded to overlay)
   ...props
@@ -58,6 +61,8 @@ function SheetContent({
   widthClassName?: string;
   overlayClassName?: string;
 }) {
+  const cameFromPopper = usePopperInteractionGuard();
+
   const baseClasses =
     "bg-background fixed z-50 flex flex-col gap-4 shadow-lg will-change-transform will-change-opacity transition-transform transition-opacity ease-in-out duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0";
 
@@ -95,6 +100,15 @@ function SheetContent({
         forceMount
         data-slot="sheet-content"
         className={cn(baseClasses, sideClasses[side], className)}
+        onPointerDownOutside={(event) => {
+          if (cameFromPopper()) event.preventDefault();
+          onPointerDownOutside?.(event);
+        }}
+        onInteractOutside={(event) => {
+          if (cameFromPopper()) event.preventDefault();
+          onInteractOutside?.(event);
+        }}
+        onFocusOutside={(event) => event.preventDefault()}
         {...props}
       >
         {children}
