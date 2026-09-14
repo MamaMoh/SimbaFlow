@@ -18,6 +18,7 @@ import { Loader2, Pencil, Plus } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { TransitionEditor } from "@/components/workflow/transition-editor";
 import { MirrorRuleEditor } from "@/components/workflow/mirror-rule-editor";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { toast } from "sonner";
 
@@ -51,9 +52,26 @@ export function WorkflowConfigEditor() {
   const [mirrorEditorOpen, setMirrorEditorOpen] = useState(false);
   const [editingMirror, setEditingMirror] = useState<MirrorViewRule | null>(null);
 
+  /**
+   * Removals are confirmed in the app rather than through window.confirm, which renders as a
+   * browser chrome box with the page's own styling nowhere in sight.
+   */
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    title: string;
+    description: string;
+    run: () => Promise<void>;
+  } | null>(null);
+  const [removing, setRemoving] = useState(false);
+
   /** Soft-delete a step (transition) after confirmation. */
-  const deleteTransition = async (t: WorkflowTransitionRule) => {
-    if (!window.confirm(`Remove the step “${t.buttonLabel}”?`)) return;
+  const deleteTransition = (t: WorkflowTransitionRule) =>
+    setPendingRemoval({
+      title: `Remove “${t.buttonLabel}”?`,
+      description: "Staff will no longer see this step on the board.",
+      run: () => reallyDeleteTransition(t),
+    });
+
+  const reallyDeleteTransition = async (t: WorkflowTransitionRule) => {
     try {
       const res = await fetch(
         `/api/proxy/workflow/config/transitions/${t.id}`,
@@ -71,13 +89,14 @@ export function WorkflowConfigEditor() {
   };
 
   /** Remove a mirror; the backend re-checks every candidate afterwards. */
-  const deleteMirror = async (m: MirrorViewRule) => {
-    if (
-      !window.confirm(
-        `Stop mirroring ${m.sourceStageName} candidates onto ${m.targetStageName}?`
-      )
-    )
-      return;
+  const deleteMirror = (m: MirrorViewRule) =>
+    setPendingRemoval({
+      title: `Stop mirroring onto ${m.targetStageName}?`,
+      description: `${m.sourceStageName} candidates will no longer appear on the ${m.targetStageName} board.`,
+      run: () => reallyDeleteMirror(m),
+    });
+
+  const reallyDeleteMirror = async (m: MirrorViewRule) => {
     try {
       const res = await fetch(`/api/proxy/workflow/config/mirrors/${m.id}`, {
         method: "DELETE",
@@ -94,8 +113,14 @@ export function WorkflowConfigEditor() {
   };
 
   /** Retire a stage; backend refuses if candidates still sit in it. */
-  const deleteStage = async (stage: WorkflowStage) => {
-    if (!window.confirm(`Remove the step “${stage.name}” from this workflow?`)) return;
+  const deleteStage = (stage: WorkflowStage) =>
+    setPendingRemoval({
+      title: `Remove “${stage.name}” from this workflow?`,
+      description: "Candidates still sitting in this stage will block the removal.",
+      run: () => reallyDeleteStage(stage),
+    });
+
+  const reallyDeleteStage = async (stage: WorkflowStage) => {
     try {
       const res = await fetch(`/api/proxy/workflow/config/stages/${stage.id}`, {
         method: "DELETE",
@@ -450,6 +475,47 @@ export function WorkflowConfigEditor() {
           </div>
         )}
       </section>
+
+      <ConfirmDialog
+
+        open={pendingRemoval !== null}
+
+        onOpenChange={(open) => {
+
+          if (!open) setPendingRemoval(null);
+
+        }}
+
+        title={pendingRemoval?.title ?? ""}
+
+        description={pendingRemoval?.description ?? ""}
+
+        actionLabel="Remove"
+
+        isPending={removing}
+
+        onConfirm={async () => {
+
+          if (!pendingRemoval) return;
+
+          setRemoving(true);
+
+          try {
+
+            await pendingRemoval.run();
+
+          } finally {
+
+            setRemoving(false);
+
+            setPendingRemoval(null);
+
+          }
+
+        }}
+
+      />
+
 
       <MirrorRuleEditor
         open={mirrorEditorOpen}

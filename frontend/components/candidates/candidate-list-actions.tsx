@@ -53,9 +53,6 @@ export function CandidateListActions({
   const workflowMoves = actions.filter((a) => a.isEnabled);
 
   const runTransition = async (transitionRuleId: string, label: string) => {
-    const confirmed = window.confirm(`Execute “${label}”?`);
-    if (!confirmed) return;
-
     setPendingRuleId(transitionRuleId);
     try {
       await executeTransition(candidateId, transitionRuleId);

@@ -32,6 +32,14 @@ public class GlobalExceptionHandler
             var response = new { IsSuccess = false, Error = "Validation failed", Errors = errors };
             await context.Response.WriteAsJsonAsync(response);
         }
+        catch (TenantUnavailableException ex)
+        {
+            // Not a server fault: the account is fine, the agency behind it is not.
+            _logger.LogWarning("Tenant unavailable: {Message}", ex.Message);
+            context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new { IsSuccess = false, Error = ex.Message });
+        }
         catch (ForbiddenAccessException ex)
         {
             _logger.LogWarning(ex, "Forbidden access");

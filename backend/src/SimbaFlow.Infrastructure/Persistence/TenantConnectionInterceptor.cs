@@ -37,6 +37,16 @@ public class TenantConnectionInterceptor : DbConnectionInterceptor
         if (tenantId.HasValue)
         {
             schemaName = await _schemaResolver.ResolveSchemaAsync(tenantId.Value, cancellationToken);
+
+            // Say so here rather than letting every later query fail on a missing table. A user
+            // whose agency was removed or suspended keeps a perfectly valid token, so without this
+            // they sign in successfully and then meet a 500 on each page they open.
+            if (string.IsNullOrWhiteSpace(schemaName))
+            {
+                throw new Application.Common.Exceptions.TenantUnavailableException(
+                    "Your agency is not available — it may have been removed or suspended. "
+                    + "Contact your administrator.");
+            }
         }
         else if (_currentUser.IsSuperAdmin)
         {
