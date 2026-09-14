@@ -68,13 +68,16 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result
         await _userManager.SetLockoutEndDateAsync(user, null);
         await _userManager.ResetAccessFailedCountAsync(user);
 
-        // A self-chosen password also clears the forced-change flag from a temporary one.
-        if (user.MustChangePassword)
-        {
-            user.MustChangePassword = false;
-            user.PasswordChangedAt = DateTime.UtcNow;
-            await _userManager.UpdateAsync(user);
-        }
+        // The password they just chose is their own, so nothing further is owed.
+        //
+        // Login treats IsFirstLogin, MustChangePassword and an elapsed expiry as equal grounds to
+        // demand a change, so clearing only one of them sent the user straight from a successful
+        // reset to the change-password screen — having just set the password it was asking for.
+        user.MustChangePassword = false;
+        user.IsFirstLogin = false;
+        user.PasswordChangedAt = DateTime.UtcNow;
+        user.PasswordExpiresAt = DateTime.UtcNow.AddDays(90);
+        await _userManager.UpdateAsync(user);
 
         return Result.Success();
     }

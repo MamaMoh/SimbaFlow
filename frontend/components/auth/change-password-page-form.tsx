@@ -25,6 +25,7 @@ import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 import { Eye, EyeOff, CheckCircle2, AlertCircle, Copy, Info } from "lucide-react";
 import { toast } from "sonner";
+import { signIn } from "next-auth/react";
 import {
   calculatePasswordStrength,
   getPasswordStrengthColor,
@@ -240,13 +241,31 @@ export function ChangePasswordPageForm() {
         throw new Error(result.error || "Failed to change password");
       }
 
-      toast.success("Password changed successfully! Redirecting...");
       form.reset();
-      
-      // Redirect to overview after successful password change
-      setTimeout(() => {
-        router.push("/overview");
-      }, 1000);
+
+      // Sign in again with the new password before going anywhere.
+      //
+      // A session created while a password change is pending deliberately carries almost nothing —
+      // an access token and a username, no refresh token, no roles and no permissions — so every
+      // request made with it comes back 403. The pending flag is also never cleared on that token,
+      // so the middleware sends the user straight back here. The backend has revoked the old
+      // tokens by this point anyway, which makes a fresh sign-in the correct move rather than a
+      // workaround.
+      const signedIn = await signIn("credentials", {
+        redirect: false,
+        username: usernameOrEmail,
+        password: data.newPassword,
+      });
+
+      if (signedIn?.error || !usernameOrEmail) {
+        toast.success("Password changed. Please sign in with your new password.");
+        router.push("/login");
+        return;
+      }
+
+      toast.success("Password changed — signing you in…");
+      router.push("/overview");
+      router.refresh();
     } catch (error: any) {
       toast.error(error.message || "Failed to change password");
     } finally {
