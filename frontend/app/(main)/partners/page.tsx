@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import {
@@ -48,6 +50,7 @@ type PartnerRow = {
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function PartnersPage() {
+  const router = useRouter();
   const { hasPermission, isSuperAdmin } = usePermissions();
   const canRead =
     hasPermission("partner.read") || hasPermission("system.admin");
@@ -281,6 +284,7 @@ export default function PartnersPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+            onRowClick={(row: { id: string }) => router.push(`/partners/${row.id}`)}
         exportFileName="partners"
           table={table}
           emptyMessage="No partners linked yet — link a foreign agency from the catalog so staff can select it when registering candidates."

@@ -127,7 +127,7 @@ export default function RolesPage() {
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -179,6 +179,7 @@ export default function RolesPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+            rowClickOpensActions
           table={table}
           enableGlobalFilter={true}
           searchPlaceholder="Search roles..."

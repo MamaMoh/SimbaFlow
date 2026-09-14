@@ -75,6 +75,7 @@ export function CandidateListActions({
           variant="ghost"
           size="icon"
           className="h-8 w-8"
+          aria-label="Row actions"
           data-testid={`candidate-actions-${candidateId}`}
           disabled={busy}
         >

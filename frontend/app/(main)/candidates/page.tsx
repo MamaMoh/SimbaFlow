@@ -338,6 +338,7 @@ export default function CandidatesPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+            rowClickOpensActions
           onRowClick={(row: { id: string }) => router.push(`/candidates/${row.id}`)}
         exportFileName="candidates"
           table={table}

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -28,6 +30,7 @@ import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
 
 export default function CommissionsPage() {
+  const router = useRouter();
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("commission.read") || hasPermission("system.admin");
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -159,6 +162,7 @@ export default function CommissionsPage() {
       {!error ? (
         <div className="rounded-lg border bg-card p-4 shadow-sm">
           <DataTable
+            onRowClick={(row: { id: string }) => router.push(`/workflow/commissions/${row.id}`)}
         exportFileName="commissions"
             table={table}
             paginated

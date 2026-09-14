@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -30,6 +32,7 @@ import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
 
 export default function ExceptionsListPage() {
+  const router = useRouter();
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView =
     hasPermission("arrival.read") ||
@@ -151,6 +154,7 @@ export default function ExceptionsListPage() {
             </div>
           ) : (
             <DataTable
+            onRowClick={(row: { id: string }) => router.push(`/workflow/exceptions/${row.id}`)}
         exportFileName="exceptions" table={table} paginated emptyMessage="No exception cases — Returned/Runaway cases will appear here." />
           )}
         </div>
