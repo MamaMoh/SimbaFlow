@@ -127,9 +127,13 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
-        if (!user.TenantId.HasValue)
+        // A platform admin has no tenant of their own and still needs the bot to answer — the
+        // web app already falls back to the default agency schema for them.
+        if (!user.TenantId.HasValue && !user.IsSuperAdmin)
         {
-            await _telegram.SendMessageAsync(update.ChatId, "No tenant is linked to this user.", ct);
+            await _telegram.SendMessageAsync(update.ChatId,
+                "This account is not attached to an agency, so there is nothing to look up. "
+                + "Ask your administrator to assign you to one.", ct);
             return;
         }
 
@@ -145,7 +149,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                         : "Send a passport number or a name.", ct);
                 return;
             }
-            await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId.Value, ct);
+            await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
             var candidate = await tenantDb.Candidates
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c =>
@@ -167,7 +171,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         if (parsed.Command == BotCommand.Cv)
         {
             var passport = parsed.Argument;
-            await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId.Value, ct);
+            await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
             var candidate = await tenantDb.Candidates
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => !c.IsDeleted && c.PassportNumber == passport, ct);
@@ -200,7 +204,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             var (period, stageQuery) = BotStatsRules.ParseArgument(parsed.Argument);
 
-            await using var statsDb = await _tenantFactory.CreateAsync(user.TenantId.Value, ct);
+            await using var statsDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
             var active = statsDb.Candidates.AsNoTracking()
                 .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
 

@@ -8,7 +8,15 @@ namespace SimbaFlow.Infrastructure.Services.Bot;
 
 public interface ITenantBotDbContextFactory
 {
-    Task<TenantDbContext> CreateAsync(Guid tenantId, CancellationToken ct = default);
+    /// <summary>
+    /// Open a tenant-scoped context for a bot command.
+    ///
+    /// <paramref name="tenantId"/> may be null for a platform admin, who has no tenant of their
+    /// own — the interceptor falls back to the default agency schema for them, which is what the
+    /// web app already does. Refusing them here instead would lock the super admin out of the bot
+    /// while the same account works fine in the browser.
+    /// </summary>
+    Task<TenantDbContext> CreateAsync(Guid? tenantId, bool isSuperAdmin, CancellationToken ct = default);
 }
 
 public sealed class TenantBotDbContextFactory : ITenantBotDbContextFactory
@@ -28,9 +36,9 @@ public sealed class TenantBotDbContextFactory : ITenantBotDbContextFactory
         _loggerFactory = loggerFactory;
     }
 
-    public async Task<TenantDbContext> CreateAsync(Guid tenantId, CancellationToken ct = default)
+    public async Task<TenantDbContext> CreateAsync(Guid? tenantId, bool isSuperAdmin, CancellationToken ct = default)
     {
-        var currentUser = new BotCurrentUserService(tenantId);
+        var currentUser = new BotCurrentUserService(tenantId, isSuperAdmin);
         var interceptor = new TenantConnectionInterceptor(
             currentUser,
             _schemaResolver,
@@ -47,7 +55,7 @@ public sealed class TenantBotDbContextFactory : ITenantBotDbContextFactory
         return new TenantDbContext(options, currentUser);
     }
 
-    private sealed class BotCurrentUserService(Guid tenantId) : ICurrentUserService
+    private sealed class BotCurrentUserService(Guid? tenantId, bool isSuperAdmin) : ICurrentUserService
     {
         public string? UserId => null;
         public string? UserName => "bot";
@@ -57,7 +65,7 @@ public sealed class TenantBotDbContextFactory : ITenantBotDbContextFactory
         public Guid? TenantId => tenantId;
         public IReadOnlyList<string> Permissions => [];
         public IReadOnlyList<string> Roles => [];
-        public bool IsSuperAdmin => false;
+        public bool IsSuperAdmin => isSuperAdmin;
         public bool HasPermission(string permission) => false;
         public string? IpAddress => null;
         public string? UserAgent => "telegram-bot";

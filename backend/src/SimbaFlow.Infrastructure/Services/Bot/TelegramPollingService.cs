@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SimbaFlow.Application.Common.Exceptions;
 using SimbaFlow.Infrastructure.Options;
 
 namespace SimbaFlow.Infrastructure.Services.Bot;
@@ -27,6 +28,11 @@ public sealed class TelegramPollingService : BackgroundService
         _state = state;
         _logger = logger;
     }
+
+    /// <summary>First word of a message, so a failure can be traced to a command without
+    /// recording the passport number or name that usually follows it.</summary>
+    private static string CommandWordOf(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? "(empty)" : text.TrimStart().Split(' ')[0];
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -70,11 +76,30 @@ public sealed class TelegramPollingService : BackgroundService
                     {
                         throw; // shutting down
                     }
+                    catch (TenantUnavailableException ex)
+                    {
+                        // The cause is known and the message is already written for a person to
+                        // read. Sending the generic apology instead leaves them retrying a command
+                        // that cannot succeed until an administrator restores their agency.
+                        _logger.LogWarning(
+                            "Telegram update {UpdateId} from chat {ChatId} could not reach its tenant: {Reason}",
+                            update.UpdateId, update.ChatId, ex.Message);
+                        try
+                        {
+                            await _telegram.SendMessageAsync(update.ChatId, ex.Message, stoppingToken);
+                        }
+                        catch
+                        {
+                            // Never let the reply failing take the loop down.
+                        }
+                    }
                     catch (Exception ex)
                     {
+                        // Log the command word but not the rest of the message — the argument is
+                        // usually a passport number or a name, and this line is not the place for it.
                         _logger.LogError(ex,
-                            "Failed to handle Telegram update {UpdateId} from chat {ChatId}",
-                            update.UpdateId, update.ChatId);
+                            "Failed to handle Telegram update {UpdateId} from chat {ChatId}, command {Command}",
+                            update.UpdateId, update.ChatId, CommandWordOf(update.Text));
                         try
                         {
                             await _telegram.SendMessageAsync(update.ChatId,

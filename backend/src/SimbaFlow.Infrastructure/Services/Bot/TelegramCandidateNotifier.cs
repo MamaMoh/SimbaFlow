@@ -40,7 +40,7 @@ public sealed class TelegramCandidateNotifier : ICandidateNotifier
             return;
 
         var tenantId = _currentUser.TenantId.Value;
-        await using var tenantDb = await _tenantFactory.CreateAsync(tenantId, cancellationToken);
+        await using var tenantDb = await _tenantFactory.CreateAsync(tenantId, _currentUser.IsSuperAdmin, cancellationToken);
         var candidate = await tenantDb.Candidates
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == candidateId && !c.IsDeleted, cancellationToken);
