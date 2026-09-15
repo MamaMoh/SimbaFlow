@@ -74,7 +74,10 @@ public class CvGenerationService : ICvGenerationService
                     // back to, so a document is never blocked on missing branding.
                     if (logoBytes is { Length: > 0 })
                     {
-                        root.Item().AlignCenter().MaxHeight(58).Image(logoBytes).FitHeight();
+                        // FitArea rather than FitWidth: a wide banner then fills most of the
+                        // page as a letterhead should, while a square logo is capped instead of
+                        // being blown up to the full width of the sheet.
+                        root.Item().AlignCenter().MaxHeight(95).Image(logoBytes).FitArea();
                     }
                     else
                     {
