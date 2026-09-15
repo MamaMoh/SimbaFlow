@@ -12,6 +12,8 @@ export type PartnerRow = {
   foreignLicenseId: string | null;
   /** Stored path of the partner's letterhead, used to head documents for their candidates. */
   logoPath?: string | null;
+  /** The wide banner printed across the top of this partner's candidate documents. */
+  letterheadPath?: string | null;
   linkId?: string;
   agreementStart?: string;
   agreementEnd?: string;

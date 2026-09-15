@@ -5,10 +5,11 @@ using SimbaFlow.Application.Common.Interfaces;
 namespace SimbaFlow.API.Features.Branding;
 
 /// <summary>
-/// Letterhead logos for the agency and for partner agencies.
+/// Branding for the agency and for partner agencies: a logo (the mark) and a letterhead (the
+/// banner printed across the top of a document).
 ///
-/// Documents are headed with the partner's logo when a candidate is placed with one, and with the
-/// agency's own otherwise — so both need somewhere to put theirs.
+/// Documents are headed with the partner's branding when a candidate is placed with one, and with
+/// the agency's own otherwise — so both need somewhere to put theirs.
 /// </summary>
 public class BrandingModule : ICarterModule
 {
@@ -20,7 +21,7 @@ public class BrandingModule : ICarterModule
             .WithTags("Branding")
             .RequireAuthorization();
 
-        // ──── The agency's own letterhead ────
+        // ──── The agency's own branding ────
 
         group.MapGet("/agency", async (
             IPlatformDbContext context,
@@ -28,17 +29,22 @@ public class BrandingModule : ICarterModule
             CancellationToken ct) =>
         {
             if (user.TenantId is not Guid tenantId)
-                return Results.Ok(new { isSuccess = true, data = new { logoPath = (string?)null } });
+                return Results.Ok(new { isSuccess = true, data = new { logoPath = (string?)null, letterheadPath = (string?)null } });
 
-            var path = await context.Tenants.AsNoTracking()
+            var paths = await context.Tenants.AsNoTracking()
                 .Where(t => t.Id == tenantId && !t.IsDeleted)
-                .Select(t => t.LogoPath)
+                .Select(t => new { t.LogoPath, t.LetterheadPath })
                 .FirstOrDefaultAsync(ct);
 
-            return Results.Ok(new { isSuccess = true, data = new { logoPath = path } });
+            return Results.Ok(new
+            {
+                isSuccess = true,
+                data = new { logoPath = paths?.LogoPath, letterheadPath = paths?.LetterheadPath },
+            });
         });
 
-        group.MapPost("/agency", async (
+        group.MapPost("/agency/{kind}", async (
+            string kind,
             HttpRequest request,
             IPlatformDbContext context,
             IFileStorageService storage,
@@ -53,6 +59,8 @@ public class BrandingModule : ICarterModule
                     new { isSuccess = false, error = "This account is not attached to an agency." },
                     statusCode: 400);
 
+            if (!IsKnownKind(kind)) return UnknownKind();
+
             var file = await ReadFileAsync(request);
             if (file is null) return NoFile();
 
@@ -63,10 +71,11 @@ public class BrandingModule : ICarterModule
             try
             {
                 await using var stream = file.OpenReadStream();
-                tenant.LogoPath = await storage.UploadLogoAsync(
+                var path = await storage.UploadLogoAsync(
                     "agency", tenantId, file.FileName, file.ContentType, stream, ct);
+                if (kind == "letterhead") tenant.LetterheadPath = path; else tenant.LogoPath = path;
                 await context.SaveChangesAsync(ct);
-                return Results.Ok(new { isSuccess = true, data = new { logoPath = tenant.LogoPath } });
+                return Results.Ok(new { isSuccess = true, data = new { logoPath = path } });
             }
             catch (InvalidOperationException ex)
             {
@@ -74,29 +83,32 @@ public class BrandingModule : ICarterModule
             }
         }).DisableAntiforgery();
 
-        group.MapDelete("/agency", async (
+        group.MapDelete("/agency/{kind}", async (
+            string kind,
             IPlatformDbContext context,
             ICurrentUserService user,
             CancellationToken ct) =>
         {
             if (!user.IsSuperAdmin && !user.HasPermission("settings.write"))
                 return Forbidden();
+            if (!IsKnownKind(kind)) return UnknownKind();
             if (user.TenantId is not Guid tenantId)
                 return Results.Ok(new { isSuccess = true });
 
             var tenant = await context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsDeleted, ct);
             if (tenant is not null)
             {
-                tenant.LogoPath = null;
+                if (kind == "letterhead") tenant.LetterheadPath = null; else tenant.LogoPath = null;
                 await context.SaveChangesAsync(ct);
             }
             return Results.Ok(new { isSuccess = true });
         });
 
-        // ──── A partner's letterhead ────
+        // ──── A partner's branding ────
 
-        group.MapPost("/partners/{id:guid}", async (
+        group.MapPost("/partners/{id:guid}/{kind}", async (
             Guid id,
+            string kind,
             HttpRequest request,
             IPlatformDbContext context,
             IFileStorageService storage,
@@ -105,6 +117,8 @@ public class BrandingModule : ICarterModule
         {
             if (!user.IsSuperAdmin && !user.HasPermission("partner.update"))
                 return Forbidden();
+
+            if (!IsKnownKind(kind)) return UnknownKind();
 
             var file = await ReadFileAsync(request);
             if (file is null) return NoFile();
@@ -116,10 +130,11 @@ public class BrandingModule : ICarterModule
             try
             {
                 await using var stream = file.OpenReadStream();
-                partner.LogoPath = await storage.UploadLogoAsync(
+                var path = await storage.UploadLogoAsync(
                     "partner", id, file.FileName, file.ContentType, stream, ct);
+                if (kind == "letterhead") partner.LetterheadPath = path; else partner.LogoPath = path;
                 await context.SaveChangesAsync(ct);
-                return Results.Ok(new { isSuccess = true, data = new { logoPath = partner.LogoPath } });
+                return Results.Ok(new { isSuccess = true, data = new { logoPath = path } });
             }
             catch (InvalidOperationException ex)
             {
@@ -127,25 +142,27 @@ public class BrandingModule : ICarterModule
             }
         }).DisableAntiforgery();
 
-        group.MapDelete("/partners/{id:guid}", async (
+        group.MapDelete("/partners/{id:guid}/{kind}", async (
             Guid id,
+            string kind,
             IPlatformDbContext context,
             ICurrentUserService user,
             CancellationToken ct) =>
         {
             if (!user.IsSuperAdmin && !user.HasPermission("partner.update"))
                 return Forbidden();
+            if (!IsKnownKind(kind)) return UnknownKind();
 
             var partner = await context.PartnerAgencies.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, ct);
             if (partner is not null)
             {
-                partner.LogoPath = null;
+                if (kind == "letterhead") partner.LetterheadPath = null; else partner.LogoPath = null;
                 await context.SaveChangesAsync(ct);
             }
             return Results.Ok(new { isSuccess = true });
         });
 
-        // ──── Serving a stored logo ────
+        // ──── Serving a stored image ────
         //
         // Only paths under branding/ are servable, so this endpoint cannot be walked into the
         // candidate documents that share the same storage root.
@@ -170,6 +187,12 @@ public class BrandingModule : ICarterModule
             return Results.Stream(stream, contentType);
         });
     }
+
+    /// <summary>An organisation has two images: a mark, and the banner printed on documents.</summary>
+    private static bool IsKnownKind(string kind) => kind is "logo" or "letterhead";
+
+    private static IResult UnknownKind() =>
+        Results.Json(new { isSuccess = false, error = "Expected 'logo' or 'letterhead'." }, statusCode: 400);
 
     private static IResult Forbidden() =>
         Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);

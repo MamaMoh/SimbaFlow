@@ -91,7 +91,22 @@ export default function AdminPartnersPage() {
         enableSorting: false,
         cell: ({ row }) => (
           <LogoUpload
-            endpoint={`/api/proxy/branding/partners/${row.original.id}`}
+            endpoint={`/api/proxy/branding/partners/${row.original.id}/letterhead`}
+            logoPath={row.original.letterheadPath ?? null}
+            onChange={() => mutate()}
+            label=""
+            hint=""
+            compact
+          />
+        ),
+      },
+      {
+        id: "logo",
+        header: "Logo",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <LogoUpload
+            endpoint={`/api/proxy/branding/partners/${row.original.id}/logo`}
             logoPath={row.original.logoPath ?? null}
             onChange={() => mutate()}
             label=""
@@ -158,7 +173,7 @@ Partners
       <PageAlert
         variant="info"
         title="Platform catalog"
-        description="Partners added here are available to every agency. Check before adding a duplicate."
+        description="Every agency registers its own partners from the Partners page; they all land here. This view is for platform oversight — check before adding a duplicate."
       />
 
       {error ? (

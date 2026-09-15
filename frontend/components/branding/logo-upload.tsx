@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -151,4 +151,103 @@ export function LogoUpload({
       />
     </div>
   );
+}
+
+/**
+ * Picks an image before there is anything to attach it to.
+ *
+ * Registering a partner creates the record and its branding in one go, but the upload endpoint
+ * needs an id that does not exist until the form is saved. So the file is held here and sent
+ * once the partner exists — see uploadBranding below.
+ */
+export function PendingImagePicker({
+  file,
+  onPick,
+  label,
+  hint,
+}: {
+  file: File | null;
+  onPick: (file: File | null) => void;
+  label: string;
+  hint: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-3">
+        <div className="flex h-16 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40">
+          {preview ? (
+            // A blob URL from the file just chosen — next/image cannot optimise it.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={preview} alt={label} className="max-h-full w-auto object-contain" />
+          ) : (
+            <span className="text-[10px] text-muted-foreground">None</span>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
+              <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+              {file ? "Change" : "Choose"}
+            </Button>
+            {file && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  onPick(null);
+                  if (inputRef.current) inputRef.current.value = "";
+                }}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+        </div>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
+        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+      />
+    </div>
+  );
+}
+
+/**
+ * Sends one branding image for an organisation that now exists.
+ *
+ * Deliberately does not throw: the partner has already been created by this point, and losing
+ * that to a failed image upload would be worse than the partner briefly having no logo.
+ */
+export async function uploadBranding(
+  endpoint: string,
+  file: File
+): Promise<boolean> {
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(endpoint, { method: "POST", body: form });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }

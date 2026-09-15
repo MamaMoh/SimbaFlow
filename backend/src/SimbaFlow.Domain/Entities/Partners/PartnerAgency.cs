@@ -27,7 +27,13 @@ public class PartnerAgency : BaseEntity
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// Relative storage path of the partner's letterhead logo.
+    /// Relative storage path of the partner's printed letterhead — the wide banner that heads a
+    /// document, as distinct from the mark in <see cref="LogoPath"/>.
+    /// </summary>
+    public string? LetterheadPath { get; set; }
+
+    /// <summary>
+    /// Relative storage path of the partner's logo.
     ///
     /// Candidates placed with this partner get their documents headed with it, because the paper
     /// is presented to the embassy under the partner's name, not ours. This catalog entry is

@@ -28,29 +28,33 @@ public sealed class DocumentBrandingService : IDocumentBrandingService
     public async Task<byte[]?> GetHeaderLogoAsync(
         Candidate candidate, CancellationToken cancellationToken = default)
     {
-        // The partner's letterhead wins: the paperwork is presented under their name.
+        // The partner's branding wins: the paperwork is presented under their name. Within each
+        // organisation the printed letterhead is preferred, and the logo stands in when they have
+        // only uploaded a mark — better a small logo at the top than nothing.
         if (candidate.PartnerAgencyId is Guid partnerId)
         {
-            var partnerLogo = await _platform.PartnerAgencies
+            var partner = await _platform.PartnerAgencies
                 .AsNoTracking()
                 .Where(p => p.Id == partnerId && !p.IsDeleted)
-                .Select(p => p.LogoPath)
+                .Select(p => new { p.LetterheadPath, p.LogoPath })
                 .FirstOrDefaultAsync(cancellationToken);
 
-            var bytes = await ReadAsync(partnerLogo, cancellationToken);
+            var bytes = await ReadAsync(partner?.LetterheadPath, cancellationToken)
+                ?? await ReadAsync(partner?.LogoPath, cancellationToken);
             if (bytes is not null) return bytes;
         }
 
-        // No partner, or the partner never uploaded one — fall back to the agency's own.
+        // No partner, or the partner has no branding at all — fall back to the agency's own.
         if (_currentUser.TenantId is Guid tenantId)
         {
-            var agencyLogo = await _platform.Tenants
+            var agency = await _platform.Tenants
                 .AsNoTracking()
                 .Where(t => t.Id == tenantId && !t.IsDeleted)
-                .Select(t => t.LogoPath)
+                .Select(t => new { t.LetterheadPath, t.LogoPath })
                 .FirstOrDefaultAsync(cancellationToken);
 
-            return await ReadAsync(agencyLogo, cancellationToken);
+            return await ReadAsync(agency?.LetterheadPath, cancellationToken)
+                ?? await ReadAsync(agency?.LogoPath, cancellationToken);
         }
 
         return null;

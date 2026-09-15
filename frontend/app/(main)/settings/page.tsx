@@ -29,6 +29,7 @@ export default function SettingsPage() {
     { revalidateOnFocus: false }
   );
   const agencyLogoPath: string | null = branding?.data?.logoPath ?? null;
+  const agencyLetterheadPath: string | null = branding?.data?.letterheadPath ?? null;
 
   const [agencyDisplayName, setAgencyDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -111,13 +112,27 @@ export default function SettingsPage() {
       />
 
       {canManageSettings ? (
-        <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm">
+          <div>
+            <h2 className="text-sm font-semibold">Agency branding</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Used on candidate documents when the candidate has no partner agency. PNG or JPEG,
+              up to 2MB each.
+            </p>
+          </div>
           <LogoUpload
-            endpoint="/api/proxy/branding/agency"
+            endpoint="/api/proxy/branding/agency/letterhead"
+            logoPath={agencyLetterheadPath}
+            onChange={() => mutateBranding()}
+            label="Letterhead"
+            hint="The wide banner printed across the top of generated CVs and visa forms."
+          />
+          <LogoUpload
+            endpoint="/api/proxy/branding/agency/logo"
             logoPath={agencyLogoPath}
             onChange={() => mutateBranding()}
-            label="Agency letterhead"
-            hint="Heads generated CVs and visa forms when the candidate has no partner agency. PNG or JPEG, up to 2MB."
+            label="Logo"
+            hint="The mark. Stands in at the top of a document if no letterhead is uploaded."
           />
         </div>
       ) : null}

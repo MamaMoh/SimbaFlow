@@ -71,10 +71,16 @@ public class TenantInfo : BaseEntity
     public decimal? BondUsd { get; set; }
 
     /// <summary>
-    /// Relative storage path of the agency's own letterhead logo.
+    /// Relative storage path of the agency's printed letterhead — the wide banner that heads a
+    /// document, as distinct from the mark in <see cref="LogoPath"/>.
+    /// </summary>
+    public string? LetterheadPath { get; set; }
+
+    /// <summary>
+    /// Relative storage path of the agency's own logo.
     ///
-    /// Used as the header of generated candidate documents whenever the candidate has no partner
-    /// agency of their own — a CV going out under this agency's name should carry its letterhead.
+    /// The mark, shown wherever the agency is identified in the app. It also stands in at the top
+    /// of a document when no letterhead has been uploaded, so a document is never left bare.
     /// </summary>
     public string? LogoPath { get; set; }
 }

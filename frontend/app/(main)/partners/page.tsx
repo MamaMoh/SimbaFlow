@@ -60,6 +60,7 @@ export default function PartnersPage() {
     hasPermission("system.admin");
   /** Catalog create lives on /admin/partners — SuperAdmin only here as shortcut */
   // Agencies register their own foreign partners; partner.create is what the API checks.
+  // Agencies register the partners they work with; this is not a platform-admin job.
   const canCreateCatalog = hasPermission("partner.create") || isSuperAdmin;
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -240,7 +241,7 @@ export default function PartnersPage() {
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="h-3.5 w-3.5" />
-                Add to catalog
+                Register partner
               </Button>
             ) : null}
             {canLink ? (

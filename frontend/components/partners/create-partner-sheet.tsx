@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/sheet";
 import { CountrySelect } from "@/components/ui/country-select";
 import { toast } from "sonner";
+import { useState } from "react";
+import { PendingImagePicker, uploadBranding } from "@/components/branding/logo-upload";
 
 const schema = z.object({
   name: z.string().min(2, "Name required"),
@@ -50,6 +52,10 @@ export function CreatePartnerSheet({
     defaultValues: { countryCode: "SA", countryName: "Saudi Arabia" },
   });
 
+  // Held until the partner exists — the upload endpoint needs its id.
+  const [logo, setLogo] = useState<File | null>(null);
+  const [letterhead, setLetterhead] = useState<File | null>(null);
+
   const onSubmit = async (data: FormValues) => {
     try {
       const res = await fetch("/api/proxy/partners", {
@@ -70,8 +76,29 @@ export function CreatePartnerSheet({
         toast.error(body.error || "Failed to create partner");
         return;
       }
-      toast.success("Partner added to catalog");
+      const partnerId: string | undefined = body.data;
+      if (partnerId) {
+        const results = await Promise.all([
+          logo ? uploadBranding(`/api/proxy/branding/partners/${partnerId}/logo`, logo) : true,
+          letterhead
+            ? uploadBranding(`/api/proxy/branding/partners/${partnerId}/letterhead`, letterhead)
+            : true,
+        ]);
+        // The partner is saved either way; say so plainly rather than implying it failed.
+        if (results.some((ok) => !ok)) {
+          toast.warning(
+            `${data.name} was registered, but its images could not be saved. Add them from the partner list.`
+          );
+        } else {
+          toast.success(`${data.name} registered`);
+        }
+      } else {
+        toast.success(`${data.name} registered`);
+      }
+
       reset();
+      setLogo(null);
+      setLetterhead(null);
       onOpenChange(false);
       onCreated();
     } catch {
@@ -83,8 +110,11 @@ export function CreatePartnerSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-[480px] sm:max-w-[480px] flex flex-col px-6">
         <SheetHeader>
-          <SheetTitle>Add foreign partner</SheetTitle>
-          <SheetDescription>A receiving-country agency you can sign agreements with.</SheetDescription>
+          <SheetTitle>Register partner agency</SheetTitle>
+          <SheetDescription>
+            A receiving-country agency your agency signs agreements with. Its letterhead is printed
+            on the documents of every candidate you place through it.
+          </SheetDescription>
         </SheetHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-1 flex-col gap-4 overflow-y-auto">
           <div className="space-y-1.5">
@@ -128,6 +158,22 @@ export function CreatePartnerSheet({
           <div className="space-y-1.5">
             <Label>Foreign license ID</Label>
             <Input {...register("foreignLicenseId")} placeholder="Optional" />
+          </div>
+
+          <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
+            <p className="text-xs font-medium text-foreground">Branding</p>
+            <PendingImagePicker
+              file={letterhead}
+              onPick={setLetterhead}
+              label="Letterhead"
+              hint="The wide banner printed across the top of this partner's candidate documents."
+            />
+            <PendingImagePicker
+              file={logo}
+              onPick={setLogo}
+              label="Logo"
+              hint="The mark, shown in lists. Stands in on documents if there is no letterhead."
+            />
           </div>
 
           <div className="mt-auto flex justify-end gap-2 border-t pt-4">

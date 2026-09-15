@@ -26,8 +26,10 @@ public class DocumentBrandingServiceTests : IDisposable
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _partnerId = Guid.NewGuid();
 
-    private static readonly byte[] AgencyLogo = Encoding.UTF8.GetBytes("agency-letterhead");
-    private static readonly byte[] PartnerLogo = Encoding.UTF8.GetBytes("partner-letterhead");
+    private static readonly byte[] AgencyLogo = Encoding.UTF8.GetBytes("agency-logo");
+    private static readonly byte[] PartnerLogo = Encoding.UTF8.GetBytes("partner-logo");
+    private static readonly byte[] AgencyLetterhead = Encoding.UTF8.GetBytes("agency-letterhead");
+    private static readonly byte[] PartnerLetterhead = Encoding.UTF8.GetBytes("partner-letterhead");
 
     public DocumentBrandingServiceTests()
     {
@@ -41,26 +43,31 @@ public class DocumentBrandingServiceTests : IDisposable
             .Returns(_ => Task.FromResult<Stream?>(new MemoryStream(AgencyLogo)));
         _storage.DownloadAsync("partner/logo.png", Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<Stream?>(new MemoryStream(PartnerLogo)));
+        _storage.DownloadAsync("agency/letterhead.png", Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Stream?>(new MemoryStream(AgencyLetterhead)));
+        _storage.DownloadAsync("partner/letterhead.png", Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Stream?>(new MemoryStream(PartnerLetterhead)));
     }
 
     private DocumentBrandingService Service() => new(
         _context, _storage, _currentUser, Substitute.For<ILogger<DocumentBrandingService>>());
 
-    private void GivenAgencyLogo(string? path)
+    private void GivenAgencyLogo(string? path, string? letterhead = null)
     {
         _context.Tenants.Add(new TenantInfo
         {
-            Id = _tenantId, Name = "Test Agency", SchemaName = "tenant_test", LogoPath = path,
+            Id = _tenantId, Name = "Test Agency", SchemaName = "tenant_test",
+            LogoPath = path, LetterheadPath = letterhead,
         });
         _context.SaveChanges();
     }
 
-    private void GivenPartner(string? logoPath)
+    private void GivenPartner(string? logoPath, string? letterhead = null)
     {
         _context.PartnerAgencies.Add(new PartnerAgency
         {
             Id = _partnerId, Name = "Partner", CountryCode = "SA", CountryName = "Saudi Arabia",
-            LogoPath = logoPath,
+            LogoPath = logoPath, LetterheadPath = letterhead,
         });
         _context.SaveChanges();
     }
@@ -127,6 +134,40 @@ public class DocumentBrandingServiceTests : IDisposable
         var logo = await Service().GetHeaderLogoAsync(CandidateWith(null));
 
         logo.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TheLetterheadIsPreferredOverTheLogo()
+    {
+        GivenAgencyLogo("agency/logo.png", "agency/letterhead.png");
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(null));
+
+        logo.Should().Equal(AgencyLetterhead,
+            "the letterhead is the banner meant for the top of a printed page");
+    }
+
+    [Fact]
+    public async Task ThePartnersLetterheadBeatsTheAgencysLetterhead()
+    {
+        GivenAgencyLogo("agency/logo.png", "agency/letterhead.png");
+        GivenPartner("partner/logo.png", "partner/letterhead.png");
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(_partnerId));
+
+        logo.Should().Equal(PartnerLetterhead);
+    }
+
+    [Fact]
+    public async Task ThePartnersLogoStandsInBeforeFallingBackToTheAgency()
+    {
+        GivenAgencyLogo("agency/logo.png", "agency/letterhead.png");
+        GivenPartner("partner/logo.png", letterhead: null);
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(_partnerId));
+
+        logo.Should().Equal(PartnerLogo,
+            "a partner that uploaded only a mark is still the right name on the paperwork");
     }
 
     public void Dispose() => _context.Dispose();

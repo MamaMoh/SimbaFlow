@@ -48,6 +48,7 @@ public class PartnerModule : ICarterModule
                         p.Address,
                         p.ForeignLicenseId,
                         p.LogoPath,
+                        p.LetterheadPath,
                         LinkId = link.Id,
                         link.AgreementStart,
                         link.AgreementEnd,
@@ -72,6 +73,7 @@ public class PartnerModule : ICarterModule
                         Status = r.LinkStatus.ToString(),
                         r.ForeignLicenseId,
                         r.LogoPath,
+                        r.LetterheadPath,
                         r.LinkId,
                         AgreementStart = r.AgreementStart.ToString("yyyy-MM-dd"),
                         AgreementEnd = r.AgreementEnd.ToString("yyyy-MM-dd"),
@@ -112,7 +114,8 @@ public class PartnerModule : ICarterModule
                     p.Address,
                     Status = p.IsActive ? "Active" : "Inactive",
                     p.ForeignLicenseId,
-                    p.LogoPath
+                    p.LogoPath,
+                    p.LetterheadPath
                 })
                 .ToListAsync();
 
@@ -143,6 +146,7 @@ public class PartnerModule : ICarterModule
                     p.Address,
                     p.ForeignLicenseId,
                     p.LogoPath,
+                    p.LetterheadPath,
                     ActiveLinks = linked,
                     Status = p.IsActive ? "Active" : "Inactive",
                     p.Notes
