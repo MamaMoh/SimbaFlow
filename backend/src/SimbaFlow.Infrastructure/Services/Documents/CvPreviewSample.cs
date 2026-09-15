@@ -67,6 +67,8 @@ internal static class CvPreviewSample
         ReferenceNo = "SAMPLE-001",
         LabourId = "LAB-0000",
         Remark = "This is a sample used to preview the layout.",
-        PartnerName = "SAMPLE PARTNER AGENCY",
+        // Deliberately no PartnerName: a preview shows the agency its own paperwork, and the
+        // letterhead falls back to whatever name is on the record — a partner's name at the top
+        // would suggest branding that is not theirs.
     };
 }
