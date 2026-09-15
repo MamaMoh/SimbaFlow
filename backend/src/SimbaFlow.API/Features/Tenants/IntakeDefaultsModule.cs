@@ -93,7 +93,24 @@ public class IntakeDefaultsModule : ICarterModule
             };
 
             await db.SaveChangesAsync(default);
-            return Results.Ok(new { isSuccess = true, data = tenant.Settings.Intake });
+            // Echo the layout too — the caller just set it, and returning only the intake half
+            // makes the response look like the template was ignored.
+            return Results.Ok(new
+            {
+                isSuccess = true,
+                data = new
+                {
+                    tenant.Settings.Intake.Gender,
+                    tenant.Settings.Intake.Occupation,
+                    tenant.Settings.Intake.Religion,
+                    tenant.Settings.Intake.Nationality,
+                    tenant.Settings.Intake.PassportType,
+                    tenant.Settings.Intake.MaritalStatus,
+                    tenant.Settings.Intake.CountryOfTravel,
+                    tenant.Settings.Intake.ContractPeriod,
+                    tenant.Settings.Documents.CvTemplate,
+                },
+            });
         });
     }
 
