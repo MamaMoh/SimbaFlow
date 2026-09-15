@@ -555,7 +555,8 @@ internal static class CvLayouts
                                     .PaddingVertical(3).Column(cell =>
                                 {
                                     cell.Item().AlignCenter().Text(ar).FontSize(6);
-                                    cell.Item().AlignCenter().Text(val == "NO" ? "☐" : "☑").FontSize(11);
+                                    cell.Item().PaddingVertical(2).AlignCenter()
+                                        .Element(e => TickBox(e, val != "NO"));
                                     cell.Item().AlignCenter().Text(en).FontSize(6);
                                 });
                             }
@@ -692,9 +693,11 @@ internal static class CvLayouts
                             .Background(Colors.Grey.Lighten4).PaddingVertical(5).Column(cell =>
                         {
                             cell.Item().AlignCenter().Text($"{en}  {ar}").FontSize(7);
+                            cell.Item().AlignCenter().PaddingTop(3)
+                                .Element(e => TickBox(e, val != "NO"));
                             cell.Item().AlignCenter().PaddingTop(2)
-                                .Text(val == "NO" ? "✗" : "✓").FontSize(12).Bold()
-                                .FontColor(val == "NO" ? Maroon : AgencyBlue);
+                                .Text(val).FontSize(6.5f).Bold()
+                                .FontColor(val == "NO" ? Colors.Grey.Darken1 : Navy);
                         });
                     }
                 });

@@ -20,6 +20,18 @@ internal static class CvPrimitives
     internal static readonly Color Border = Color.FromHex("#222222");
     internal static readonly Color LabelBg = Color.FromHex("#F5F3F1");
 
+    /// <summary>
+    /// A filled or empty checkbox.
+    ///
+    /// Drawn rather than typed: the fonts bundled for Latin, Arabic and Ethiopic have no ✓ or ✗,
+    /// so those characters print as empty boxes — exactly the failure that made Arabic render as
+    /// tofu before. A square that is filled or not needs no glyph at all.
+    /// </summary>
+    internal static void TickBox(IContainer e, bool on) =>
+        e.Width(10).Height(10)
+            .Border(0.9f).BorderColor(on ? Navy : Colors.Grey.Medium)
+            .Background(on ? Navy : Colors.White);
+
     internal static void PlaceImage(IContainer e, byte[]? bytes, string placeholder)
     {
         if (bytes is { Length: > 0 })
