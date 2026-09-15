@@ -50,6 +50,27 @@ public class IntakeDefaultsModule : ICarterModule
             });
         });
 
+        // What a layout looks like, drawn with stand-in details and this agency's own letterhead.
+        // Inline rather than an attachment: this is meant to be looked at, not filed.
+        group.MapGet("/cv-preview/{template}", async (
+            string template,
+            Application.Common.Interfaces.ICvGenerationService cv,
+            CancellationToken ct) =>
+        {
+            var pdf = await cv.GeneratePreviewAsync(template, ct);
+            return Results.File(pdf, "application/pdf", enableRangeProcessing: false);
+        });
+
+        // The same thing as a picture, which is what the picker shows.
+        group.MapGet("/cv-preview/{template}/image", async (
+            string template,
+            Application.Common.Interfaces.ICvGenerationService cv,
+            CancellationToken ct) =>
+        {
+            var png = await cv.GeneratePreviewImageAsync(template, ct);
+            return Results.File(png, "image/png", enableRangeProcessing: false);
+        });
+
         group.MapPut("/", async (
             IntakeDefaultsBody body, IPlatformDbContext db, ICurrentUserService user) =>
         {

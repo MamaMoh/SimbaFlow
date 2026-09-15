@@ -105,71 +105,76 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 max-w-xl">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Settings"
         description="Agency preferences and system options"
       />
 
-      {canManageSettings ? (
-        <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm">
-          <div>
-            <h2 className="text-sm font-semibold">Agency branding</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Used on candidate documents when the candidate has no partner agency. PNG or JPEG,
-              up to 2MB each.
-            </p>
-          </div>
-          <LogoUpload
-            endpoint="/api/proxy/branding/agency/letterhead"
-            logoPath={agencyLetterheadPath}
-            onChange={() => mutateBranding()}
-            label="Letterhead"
-            hint="The wide banner printed across the top of generated CVs and visa forms."
-          />
-          <LogoUpload
-            endpoint="/api/proxy/branding/agency/logo"
-            logoPath={agencyLogoPath}
-            onChange={() => mutateBranding()}
-            label="Logo"
-            hint="The mark. Stands in at the top of a document if no letterhead is uploaded."
-          />
-        </div>
-      ) : null}
-
-      {canAdmin ? (
-        <>
-          <IntakeDefaultsCard />
-
-          <PageAlert
-            variant="info"
-            title="Account settings"
-            description="Change your password from your profile."
-          />
-
-          <form
-            onSubmit={onSave}
-            className="rounded-lg border bg-card p-4 shadow-sm space-y-4"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="agency-name">Agency display name</Label>
-              <Input
-                id="agency-name"
-                value={agencyDisplayName}
-                onChange={(e) => setAgencyDisplayName(e.target.value)}
-                placeholder="Your agency name"
-              />
+      {/* The short settings sit two-up; the CV layouts need the whole width for their
+          previews, so they get a row of their own below. */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {canManageSettings ? (
+          <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm">
+            <div>
+              <h2 className="text-sm font-semibold">Agency branding</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Used on candidate documents when the candidate has no partner agency. PNG or
+                JPEG, up to 2MB each.
+              </p>
             </div>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-green-800 hover:bg-green-900"
+            <LogoUpload
+              endpoint="/api/proxy/branding/agency/letterhead"
+              logoPath={agencyLetterheadPath}
+              onChange={() => mutateBranding()}
+              label="Letterhead"
+              hint="The wide banner printed across the top of generated CVs and visa forms."
+            />
+            <LogoUpload
+              endpoint="/api/proxy/branding/agency/logo"
+              logoPath={agencyLogoPath}
+              onChange={() => mutateBranding()}
+              label="Logo"
+              hint="The mark. Stands in at the top of a document if no letterhead is uploaded."
+            />
+          </div>
+        ) : null}
+
+        {canAdmin ? (
+          <div className="flex flex-col gap-6">
+            <form
+              onSubmit={onSave}
+              className="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
             >
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </form>
-        </>
-      ) : null}
+              <h2 className="text-sm font-semibold">Agency</h2>
+              <div className="space-y-1.5">
+                <Label htmlFor="agency-name">Agency display name</Label>
+                <Input
+                  id="agency-name"
+                  value={agencyDisplayName}
+                  onChange={(e) => setAgencyDisplayName(e.target.value)}
+                  placeholder="Your agency name"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={saving}
+                className="bg-green-800 hover:bg-green-900"
+              >
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </form>
+
+            <PageAlert
+              variant="info"
+              title="Account settings"
+              description="Change your password from your profile."
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {canAdmin ? <IntakeDefaultsCard /> : null}
 
       {canUseBot ? <BotLinkCard /> : null}
     </div>

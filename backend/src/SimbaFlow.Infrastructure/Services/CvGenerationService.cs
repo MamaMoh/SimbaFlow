@@ -42,6 +42,23 @@ public class CvGenerationService : ICvGenerationService
         return CvLayouts.Render(template, candidate, photoBytes, fullPhotoBytes, logoBytes);
     }
 
+    public async Task<byte[]> GeneratePreviewAsync(
+        string template, CancellationToken cancellationToken = default)
+    {
+        var sample = CvPreviewSample.Candidate();
+        // The sample has no partner agency, so this resolves to the agency's own letterhead.
+        var logoBytes = await _branding.GetHeaderLogoAsync(sample, cancellationToken);
+        return CvLayouts.Render(CvTemplates.Normalise(template), sample, null, null, logoBytes);
+    }
+
+    public async Task<byte[]> GeneratePreviewImageAsync(
+        string template, CancellationToken cancellationToken = default)
+    {
+        var sample = CvPreviewSample.Candidate();
+        var logoBytes = await _branding.GetHeaderLogoAsync(sample, cancellationToken);
+        return CvLayouts.RenderPreviewImage(CvTemplates.Normalise(template), sample, logoBytes);
+    }
+
     public async Task<byte[]> GenerateVisaFormAsync(
         Candidate candidate, byte[]? photoBytes = null, CancellationToken cancellationToken = default)
     {

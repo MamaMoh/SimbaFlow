@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Maximize2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -90,7 +91,7 @@ export function IntakeDefaultsCard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-1.5">
           <Label>Gender</Label>
           <Select
@@ -211,35 +212,58 @@ export function IntakeDefaultsCard() {
             you are sending it to, so it is set here rather than chosen on every download.
           </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {(defaults?.cvTemplates ?? []).map((tpl) => {
             const selected = cvTemplate === tpl.value;
             return (
-              <button
+              <div
                 key={tpl.value}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setCvTemplate(tpl.value)}
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  selected
-                    ? "border-green-700 bg-green-50 ring-1 ring-green-700"
-                    : "hover:bg-muted/50"
+                className={`overflow-hidden rounded-lg border transition-colors ${
+                  selected ? "border-green-700 ring-1 ring-green-700" : ""
                 }`}
               >
-                <span className="flex items-center gap-2">
-                  <span
-                    className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border ${
-                      selected ? "border-green-700" : "border-muted-foreground/40"
-                    }`}
-                  >
-                    {selected && <span className="h-1.5 w-1.5 rounded-full bg-green-700" />}
+                {/* The page itself, at a glance. Choosing a form from a sentence means saving,
+                    downloading a CV and looking, then coming back to change it. */}
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setCvTemplate(tpl.value)}
+                  className="block w-full text-left"
+                  title={`Use the ${tpl.name}`}
+                >
+                  <span className="block overflow-hidden border-b bg-muted/30">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/proxy/settings/intake-defaults/cv-preview/${tpl.value}/image`}
+                      alt={`${tpl.name}, drawn with sample details`}
+                      loading="lazy"
+                      className="block h-auto w-full"
+                    />
                   </span>
-                  <span className="text-sm font-medium">{tpl.name}</span>
-                </span>
-                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                  {tpl.description}
-                </span>
-              </button>
+                  <span className="flex items-center gap-2 px-3 pt-2.5">
+                    <span
+                      className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
+                        selected ? "border-green-700" : "border-muted-foreground/40"
+                      }`}
+                    >
+                      {selected && <span className="h-1.5 w-1.5 rounded-full bg-green-700" />}
+                    </span>
+                    <span className="text-sm font-medium">{tpl.name}</span>
+                  </span>
+                  <span className="mt-1 block px-3 pb-2 text-xs leading-relaxed text-muted-foreground">
+                    {tpl.description}
+                  </span>
+                </button>
+                <a
+                  href={`/api/proxy/settings/intake-defaults/cv-preview/${tpl.value}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-1.5 border-t px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                  Open full size
+                </a>
+              </div>
             );
           })}
         </div>

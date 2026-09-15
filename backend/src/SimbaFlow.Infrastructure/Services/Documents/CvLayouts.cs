@@ -18,6 +18,22 @@ internal static class CvLayouts
 {
     internal static byte[] Render(
         string template, Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo) =>
+        Build(template, c, photo, fullPhoto, logo).GeneratePdf();
+
+    /// <summary>
+    /// The layout as a PNG of its first page.
+    ///
+    /// A preview is shown in an img tag rather than an embedded PDF: the app sends
+    /// X-Frame-Options DENY on every response, which would block its own preview frame, and
+    /// weakening that site-wide to show a thumbnail is the wrong trade.
+    /// </summary>
+    internal static byte[] RenderPreviewImage(string template, Candidate c, byte[]? logo) =>
+        Build(template, c, null, null, logo)
+            .GenerateImages(new ImageGenerationSettings { RasterDpi = 110 })
+            .First();
+
+    private static IDocument Build(
+        string template, Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo) =>
         template switch
         {
             CvTemplates.Layout1 => Layout1(c, photo, fullPhoto, logo),
@@ -108,7 +124,7 @@ internal static class CvLayouts
     // Photo column down the left with the name, address and passport beneath it; everything else
     // stacked on the right. The full-body shot is the point of this one — it is the form agencies
     // send when the partner wants to see the candidate before reading anything.
-    private static byte[] Layout1(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
+    private static IDocument Layout1(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
     {
         var portrait = fullPhoto is { Length: > 0 } ? fullPhoto : photo;
 
@@ -222,7 +238,7 @@ internal static class CvLayouts
                     });
                 });
             });
-        })).GeneratePdf();
+        }));
     }
 
     /// <summary>A label/value line inside the 1st layout's blue side panel.</summary>
@@ -238,7 +254,7 @@ internal static class CvLayouts
     // ════════ 2nd Layout ════════
     // Wide header with the headshot, a summary block, then applicant details beside a full-body
     // shot, and the skills spread across the full width in two paired columns.
-    private static byte[] Layout2(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
+    private static IDocument Layout2(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
     {
         return Document.Create(container => container.Page(page =>
         {
@@ -346,13 +362,13 @@ internal static class CvLayouts
                     Row3(t, "Remarks", V(c.Remark), "ملاحظات");
                 });
             });
-        })).GeneratePdf();
+        }));
     }
 
     // ════════ 4th Layout ════════
     // Headshot sits inside the letterhead band. Work history and skills run down the left under
     // the full-body shot; passport, languages, qualification and applicant details fill the right.
-    private static byte[] Layout4(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
+    private static IDocument Layout4(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
     {
         return Document.Create(container => container.Page(page =>
         {
@@ -451,13 +467,13 @@ internal static class CvLayouts
                     });
                 });
             });
-        })).GeneratePdf();
+        }));
     }
 
     // ════════ 5th Layout ════════
     // Titled "Job Application": headshot, letterhead and the placement summary share the top row;
     // personal, passport, languages and work run down the left; photo and skill ticks on the right.
-    private static byte[] Layout5(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
+    private static IDocument Layout5(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
     {
         return Document.Create(container => container.Page(page =>
         {
@@ -569,14 +585,14 @@ internal static class CvLayouts
                     });
                 });
             });
-        })).GeneratePdf();
+        }));
     }
 
     // ════════ 7th Layout ════════
     // A resume rather than a form: both photos stacked down the left, one personal-information
     // table on the right, employment history beneath it, and the skills as a tick grid across the
     // bottom — the version agencies hand to a family rather than to an office.
-    private static byte[] Layout7(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
+    private static IDocument Layout7(Candidate c, byte[]? photo, byte[]? fullPhoto, byte[]? logo)
     {
         return Document.Create(container => container.Page(page =>
         {
@@ -702,11 +718,11 @@ internal static class CvLayouts
                     }
                 });
             });
-        })).GeneratePdf();
+        }));
     }
 
     // ════════ 3rd Layout ════════
-    internal static byte[] Layout3Enjaz(
+    private static IDocument Layout3Enjaz(
         Candidate candidate, byte[]? photoBytes, byte[]? fullPhotoBytes, byte[]? logoBytes)
     {
 
@@ -894,7 +910,7 @@ internal static class CvLayouts
             });
         });
 
-        return document.GeneratePdf();
+        return document;
     }
 
 
