@@ -341,7 +341,9 @@ const PASSPORT_TYPE = 0;
 
 const defaults: Partial<RegisterCandidateForm> = {
   // Nearly every candidate is female; pre-selecting saves a click on every registration.
-  gender: "1",
+  // Blank, so an agency that cleared its gender default gets a form that asks rather
+  // than one that guesses. The agency default fills this in when there is one.
+  gender: "",
   partnerAgencyId: "",
   visaType: "Work",
   nationality: "Ethiopia",

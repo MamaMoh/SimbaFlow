@@ -13,7 +13,8 @@ public record IntakeDefaultsBody(
     string PassportType,
     string MaritalStatus,
     string CountryOfTravel,
-    string ContractPeriod);
+    string ContractPeriod,
+    string? CvTemplate = null);
 
 /// <summary>
 /// The values a blank candidate form starts with, per agency.
@@ -28,7 +29,25 @@ public class IntakeDefaultsModule : ICarterModule
         {
             var tenant = await LoadAsync(db, user);
             // A blank form is not an error: an agency that has set nothing gets the built-in values.
-            return Results.Ok(new { isSuccess = true, data = tenant?.Settings.Intake ?? new IntakeDefaults() });
+            var settings = tenant?.Settings ?? new TenantSettings();
+            return Results.Ok(new
+            {
+                isSuccess = true,
+                data = new
+                {
+                    settings.Intake.Gender,
+                    settings.Intake.Occupation,
+                    settings.Intake.Religion,
+                    settings.Intake.Nationality,
+                    settings.Intake.PassportType,
+                    settings.Intake.MaritalStatus,
+                    settings.Intake.CountryOfTravel,
+                    settings.Intake.ContractPeriod,
+                    CvTemplate = Domain.Services.CvTemplates.Normalise(settings.Documents.CvTemplate),
+                    CvTemplates = Domain.Services.CvTemplates.All
+                        .Select(x => new { value = x.Value, name = x.Name, description = x.Description }),
+                },
+            });
         });
 
         group.MapPut("/", async (
@@ -52,9 +71,17 @@ public class IntakeDefaultsModule : ICarterModule
                 MaxFileUploadSizeMB = tenant.Settings.MaxFileUploadSizeMB,
                 SignalREnabled = tenant.Settings.SignalREnabled,
                 BotEnabled = tenant.Settings.BotEnabled,
+                Documents = new DocumentSettings
+                {
+                    CvTemplate = body.CvTemplate is null
+                        ? Domain.Services.CvTemplates.Normalise(tenant.Settings.Documents.CvTemplate)
+                        : Domain.Services.CvTemplates.Normalise(body.CvTemplate),
+                },
                 Intake = new IntakeDefaults
                 {
-                    Gender = body.Gender is "0" or "1" ? body.Gender : "1",
+                    // Empty is a real answer: an agency that places both men and women should be
+                    // able to leave the form asking rather than guessing.
+                    Gender = body.Gender is "0" or "1" ? body.Gender : "",
                     Occupation = (body.Occupation ?? "").Trim(),
                     Religion = (body.Religion ?? "").Trim(),
                     Nationality = (body.Nationality ?? "").Trim(),

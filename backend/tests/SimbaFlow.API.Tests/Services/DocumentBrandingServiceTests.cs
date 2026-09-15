@@ -7,6 +7,8 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Partners;
+using SimbaFlow.Domain.Entities.Tenancy;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Persistence;
 using SimbaFlow.Infrastructure.Services.Documents;
 
@@ -168,6 +170,41 @@ public class DocumentBrandingServiceTests : IDisposable
 
         logo.Should().Equal(PartnerLogo,
             "a partner that uploaded only a mark is still the right name on the paperwork");
+    }
+
+    [Fact]
+    public async Task TheAgencysChosenCvLayoutIsUsed()
+    {
+        _context.Tenants.Add(new TenantInfo
+        {
+            Id = _tenantId, Name = "Test Agency", SchemaName = "tenant_test",
+            Settings = new TenantSettings { Documents = new DocumentSettings { CvTemplate = "profile" } },
+        });
+        _context.SaveChanges();
+
+        (await Service().GetCvTemplateAsync()).Should().Be("profile");
+    }
+
+    [Fact]
+    public async Task AnUnknownLayoutFallsBackRatherThanFailing()
+    {
+        _context.Tenants.Add(new TenantInfo
+        {
+            Id = _tenantId, Name = "Test Agency", SchemaName = "tenant_test",
+            Settings = new TenantSettings { Documents = new DocumentSettings { CvTemplate = "retired-layout" } },
+        });
+        _context.SaveChanges();
+
+        (await Service().GetCvTemplateAsync()).Should().Be(CvTemplates.Default,
+            "a layout that has since been removed must not stop a CV being produced");
+    }
+
+    [Fact]
+    public async Task AnAgencyThatHasNotChosenGetsTheDefaultLayout()
+    {
+        GivenAgencyLogo(null);
+
+        (await Service().GetCvTemplateAsync()).Should().Be(CvTemplates.Default);
     }
 
     public void Dispose() => _context.Dispose();

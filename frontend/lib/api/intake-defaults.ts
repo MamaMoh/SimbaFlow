@@ -9,6 +9,10 @@ export type IntakeDefaults = {
   maritalStatus: string;
   countryOfTravel: string;
   contractPeriod: string;
+  /** Which CV layout this agency prints. */
+  cvTemplate: string;
+  /** The layouts to choose from, described for the person choosing. */
+  cvTemplates?: { value: string; name: string; description: string }[];
 };
 
 const fetcher = async (url: string) => {

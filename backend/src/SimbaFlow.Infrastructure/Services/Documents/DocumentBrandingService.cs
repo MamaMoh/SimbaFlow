@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.Infrastructure.Services.Documents;
 
@@ -58,6 +59,20 @@ public sealed class DocumentBrandingService : IDocumentBrandingService
         }
 
         return null;
+    }
+
+    public async Task<string> GetCvTemplateAsync(CancellationToken cancellationToken = default)
+    {
+        if (_currentUser.TenantId is not Guid tenantId)
+            return CvTemplates.Default;
+
+        var settings = await _platform.Tenants
+            .AsNoTracking()
+            .Where(t => t.Id == tenantId && !t.IsDeleted)
+            .Select(t => t.Settings)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return CvTemplates.Normalise(settings?.Documents.CvTemplate);
     }
 
     private async Task<byte[]?> ReadAsync(string? relativePath, CancellationToken cancellationToken)

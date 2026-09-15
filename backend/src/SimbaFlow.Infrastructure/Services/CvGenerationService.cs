@@ -4,6 +4,7 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.Infrastructure.Services;
 
@@ -39,6 +40,16 @@ public class CvGenerationService : ICvGenerationService
 
         // The partner's letterhead when the candidate is placed with one, otherwise the agency's.
         var logoBytes = await _branding.GetHeaderLogoAsync(candidate, cancellationToken);
+        var template = await _branding.GetCvTemplateAsync(cancellationToken);
+
+        return template == CvTemplates.Profile
+            ? RenderProfile(candidate, photoBytes, fullPhotoBytes, logoBytes)
+            : RenderEnjaz(candidate, photoBytes, fullPhotoBytes, logoBytes);
+    }
+
+    private static byte[] RenderEnjaz(
+        Candidate candidate, byte[]? photoBytes, byte[]? fullPhotoBytes, byte[]? logoBytes)
+    {
 
         var agency = string.IsNullOrWhiteSpace(candidate.PartnerName)
             ? "SIMBAFLOW FOREIGN EMPLOYMENT AGENCY"
@@ -409,6 +420,155 @@ public class CvGenerationService : ICvGenerationService
             e.Text("FULL PHOTO").FontSize(8).FontColor(Colors.Grey.Medium);
     }
 
+
+    /// <summary>
+    /// A single-column profile sheet.
+    ///
+    /// The enjaz form exists to satisfy an embassy, and it reads like it — dense bilingual rows
+    /// sized for a clerk checking boxes. This is for the other audience: a partner deciding
+    /// whether to take someone. Large portrait, plain English headings, and only the facts that
+    /// bear on that decision, so it can be read at a glance rather than searched.
+    /// </summary>
+    private static byte[] RenderProfile(
+        Candidate candidate, byte[]? photoBytes, byte[]? fullPhotoBytes, byte[]? logoBytes)
+    {
+        string V(string? s) => string.IsNullOrWhiteSpace(s) ? "—" : s.Trim();
+        var age = AgeYears(candidate.DateOfBirth);
+
+        var skills = new[]
+        {
+            candidate.SkillCleaning ? "Cleaning" : null,
+            candidate.SkillWashing ? "Washing" : null,
+            candidate.SkillCooking ? "Cooking" : null,
+            candidate.SkillBabysitting ? "Baby sitting" : null,
+            candidate.SkillChildCare ? "Child care" : null,
+            candidate.SkillIroning ? "Ironing" : null,
+            candidate.SkillSewing ? "Sewing" : null,
+        }.Where(s => s is not null).ToList();
+
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(28);
+                page.DefaultTextStyle(x => x
+                    .FontFamily(Services.Documents.DocumentFonts.Chain)
+                    .FontSize(9.5f).FontColor(Colors.Black));
+
+                page.Content().Column(root =>
+                {
+                    if (logoBytes is { Length: > 0 })
+                        root.Item().AlignCenter().MaxHeight(80).Image(logoBytes).FitArea();
+
+                    // Name and portrait carry the page — this sheet is read as "who is this".
+                    root.Item().PaddingTop(logoBytes is { Length: > 0 } ? 14 : 0).Row(head =>
+                    {
+                        head.RelativeItem().AlignMiddle().Column(c =>
+                        {
+                            c.Item().Text(candidate.FullName.ToUpperInvariant())
+                                .FontSize(19).Bold().FontColor(AgencyBlue);
+                            c.Item().PaddingTop(3).Text(V(candidate.Occupation).ToUpperInvariant())
+                                .FontSize(11).FontColor(Maroon);
+                            c.Item().PaddingTop(6).Text(t =>
+                            {
+                                t.Span("Passport  ").FontSize(8).FontColor(Colors.Grey.Darken1);
+                                t.Span(V(candidate.PassportNumber)).FontSize(9).Bold();
+                                if (age is int a)
+                                {
+                                    t.Span("     Age  ").FontSize(8).FontColor(Colors.Grey.Darken1);
+                                    t.Span($"{a}").FontSize(9).Bold();
+                                }
+                            });
+                        });
+
+                        head.ConstantItem(128).Height(160)
+                            .Border(0.8f).BorderColor(Border).Background(Colors.Grey.Lighten4)
+                            .AlignCenter().AlignMiddle()
+                            .Element(e => PlaceImage(e, photoBytes, "PHOTO"));
+                    });
+
+                    root.Item().PaddingTop(14).LineHorizontal(1.2f).LineColor(Maroon);
+
+                    ProfileBlock(root, "Personal", new (string, string)[]
+                    {
+                        ("Date of birth", candidate.DateOfBirth.ToString("dd MMM yyyy")),
+                        ("Place of birth", V(candidate.PlaceOfBirth)),
+                        ("Nationality", V(candidate.Nationality)),
+                        ("Religion", V(candidate.Religion)),
+                        ("Marital status", V(candidate.MaritalStatus)),
+                        ("Children", candidate.NumberOfChildren?.ToString() ?? "—"),
+                        ("Height", V(candidate.Height)),
+                        ("Weight", V(candidate.Weight)),
+                    });
+
+                    ProfileBlock(root, "Languages & education", new (string, string)[]
+                    {
+                        ("English", V(candidate.EnglishLevel)),
+                        ("Arabic", V(candidate.ArabicLevel)),
+                        ("Education", V(candidate.Qualification)),
+                    });
+
+                    ProfileBlock(root, "Experience", new (string, string)[]
+                    {
+                        ("Years abroad", candidate.ExperienceAbroadYears?.ToString() ?? "—"),
+                        ("Worked in", V(candidate.WorksIn)),
+                        ("Cooking level", V(candidate.CookingLevel)),
+                    });
+
+                    root.Item().PaddingTop(12).Text("Skills")
+                        .FontSize(10).Bold().FontColor(Maroon);
+                    root.Item().PaddingTop(4).Text(
+                            skills.Count > 0 ? string.Join("   ·   ", skills) : "—")
+                        .FontSize(9.5f);
+
+                    ProfileBlock(root, "Placement", new (string, string)[]
+                    {
+                        ("Destination", V(candidate.CountryOfTravel)),
+                        ("Monthly salary", V(candidate.MonthlySalary)),
+                        ("Contract period", V(candidate.ContractPeriod)),
+                        ("Partner agency", V(candidate.PartnerName)),
+                    });
+
+                    if (fullPhotoBytes is { Length: > 0 })
+                    {
+                        root.Item().PaddingTop(14).AlignCenter()
+                            .Height(190).Element(e => PlaceFullBodyImage(e, fullPhotoBytes));
+                    }
+                });
+
+                page.Footer().AlignCenter().Text(t =>
+                {
+                    t.Span("Reference ").FontSize(7.5f).FontColor(Colors.Grey.Darken1);
+                    t.Span(V(candidate.ReferenceNo ?? candidate.LabourId ?? candidate.PassportNumber))
+                        .FontSize(7.5f).Bold().FontColor(Colors.Grey.Darken2);
+                });
+            });
+        });
+
+        return document.GeneratePdf();
+    }
+
+    /// <summary>A heading and a two-column grid of label/value pairs.</summary>
+    private static void ProfileBlock(
+        ColumnDescriptor root, string heading, IReadOnlyList<(string Label, string Value)> rows)
+    {
+        root.Item().PaddingTop(12).Text(heading).FontSize(10).Bold().FontColor(Maroon);
+        root.Item().PaddingTop(4).Grid(grid =>
+        {
+            grid.Columns(2);
+            grid.HorizontalSpacing(24);
+            grid.VerticalSpacing(5);
+            foreach (var (label, value) in rows)
+            {
+                grid.Item().Row(r =>
+                {
+                    r.ConstantItem(96).Text(label).FontSize(8.5f).FontColor(Colors.Grey.Darken1);
+                    r.RelativeItem().Text(value).FontSize(9.5f).Bold();
+                });
+            }
+        });
+    }
 
     private static void SectionBar(ColumnDescriptor col, string en, string ar)
     {

@@ -19,11 +19,32 @@ public class TenantSettings
     /// keystrokes. These only pre-fill a blank form — they never overwrite a saved record.
     /// </summary>
     public IntakeDefaults Intake { get; set; } = new();
+
+    /// <summary>How this agency's generated paperwork is laid out.</summary>
+    public DocumentSettings Documents { get; set; } = new();
+}
+
+public class DocumentSettings
+{
+    /// <summary>
+    /// Which CV layout this agency prints by default.
+    ///
+    /// Agencies circulate different forms — the one a partner will accept is a matter of who you
+    /// are sending it to, not of taste — so the layout is a per-agency setting rather than
+    /// something chosen afresh on every download. See CvTemplates for the known values.
+    /// </summary>
+    public string CvTemplate { get; set; } = "enjaz";
 }
 
 public class IntakeDefaults
 {
-    /// <summary>"0" male, "1" female — matching the Gender enum the form posts.</summary>
+    /// <summary>
+    /// "0" male, "1" female, or empty for no default.
+    ///
+    /// Empty matters: most agencies in this corridor deploy women, so female is a useful starting
+    /// point — but an agency that places both should be able to leave it unanswered rather than
+    /// having the form guess for them on every registration.
+    /// </summary>
     public string Gender { get; set; } = "1";
     public string Occupation { get; set; } = "HOUSE MAID";
     public string Religion { get; set; } = "";

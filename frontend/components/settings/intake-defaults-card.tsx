@@ -28,9 +28,13 @@ const PASSPORT_TYPES = ["Normal", "Official", "Diplomatic", "Service"];
  * being typed into every registration. These pre-fill a new form only — an edit always shows what
  * was saved.
  */
+/** Radix Select cannot hold an empty string, so "no default" needs a stand-in value. */
+const NONE = "__none__";
+
 export function IntakeDefaultsCard() {
   const { defaults, mutate } = useIntakeDefaults(true);
-  const [gender, setGender] = useState("1");
+  const [gender, setGender] = useState("");
+  const [cvTemplate, setCvTemplate] = useState("enjaz");
   const [occupation, setOccupation] = useState("");
   const [religion, setReligion] = useState("");
   const [nationality, setNationality] = useState("");
@@ -42,7 +46,8 @@ export function IntakeDefaultsCard() {
 
   useEffect(() => {
     if (!defaults) return;
-    setGender(defaults.gender || "1");
+    setGender(defaults.gender || "");
+    setCvTemplate(defaults.cvTemplate || "enjaz");
     setOccupation(defaults.occupation || "");
     setReligion(defaults.religion || "");
     setNationality(defaults.nationality || "");
@@ -65,6 +70,7 @@ export function IntakeDefaultsCard() {
         maritalStatus,
         countryOfTravel,
         contractPeriod,
+        cvTemplate,
       });
       toast.success("New candidate forms will start with these");
       void mutate();
@@ -87,11 +93,15 @@ export function IntakeDefaultsCard() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label>Gender</Label>
-          <Select value={gender} onValueChange={setGender}>
+          <Select
+            value={gender || NONE}
+            onValueChange={(v) => setGender(v === NONE ? "" : v)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>No default — ask each time</SelectItem>
               <SelectItem value="1">Female</SelectItem>
               <SelectItem value="0">Male</SelectItem>
             </SelectContent>
@@ -100,11 +110,15 @@ export function IntakeDefaultsCard() {
 
         <div className="space-y-1.5">
           <Label>Occupation</Label>
-          <Select value={occupation || undefined} onValueChange={setOccupation}>
+          <Select
+            value={occupation || NONE}
+            onValueChange={(v) => setOccupation(v === NONE ? "" : v)}
+          >
             <SelectTrigger id="def-occupation">
               <SelectValue placeholder="Select occupation" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>No default</SelectItem>
               {OCCUPATIONS.map((o) => (
                 <SelectItem key={o} value={o}>
                   {o}
@@ -116,11 +130,15 @@ export function IntakeDefaultsCard() {
 
         <div className="space-y-1.5">
           <Label>Religion</Label>
-          <Select value={religion || undefined} onValueChange={setReligion}>
+          <Select
+            value={religion || NONE}
+            onValueChange={(v) => setReligion(v === NONE ? "" : v)}
+          >
             <SelectTrigger id="def-religion">
               <SelectValue placeholder="Select religion" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>No default</SelectItem>
               {RELIGIONS.map((r) => (
                 <SelectItem key={r} value={r}>{r}</SelectItem>
               ))}
@@ -130,11 +148,15 @@ export function IntakeDefaultsCard() {
 
         <div className="space-y-1.5">
           <Label>Marital status</Label>
-          <Select value={maritalStatus || undefined} onValueChange={setMaritalStatus}>
+          <Select
+            value={maritalStatus || NONE}
+            onValueChange={(v) => setMaritalStatus(v === NONE ? "" : v)}
+          >
             <SelectTrigger id="def-marital">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>No default</SelectItem>
               {MARITAL_STATUSES.map((m) => (
                 <SelectItem key={m} value={m}>{m}</SelectItem>
               ))}
@@ -144,11 +166,15 @@ export function IntakeDefaultsCard() {
 
         <div className="space-y-1.5">
           <Label>Passport type</Label>
-          <Select value={passportType || undefined} onValueChange={setPassportType}>
+          <Select
+            value={passportType || NONE}
+            onValueChange={(v) => setPassportType(v === NONE ? "" : v)}
+          >
             <SelectTrigger id="def-passport-type">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value={NONE}>No default</SelectItem>
               {PASSPORT_TYPES.map((x) => (
                 <SelectItem key={x} value={x}>{x}</SelectItem>
               ))}
@@ -174,6 +200,48 @@ export function IntakeDefaultsCard() {
             onChange={(e) => setContractPeriod(e.target.value)}
             placeholder="2 Years"
           />
+        </div>
+      </div>
+
+      <div className="space-y-2 border-t pt-4">
+        <div>
+          <Label>CV layout</Label>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Which form a generated CV is printed on. The one a partner will accept depends on who
+            you are sending it to, so it is set here rather than chosen on every download.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(defaults?.cvTemplates ?? []).map((tpl) => {
+            const selected = cvTemplate === tpl.value;
+            return (
+              <button
+                key={tpl.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setCvTemplate(tpl.value)}
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  selected
+                    ? "border-green-700 bg-green-50 ring-1 ring-green-700"
+                    : "hover:bg-muted/50"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <span
+                    className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border ${
+                      selected ? "border-green-700" : "border-muted-foreground/40"
+                    }`}
+                  >
+                    {selected && <span className="h-1.5 w-1.5 rounded-full bg-green-700" />}
+                  </span>
+                  <span className="text-sm font-medium">{tpl.name}</span>
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+                  {tpl.description}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

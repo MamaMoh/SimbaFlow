@@ -15,4 +15,10 @@ public interface IDocumentBrandingService
     /// agency name it has always used.
     /// </summary>
     Task<byte[]?> GetHeaderLogoAsync(Candidate candidate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Which CV layout this agency prints. Falls back to the default when the agency has not
+    /// chosen, or chose a layout that no longer exists.
+    /// </summary>
+    Task<string> GetCvTemplateAsync(CancellationToken cancellationToken = default);
 }
