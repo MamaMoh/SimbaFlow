@@ -28,6 +28,10 @@ public static class AdminSeeder
         await SeedRoleAsync(roleManager, "DataEntryClerk", "Candidate registration and data entry", isSystem: true);
         await SeedRoleAsync(roleManager, "Auditor", "Read-only audit access", isSystem: true);
         await SeedRoleAsync(roleManager, "NotificationManager", "Notification and bot configuration", isSystem: true);
+        // Platform-level, but deliberately not SuperAdmin: user accounts, roles and system
+        // configuration only. No candidate or pipeline access, so support staff can administer
+        // the platform without being able to read any agency's people.
+        await SeedRoleAsync(roleManager, "PlatformAdmin", "Platform user accounts and system configuration", isSystem: true);
 
         // Seed default SuperAdmin user
         const string adminUsername = "admin";

@@ -49,7 +49,9 @@ export const navigation: NavItem[] = [
     name: "Case Executive",
     href: "/workflow/case-executive",
     icon: require("lucide-react").Briefcase,
-    claims: ["embassy.case_view", "embassy.read", "system.admin"],
+    // Only embassy.case_view — the board's own query requires it, so listing embassy.read here
+    // showed Embassy Officers a link that opened straight onto a permission error.
+    claims: ["embassy.case_view", "system.admin"],
   },
   {
     name: "LMIS",
@@ -179,8 +181,9 @@ export const navigation: NavItem[] = [
     href: "/settings",
     icon: require("lucide-react").Settings,
     // Anyone who can link their own Telegram account needs to reach Settings; the page
-    // itself still gates the admin-only sections on system.admin.
-    claims: ["system.admin", "bot.use"],
+    // itself still gates the admin-only sections on system.admin. settings.read belongs here
+    // too — it is the permission the page is actually named after.
+    claims: ["system.admin", "bot.use", "settings.read"],
   },
 ];
 
@@ -203,4 +206,28 @@ export function filterNavigationByClaims(
       })
       .filter(Boolean) as NavItem[];
   return recur(items);
+}
+
+/**
+ * The first page this user is allowed to open.
+ *
+ * Sign-in used to go to the dashboard unconditionally, which needs candidate.read — so a role
+ * without it (platform administration, notifications) landed on "Access denied" immediately
+ * after a successful login, with only a button back to the same denial.
+ */
+export function firstPermittedRoute(claims: string[], isSuperAdmin: boolean): string {
+  if (isSuperAdmin) return "/overview";
+  const walk = (items: NavItem[]): string | null => {
+    for (const item of items) {
+      if (item.isSeparator) continue;
+      if (item.children) {
+        const child = walk(item.children);
+        if (child) return child;
+      }
+      if (!item.href) continue;
+      if (!item.claims?.length || item.claims.some((c) => claims.includes(c))) return item.href;
+    }
+    return null;
+  };
+  return walk(navigation) ?? "/settings";
 }

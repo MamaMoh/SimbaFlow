@@ -74,8 +74,11 @@ public static class RolePermissionSeeder
         ["FieldAgent"] = [
             "candidate.read", "candidate.update",
             "workflow.view", "workflow.execute",
-            "embassy.update",
-            "arrival.update",
+            // The agent held embassy.update and arrival.update without the matching reads, so
+            // both boards were hidden from them and neither permission could be exercised
+            // anywhere — the bot answers /medical and /arrived with "use the web app".
+            "embassy.read", "embassy.update",
+            "arrival.read", "arrival.update",
             "bot.use",
         ],
         ["DataEntryClerk"] = [
@@ -96,6 +99,24 @@ public static class RolePermissionSeeder
         ],
         ["NotificationManager"] = [
             "notification.configure", "notification.send",
+            // Configuring the bot without being able to use it meant this role could set the
+            // connection up and then not link its own Telegram account to test it.
+            "bot.configure", "bot.use",
+            "settings.read",
+        ],
+        // Platform administration without agency access: user accounts, roles, tenants and
+        // system settings. Deliberately holds no candidate.read — this role exists so someone
+        // can run the platform without being able to read any agency's people.
+        ["PlatformAdmin"] = [
+            "users.read", "users.write",
+            "role.read", "role.write",
+            "staff.read",
+            // Deliberately not tenant.manage/provision: creating and suspending agencies is
+            // reserved for SuperAdmin, and the tenants endpoint is gated on that role anyway —
+            // granting them here would only produce a link that fails.
+            "settings.read", "settings.write",
+            "audit.read",
+            "notification.configure",
             "bot.configure",
         ],
     };
@@ -139,9 +160,17 @@ public static class RolePermissionSeeder
     }
 
     /// <summary>
-    /// Seeds test users for development environment.
+    /// Seeds one user per role so each role can actually be signed into and exercised.
+    ///
+    /// Agency roles are attached to <paramref name="tenantId"/> — without a tenant they sign in
+    /// successfully and then meet a permission error on every page, which is how the platform
+    /// admin account ended up unusable. PlatformAdmin is deliberately left with no tenant: it
+    /// administers the platform and is not supposed to reach any agency's candidates.
+    ///
+    /// Idempotent — an existing username is left alone, including its password.
     /// </summary>
-    public static async Task SeedTestUsersAsync(IServiceProvider serviceProvider)
+    public static async Task SeedRoleUsersAsync(
+        IServiceProvider serviceProvider, Guid tenantId, string password)
     {
         var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
@@ -149,16 +178,19 @@ public static class RolePermissionSeeder
 
         var testUsers = new[]
         {
-            new { Username = "owner.amir", Email = "amir@simbaflow.local", FirstName = "Amir", LastName = "Hassan", Role = "AgencyOwner", StaffType = StaffType.AgencyOwner },
-            new { Username = "mgr.hana", Email = "hana@simbaflow.local", FirstName = "Hana", LastName = "Bekele", Role = "OfficeManager", StaffType = StaffType.OfficeManager },
-            new { Username = "embassy.dawit", Email = "dawit@simbaflow.local", FirstName = "Dawit", LastName = "Fikru", Role = "EmbassyOfficer", StaffType = StaffType.EmbassyOfficer },
-            new { Username = "case.sara", Email = "sara@simbaflow.local", FirstName = "Sara", LastName = "Ahmed", Role = "CaseExecutive", StaffType = StaffType.CaseExecutive },
-            new { Username = "fin.yonas", Email = "yonas@simbaflow.local", FirstName = "Yonas", LastName = "Tadesse", Role = "FinanceOfficer", StaffType = StaffType.FinanceOfficer },
-            new { Username = "field.kebede", Email = "kebede@simbaflow.local", FirstName = "Kebede", LastName = "Girma", Role = "FieldAgent", StaffType = StaffType.FieldAgent },
-            new { Username = "clerk.tigist", Email = "tigist@simbaflow.local", FirstName = "Tigist", LastName = "Wondwosen", Role = "DataEntryClerk", StaffType = StaffType.DataEntryClerk },
-            new { Username = "audit.abebe", Email = "abebe@simbaflow.local", FirstName = "Abebe", LastName = "Assefa", Role = "Auditor", StaffType = StaffType.Auditor },
+            new { Username = "owner.amir", Email = "amir@simbaflow.local", FirstName = "Amir", LastName = "Hassan", Role = "AgencyOwner", StaffType = StaffType.AgencyOwner, Platform = false },
+            new { Username = "mgr.hana", Email = "hana@simbaflow.local", FirstName = "Hana", LastName = "Bekele", Role = "OfficeManager", StaffType = StaffType.OfficeManager, Platform = false },
+            new { Username = "embassy.dawit", Email = "dawit@simbaflow.local", FirstName = "Dawit", LastName = "Fikru", Role = "EmbassyOfficer", StaffType = StaffType.EmbassyOfficer, Platform = false },
+            new { Username = "case.sara", Email = "sara@simbaflow.local", FirstName = "Sara", LastName = "Ahmed", Role = "CaseExecutive", StaffType = StaffType.CaseExecutive, Platform = false },
+            new { Username = "fin.yonas", Email = "yonas@simbaflow.local", FirstName = "Yonas", LastName = "Tadesse", Role = "FinanceOfficer", StaffType = StaffType.FinanceOfficer, Platform = false },
+            new { Username = "field.kebede", Email = "kebede@simbaflow.local", FirstName = "Kebede", LastName = "Girma", Role = "FieldAgent", StaffType = StaffType.FieldAgent, Platform = false },
+            new { Username = "clerk.tigist", Email = "tigist@simbaflow.local", FirstName = "Tigist", LastName = "Wondwosen", Role = "DataEntryClerk", StaffType = StaffType.DataEntryClerk, Platform = false },
+            new { Username = "audit.abebe", Email = "abebe@simbaflow.local", FirstName = "Abebe", LastName = "Assefa", Role = "Auditor", StaffType = StaffType.Auditor, Platform = false },
+            new { Username = "notify.selam", Email = "selam@simbaflow.local", FirstName = "Selam", LastName = "Getachew", Role = "NotificationManager", StaffType = StaffType.DataEntryClerk, Platform = false },
+            new { Username = "platform.rediet", Email = "rediet@simbaflow.local", FirstName = "Rediet", LastName = "Alemu", Role = "PlatformAdmin", StaffType = StaffType.AgencyOwner, Platform = true },
         };
 
+        var created = 0;
         foreach (var tu in testUsers)
         {
             if (await userManager.FindByNameAsync(tu.Username) is not null)
@@ -170,31 +202,36 @@ public static class RolePermissionSeeder
                 Email = tu.Email,
                 FirstName = tu.FirstName,
                 LastName = tu.LastName,
+                TenantId = tu.Platform ? null : tenantId,
                 IsActive = true,
                 IsFirstLogin = false,
                 MustChangePassword = false,
                 EmailConfirmed = true,
             };
 
-            var result = await userManager.CreateAsync(user, "Test@123!");
-            if (result.Succeeded)
+            var result = await userManager.CreateAsync(user, password);
+            if (!result.Succeeded)
             {
-                await userManager.AddToRoleAsync(user, tu.Role);
-
-                // Create linked StaffProfile
-                context.StaffProfiles.Add(new StaffProfile
-                {
-                    UserId = user.Id,
-                    FirstName = tu.FirstName,
-                    LastName = tu.LastName,
-                    StaffType = tu.StaffType,
-                    EmploymentStatus = EmploymentStatus.Active,
-                    HireDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-6)),
-                });
+                logger.LogWarning("Could not create {Username}: {Errors}",
+                    tu.Username, string.Join(", ", result.Errors.Select(e => e.Description)));
+                continue;
             }
+
+            await userManager.AddToRoleAsync(user, tu.Role);
+            context.StaffProfiles.Add(new StaffProfile
+            {
+                UserId = user.Id,
+                FirstName = tu.FirstName,
+                LastName = tu.LastName,
+                StaffType = tu.StaffType,
+                EmploymentStatus = EmploymentStatus.Active,
+                HireDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-6)),
+            });
+            created++;
         }
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Seeded {Count} test users for development", testUsers.Length);
+        logger.LogInformation("Role users: {Created} created, {Skipped} already present",
+            created, testUsers.Length - created);
     }
 }

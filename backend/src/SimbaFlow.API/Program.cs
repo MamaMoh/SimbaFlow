@@ -114,6 +114,20 @@ using (var scope = app.Services.CreateScope())
     await DepartmentSeeder.SeedDepartmentsAsync(services);
     await PartnerAgencySeeder.SeedPartnerAgenciesAsync(services);
     await RolePermissionSeeder.SeedRolePermissionsAsync(services);
+
+    // One user per role, for trying each role out. Opt-in rather than automatic: these are real
+    // sign-ins, so they appear only when someone names a tenant to attach them to, and the
+    // setting can be removed again once the accounts exist.
+    var roleUsersTenant = builder.Configuration["Seeding:RoleUsersTenantId"];
+    if (Guid.TryParse(roleUsersTenant, out var seedTenantId))
+    {
+        var seedPassword = builder.Configuration["Seeding:RoleUsersPassword"];
+        var seedLogger = services.GetRequiredService<ILogger<Program>>();
+        if (string.IsNullOrWhiteSpace(seedPassword))
+            seedLogger.LogWarning("Seeding:RoleUsersTenantId is set but Seeding:RoleUsersPassword is not — skipping role users");
+        else
+            await RolePermissionSeeder.SeedRoleUsersAsync(services, seedTenantId, seedPassword);
+    }
 }
 
 if (app.Environment.IsDevelopment())

@@ -3,6 +3,7 @@
  * Server/client aware; handles auth and context routing.
  */
 
+import { getActingTenantId } from "@/lib/tenant/acting-tenant";
 import { handleApiError, parseApiResponse } from "./helpers";
 import { getCachedServerSession } from "./session-cache";
 import { buildQueryString } from "@/lib/types/pagination";
@@ -46,6 +47,9 @@ async function unifiedFetch<T>(
 
     // Execute HTTP request with authentication headers
     const locationId = !isServer ? localStorage.getItem("simba_active_location_id") : null;
+    // Platform admins can work inside a chosen agency. The backend ignores this header for
+    // everyone else, so a tenant user cannot reach another agency by setting it.
+    const actingTenantId = !isServer ? getActingTenantId() : null;
     
     const response = await fetch(fullUrl, {
       ...options,
@@ -53,6 +57,7 @@ async function unifiedFetch<T>(
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
         ...(locationId && { "X-Current-Location": locationId }),
+        ...(actingTenantId && { "X-Tenant-Id": actingTenantId }),
         ...options.headers,
       },
     });

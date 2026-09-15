@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { navigation, type NavItem } from "@/components/layout/nav-items";
+import { navigation, firstPermittedRoute, type NavItem } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert } from "lucide-react";
 import Link from "next/link";
@@ -54,7 +54,9 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
           </p>
         </div>
         <Button variant="outline" asChild>
-          <Link href="/overview">Back to Dashboard</Link>
+          {/* Not "/overview": a role without candidate.read cannot open that either, which
+              turned the denial into a loop with no way out. */}
+          <Link href={firstPermittedRoute(claims, false)}>Go to your work</Link>
         </Button>
       </div>
     );

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { firstPermittedRoute } from "@/components/layout/nav-items";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +26,7 @@ import { Button } from "../ui/button";
 import { Slider } from "../ui/slider";
 import { Eye, EyeOff, CheckCircle2, AlertCircle, Copy, Info } from "lucide-react";
 import { toast } from "sonner";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import {
   calculatePasswordStrength,
   getPasswordStrengthColor,
@@ -264,7 +265,13 @@ export function ChangePasswordPageForm() {
       }
 
       toast.success("Password changed — signing you in…");
-      router.push("/overview");
+      // Land on a page this role is allowed to open, not the dashboard by default.
+      const fresh = await getSession();
+      const claims = (fresh?.user as any)?.grantedClaims ?? [];
+      const superAdmin =
+        (fresh?.user as any)?.userProfile?.isSuperAdmin === true ||
+        claims.includes("system.admin");
+      router.push(firstPermittedRoute(claims, superAdmin));
       router.refresh();
     } catch (error: any) {
       toast.error(error.message || "Failed to change password");

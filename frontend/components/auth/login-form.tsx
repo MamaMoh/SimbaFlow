@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { firstPermittedRoute } from "@/components/layout/nav-items";
 import { signIn, getSession } from "next-auth/react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -157,7 +158,12 @@ setIsSubmitting(false);
           router.push(`/change-password`);
         } else {
           toast.success("Login successful!");
-          router.push(`/overview`);
+          // Not everyone is allowed on the dashboard — it needs candidate.read. Send each person
+          // to the first page their role can actually open.
+          const claims = (session?.user as any)?.grantedClaims ?? [];
+          const superAdmin =
+            userProfile?.isSuperAdmin === true || claims.includes("system.admin");
+          router.push(firstPermittedRoute(claims, superAdmin));
         }
       } else {
         // Check if the error indicates password change is required

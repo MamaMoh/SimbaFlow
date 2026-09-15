@@ -124,8 +124,16 @@ async function handleRequest(
       headers["X-Current-Location"] = locationHeader;
     }
 
-    // Forward tenant scope for platform admins (optional)
-    const tenantHeader = request.headers.get("x-tenant-id");
+    // Forward tenant scope for platform admins (optional).
+    //
+    // The cookie is the reliable source: pages across the app define their own SWR fetchers that
+    // call fetch(url) with no headers, so a header set by the API client would only cover some of
+    // them. Cookies ride along with every same-origin request, so the chosen agency applies
+    // everywhere. Either way the backend honours this only for SuperAdmin, so setting it as
+    // anyone else achieves nothing.
+    const tenantHeader =
+      request.headers.get("x-tenant-id") ??
+      request.cookies.get("simba_acting_tenant")?.value;
     if (tenantHeader) {
       headers["X-Tenant-Id"] = tenantHeader;
     }
