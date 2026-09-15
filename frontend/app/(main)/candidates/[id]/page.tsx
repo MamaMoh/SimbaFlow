@@ -13,6 +13,8 @@ import {
   generateCandidateContract,
 } from "@/lib/api/candidates";
 import { useAvailableActions, useWorkflowState } from "@/lib/api/workflow";
+import { FormSection } from "@/components/candidates/form-section";
+import { StageProgress } from "@/components/candidates/stage-progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +39,12 @@ import {
   Pencil,
   Stamp,
   FileSignature,
+  Mail,
+  MapPin,
+  Plane,
+  User,
+  Users,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -288,6 +296,11 @@ export default function CandidateDetailPage() {
         </div>
       </div>
 
+      <StageProgress
+        currentStageId={state?.stageId}
+        currentStageName={state?.stageName ?? candidate.currentStageName}
+      />
+
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="h-10 w-full justify-start gap-1 bg-muted/60 p-1 sm:w-auto">
           <TabsTrigger value="profile" className="px-4">
@@ -321,7 +334,7 @@ export default function CandidateDetailPage() {
             </Button>
           </div>
         <ShowEmptyFields.Provider value={showEmpty}>
-          <ProfileSection title="Identity">
+          <ProfileSection icon={FileText} title="Basic Information">
             <Field
               label="Gender"
               value={GENDER_LABELS[candidate.gender] ?? String(candidate.gender)}
@@ -332,14 +345,14 @@ export default function CandidateDetailPage() {
             <Field label="National ID" value={candidate.nationalId} />
           </ProfileSection>
 
-          <ProfileSection title="Passport">
+          <ProfileSection icon={Stamp} title="Passport details">
             <Field label="Passport type" value={candidate.passportType} />
             <Field label="Place of issue" value={candidate.passportPlaceOfIssue} />
             <Field label="Issue date" value={candidate.passportIssueDate} />
             <Field label="Expiry date" value={candidate.passportExpiryDate} />
           </ProfileSection>
 
-          <ProfileSection title="Contact">
+          <ProfileSection icon={Mail} title="Contact">
             <Field label="Phone" value={candidate.phoneNumber} />
             <Field label="Email" value={candidate.email} />
             <Field label="Address" value={candidate.address} />
@@ -351,7 +364,7 @@ export default function CandidateDetailPage() {
             <Field label="Country" value={candidate.country} />
           </ProfileSection>
 
-          <ProfileSection title="Details of applicant">
+          <ProfileSection icon={User} title="Details of Applicant">
             <Field label="Nationality" value={candidate.nationality} />
             <Field label="Religion" value={candidate.religion} />
             <Field label="Date of birth" value={candidate.dateOfBirth} />
@@ -369,13 +382,13 @@ export default function CandidateDetailPage() {
             <Field label="Weight" value={candidate.weight} />
           </ProfileSection>
 
-          <ProfileSection title="Languages & education">
+          <ProfileSection icon={FileText} title="Languages & Education">
             <Field label="English" value={candidate.englishLevel} />
             <Field label="Arabic" value={candidate.arabicLevel} />
             <Field label="Education" value={candidate.qualification} />
           </ProfileSection>
 
-          <ProfileSection title="Work experience">
+          <ProfileSection icon={MapPin} title="Work Experience">
             <Field
               label="Period"
               value={
@@ -390,7 +403,7 @@ export default function CandidateDetailPage() {
             <Field label="Contract period" value={candidate.contractPeriod} />
           </ProfileSection>
 
-          <ProfileSection title="Skills & experience">
+          <ProfileSection icon={Stamp} title="Skills & Experience">
             <Field label="Cooking level" value={candidate.cookingLevel} />
             <Field
               label="Skills"
@@ -410,7 +423,7 @@ export default function CandidateDetailPage() {
             <Field label="Remark" value={candidate.remark} />
           </ProfileSection>
 
-          <ProfileSection title="Travel & contract">
+          <ProfileSection icon={Plane} title="Travel & Contract">
             <Field label="Country of travel" value={candidate.countryOfTravel} />
             <Field label="Partner agency" value={candidate.partnerName} />
             <Field label="Contract date" value={candidate.contractDate} />
@@ -424,7 +437,7 @@ export default function CandidateDetailPage() {
             />
           </ProfileSection>
 
-          <ProfileSection title="Sponsor & visa">
+          <ProfileSection icon={Stamp} title="Sponsor & Visa">
             <Field label="Visa number" value={candidate.visaNumber} />
             <Field label="Visa type" value={candidate.visaType} />
             <Field label="Sponsor name" value={candidate.sponsorName} />
@@ -439,14 +452,14 @@ export default function CandidateDetailPage() {
             <Field label="Sticker visa #" value={candidate.stickerVisaNo} />
           </ProfileSection>
 
-          <ProfileSection title="Relative">
+          <ProfileSection icon={Users} title="Relative Information">
             <Field label="Name" value={candidate.relativeName} />
             <Field label="Phone" value={candidate.relativePhone} />
             <Field label="Kinship" value={candidate.relativeKinship} />
             <Field label="City" value={candidate.relativeCity} />
           </ProfileSection>
 
-          <ProfileSection title="COC / other">
+          <ProfileSection icon={Mail} title="Other Information">
             <Field label="Contact (2nd)" value={candidate.contactPerson2} />
             <Field label="Phone (2nd)" value={candidate.contactPhone2} />
             <Field label="COC center" value={candidate.cocCenterName} />
@@ -520,9 +533,11 @@ export default function CandidateDetailPage() {
 const ShowEmptyFields = React.createContext(false);
 
 function ProfileSection({
+  icon,
   title,
   children,
 }: {
+  icon: LucideIcon;
   title: string;
   children: React.ReactNode;
 }) {
@@ -536,17 +551,17 @@ function ProfileSection({
   if (visible.length === 0) return null;
 
   return (
-    <section className="rounded-xl border bg-card p-5 shadow-sm">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-        {!showEmpty && filled.length < all.length ? (
-          <span className="text-xs text-muted-foreground">
-            {all.length - filled.length} not filled
-          </span>
-        ) : null}
-      </div>
+    <FormSection
+      icon={icon}
+      title={title}
+      meta={
+        !showEmpty && filled.length < all.length
+          ? `${all.length - filled.length} not filled`
+          : undefined
+      }
+    >
       <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{visible}</div>
-    </section>
+    </FormSection>
   );
 }
 
