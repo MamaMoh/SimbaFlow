@@ -16,9 +16,10 @@ export async function login(
   await page.locator("#password").fill(creds.password);
   await page.getByRole("button", { name: "Sign In" }).click();
 
-  // Either land on overview, or get bounced to forced password change
+  // Land on whichever page this role is allowed to open — not everyone is permitted on the
+  // dashboard — or get bounced to forced password change.
   await Promise.race([
-    page.waitForURL(/\/(overview|change-password)/, { timeout: 30_000 }),
+    page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 30_000 }),
     page.getByText(/invalid username or password/i).waitFor({ timeout: 30_000 }),
   ]);
 
@@ -29,7 +30,7 @@ export async function login(
     throw new Error(`Login failed for ${creds.username}`);
   }
 
-  await expect(page).toHaveURL(/\/overview/);
+  await expect(page).not.toHaveURL(/\/login/);
 }
 
 export async function ensureLoggedOut(page: Page) {

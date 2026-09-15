@@ -11,11 +11,24 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
 import { IntakeDefaultsCard } from "@/components/settings/intake-defaults-card";
+import { LogoUpload } from "@/components/branding/logo-upload";
+import useSWR from "swr";
 
 export default function SettingsPage() {
   const { hasPermission } = usePermissions();
   const canAdmin = hasPermission("system.admin");
+  // settings.write is the permission this page is named after; gating only on system.admin shut
+  // out the roles that exist to manage settings.
+  const canManageSettings = canAdmin || hasPermission("settings.write");
+  const canReadSettings = canManageSettings || hasPermission("settings.read");
   const canUseBot = hasPermission("bot.use") || canAdmin;
+
+  const { data: branding, mutate: mutateBranding } = useSWR(
+    canReadSettings ? "/api/proxy/branding/agency" : null,
+    (url: string) => fetch(url).then((r) => r.json()),
+    { revalidateOnFocus: false }
+  );
+  const agencyLogoPath: string | null = branding?.data?.logoPath ?? null;
 
   const [agencyDisplayName, setAgencyDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -24,7 +37,7 @@ export default function SettingsPage() {
   const { data: botStatus, error: botStatusError, mutate: mutateBotStatus } =
     useBotStatus(canUseBot);
 
-  if (!canAdmin && !canUseBot) {
+  if (!canReadSettings && !canUseBot) {
     return <AccessDenied resource="settings" />;
   }
 
@@ -96,6 +109,18 @@ export default function SettingsPage() {
         title="Settings"
         description="Agency preferences and system options"
       />
+
+      {canManageSettings ? (
+        <div className="rounded-lg border bg-card p-4 shadow-sm">
+          <LogoUpload
+            endpoint="/api/proxy/branding/agency"
+            logoPath={agencyLogoPath}
+            onChange={() => mutateBranding()}
+            label="Agency letterhead"
+            hint="Heads generated CVs and visa forms when the candidate has no partner agency. PNG or JPEG, up to 2MB."
+          />
+        </div>
+      ) : null}
 
       {canAdmin ? (
         <>

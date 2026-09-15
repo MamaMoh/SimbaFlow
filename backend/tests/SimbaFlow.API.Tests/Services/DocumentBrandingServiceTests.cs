@@ -1,0 +1,133 @@
+using System.Text;
+using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+using SimbaFlow.Application.Common.Interfaces;
+using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Domain.Entities.Partners;
+using SimbaFlow.Infrastructure.Persistence;
+using SimbaFlow.Infrastructure.Services.Documents;
+
+namespace SimbaFlow.API.Tests.Services;
+
+/// <summary>
+/// Whose letterhead a candidate's documents are printed on.
+///
+/// The paperwork goes to the embassy under the partner's name when there is one, so the partner's
+/// logo wins over the agency's — but only when they actually have one on file.
+/// </summary>
+public class DocumentBrandingServiceTests : IDisposable
+{
+    private readonly PlatformDbContext _context;
+    private readonly IFileStorageService _storage = Substitute.For<IFileStorageService>();
+    private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
+    private readonly Guid _tenantId = Guid.NewGuid();
+    private readonly Guid _partnerId = Guid.NewGuid();
+
+    private static readonly byte[] AgencyLogo = Encoding.UTF8.GetBytes("agency-letterhead");
+    private static readonly byte[] PartnerLogo = Encoding.UTF8.GetBytes("partner-letterhead");
+
+    public DocumentBrandingServiceTests()
+    {
+        var options = new DbContextOptionsBuilder<PlatformDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _context = new PlatformDbContext(options, _currentUser);
+        _currentUser.TenantId.Returns(_tenantId);
+
+        _storage.DownloadAsync("agency/logo.png", Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Stream?>(new MemoryStream(AgencyLogo)));
+        _storage.DownloadAsync("partner/logo.png", Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Stream?>(new MemoryStream(PartnerLogo)));
+    }
+
+    private DocumentBrandingService Service() => new(
+        _context, _storage, _currentUser, Substitute.For<ILogger<DocumentBrandingService>>());
+
+    private void GivenAgencyLogo(string? path)
+    {
+        _context.Tenants.Add(new TenantInfo
+        {
+            Id = _tenantId, Name = "Test Agency", SchemaName = "tenant_test", LogoPath = path,
+        });
+        _context.SaveChanges();
+    }
+
+    private void GivenPartner(string? logoPath)
+    {
+        _context.PartnerAgencies.Add(new PartnerAgency
+        {
+            Id = _partnerId, Name = "Partner", CountryCode = "SA", CountryName = "Saudi Arabia",
+            LogoPath = logoPath,
+        });
+        _context.SaveChanges();
+    }
+
+    private static Candidate CandidateWith(Guid? partnerAgencyId) => new()
+    {
+        Id = Guid.NewGuid(),
+        FirstName = "Test",
+        LastName = "Candidate",
+        PartnerAgencyId = partnerAgencyId,
+    };
+
+    [Fact]
+    public async Task ThePartnersLetterheadIsUsedWhenTheCandidateIsPlacedWithOne()
+    {
+        GivenAgencyLogo("agency/logo.png");
+        GivenPartner("partner/logo.png");
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(_partnerId));
+
+        logo.Should().Equal(PartnerLogo);
+    }
+
+    [Fact]
+    public async Task TheAgencysOwnLetterheadIsUsedWhenThereIsNoPartner()
+    {
+        GivenAgencyLogo("agency/logo.png");
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(null));
+
+        logo.Should().Equal(AgencyLogo);
+    }
+
+    [Fact]
+    public async Task TheAgencysLetterheadStandsInWhenThePartnerHasNotUploadedOne()
+    {
+        GivenAgencyLogo("agency/logo.png");
+        GivenPartner(logoPath: null);
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(_partnerId));
+
+        logo.Should().Equal(AgencyLogo,
+            "a partner without a letterhead should not leave the page bare");
+    }
+
+    [Fact]
+    public async Task NothingIsReturnedWhenNeitherHasALetterhead()
+    {
+        GivenAgencyLogo(null);
+        GivenPartner(null);
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(_partnerId));
+
+        logo.Should().BeNull("the document falls back to the printed agency name");
+    }
+
+    [Fact]
+    public async Task AMissingFileDoesNotStopTheDocumentBeingProduced()
+    {
+        GivenAgencyLogo("agency/deleted-by-hand.png");
+        _storage.DownloadAsync("agency/deleted-by-hand.png", Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult<Stream?>(null));
+
+        var logo = await Service().GetHeaderLogoAsync(CandidateWith(null));
+
+        logo.Should().BeNull();
+    }
+
+    public void Dispose() => _context.Dispose();
+}

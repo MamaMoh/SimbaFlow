@@ -9,6 +9,14 @@ public interface IFileStorageService
     /// <summary>Upload a file and return the relative storage path.</summary>
     Task<string> UploadAsync(string tenantSlug, Guid candidateId, string fileName, string contentType, Stream fileStream, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Store a letterhead logo for an agency or a partner and return its relative path.
+    ///
+    /// Separate from the candidate upload because a logo belongs to the organisation, not to any
+    /// one person's file — it outlives every candidate it appears on.
+    /// </summary>
+    Task<string> UploadLogoAsync(string ownerKind, Guid ownerId, string fileName, string contentType, Stream fileStream, CancellationToken cancellationToken = default);
+
     /// <summary>Download a file by its relative storage path.</summary>
     Task<Stream?> DownloadAsync(string relativePath, CancellationToken cancellationToken = default);
 

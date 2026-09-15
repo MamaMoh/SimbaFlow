@@ -145,6 +145,7 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddScoped<IWorkflowEngineService, WorkflowEngineService>();
+        services.AddScoped<IDocumentBrandingService, Services.Documents.DocumentBrandingService>();
         services.AddScoped<ICvGenerationService, CvGenerationService>();
         services.AddScoped<IReportExportService, Services.Reporting.ReportExportService>();
         services.AddScoped<IWorkflowDefinitionUpgrader, WorkflowDefinitionUpgrader>();

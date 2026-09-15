@@ -69,4 +69,12 @@ public class TenantInfo : BaseEntity
     public decimal? CapitalEtb { get; set; }
 
     public decimal? BondUsd { get; set; }
+
+    /// <summary>
+    /// Relative storage path of the agency's own letterhead logo.
+    ///
+    /// Used as the header of generated candidate documents whenever the candidate has no partner
+    /// agency of their own — a CV going out under this agency's name should carry its letterhead.
+    /// </summary>
+    public string? LogoPath { get; set; }
 }

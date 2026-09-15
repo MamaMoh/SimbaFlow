@@ -10,6 +10,8 @@ export type PartnerRow = {
   contactPhone?: string | null;
   address?: string | null;
   foreignLicenseId: string | null;
+  /** Stored path of the partner's letterhead, used to head documents for their candidates. */
+  logoPath?: string | null;
   linkId?: string;
   agreementStart?: string;
   agreementEnd?: string;

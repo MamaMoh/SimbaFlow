@@ -19,6 +19,7 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { CreatePartnerSheet } from "@/components/partners/create-partner-sheet";
 import { usePartners, type PartnerRow } from "@/lib/api/partners";
 import { Plus } from "lucide-react";
+import { LogoUpload } from "@/components/branding/logo-upload";
 import { PageHeader } from "@/components/ui/page-header";
 
 /**
@@ -85,6 +86,21 @@ export default function AdminPartnersPage() {
         cell: ({ row }) => row.original.contactEmail || "—",
       },
       {
+        id: "letterhead",
+        header: "Letterhead",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <LogoUpload
+            endpoint={`/api/proxy/branding/partners/${row.original.id}`}
+            logoPath={row.original.logoPath ?? null}
+            onChange={() => mutate()}
+            label=""
+            hint=""
+            compact
+          />
+        ),
+      },
+      {
         accessorKey: "status",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Status" />
@@ -98,7 +114,7 @@ export default function AdminPartnersPage() {
         ),
       },
     ],
-    []
+    [mutate]
   );
 
   const table = useReactTable({

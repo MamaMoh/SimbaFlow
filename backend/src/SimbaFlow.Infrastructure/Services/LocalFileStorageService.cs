@@ -67,6 +67,45 @@ public class LocalFileStorageService : IFileStorageService
         return relativePath;
     }
 
+    private static readonly HashSet<string> LogoExtensions = [".jpg", ".jpeg", ".png"];
+    private const int MaxLogoSizeBytes = 2 * 1024 * 1024; // 2MB — it is a letterhead, not a photo
+
+    public async Task<string> UploadLogoAsync(
+        string ownerKind, Guid ownerId, string fileName,
+        string contentType, Stream fileStream, CancellationToken cancellationToken = default)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (!LogoExtensions.Contains(extension))
+            throw new InvalidOperationException(
+                $"A logo must be a PNG or JPEG image. '{extension}' is not one.");
+
+        if (fileStream.Length > MaxLogoSizeBytes)
+            throw new InvalidOperationException(
+                $"The logo is larger than {MaxLogoSizeBytes / 1024 / 1024}MB. Save it smaller and try again.");
+
+        var safeKind = ownerKind is "agency" or "partner"
+            ? ownerKind
+            : throw new InvalidOperationException($"Unknown logo owner '{ownerKind}'.");
+
+        var directory = Path.Combine(_basePath, "branding", safeKind, ownerId.ToString());
+        Directory.CreateDirectory(directory);
+
+        // A new name each time rather than overwriting: a cached copy of the old logo must not be
+        // served after someone replaces it.
+        var uniqueFileName = $"{Guid.NewGuid():N}{extension}";
+        var fullPath = Path.Combine(directory, uniqueFileName);
+        var relativePath = Path.Combine("branding", safeKind, ownerId.ToString(), uniqueFileName);
+
+        await using (var outputStream = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+        {
+            await fileStream.CopyToAsync(outputStream, cancellationToken);
+        }
+
+        _logger.LogInformation("Logo uploaded for {Kind} {OwnerId}: {RelativePath}",
+            safeKind, ownerId, relativePath);
+        return relativePath;
+    }
+
     public Task<Stream?> DownloadAsync(string relativePath, CancellationToken cancellationToken = default)
     {
         var fullPath = GetFullPath(relativePath);

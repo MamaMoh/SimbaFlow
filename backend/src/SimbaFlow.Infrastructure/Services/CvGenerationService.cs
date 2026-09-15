@@ -12,6 +12,13 @@ namespace SimbaFlow.Infrastructure.Services;
 /// </summary>
 public class CvGenerationService : ICvGenerationService
 {
+    private readonly IDocumentBrandingService _branding;
+
+    public CvGenerationService(IDocumentBrandingService branding)
+    {
+        _branding = branding;
+    }
+
     private static readonly Color Maroon = Color.FromHex("#7A1F2B");
     private static readonly Color AgencyBlue = Color.FromHex("#1B4F9C");
     private static readonly Color Border = Color.FromHex("#222222");
@@ -22,13 +29,16 @@ public class CvGenerationService : ICvGenerationService
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public Task<byte[]> GenerateAsync(
+    public async Task<byte[]> GenerateAsync(
         Candidate candidate,
         byte[]? photoBytes = null,
         byte[]? fullPhotoBytes = null,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        // The partner's letterhead when the candidate is placed with one, otherwise the agency's.
+        var logoBytes = await _branding.GetHeaderLogoAsync(candidate, cancellationToken);
 
         var agency = string.IsNullOrWhiteSpace(candidate.PartnerName)
             ? "SIMBAFLOW FOREIGN EMPLOYMENT AGENCY"
@@ -60,14 +70,23 @@ public class CvGenerationService : ICvGenerationService
 
                 page.Content().Column(root =>
                 {
-                    root.Item().AlignCenter().Column(h =>
+                    // A letterhead if one has been uploaded; the printed name is what we fall
+                    // back to, so a document is never blocked on missing branding.
+                    if (logoBytes is { Length: > 0 })
                     {
-                        h.Item().AlignCenter().Text(agency)
-                            .FontSize(11).Bold().FontColor(AgencyBlue);
-                        h.Item().AlignCenter()
-                            .Text("وكالة توظيف عمالة أجنبية")
-                            .FontSize(9).FontColor(AgencyBlue);
-                    });
+                        root.Item().AlignCenter().MaxHeight(58).Image(logoBytes).FitHeight();
+                    }
+                    else
+                    {
+                        root.Item().AlignCenter().Column(h =>
+                        {
+                            h.Item().AlignCenter().Text(agency)
+                                .FontSize(11).Bold().FontColor(AgencyBlue);
+                            h.Item().AlignCenter()
+                                .Text("وكالة توظيف عمالة أجنبية")
+                                .FontSize(9).FontColor(AgencyBlue);
+                        });
+                    }
 
                     root.Item().PaddingTop(4).Background(Maroon).PaddingVertical(4).PaddingHorizontal(6).Row(r =>
                     {
@@ -202,15 +221,16 @@ public class CvGenerationService : ICvGenerationService
             });
         });
 
-        return Task.FromResult(document.GeneratePdf());
+        return document.GeneratePdf();
     }
 
-    public Task<byte[]> GenerateVisaFormAsync(
+    public async Task<byte[]> GenerateVisaFormAsync(
         Candidate candidate, byte[]? photoBytes = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var document = Document.Create(container => ComposeVisaPage(container, candidate, photoBytes));
-        return Task.FromResult(document.GeneratePdf());
+        var logoBytes = await _branding.GetHeaderLogoAsync(candidate, cancellationToken);
+        var document = Document.Create(container => ComposeVisaPage(container, candidate, photoBytes, logoBytes));
+        return document.GeneratePdf();
     }
 
     /// <summary>
@@ -219,21 +239,28 @@ public class CvGenerationService : ICvGenerationService
     /// A zip of separate PDFs is fine for filing but useless at a printer — the embassy run is
     /// printed as a batch, so the batch has to be a single document.
     /// </summary>
-    public Task<byte[]> GenerateVisaFormsAsync(
+    public async Task<byte[]> GenerateVisaFormsAsync(
         IReadOnlyList<(Candidate Candidate, byte[]? Photo)> entries,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        // Each candidate can sit with a different partner, so the letterhead is resolved per page
+        // rather than once for the batch.
+        var logos = new List<byte[]?>(entries.Count);
+        foreach (var (candidate, _) in entries)
+            logos.Add(await _branding.GetHeaderLogoAsync(candidate, cancellationToken));
+
         var document = Document.Create(container =>
         {
-            foreach (var (candidate, photo) in entries)
-                ComposeVisaPage(container, candidate, photo);
+            for (var i = 0; i < entries.Count; i++)
+                ComposeVisaPage(container, entries[i].Candidate, entries[i].Photo, logos[i]);
         });
-        return Task.FromResult(document.GeneratePdf());
+        return document.GeneratePdf();
     }
 
     private static void ComposeVisaPage(
-        IDocumentContainer container, Candidate candidate, byte[]? photoBytes)
+        IDocumentContainer container, Candidate candidate, byte[]? photoBytes, byte[]? logoBytes)
     {
 
         // Modelled on the Saudi Embassy visa / enjaze form the agencies already circulate: a single
@@ -258,7 +285,12 @@ public class CvGenerationService : ICvGenerationService
                     {
                         head.RelativeItem().Column(c =>
                         {
-                            c.Item().Text(agency).FontSize(12).Bold().FontColor(AgencyBlue);
+                            // The uploaded letterhead stands in for the typed agency name.
+                            if (logoBytes is { Length: > 0 })
+                                c.Item().AlignLeft().MaxHeight(40).Image(logoBytes).FitHeight();
+                            else
+                                c.Item().Text(agency).FontSize(12).Bold().FontColor(AgencyBlue);
+
                             c.Item().Text("Embassy of Saudi Arabia · Consular Section").FontSize(8);
                             c.Item().Text("سفارة المملكة العربية السعودية · القسم القنصلي").FontSize(8);
                         });
