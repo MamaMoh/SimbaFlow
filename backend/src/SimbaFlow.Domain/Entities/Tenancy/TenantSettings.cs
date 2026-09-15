@@ -33,7 +33,7 @@ public class DocumentSettings
     /// are sending it to, not of taste — so the layout is a per-agency setting rather than
     /// something chosen afresh on every download. See CvTemplates for the known values.
     /// </summary>
-    public string CvTemplate { get; set; } = "enjaz";
+    public string CvTemplate { get; set; } = "layout3";
 }
 
 public class IntakeDefaults

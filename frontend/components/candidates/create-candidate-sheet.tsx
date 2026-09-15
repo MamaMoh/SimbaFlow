@@ -281,6 +281,10 @@ const registerCandidateSchema = z.object({
   skillCooking: z.boolean().optional(),
   skillIroning: z.boolean().optional(),
   skillSewing: z.boolean().optional(),
+  skillArabicCooking: z.boolean().optional(),
+  skillTutoring: z.boolean().optional(),
+  skillComputer: z.boolean().optional(),
+  complexion: opt,
   skillBabysitting: z.boolean().optional(),
   skillChildCare: z.boolean().optional(),
   visaNumber: opt,
@@ -366,6 +370,10 @@ const defaults: Partial<RegisterCandidateForm> = {
   skillCooking: false,
   skillIroning: false,
   skillSewing: false,
+  skillArabicCooking: false,
+  skillTutoring: false,
+  skillComputer: false,
+  complexion: "",
   skillBabysitting: false,
   skillChildCare: false,
 };
@@ -833,6 +841,10 @@ export function CandidateApplicationForm({
       skillCooking: !!d.skillCooking,
       skillIroning: !!d.skillIroning,
       skillSewing: !!d.skillSewing,
+      skillArabicCooking: !!d.skillArabicCooking,
+      skillTutoring: !!d.skillTutoring,
+      skillComputer: !!d.skillComputer,
+      complexion: d.complexion ?? "",
       skillBabysitting: !!d.skillBabysitting,
       skillChildCare: !!d.skillChildCare,
       visaNumber: d.visaNumber || "",
@@ -997,6 +1009,10 @@ export function CandidateApplicationForm({
     skillCooking: !!data.skillCooking,
     skillIroning: !!data.skillIroning,
     skillSewing: !!data.skillSewing,
+    skillArabicCooking: !!data.skillArabicCooking,
+    skillTutoring: !!data.skillTutoring,
+    skillComputer: !!data.skillComputer,
+    complexion: data.complexion || null,
     skillBabysitting: !!data.skillBabysitting,
     skillChildCare: !!data.skillChildCare,
     visaNumber: data.visaNumber || null,
@@ -1991,6 +2007,30 @@ export function CandidateApplicationForm({
                   checked={!!watch("skillSewing")}
                   onChange={(v) => setValue("skillSewing", v)}
                 />
+                {/* The partner CV forms list these three alongside the rest; without them those
+                    rows print blank on every candidate, which reads as "cannot" not "not asked". */}
+                <SkillCheck
+                  id="skillArabicCooking"
+                  label="Arabic cooking"
+                  checked={!!watch("skillArabicCooking")}
+                  onChange={(v) => setValue("skillArabicCooking", v)}
+                />
+                <SkillCheck
+                  id="skillTutoring"
+                  label="Tutoring"
+                  checked={!!watch("skillTutoring")}
+                  onChange={(v) => setValue("skillTutoring", v)}
+                />
+                <SkillCheck
+                  id="skillComputer"
+                  label="Computer"
+                  checked={!!watch("skillComputer")}
+                  onChange={(v) => setValue("skillComputer", v)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="complexion">Complexion</Label>
+                <Input id="complexion" {...register("complexion")} placeholder="e.g. Fair" />
               </div>
               <div className="space-y-1.5">
                 <Label>Remark</Label>

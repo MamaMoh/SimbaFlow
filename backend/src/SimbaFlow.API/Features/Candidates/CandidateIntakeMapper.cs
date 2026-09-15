@@ -40,6 +40,10 @@ public record CandidateIntakePayload(
     bool SkillCooking = false,
     bool SkillIroning = false,
     bool SkillSewing = false,
+    bool SkillArabicCooking = false,
+    bool SkillTutoring = false,
+    bool SkillComputer = false,
+    string? Complexion = null,
     bool SkillBabysitting = false,
     bool SkillChildCare = false,
     string? VisaNumber = null,
@@ -111,6 +115,10 @@ public static class CandidateIntakeMapper
         candidate.SkillCooking = p.SkillCooking;
         candidate.SkillIroning = p.SkillIroning;
         candidate.SkillSewing = p.SkillSewing;
+        candidate.SkillArabicCooking = p.SkillArabicCooking;
+        candidate.SkillTutoring = p.SkillTutoring;
+        candidate.SkillComputer = p.SkillComputer;
+        candidate.Complexion = p.Complexion?.Trim();
         candidate.SkillBabysitting = p.SkillBabysitting;
         candidate.SkillChildCare = p.SkillChildCare;
         candidate.VisaNumber = NullIfEmpty(p.VisaNumber);

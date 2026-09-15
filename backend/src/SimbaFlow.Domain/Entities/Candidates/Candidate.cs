@@ -69,6 +69,15 @@ public class Candidate : BaseEntity
     public bool SkillBabysitting { get; set; }
     public bool SkillChildCare { get; set; }
 
+    // The partner CV forms list these alongside the others; without them those rows print blank
+    // on every candidate, which reads as "cannot do it" rather than "never asked".
+    public bool SkillArabicCooking { get; set; }
+    public bool SkillTutoring { get; set; }
+    public bool SkillComputer { get; set; }
+
+    /// <summary>Skin tone as the Gulf application forms ask for it (e.g. Fair, Medium).</summary>
+    public string? Complexion { get; set; }
+
     // ──── Travel & Contract ────
     public string? CountryOfTravel { get; set; }
     /// <summary>Snapshot of the selected foreign partner's name from the platform catalog.</summary>

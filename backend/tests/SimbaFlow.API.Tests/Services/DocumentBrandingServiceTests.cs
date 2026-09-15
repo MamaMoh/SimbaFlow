@@ -178,11 +178,11 @@ public class DocumentBrandingServiceTests : IDisposable
         _context.Tenants.Add(new TenantInfo
         {
             Id = _tenantId, Name = "Test Agency", SchemaName = "tenant_test",
-            Settings = new TenantSettings { Documents = new DocumentSettings { CvTemplate = "profile" } },
+            Settings = new TenantSettings { Documents = new DocumentSettings { CvTemplate = "layout5" } },
         });
         _context.SaveChanges();
 
-        (await Service().GetCvTemplateAsync()).Should().Be("profile");
+        (await Service().GetCvTemplateAsync()).Should().Be("layout5");
     }
 
     [Fact]
