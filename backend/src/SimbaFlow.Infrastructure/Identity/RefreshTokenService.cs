@@ -67,6 +67,13 @@ public class RefreshTokenService : IRefreshTokenService
         return (token, rawValue);
     }
 
+    /// <summary>
+    /// How long after a rotation the old token may still be presented without being read as theft.
+    /// Long enough to cover parallel requests from one client, short enough that a replay has to
+    /// be near-instant.
+    /// </summary>
+    private static readonly TimeSpan RotationGraceWindow = TimeSpan.FromSeconds(60);
+
     public async Task<(RefreshToken newToken, string rawValue, bool isTheftDetected)> RotateAsync(
         string rawToken, string? ipAddress, CancellationToken ct = default)
     {
@@ -78,17 +85,45 @@ public class RefreshTokenService : IRefreshTokenService
         if (existingToken is null)
             throw new UnauthorizedAccessException("Invalid refresh token");
 
-        // THEFT DETECTION: If token is already revoked, someone is reusing a stolen token
         if (existingToken.IsRevoked)
         {
-            _logger.LogError(
-                "TOKEN THEFT DETECTED: UserId={UserId}, RevokedTokenReused, IP={IpAddress}",
-                existingToken.UserId, ipAddress);
+            // A token that was rotated a moment ago and is being presented again is almost
+            // always two of the app's own requests refreshing at the same time, not a thief.
+            // The session layer can run its refresh from several requests at once, and the
+            // loser of that race arrives holding a token the winner has just rotated.
+            //
+            // Treating that as theft revoked every session the user had and threw them out of
+            // the app mid-task, which is what was happening in production several times a
+            // minute. Inside the grace window the request is served instead: the presented
+            // token stays revoked, and the caller gets a fresh pair.
+            //
+            // A replayed stolen token still trips the alarm — it would have to be replayed
+            // within seconds of the legitimate rotation to pass, and outside that window the
+            // response is unchanged.
+            var rotatedRecently =
+                existingToken.ReasonRevoked == "Rotated"
+                && existingToken.RevokedAt is DateTime revokedAt
+                && DateTime.UtcNow - revokedAt < RotationGraceWindow;
 
-            // Revoke ALL tokens for this user (nuclear option)
-            await RevokeAllForUserAsync(existingToken.UserId, "TokenTheftDetected", ct);
+            if (!rotatedRecently)
+            {
+                _logger.LogError(
+                    "TOKEN THEFT DETECTED: UserId={UserId}, RevokedTokenReused, IP={IpAddress}",
+                    existingToken.UserId, ipAddress);
 
-            return (existingToken, string.Empty, true);
+                // Revoke ALL tokens for this user (nuclear option)
+                await RevokeAllForUserAsync(existingToken.UserId, "TokenTheftDetected", ct);
+
+                return (existingToken, string.Empty, true);
+            }
+
+            _logger.LogInformation(
+                "Concurrent refresh for UserId={UserId} — token rotated {Age:0.0}s ago, issuing a fresh pair",
+                existingToken.UserId,
+                (DateTime.UtcNow - existingToken.RevokedAt!.Value).TotalSeconds);
+
+            var (raceToken, raceRaw) = await CreateAsync(existingToken.UserId, ipAddress, ct);
+            return (raceToken, raceRaw, false);
         }
 
         // Check expiry

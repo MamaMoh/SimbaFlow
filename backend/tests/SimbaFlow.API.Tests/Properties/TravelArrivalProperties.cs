@@ -26,6 +26,11 @@ public class TravelArrivalProperties
     [Property(MaxTest = 30)]
     public bool BookTicket_RequiresDestination(NonEmptyString destination)
     {
+        // FsCheck's NonEmptyString includes whitespace-only strings such as "\t", which the
+        // validator rejects on purpose — a destination of blanks is no destination. Only
+        // non-blank input is a valid destination, so that is what this property is about.
+        if (string.IsNullOrWhiteSpace(destination.Get)) return true;
+
         var ok = new BookTicketValidator().Validate(
             new BookTicketCommand(Guid.NewGuid(), destination.Get, DateOnly.FromDateTime(DateTime.UtcNow)));
         var bad = new BookTicketValidator().Validate(

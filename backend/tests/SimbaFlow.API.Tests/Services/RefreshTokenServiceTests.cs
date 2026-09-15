@@ -95,22 +95,57 @@ public class RefreshTokenServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task RotateAsync_DetectsTheft_WhenRevokedTokenReused()
+    public async Task RotateAsync_ServesAConcurrentRefresh_RatherThanCallingItTheft()
     {
-        // Arrange — create and rotate (old is now revoked)
+        // Two of the app's own requests can refresh at the same time; the loser arrives holding a
+        // token the winner rotated a moment earlier. Treating that as theft revoked every session
+        // the user had and threw them out of the app mid-task.
         var (_, rawValue) = await _service.CreateAsync(_testUserId, "127.0.0.1");
         await _service.RotateAsync(rawValue, "127.0.0.1");
 
-        // Act — try to reuse the revoked token (theft!)
+        var (_, raceRaw, isTheft) = await _service.RotateAsync(rawValue, "127.0.0.1");
+
+        isTheft.Should().BeFalse();
+        raceRaw.Should().NotBeNullOrEmpty("the caller needs a usable token back");
+
+        var activeTokens = await _context.RefreshTokens
+            .CountAsync(t => t.UserId == _testUserId && t.RevokedAt == null);
+        activeTokens.Should().BeGreaterThan(0, "the user's session must survive");
+    }
+
+    [Fact]
+    public async Task RotateAsync_DetectsTheft_WhenARotatedTokenComesBackLater()
+    {
+        // Outside the grace window the answer is unchanged: a replay has to be near-instant to
+        // pass for a race, and this one is not.
+        var (_, rawValue) = await _service.CreateAsync(_testUserId, "127.0.0.1");
+        await _service.RotateAsync(rawValue, "127.0.0.1");
+
+        var rotated = await _context.RefreshTokens
+            .FirstAsync(t => t.UserId == _testUserId && t.RevokedAt != null);
+        rotated.RevokedAt = DateTime.UtcNow.AddMinutes(-5);
+        await _context.SaveChangesAsync();
+
         var (_, _, isTheft) = await _service.RotateAsync(rawValue, "192.168.1.100");
 
-        // Assert
         isTheft.Should().BeTrue();
 
-        // ALL tokens for this user should be revoked
         var activeTokens = await _context.RefreshTokens
             .CountAsync(t => t.UserId == _testUserId && t.RevokedAt == null);
         activeTokens.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RotateAsync_DetectsTheft_WhenATokenRevokedForAnotherReasonComesBack()
+    {
+        // A token revoked by signing out or a password change was never part of a rotation, so
+        // its reappearance is not a race however recent it is.
+        var (_, rawValue) = await _service.CreateAsync(_testUserId, "127.0.0.1");
+        await _service.RevokeAsync(rawValue, "127.0.0.1", "LoggedOut");
+
+        var (_, _, isTheft) = await _service.RotateAsync(rawValue, "192.168.1.100");
+
+        isTheft.Should().BeTrue();
     }
 
     [Fact]
