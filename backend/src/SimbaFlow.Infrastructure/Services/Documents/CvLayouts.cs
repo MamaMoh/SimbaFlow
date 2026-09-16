@@ -734,7 +734,9 @@ internal static class CvLayouts
         var dob = candidate.DateOfBirth.ToString("dd/MM/yyyy");
         var address = FormatAddress(candidate) ?? "";
         var refNo = candidate.ReferenceNo ?? candidate.LabourId ?? candidate.ApplicationNo ?? candidate.PassportNumber;
-        string YesNo(bool v) => v ? "YES" : "—";
+        // NO, not a dash: the sample form says NO, and a dash reads as "not asked" where the
+        // rest of the column reads as an answer. Shadowed the shared helper before this.
+        string YesNo(bool v) => v ? "YES" : "NO";
 
         var placeOfBirth = !string.IsNullOrWhiteSpace(candidate.PlaceOfBirth)
             ? candidate.PlaceOfBirth.ToUpperInvariant()
