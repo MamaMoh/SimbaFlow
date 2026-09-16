@@ -1,3 +1,4 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,37 @@ public record ProvisionTenantCommand(
     string? Address = null,
     string? City = null,
     string? Country = null) : IRequest<Result<Guid>>;
+
+/// <summary>
+/// The slug is not just a label — it becomes the tenant's PostgreSQL schema name, which is
+/// interpolated into "SET search_path" on every request that tenant makes. Almost every other
+/// command in the application has a validator; this one had none, so the slug was arbitrary text
+/// on its way into a SQL identifier.
+///
+/// The interceptor escapes it as well. This constrains it to something that can safely be a schema
+/// name at all: lowercase, starting and ending alphanumeric, no leading digit for Postgres's sake,
+/// and short enough that the "tenant_" prefix leaves room inside the 63-byte identifier limit.
+/// </summary>
+public class ProvisionTenantValidator : AbstractValidator<ProvisionTenantCommand>
+{
+    public ProvisionTenantValidator()
+    {
+        RuleFor(x => x.AgencyName).NotEmpty().MaximumLength(200);
+
+        RuleFor(x => x.Slug)
+            .NotEmpty()
+            .Matches("^[a-z][a-z0-9-]{1,38}[a-z0-9]$")
+            .WithMessage(
+                "A slug is 3 to 40 characters: lowercase letters, digits and hyphens, "
+                + "starting with a letter and ending with a letter or digit.");
+
+        RuleFor(x => x.ContactEmail).NotEmpty().EmailAddress();
+        RuleFor(x => x.AdminEmail).NotEmpty().EmailAddress();
+        RuleFor(x => x.AdminFirstName).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.AdminLastName).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.TemporaryPassword).NotEmpty().MinimumLength(8);
+    }
+}
 
 public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Result<Guid>>
 {
