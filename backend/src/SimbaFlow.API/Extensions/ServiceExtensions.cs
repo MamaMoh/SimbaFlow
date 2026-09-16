@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Carter;
 using FluentValidation;
 using MediatR;
@@ -43,35 +44,51 @@ public static class ServiceExtensions
             .AddPolicy("SuperAdmin", policy => policy.RequireAssertion(ctx =>
                 ctx.User.HasClaim("role", "SuperAdmin") ||
                 ctx.User.HasClaim(System.Security.Claims.ClaimTypes.Role, "SuperAdmin") ||
-                ctx.User.IsInRole("SuperAdmin")));
+                ctx.User.IsInRole("SuperAdmin")))
+
+            // The token issued to someone who has passed only the first factor and still has to
+            // enrol in MFA. It is signed with the same key and carries the same issuer and audience
+            // as a full token, so on its own the API would accept it anywhere — which is exactly
+            // what enforcing MFA is meant to prevent. The token_use claim marked it as limited but
+            // nothing ever read that claim.
+            //
+            // Reading it here, in the default policy, covers every endpoint that says
+            // RequireAuthorization() without arguments — which is all of them but the two below.
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .RequireAssertion(ctx => !ctx.User.HasClaim(c => c.Type == "token_use"))
+                .Build())
+
+            // ...and these two opt back in, because enrolling is the one thing such a token exists
+            // to do. A full token is accepted here too, so an enrolled user can re-enrol.
+            .AddPolicy("MfaEnrollment", policy => policy
+                .RequireAuthenticatedUser()
+                .RequireAssertion(ctx =>
+                    !ctx.User.HasClaim(c => c.Type == "token_use")
+                    || ctx.User.HasClaim("token_use", "mfa_setup")));
 
         // Rate Limiting
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            options.AddFixedWindowLimiter("login", opt =>
-            {
-                opt.PermitLimit = 5;
-                opt.Window = TimeSpan.FromMinutes(1);
-                opt.QueueLimit = 0;
-            });
+            // Partitioned by caller, not shared. A single fixed window across all callers is the
+            // wrong shape for a login limiter twice over: one careless client exhausts it for
+            // everyone, and an attacker spraying one password across many accounts is throttled no
+            // harder than a single user who mistypes.
+            //
+            // The limit is well above what a person does and well below what a spray needs. It is
+            // not 5/minute because an agency office sits behind one NAT address, and a morning
+            // where eight staff sign in together must not lock out the ninth.
+            options.AddPolicy("login", ClientPartition(permitLimit: 15, window: TimeSpan.FromMinutes(1)));
 
             // Password reset accepts an arbitrary email from an anonymous caller. Keep it tight:
             // enough for a person who mistypes their address, far too slow to enumerate accounts.
-            options.AddFixedWindowLimiter("auth", opt =>
-            {
-                opt.PermitLimit = 5;
-                opt.Window = TimeSpan.FromMinutes(15);
-                opt.QueueLimit = 0;
-            });
+            options.AddPolicy("auth", ClientPartition(permitLimit: 10, window: TimeSpan.FromMinutes(15)));
 
-            options.AddFixedWindowLimiter("refresh", opt =>
-            {
-                opt.PermitLimit = 30;
-                opt.Window = TimeSpan.FromMinutes(1);
-                opt.QueueLimit = 0;
-            });
+            // Refresh is chatty — several tabs rotating a token at once is normal — so this is
+            // generous. It exists to make guessing at refresh tokens pointless, not to pace clients.
+            options.AddPolicy("refresh", ClientPartition(permitLimit: 60, window: TimeSpan.FromMinutes(1)));
 
             options.AddFixedWindowLimiter("general", opt =>
             {
@@ -110,4 +127,28 @@ public static class ServiceExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// A fixed window per calling client, keyed on the client's address.
+    ///
+    /// The address is the one left by UseForwardedHeaders, which is the browser's — requests arrive
+    /// via nginx and the Next.js server, so without that every caller would look identical and this
+    /// would silently become one shared bucket for the whole platform. If no address can be
+    /// determined at all, such a request is given its own small allowance rather than being pooled
+    /// with everyone else's, so a missing address can never lock real users out.
+    /// </summary>
+    private static Func<HttpContext, RateLimitPartition<string>> ClientPartition(
+        int permitLimit, TimeSpan window) =>
+        httpContext =>
+        {
+            var address = httpContext.Connection.RemoteIpAddress;
+            var key = address is null ? "unknown" : address.ToString();
+
+            return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = permitLimit,
+                Window = window,
+                QueueLimit = 0,
+            });
+        };
 }

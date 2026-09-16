@@ -1,4 +1,6 @@
 using Carter;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Serilog;
@@ -136,7 +138,38 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+// Must run before anything that reads the caller's address — the rate limiter partitions on it.
+// Requests reach this API only from nginx and the Next.js server, both on the private Docker
+// network, so the forwarded address can be trusted; nothing off-host can reach port 8100 to forge
+// one. Without this every request appears to come from the proxy, and a per-IP limit would put the
+// entire platform in one bucket.
+var forwardedHeaders = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    // The chain is browser → nginx → Next.js → here, so more than one hop is expected.
+    ForwardLimit = 3,
+};
+forwardedHeaders.KnownIPNetworks.Clear();
+forwardedHeaders.KnownProxies.Clear();
+foreach (var network in new[]
+         {
+             new System.Net.IPNetwork(IPAddress.Parse("127.0.0.0"), 8),
+             new System.Net.IPNetwork(IPAddress.Parse("10.0.0.0"), 8),
+             new System.Net.IPNetwork(IPAddress.Parse("172.16.0.0"), 12),
+             new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 16),
+         })
+{
+    forwardedHeaders.KnownIPNetworks.Add(network);
+}
+app.UseForwardedHeaders(forwardedHeaders);
+
 app.UseMiddleware<GlobalExceptionHandler>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+
+// HSTS outside development, where the certificate is usually self-signed or absent.
+if (!app.Environment.IsDevelopment())
+    app.UseHsts();
+
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();

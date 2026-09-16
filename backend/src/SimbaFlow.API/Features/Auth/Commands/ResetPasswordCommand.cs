@@ -3,6 +3,8 @@ using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
+using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Identity;
 
@@ -33,8 +35,18 @@ public class ResetPasswordValidator : AbstractValidator<ResetPasswordCommand>
 public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result>
 {
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IRefreshTokenService _refreshTokenService;
+    private readonly IPlatformDbContext _context;
 
-    public ResetPasswordHandler(UserManager<ApplicationUser> userManager) => _userManager = userManager;
+    public ResetPasswordHandler(
+        UserManager<ApplicationUser> userManager,
+        IRefreshTokenService refreshTokenService,
+        IPlatformDbContext context)
+    {
+        _userManager = userManager;
+        _refreshTokenService = refreshTokenService;
+        _context = context;
+    }
 
     public async Task<Result> Handle(ResetPasswordCommand request, CancellationToken ct)
     {
@@ -78,6 +90,24 @@ public class ResetPasswordHandler : IRequestHandler<ResetPasswordCommand, Result
         user.PasswordChangedAt = DateTime.UtcNow;
         user.PasswordExpiresAt = DateTime.UtcNow.AddDays(90);
         await _userManager.UpdateAsync(user);
+
+        // End every existing session, as changing a password does.
+        //
+        // This matters more here than there: a reset is the path someone takes precisely because
+        // they believe their account is compromised. Refresh tokens last seven days, so without
+        // this an attacker holding one keeps renewing a session straight through the reset — the
+        // user does the one thing they know to do and it changes nothing.
+        await _refreshTokenService.RevokeAllForUserAsync(user.Id, "PasswordReset", ct);
+
+        var sessions = await _context.UserSessions
+            .Where(s => s.UserId == user.Id && s.IsActive)
+            .ToListAsync(ct);
+        foreach (var session in sessions)
+        {
+            session.IsActive = false;
+            session.LogoutAt = DateTime.UtcNow;
+        }
+        await _context.SaveChangesAsync(ct);
 
         return Result.Success();
     }

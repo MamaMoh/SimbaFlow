@@ -4,14 +4,27 @@
 
 const API_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:5117";
 
-export async function authenticate(credentials: { username: string; password: string } | FormData) {
+/**
+ * Sign in against the backend.
+ *
+ * `clientIp` is the browser's address, passed through so the API's login rate limit can be applied
+ * per caller. This call is made server-side, so without it every sign-in on the platform appears to
+ * come from this container and would share a single allowance.
+ */
+export async function authenticate(
+  credentials: { username: string; password: string } | FormData,
+  clientIp?: string,
+) {
   const body = credentials instanceof FormData
     ? { username: credentials.get("username") as string, password: credentials.get("password") as string }
     : credentials;
 
   const response = await fetch(`${API_URL}/api/auth/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(clientIp ? { "X-Forwarded-For": clientIp } : {}),
+    },
     body: JSON.stringify(body),
   });
 

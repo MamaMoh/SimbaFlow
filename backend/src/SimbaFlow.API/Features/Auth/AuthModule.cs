@@ -13,13 +13,16 @@ public class AuthModule : ICarterModule
             .WithTags("Authentication");
 
         // Public endpoints (no auth required)
+        // Rate limited per caller. Identity lockout already slows repeated attempts against one
+        // account; this is what stops the same password being tried against many accounts, which
+        // lockout does nothing about.
         group.MapPost("/login", async (LoginCommand command, ISender sender) =>
         {
             var result = await sender.Send(command);
             return result.IsSuccess
                 ? Results.Ok(result)
                 : Results.Json(result, statusCode: result.StatusCode);
-        });
+        }).RequireRateLimiting("login");
 
         group.MapPost("/refresh", async (RefreshTokenCommand command, ISender sender) =>
         {
@@ -27,7 +30,7 @@ public class AuthModule : ICarterModule
             return result.IsSuccess
                 ? Results.Ok(result)
                 : Results.Json(result, statusCode: result.StatusCode);
-        });
+        }).RequireRateLimiting("refresh");
 
         // Protected endpoints (auth required)
         group.MapPost("/logout", async (LogoutCommand command, ISender sender) =>
@@ -59,13 +62,15 @@ public class AuthModule : ICarterModule
         }).RequireAuthorization();
 
         // MFA verification (second step of login)
+        // A six-digit code is guessable in a way a password is not, so the second factor needs the
+        // limit at least as much as the first.
         group.MapPost("/login/mfa", async (VerifyMfaCommand command, ISender sender) =>
         {
             var result = await sender.Send(command);
             return result.IsSuccess
                 ? Results.Ok(result)
                 : Results.Json(result, statusCode: result.StatusCode);
-        });
+        }).RequireRateLimiting("login");
 
         // MFA setup (authenticated user requests a new authenticator key + QR)
         group.MapPost("/mfa/setup", async (ISender sender) =>
@@ -74,7 +79,7 @@ public class AuthModule : ICarterModule
             return result.IsSuccess
                 ? Results.Ok(result)
                 : Results.Json(result, statusCode: result.StatusCode);
-        }).RequireAuthorization();
+        }).RequireAuthorization("MfaEnrollment");
 
         // MFA enable (confirm enrollment with the first TOTP code → turns MFA on)
         group.MapPost("/mfa/enable", async (EnableMfaCommand command, ISender sender) =>
@@ -83,7 +88,7 @@ public class AuthModule : ICarterModule
             return result.IsSuccess
                 ? Results.Ok(result)
                 : Results.Json(result, statusCode: result.StatusCode);
-        }).RequireAuthorization();
+        }).RequireAuthorization("MfaEnrollment");
 
         // MFA disable (requires account password)
         group.MapPost("/mfa/disable", async (DisableMfaCommand command, ISender sender) =>
