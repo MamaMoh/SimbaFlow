@@ -137,7 +137,25 @@ public class DeleteCandidateHandler : IRequestHandler<DeleteCandidateCommand, Re
     }
 }
 
-public record UploadDocumentCommand(Guid CandidateId, Microsoft.AspNetCore.Http.IFormFile File, int DocumentType) : IRequest<Result<Guid>>;
+/// <summary>
+/// Files a document against a candidate.
+///
+/// This carried no permission at all: the endpoint sat behind RequireAuthorization() like the rest
+/// of the group, so any signed-in account — an auditor, a finance officer, a case executive — could
+/// write a file onto anyone's record. The two desks that actually do this are the clerk who owns
+/// the candidate's record and the officer who works the LMIS board, and neither holds the other's
+/// permission, so it takes either.
+///
+/// candidate.create is here because registration attaches the photo and the passport scan as part
+/// of opening the record — a role allowed to register someone but not to amend them afterwards
+/// would otherwise create the candidate and then fail on the first file.
+/// </summary>
+public record UploadDocumentCommand(Guid CandidateId, Microsoft.AspNetCore.Http.IFormFile File, int DocumentType)
+    : IRequest<Result<Guid>>, IRequireAnyPermission
+{
+    public IReadOnlyList<string> AcceptedPermissions =>
+        ["candidate.update", "candidate.create", "lmis.document", "lmis.update"];
+}
 
 public class UploadDocumentHandler : IRequestHandler<UploadDocumentCommand, Result<Guid>>
 {

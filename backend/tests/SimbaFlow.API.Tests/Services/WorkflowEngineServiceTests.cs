@@ -15,7 +15,8 @@ public class WorkflowEngineServiceTests
 {
     private static (TenantDbContext Db, WorkflowEngineService Engine, Guid UserId) CreateSut(
         string? userName = "tester",
-        IReadOnlyList<string>? roles = null)
+        IReadOnlyList<string>? roles = null,
+        bool canExecute = true)
     {
         var options = new DbContextOptionsBuilder<TenantDbContext>()
             .UseInMemoryDatabase($"wf_{Guid.NewGuid()}")
@@ -27,6 +28,8 @@ public class WorkflowEngineServiceTests
         currentUser.UserName.Returns(userName);
         currentUser.TenantId.Returns(Guid.NewGuid());
         currentUser.Roles.Returns(roles ?? ["AgencyOwner"]);
+        // Listing the steps takes workflow.execute — see GetAvailableActionsAsync.
+        currentUser.HasPermission("workflow.execute").Returns(canExecute);
 
         var db = new TenantDbContext(options, currentUser);
         var engine = new WorkflowEngineService(db, currentUser);
@@ -213,6 +216,19 @@ public class WorkflowEngineServiceTests
         var actions = await engine.GetAvailableActionsAsync(candidate.Id, ["AgencyOwner"]);
 
         actions.Should().ContainSingle(a => a.TransitionRuleId == rule.Id && a.IsEnabled);
+    }
+
+    [Fact]
+    public async Task GetAvailableActions_ViewOnlyUser_IsOfferedNothing()
+    {
+        // The auditor, the clerk and the case executive hold workflow.view and not workflow.execute.
+        // They were still shown every step, each of which came back 403 when pressed.
+        var (db, engine, _) = CreateSut(canExecute: false);
+        var (_, _, _, _, candidate) = await SeedBasicAsync(db);
+
+        var actions = await engine.GetAvailableActionsAsync(candidate.Id, ["Auditor"]);
+
+        actions.Should().BeEmpty();
     }
 
     [Fact]

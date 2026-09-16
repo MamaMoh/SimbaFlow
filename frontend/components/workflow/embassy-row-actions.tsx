@@ -10,10 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
-import {
-  WorkflowActionItems,
-  hasEnabledActions,
-} from "@/components/workflow/workflow-action-items";
+import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
 import { useAvailableActions } from "@/lib/api/workflow";
@@ -59,6 +56,10 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
     hasPermission("embassy.case_submit") || hasPermission("system.admin");
   const canOutcome =
     hasPermission("embassy.visa_outcome") || hasPermission("system.admin");
+  // The candidate's own page, and the paperwork below it, are read under candidate.read. Reaching
+  // this board is a different permission, and holding one does not imply the other, so the link has
+  // to ask for what the page it points at requires.
+  const canRead = hasPermission("candidate.read");
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const [mode, setMode] = useState<Mode>(null);
@@ -98,13 +99,17 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="z-[200] w-56">
-          <DropdownMenuItem asChild>
-            <Link href={`/candidates/${candidate.id}`}>
-              <Eye className="mr-2 h-4 w-4" />
-              View details
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
+          {canRead && (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href={`/candidates/${candidate.id}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
           <CandidateDocumentItems candidateId={candidate.id} />
 
           {isCaseExec ? (
@@ -193,11 +198,11 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                   )}
                 </>
               )}
-              {hasEnabledActions(actions) && <DropdownMenuSeparator />}
               <WorkflowActionItems
                 candidateId={candidate.id}
                 actions={actions}
                 onExecuted={refresh}
+                separatorBefore
               />
             </>
           )}

@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreateAgencySheet } from "@/components/tenants/create-agency-sheet";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { EditAgencySheet } from "@/components/tenants/edit-agency-sheet";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
@@ -53,6 +54,11 @@ const STATUS_MAP: Record<number, { label: string; variant: "default" | "outline"
 };
 
 export default function TenantsPage() {
+  // Creating, suspending and deleting an agency is platform work: /api/tenants is behind the
+  // SuperAdmin policy end to end. Anyone else reaching this page gets a table of buttons that all
+  // come back 403, so say so once instead.
+  const { isSuperAdmin, isLoading: permsLoading } = usePermissions();
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -200,6 +206,17 @@ export default function TenantsPage() {
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 10 } },
   });
+
+  if (!permsLoading && !isSuperAdmin) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Agencies" description="Manage all labour export agencies on the platform" />
+        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+          Managing agencies is reserved for platform administrators.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

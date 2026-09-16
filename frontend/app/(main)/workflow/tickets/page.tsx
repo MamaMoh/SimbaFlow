@@ -28,6 +28,10 @@ import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 export default function TicketBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("travel.read") || hasPermission("system.admin");
+  // Ticking rows is only worth anything if something can be done with the selection, and the one
+  // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
+  // is a different permission, so without it the column is dead weight in every row.
+  const canSelect = hasPermission("candidate.read");
   const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
@@ -38,7 +42,7 @@ export default function TicketBoardPage() {
 
   const columns = useMemo<ColumnDef<TravelBoardRow>[]>(
     () => [
-      selectionColumn<TravelBoardRow>(),
+      ...(canSelect ? [selectionColumn<TravelBoardRow>()] : []),
       indexColumn<TravelBoardRow>(),
       {
         accessorKey: "fullName",
@@ -92,7 +96,7 @@ export default function TicketBoardPage() {
         ),
       },
     ],
-    [mutate]
+    [mutate, canSelect]
   );
 
   const table = useReactTable({

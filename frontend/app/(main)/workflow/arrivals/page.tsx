@@ -28,6 +28,10 @@ import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 export default function ArrivalBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("arrival.read") || hasPermission("system.admin");
+  // Ticking rows is only worth anything if something can be done with the selection, and the one
+  // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
+  // is a different permission, so without it the column is dead weight in every row.
+  const canSelect = hasPermission("candidate.read");
   const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
@@ -38,7 +42,7 @@ export default function ArrivalBoardPage() {
 
   const columns = useMemo<ColumnDef<ArrivalBoardRow>[]>(
     () => [
-      selectionColumn<ArrivalBoardRow>(),
+      ...(canSelect ? [selectionColumn<ArrivalBoardRow>()] : []),
       indexColumn<ArrivalBoardRow>(),
       {
         accessorKey: "fullName",
@@ -102,7 +106,7 @@ export default function ArrivalBoardPage() {
         ),
       },
     ],
-    [mutate]
+    [mutate, canSelect]
   );
 
   const table = useReactTable({

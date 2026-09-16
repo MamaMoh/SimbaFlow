@@ -31,6 +31,7 @@ import {
 } from "@/components/users/reset-password-dialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { PageHeader } from "@/components/ui/page-header";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 
 interface UserRow {
   id: string;
@@ -53,6 +54,13 @@ interface UserRow {
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function StaffPage() {
+  // This page is the user list, and every button on it writes to an account: activate, edit,
+  // reset a password, delete. The sidebar shows it to anyone with staff.read — which the office
+  // manager holds and users.read does not follow from — so the page has to ask for what it uses.
+  const { hasPermission, isLoading: permsLoading } = usePermissions();
+  const canView = hasPermission("users.read");
+  const canManage = hasPermission("users.write");
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -62,7 +70,7 @@ export default function StaffPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, mutate } = useSWR(
-    `/api/proxy/users?page=1&pageSize=100`,
+    canView ? `/api/proxy/users?page=1&pageSize=100` : null,
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -181,7 +189,8 @@ export default function StaffPage() {
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
+      cell: ({ row }) =>
+        !canManage ? null : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
@@ -220,7 +229,7 @@ export default function StaffPage() {
       size: 60,
       enableSorting: false,
     },
-  ], []);
+  ], [canManage]);
 
   const table = useReactTable({
     data: users,
@@ -234,6 +243,17 @@ export default function StaffPage() {
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 10 } },
   });
+
+  if (!permsLoading && !canView) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Users & Staff" description="Manage system users, roles, and access" />
+        <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+          You do not have permission to view user accounts.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -250,9 +270,11 @@ export default function StaffPage() {
           searchPlaceholder="Search users..."
           paginated={true}
           toolbarEndActions={
-            <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
-              <span className="mr-1">+</span> Create
-            </Button>
+            canManage ? (
+              <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
+                <span className="mr-1">+</span> Create
+              </Button>
+            ) : null
           }
         />
       </div>

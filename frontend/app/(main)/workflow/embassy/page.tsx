@@ -33,6 +33,10 @@ import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 export default function EmbassyBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("embassy.read") || hasPermission("system.admin");
+  // Ticking rows is only worth anything if something can be done with the selection, and the one
+  // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
+  // is a different permission, so without it the column is dead weight in every row.
+  const canSelect = hasPermission("candidate.read");
   const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<"tasheer" | "enjaze" | null>(null);
@@ -44,7 +48,7 @@ export default function EmbassyBoardPage() {
 
   const columns = useMemo<ColumnDef<EmbassyBoardRow>[]>(
     () => [
-      selectionColumn<EmbassyBoardRow>(),
+      ...(canSelect ? [selectionColumn<EmbassyBoardRow>()] : []),
       indexColumn<EmbassyBoardRow>(),
       {
         accessorKey: "fullName",
@@ -142,7 +146,7 @@ export default function EmbassyBoardPage() {
         ),
       },
     ],
-    [mutate]
+    [mutate, canSelect]
   );
 
   const table = useReactTable({

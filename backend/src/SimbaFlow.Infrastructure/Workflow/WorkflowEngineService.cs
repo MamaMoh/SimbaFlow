@@ -410,6 +410,12 @@ public class WorkflowEngineService : IWorkflowEngineService
     public async Task<List<AvailableAction>> GetAvailableActionsAsync(
         Guid candidateId, string[] userRoles, CancellationToken ct = default)
     {
+        // Listing the board is workflow.view; moving a candidate along it is workflow.execute, and
+        // the auditor, the clerk and the case executive hold only the first. Offering them a step
+        // they cannot take turns a menu of available work into a menu of 403s, so they get none.
+        if (!_currentUser.IsSuperAdmin && !_currentUser.HasPermission("workflow.execute"))
+            return [];
+
         var candidate = await _context.Candidates
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == candidateId && !c.IsDeleted, ct);

@@ -17,10 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
-import {
-  WorkflowActionItems,
-  hasEnabledActions,
-} from "@/components/workflow/workflow-action-items";
+import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { DocumentUploader } from "@/components/candidates/document-uploader";
 import { lmisApi, nextLmisMilestone, type LmisBoardRow } from "@/lib/api/lmis";
@@ -48,6 +45,10 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("lmis.update") || hasPermission("system.admin");
   const canDoc = hasPermission("lmis.document") || hasPermission("lmis.update") || hasPermission("system.admin");
+  // The candidate's own page, and the paperwork below it, are read under candidate.read. Reaching
+  // this board is a different permission, and holding one does not imply the other, so the link has
+  // to ask for what the page it points at requires.
+  const canRead = hasPermission("candidate.read");
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const [paidOpen, setPaidOpen] = useState(false);
@@ -84,13 +85,17 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="z-[200] w-56">
-            <DropdownMenuItem asChild>
-              <Link href={`/candidates/${candidate.id}`}>
-                <Eye className="mr-2 h-4 w-4" />
-                View details
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {canRead && (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href={`/candidates/${candidate.id}`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View details
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <CandidateDocumentItems candidateId={candidate.id} />
             {canUpdate && (
               <>
@@ -135,8 +140,12 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                 Upload LMIS document
               </DropdownMenuItem>
             )}
-            {hasEnabledActions(actions) && <DropdownMenuSeparator />}
-            <WorkflowActionItems candidateId={candidate.id} actions={actions} onExecuted={refresh} />
+            <WorkflowActionItems
+              candidateId={candidate.id}
+              actions={actions}
+              onExecuted={refresh}
+              separatorBefore
+            />
           </DropdownMenuContent>
       </DropdownMenu>
 

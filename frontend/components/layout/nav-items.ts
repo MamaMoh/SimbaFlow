@@ -125,13 +125,16 @@ export const navigation: NavItem[] = [
   {
     name: "Staff & Users",
     icon: require("lucide-react").UserCog,
-    claims: ["staff.read", "system.admin"],
+    claims: ["users.read", "role.read", "system.admin"],
     children: [
       {
+        // /staff is the user-account list, not the staff-profile list, so it is reached under
+        // users.read. Under staff.read the office manager was shown the link and then met an
+        // empty page: they can read staff profiles, and user accounts are somebody else's desk.
         name: "Staff",
         href: "/staff",
         icon: require("lucide-react").IdCard,
-        claims: ["staff.read", "system.admin"],
+        claims: ["users.read", "system.admin"],
       },
       {
         name: "Roles & Permissions",
@@ -178,10 +181,12 @@ export const navigation: NavItem[] = [
     claims: ["system.admin"],
   },
   {
+    // /api/tenants is behind the SuperAdmin policy, not a permission, so tenant.manage only ever
+    // produced a link whose every request failed.
     name: "Tenants",
     href: "/tenants",
     icon: require("lucide-react").Server,
-    claims: ["tenant.manage", "system.admin"],
+    claims: ["system.admin"],
   },
   {
     name: "Settings",

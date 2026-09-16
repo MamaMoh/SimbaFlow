@@ -24,6 +24,7 @@ import {
   executeTransition,
   useAvailableActions,
 } from "@/lib/api/workflow";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 
 type CandidateListActionsProps = {
   candidateId: string;
@@ -37,6 +38,12 @@ type CandidateListActionsProps = {
 /**
  * Candidates list row ⋯ menu: detail/CV/edit/delete plus workflow moves
  * (e.g. To New Contracts when the candidate is still in Intake).
+ *
+ * Every item is gated on the permission the API actually asks for, not on being able to see the
+ * page. Five of the ten seeded roles can read candidates without being able to change or remove
+ * one — the auditor, the case executive and the finance officer can do neither — and all of them
+ * were being shown Edit and Delete, which failed at the server with a 403 the moment they were
+ * used. An action nobody can take should not be on the menu.
  */
 export function CandidateListActions({
   candidateId,
@@ -47,6 +54,10 @@ export function CandidateListActions({
   isGeneratingCv,
 }: CandidateListActionsProps) {
   const router = useRouter();
+  const { hasPermission } = usePermissions();
+  const canRead = hasPermission("candidate.read");
+  const canUpdate = hasPermission("candidate.update");
+  const canDelete = hasPermission("candidate.delete");
   const { actions, mutate } = useAvailableActions(candidateId);
   const [pendingRuleId, setPendingRuleId] = useState<string | null>(null);
 
@@ -67,6 +78,10 @@ export function CandidateListActions({
   };
 
   const busy = !!isGeneratingCv || !!pendingRuleId;
+
+  // Nothing to offer: no trigger. A ⋯ that opens onto an empty panel reads as a broken row rather
+  // than as a row this person is only meant to look at.
+  if (!canRead && !canUpdate && !canDelete && workflowMoves.length === 0) return null;
 
   return (
     <DropdownMenu modal={false}>
@@ -99,21 +114,29 @@ export function CandidateListActions({
           </DropdownMenuItem>
         ))}
         {workflowMoves.length > 0 ? <DropdownMenuSeparator /> : null}
-        <DropdownMenuItem onClick={() => router.push(`/candidates/${candidateId}`)}>
-          <Eye className="h-4 w-4 mr-2" /> View Details
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onGenerateCv(candidateId)}>
-          <FileText className="h-4 w-4 mr-2" /> Generate CV
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`/candidates/${candidateId}/edit`)}>
-          <Pencil className="h-4 w-4 mr-2" /> Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => onDelete(candidateId, candidateName)}
-          className="text-destructive"
-        >
-          <Trash2 className="h-4 w-4 mr-2" /> Delete
-        </DropdownMenuItem>
+        {canRead && (
+          <>
+            <DropdownMenuItem onClick={() => router.push(`/candidates/${candidateId}`)}>
+              <Eye className="h-4 w-4 mr-2" /> View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onGenerateCv(candidateId)}>
+              <FileText className="h-4 w-4 mr-2" /> Generate CV
+            </DropdownMenuItem>
+          </>
+        )}
+        {canUpdate && (
+          <DropdownMenuItem onClick={() => router.push(`/candidates/${candidateId}/edit`)}>
+            <Pencil className="h-4 w-4 mr-2" /> Edit
+          </DropdownMenuItem>
+        )}
+        {canDelete && (
+          <DropdownMenuItem
+            onClick={() => onDelete(candidateId, candidateName)}
+            className="text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-2" /> Delete
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -15,10 +15,7 @@ import { MarkReadyDialog } from "@/components/workflow/mark-ready-dialog";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
-import {
-  WorkflowActionItems,
-  hasEnabledActions,
-} from "@/components/workflow/workflow-action-items";
+import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import {
   useAvailableActions,
   updateWorkflowStatus,
@@ -36,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { indexColumn } from "@/components/data-table/index-column";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 
 type WorkflowViewTableProps = {
   candidates: ViewCandidateDto[];
@@ -51,6 +49,11 @@ function RowActions({
   candidate: ViewCandidateDto;
   onMutate: () => void;
 }) {
+  const { hasPermission } = usePermissions();
+  const canRead = hasPermission("candidate.read");
+  // Marking Ready and taking a candidate off the pipeline both go through the workflow, so they
+  // take the permission that moves candidates rather than the one that lists them.
+  const canExecute = hasPermission("workflow.execute");
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id);
 
   const stageName = (candidate.currentStageName ?? "").toLowerCase();
@@ -75,6 +78,8 @@ function RowActions({
 
   const [readyOpen, setReadyOpen] = useState(false);
 
+  if (!canRead && !canExecute) return null;
+
   return (
     <div className="flex justify-center">
       <MarkReadyDialog
@@ -92,13 +97,15 @@ function RowActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="z-[200] w-56">
-          <DropdownMenuItem asChild>
-            <Link href={`/candidates/${candidate.id}`}>
-              <Eye className="mr-2 h-4 w-4" />
-              View details
-            </Link>
-          </DropdownMenuItem>
-          {needsReady ? (
+          {canRead && (
+            <DropdownMenuItem asChild>
+              <Link href={`/candidates/${candidate.id}`}>
+                <Eye className="mr-2 h-4 w-4" />
+                View details
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {canExecute && needsReady ? (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setReadyOpen(true)}>
@@ -107,21 +114,25 @@ function RowActions({
               </DropdownMenuItem>
             </>
           ) : null}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              void withdraw();
-            }}
-          >
-            <Undo2 className="mr-2 h-4 w-4" />
-            Take off the pipeline
-          </DropdownMenuItem>
-          {hasEnabledActions(actions) && <DropdownMenuSeparator />}
+          {canExecute && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void withdraw();
+                }}
+              >
+                <Undo2 className="mr-2 h-4 w-4" />
+                Take off the pipeline
+              </DropdownMenuItem>
+            </>
+          )}
           <WorkflowActionItems
             candidateId={candidate.id}
             actions={actions}
             onExecuted={refresh}
+            separatorBefore
           />
         </DropdownMenuContent>
       </DropdownMenu>

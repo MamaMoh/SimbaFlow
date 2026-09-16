@@ -80,10 +80,10 @@ export default function CandidatesPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canRead =
     hasPermission("candidate.read") || hasPermission("system.admin");
-  const canWrite =
-    hasPermission("candidate.create") ||
-    hasPermission("candidate.update") ||
-    hasPermission("system.admin");
+  // Registering someone is candidate.create on its own. Accepting candidate.update here put a
+  // Create button in front of the field agent, who may correct a record but not open a new one,
+  // and the form only said so after it had been filled in.
+  const canCreate = hasPermission("candidate.create");
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -452,7 +452,7 @@ export default function CandidatesPage() {
                 candidateIds={selectedIds}
                 onDownloaded={() => setRowSelection({})}
               />
-              {canWrite ? (
+              {canCreate ? (
                 <Button
                   size="sm"
                   className="h-8 bg-green-800 hover:bg-green-900 text-white"

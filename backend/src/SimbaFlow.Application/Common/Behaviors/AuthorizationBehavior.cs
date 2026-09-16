@@ -6,7 +6,8 @@ namespace SimbaFlow.Application.Common.Behaviors;
 
 /// <summary>
 /// MediatR pipeline behavior that enforces permission-based authorization.
-/// Commands/queries implementing IRequirePermission are checked before handler execution.
+/// Commands/queries implementing IRequirePermission (one permission) or IRequireAnyPermission
+/// (any one of several) are checked before handler execution.
 /// SuperAdmin bypasses all checks.
 /// </summary>
 public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
@@ -38,6 +39,23 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             if (!_currentUser.HasPermission(requiredPermission))
                 throw new ForbiddenAccessException(
                     $"Permission '{requiredPermission}' is required to perform this action");
+        }
+
+        if (request is IRequireAnyPermission anyPermissionRequest)
+        {
+            if (_currentUser.IsSuperAdmin)
+                return await next(cancellationToken);
+
+            if (string.IsNullOrEmpty(_currentUser.UserId))
+                throw new UnauthorizedAccessException("Authentication required");
+
+            var accepted = anyPermissionRequest.AcceptedPermissions;
+
+            // An empty list would admit everyone, which is how an action ends up with no gate at
+            // all while looking like it has one.
+            if (accepted.Count == 0 || !accepted.Any(_currentUser.HasPermission))
+                throw new ForbiddenAccessException(
+                    $"One of these permissions is required to perform this action: {string.Join(", ", accepted)}");
         }
 
         return await next(cancellationToken);

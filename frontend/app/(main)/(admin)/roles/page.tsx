@@ -27,6 +27,7 @@ import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { CreateRoleSheet } from "@/components/roles/create-role-sheet";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 
 interface RoleRow {
   id: string;
@@ -41,6 +42,11 @@ interface RoleRow {
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function RolesPage() {
+  // Reading the roles and rewriting them are separate permissions, and an agency is free to grant
+  // the first on its own — so Create Role and Delete follow role.write, not the page.
+  const { hasPermission } = usePermissions();
+  const canManage = hasPermission("role.write");
+
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -132,13 +138,15 @@ export default function RolesPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => toast.info("Edit permissions — coming soon")}>
-              <Pencil className="h-4 w-4 mr-2" /> Edit Permissions
-            </DropdownMenuItem>
+            {canManage && (
+              <DropdownMenuItem onClick={() => toast.info("Edit permissions — coming soon")}>
+                <Pencil className="h-4 w-4 mr-2" /> Edit Permissions
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => toast.info("View users — coming soon")}>
               <Users className="h-4 w-4 mr-2" /> View Users
             </DropdownMenuItem>
-            {!row.original.isSystemRole && (
+            {canManage && !row.original.isSystemRole && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -155,7 +163,7 @@ export default function RolesPage() {
       size: 60,
       enableSorting: false,
     },
-  ], []);
+  ], [canManage]);
 
   const table = useReactTable({
     data: roles,
@@ -185,9 +193,11 @@ export default function RolesPage() {
           searchPlaceholder="Search roles..."
           paginated={true}
           toolbarEndActions={
-            <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
-              <span className="mr-1">+</span> Create Role
-            </Button>
+            canManage ? (
+              <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
+                <span className="mr-1">+</span> Create Role
+              </Button>
+            ) : null
           }
         />
       </div>
