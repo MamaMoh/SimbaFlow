@@ -55,20 +55,39 @@ public class TenantConnectionInterceptor : DbConnectionInterceptor
             schemaName = await _schemaResolver.ResolveDefaultSchemaAsync(cancellationToken)
                 ?? "tenant_default_agency";
         }
-
-        if (!string.IsNullOrWhiteSpace(schemaName))
+        else
         {
-            await using var cmd = connection.CreateCommand();
-            cmd.CommandText = $"SET search_path TO \"{schemaName}\", \"public\"";
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
+            // Neither tenant-bound nor platform: there is no schema this caller is entitled to.
+            //
+            // This branch has to exist. Connections come from a pool, so leaving schemaName null
+            // and skipping the SET does not mean "no schema" — it means the session keeps whichever
+            // schema the last borrower of this connection was pointed at, and the caller reads a
+            // tenant at random. "public" is the one choice that holds no tenant's data: a genuinely
+            // tenant-scoped query then fails on a missing table, which is the correct outcome for a
+            // caller who should not have reached one.
+            schemaName = "public";
 
-            _logger.LogDebug(
-                "Set search_path to {Schema} for tenant {TenantId} (superAdmin={IsSuperAdmin})",
-                schemaName,
-                tenantId,
-                _currentUser.IsSuperAdmin);
+            _logger.LogWarning(
+                "Tenant-scoped query from a caller with no tenant and no platform role (user {UserId}); "
+                + "search_path pinned to public.",
+                _currentUser.UserId);
         }
+
+        await using var cmd = connection.CreateCommand();
+        // The schema name reaches SQL as an identifier and cannot be parameterised, so it is quoted
+        // and any embedded quote doubled — matching TenantSchemaMigrator, which has always done this.
+        cmd.CommandText = $"SET search_path TO \"{EscapeIdent(schemaName)}\", \"public\"";
+        await cmd.ExecuteNonQueryAsync(cancellationToken);
+
+        _logger.LogDebug(
+            "Set search_path to {Schema} for tenant {TenantId} (superAdmin={IsSuperAdmin})",
+            schemaName,
+            tenantId,
+            _currentUser.IsSuperAdmin);
 
         await base.ConnectionOpenedAsync(connection, eventData, cancellationToken);
     }
+
+    /// <summary>Doubles embedded quotes so a schema name cannot close its own quoted identifier.</summary>
+    private static string EscapeIdent(string name) => name.Replace("\"", "\"\"");
 }
