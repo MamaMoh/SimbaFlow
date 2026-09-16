@@ -46,6 +46,16 @@ internal static class CvLayouts
 
     // ──── Shared field text ────
 
+    /// <summary>
+    /// Height of the 3rd layout's full-body photo, in points.
+    ///
+    /// Measured so the box ends on the same line as the foot of the Skills table beside it. The
+    /// left column is a fixed set of rows, so this holds — except when a candidate lists extra
+    /// languages, which adds rows on the left and leaves the photo a little short of the skills.
+    /// Short is the right way to be wrong here: too tall reintroduces the empty frame.
+    /// </summary>
+    private const float FullPhotoHeight = 303f;
+
     private static string V(string? s) => string.IsNullOrWhiteSpace(s) ? "" : s.Trim();
     private static string YesNo(bool v) => v ? "YES" : "NO";
 
@@ -897,9 +907,15 @@ internal static class CvLayouts
                                     candidate.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "—");
                             });
 
-                            // Takes whatever height the left column leaves, so the photo runs from
-                            // the foot of the passport block to the foot of the skills.
-                            right.Item().PaddingTop(3).ExtendVertical()
+                            // A measured height, not ExtendVertical. Extend asks for the space
+                            // available to the *page*, and the page has the whole sheet left — so
+                            // the box grew past the skills table and ran to the bottom margin,
+                            // leaving a tall empty frame under the form. Nothing in QuestPDF lets
+                            // one half of a Row take its height from the other half: Row does not
+                            // stretch its children, and neither Decoration nor Table cells do
+                            // either (all three were tried). Every other layout here sizes this
+                            // box the same way.
+                            right.Item().PaddingTop(3).Height(FullPhotoHeight)
                                 .Border(0.75f).BorderColor(Border)
                                 .Background(Colors.Grey.Lighten4)
                                 .AlignCenter().AlignMiddle()
