@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Ban, CheckCircle2, FileText, Loader2, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,23 +28,10 @@ import {
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import {
   subscriptionApi,
-  useInvoices,
   useSubscriptions,
   type SubscriptionRow,
 } from "@/lib/api/subscriptions";
-
-function money(amount: number, currency: string) {
-  return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 0 })}`;
-}
-
-function onDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { money, onDate } from "@/lib/billing/format";
 
 /** When the next payment lands, said the way someone would say it. */
 function dueLabel(row: SubscriptionRow) {
@@ -61,8 +49,24 @@ export default function SubscriptionsPage() {
 
   const [editing, setEditing] = useState<SubscriptionRow | null>(null);
   const [invoicing, setInvoicing] = useState<SubscriptionRow | null>(null);
-  const [viewing, setViewing] = useState<SubscriptionRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Read off the rows themselves so the figures always agree with the table beneath them.
+  const totals = useMemo(() => {
+    const currency = rows.find((r) => r.subscriptionCurrency)?.subscriptionCurrency ?? "ETB";
+    return {
+      currency,
+      agencies: rows.length,
+      suspended: rows.filter((r) => !r.hasAccess).length,
+      unpaid: rows.reduce((sum, r) => sum + r.outstanding, 0),
+      dueSoon: rows.filter((r) => r.notice === "DueSoon" || r.notice === "DueToday").length,
+      overdue: rows.filter((r) => r.notice === "Overdue").length,
+      recurring: rows.reduce(
+        (sum, r) => sum + (r.cycle === "Yearly" ? r.subscriptionAmount / 12 : r.subscriptionAmount),
+        0,
+      ),
+    };
+  }, [rows]);
 
   if (!isSuperAdmin) return <AccessDenied resource="subscriptions" />;
 
@@ -93,6 +97,42 @@ export default function SubscriptionsPage() {
       {error ? (
         <LoadError message="Could not load subscriptions" onRetry={() => mutate()} />
       ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Agencies"
+          value={String(totals.agencies)}
+          detail={
+            totals.suspended === 0
+              ? "All have access"
+              : `${totals.suspended} suspended`
+          }
+          tone={totals.suspended > 0 ? "warn" : "plain"}
+        />
+        <StatCard
+          label="Monthly recurring"
+          value={money(Math.round(totals.recurring), totals.currency)}
+          detail="Yearly plans counted per month"
+        />
+        <StatCard
+          label="Unpaid invoices"
+          value={String(totals.unpaid)}
+          detail={totals.unpaid === 0 ? "Nothing outstanding" : "Across all agencies"}
+          tone={totals.unpaid > 0 ? "warn" : "plain"}
+        />
+        <StatCard
+          label="Needs attention"
+          value={String(totals.overdue + totals.dueSoon)}
+          detail={
+            totals.overdue > 0
+              ? `${totals.overdue} overdue, ${totals.dueSoon} due soon`
+              : totals.dueSoon > 0
+                ? `${totals.dueSoon} due soon`
+                : "Nothing due"
+          }
+          tone={totals.overdue > 0 ? "bad" : totals.dueSoon > 0 ? "warn" : "plain"}
+        />
+      </div>
 
       <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
         <table className="w-full min-w-[860px] text-sm">
@@ -170,9 +210,11 @@ export default function SubscriptionsPage() {
                         <Receipt className="h-3.5 w-3.5" />
                         Invoice
                       </Button>
-                      <Button size="sm" variant="ghost" className="h-8 gap-1.5" onClick={() => setViewing(row)}>
-                        <FileText className="h-3.5 w-3.5" />
-                        History
+                      <Button asChild size="sm" variant="ghost" className="h-8 gap-1.5">
+                        <Link href={`/subscriptions/${row.id}`}>
+                          <FileText className="h-3.5 w-3.5" />
+                          History
+                        </Link>
                       </Button>
                       {row.hasAccess ? (
                         <Button
@@ -208,7 +250,32 @@ export default function SubscriptionsPage() {
 
       <PlanDialog row={editing} onClose={() => setEditing(null)} onSaved={() => void mutate()} />
       <InvoiceDialog row={invoicing} onClose={() => setInvoicing(null)} onSaved={() => void mutate()} />
-      <HistoryDialog row={viewing} onClose={() => setViewing(null)} onChanged={() => void mutate()} />
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  detail,
+  tone = "plain",
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "plain" | "warn" | "bad";
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p
+        className={`mt-1 text-2xl font-semibold tabular-nums ${
+          tone === "bad" ? "text-red-700" : tone === "warn" ? "text-amber-700" : ""
+        }`}
+      >
+        {value}
+      </p>
+      <p className="mt-0.5 text-sm text-muted-foreground">{detail}</p>
     </div>
   );
 }
@@ -417,116 +484,6 @@ function InvoiceDialog({
           </Button>
           <Button onClick={generate} disabled={saving} className="bg-green-800 hover:bg-green-900">
             {saving ? "Raising…" : "Raise invoice"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function HistoryDialog({
-  row,
-  onClose,
-  onChanged,
-}: {
-  row: SubscriptionRow | null;
-  onClose: () => void;
-  onChanged: () => void;
-}) {
-  const { invoices, mutate } = useInvoices(row?.id ?? null);
-  const [busy, setBusy] = useState<string | null>(null);
-
-  const act = async (id: string, what: "paid" | "void") => {
-    setBusy(id);
-    try {
-      if (what === "paid") await subscriptionApi.markPaid(id, {});
-      else await subscriptionApi.voidInvoice(id);
-      toast.success(what === "paid" ? "Recorded as paid" : "Invoice voided");
-      void mutate();
-      onChanged();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "That did not work.");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <Dialog open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[680px]">
-        <DialogHeader>
-          <DialogTitle>{row?.name} invoices</DialogTitle>
-          <DialogDescription>
-            Recording a payment moves this agency&rsquo;s next payment date on by one period.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[50vh] overflow-y-auto">
-          {invoices.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Nothing invoiced yet.
-            </p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="py-2 font-medium">Number</th>
-                  <th className="py-2 font-medium">Period</th>
-                  <th className="py-2 font-medium">Due</th>
-                  <th className="py-2 font-medium">Amount</th>
-                  <th className="py-2 font-medium">Status</th>
-                  <th className="py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.id} className="border-b last:border-0">
-                    <td className="py-2 font-medium">{inv.number}</td>
-                    <td className="py-2 text-muted-foreground">
-                      {onDate(inv.periodStart)} – {onDate(inv.periodEnd)}
-                    </td>
-                    <td className="py-2 text-muted-foreground">{onDate(inv.dueOn)}</td>
-                    <td className="py-2">{money(inv.amount, inv.currency)}</td>
-                    <td className="py-2">
-                      <Badge
-                        variant={inv.status === "Paid" ? "default" : "outline"}
-                        className={inv.status === "Paid" ? "bg-green-700 hover:bg-green-700" : ""}
-                      >
-                        {inv.status}
-                      </Badge>
-                    </td>
-                    <td className="py-2 text-right">
-                      {inv.status === "Issued" ? (
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7"
-                            disabled={busy === inv.id}
-                            onClick={() => act(inv.id, "paid")}
-                          >
-                            Mark paid
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-muted-foreground"
-                            disabled={busy === inv.id}
-                            onClick={() => act(inv.id, "void")}
-                          >
-                            Void
-                          </Button>
-                        </div>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Close
           </Button>
         </DialogFooter>
       </DialogContent>

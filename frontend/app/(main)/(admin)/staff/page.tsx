@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreateUserSheet } from "@/components/users/create-user-sheet";
+import { EditUserSheet, type EditableUser } from "@/components/users/edit-user-sheet";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
@@ -51,6 +52,7 @@ export default function StaffPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<EditableUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -190,7 +192,7 @@ export default function StaffPage() {
                 <><Shield className="h-4 w-4 mr-2" /> Activate</>
               )}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info("Edit user — coming soon")}>
+            <DropdownMenuItem onClick={() => setEditTarget(row.original)}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleResetPassword(row.original.id)}>
@@ -243,6 +245,11 @@ export default function StaffPage() {
         />
       </div>
 
+      <EditUserSheet
+        user={editTarget}
+        onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+        onSaved={() => mutate()}
+      />
       <CreateUserSheet open={createOpen} onOpenChange={setCreateOpen} onCreated={() => mutate()} />
       <DeleteDialog
         open={!!deleteTarget}

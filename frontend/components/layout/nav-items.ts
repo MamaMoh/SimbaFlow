@@ -29,6 +29,15 @@ export const navigation: NavItem[] = [
     icon: require("lucide-react").ListChecks,
     claims: ["candidate.read", "system.admin"],
   },
+  {
+    // Sat under Finance, which meant every role holding candidate.read — a data-entry clerk, a
+    // field agent — was shown a "Finance" heading with this as its only entry. It asks for
+    // candidate.read, the same as the three above, so this is where it belongs.
+    name: "Compliance",
+    href: "/compliance",
+    icon: require("lucide-react").ShieldAlert,
+    claims: ["candidate.read", "system.admin"],
+  },
 
   // ──── Separator: Workflow ────
   { name: "sep-workflow", isSeparator: true, icon: null, sectionLabel: "Workflow Pipeline" },
@@ -83,16 +92,15 @@ export const navigation: NavItem[] = [
     icon: require("lucide-react").AlertTriangle,
     claims: ["arrival.read", "arrival.exception", "system.admin"],
   },
+  // ──── Separator: Finance ────
+  { name: "sep-finance", isSeparator: true, icon: null, sectionLabel: "Finance" },
+
   {
     name: "Commissions",
     href: "/workflow/commissions",
     icon: require("lucide-react").Banknote,
     claims: ["commission.read", "system.admin"],
   },
-
-  // ──── Separator: Finance ────
-  { name: "sep-finance", isSeparator: true, icon: null, sectionLabel: "Finance" },
-
   {
     name: "Accounting",
     href: "/finance/accounting",
@@ -111,13 +119,6 @@ export const navigation: NavItem[] = [
     icon: require("lucide-react").BarChart3,
     claims: ["report.view", "system.admin"],
   },
-  {
-    name: "Compliance",
-    href: "/compliance",
-    icon: require("lucide-react").ShieldAlert,
-    claims: ["candidate.read", "system.admin"],
-  },
-
   // ──── Separator: Administration ────
   { name: "sep-admin", isSeparator: true, icon: null, sectionLabel: "Administration" },
 
@@ -193,6 +194,26 @@ export const navigation: NavItem[] = [
   },
 ];
 
+/**
+ * Remove section headings with nothing left underneath them.
+ *
+ * The navigation is a flat list in which a heading is just an item carrying a sectionLabel, so
+ * filtering the links out by permission left the heading behind: a field agent saw "FINANCE" with
+ * no finance under it, and the sidebar read like a menu of things that had failed to load rather
+ * than one shaped to the job.
+ *
+ * A heading earns its place only if a real item follows it before the next heading. Applied after
+ * filtering, this also collapses two headings left adjacent by an entirely removed section, and
+ * drops a heading stranded at the very end.
+ */
+function dropEmptySections(list: NavItem[]): NavItem[] {
+  return list.filter((item, index) => {
+    if (!item.isSeparator) return true;
+    const next = list[index + 1];
+    return next !== undefined && !next.isSeparator;
+  });
+}
+
 export function filterNavigationByClaims(
   items: NavItem[],
   claims: string[],
@@ -202,15 +223,17 @@ export function filterNavigationByClaims(
   const hasAnyClaim = (required?: string[]) =>
     !required?.length || required.some((c) => claims.includes(c));
   const recur = (list: NavItem[]): NavItem[] =>
-    list
-      .map((item) => {
-        if (item.isSeparator) return item;
-        const children = item.children ? recur(item.children) : undefined;
-        const allowed =
-          hasAnyClaim(item.claims) || (children && children.length > 0);
-        return allowed ? { ...item, children } : null;
-      })
-      .filter(Boolean) as NavItem[];
+    dropEmptySections(
+      list
+        .map((item) => {
+          if (item.isSeparator) return item;
+          const children = item.children ? recur(item.children) : undefined;
+          const allowed =
+            hasAnyClaim(item.claims) || (children && children.length > 0);
+          return allowed ? { ...item, children } : null;
+        })
+        .filter(Boolean) as NavItem[],
+    );
   return recur(items);
 }
 
