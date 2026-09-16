@@ -14,6 +14,7 @@ import {
   WorkflowActionItems,
   hasEnabledActions,
 } from "@/components/workflow/workflow-action-items";
+import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { travelApi, type TravelBoardRow } from "@/lib/api/travel";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { citiesFor, todayIso } from "@/lib/data/destination-cities";
@@ -84,6 +85,8 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
                 View details
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <CandidateDocumentItems candidateId={candidate.id} />
             {canUpdate && ticketStatus !== "Booking Complete" && (
               <>
                 <DropdownMenuSeparator />
@@ -157,6 +160,8 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
                 View details
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <CandidateDocumentItems candidateId={candidate.id} />
             <DropdownMenuSeparator />
             {notification !== "Notified" && (
               <DropdownMenuItem

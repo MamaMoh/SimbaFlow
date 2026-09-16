@@ -69,27 +69,13 @@ public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<byte[
         var pdfBytes = await _cvGeneration.GenerateAsync(candidate, photoBytes, fullPhotoBytes, cancellationToken);
 
         var tenantSlug = _tenantContext.SchemaName ?? "default";
-        await using var pdfStream = new MemoryStream(pdfBytes);
-        var relativePath = await _fileStorage.UploadAsync(
-            tenantSlug,
-            candidate.Id,
+        await GeneratedDocuments.ReplaceAsync(
+            _context, _fileStorage, _currentUser, tenantSlug, candidate,
+            DocumentType.CV,
             $"cv_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            "application/pdf",
-            pdfStream,
+            $"CV_{candidate.FullName.Replace(' ', '_')}.pdf",
+            pdfBytes,
             cancellationToken);
-
-        _context.CandidateDocuments.Add(new CandidateDocument
-        {
-            CandidateId = candidate.Id,
-            FileName = Path.GetFileName(relativePath),
-            OriginalFileName = $"CV_{candidate.FullName.Replace(' ', '_')}.pdf",
-            ContentType = "application/pdf",
-            FilePath = relativePath,
-            DocumentType = DocumentType.CV,
-            FileSizeBytes = pdfBytes.Length,
-            UploadedAt = DateTime.UtcNow,
-            UploadedBy = _currentUser.UserName
-        });
 
         await _context.SaveChangesAsync(cancellationToken);
 

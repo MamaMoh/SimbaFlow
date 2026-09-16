@@ -78,27 +78,13 @@ public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, 
 
         // File it against the candidate. This is the document that gets signed and stamped, so it
         // has to be retrievable later — not just downloaded once by whoever clicked generate.
-        await using var stream = new MemoryStream(pdf);
-        var relativePath = await _fileStorage.UploadAsync(
-            _tenantContext.SchemaName ?? "default",
-            candidate.Id,
+        await GeneratedDocuments.ReplaceAsync(
+            _tenant, _fileStorage, _currentUser, _tenantContext.SchemaName ?? "default", candidate,
+            DocumentType.Contract,
             $"contract_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            "application/pdf",
-            stream,
+            $"Contract_{candidate.FullName.Replace(' ', '_')}.pdf",
+            pdf,
             ct);
-
-        _tenant.CandidateDocuments.Add(new CandidateDocument
-        {
-            CandidateId = candidate.Id,
-            FileName = Path.GetFileName(relativePath),
-            OriginalFileName = $"Contract_{candidate.FullName.Replace(' ', '_')}.pdf",
-            ContentType = "application/pdf",
-            FilePath = relativePath,
-            DocumentType = DocumentType.Contract,
-            FileSizeBytes = pdf.Length,
-            UploadedAt = DateTime.UtcNow,
-            UploadedBy = _currentUser.UserName
-        });
         await _tenant.SaveChangesAsync(ct);
 
         return Result<byte[]>.Success(pdf);

@@ -21,6 +21,7 @@ import {
   WorkflowActionItems,
   hasEnabledActions,
 } from "@/components/workflow/workflow-action-items";
+import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { DocumentUploader } from "@/components/candidates/document-uploader";
 import { lmisApi, nextLmisMilestone, type LmisBoardRow } from "@/lib/api/lmis";
 import { useAvailableActions } from "@/lib/api/workflow";
@@ -89,6 +90,8 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                 View details
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <CandidateDocumentItems candidateId={candidate.id} />
             {canUpdate && (
               <>
                 <DropdownMenuSeparator />

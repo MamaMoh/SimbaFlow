@@ -14,6 +14,7 @@ import {
   WorkflowActionItems,
   hasEnabledActions,
 } from "@/components/workflow/workflow-action-items";
+import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -103,6 +104,8 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
               View details
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <CandidateDocumentItems candidateId={candidate.id} />
 
           {isCaseExec ? (
             canCaseSubmit && visa === "Ready" ? (

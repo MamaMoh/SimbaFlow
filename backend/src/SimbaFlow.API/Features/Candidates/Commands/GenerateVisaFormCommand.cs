@@ -57,27 +57,13 @@ public class GenerateVisaFormHandler : IRequestHandler<GenerateVisaFormCommand, 
         var pdfBytes = await _cvGeneration.GenerateVisaFormAsync(candidate, photoBytes, cancellationToken);
 
         var tenantSlug = _tenantContext.SchemaName ?? "default";
-        await using var pdfStream = new MemoryStream(pdfBytes);
-        var relativePath = await _fileStorage.UploadAsync(
-            tenantSlug,
-            candidate.Id,
+        await GeneratedDocuments.ReplaceAsync(
+            _context, _fileStorage, _currentUser, tenantSlug, candidate,
+            DocumentType.VisaForm,
             $"visa_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            "application/pdf",
-            pdfStream,
+            $"VisaForm_{candidate.FullName.Replace(' ', '_')}.pdf",
+            pdfBytes,
             cancellationToken);
-
-        _context.CandidateDocuments.Add(new CandidateDocument
-        {
-            CandidateId = candidate.Id,
-            FileName = Path.GetFileName(relativePath),
-            OriginalFileName = $"VisaForm_{candidate.FullName.Replace(' ', '_')}.pdf",
-            ContentType = "application/pdf",
-            FilePath = relativePath,
-            DocumentType = DocumentType.VisaForm,
-            FileSizeBytes = pdfBytes.Length,
-            UploadedAt = DateTime.UtcNow,
-            UploadedBy = _currentUser.UserName
-        });
 
         await _context.SaveChangesAsync(cancellationToken);
 

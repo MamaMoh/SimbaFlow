@@ -12,6 +12,7 @@ import {
   WorkflowActionItems,
   hasEnabledActions,
 } from "@/components/workflow/workflow-action-items";
+import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { arrivalApi, type ArrivalBoardRow } from "@/lib/api/arrival";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -71,6 +72,8 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                 View details
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <CandidateDocumentItems candidateId={candidate.id} />
             {canUpdate && (
               <>
                 <DropdownMenuSeparator />

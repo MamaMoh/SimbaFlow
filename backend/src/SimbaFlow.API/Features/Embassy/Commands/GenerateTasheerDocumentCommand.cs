@@ -51,27 +51,13 @@ public class GenerateTasheerDocumentHandler
 
         var pdf = Compose(candidate, request.AppointmentDate);
 
-        await using var stream = new MemoryStream(pdf);
-        var path = await _fileStorage.UploadAsync(
-            _tenantContext.SchemaName ?? "default",
-            candidate.Id,
+        await Candidates.GeneratedDocuments.ReplaceAsync(
+            _context, _fileStorage, _currentUser, _tenantContext.SchemaName ?? "default", candidate,
+            DocumentType.TasheerDocument,
             $"tasheer_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            "application/pdf",
-            stream,
+            $"Tasheer_{candidate.FullName.Replace(' ', '_')}.pdf",
+            pdf,
             ct);
-
-        _context.CandidateDocuments.Add(new CandidateDocument
-        {
-            CandidateId = candidate.Id,
-            FileName = Path.GetFileName(path),
-            OriginalFileName = $"Tasheer_{candidate.FullName.Replace(' ', '_')}.pdf",
-            ContentType = "application/pdf",
-            FilePath = path,
-            DocumentType = DocumentType.TasheerDocument,
-            FileSizeBytes = pdf.Length,
-            UploadedAt = DateTime.UtcNow,
-            UploadedBy = _currentUser.UserName,
-        });
         await _context.SaveChangesAsync(ct);
 
         return Result<byte[]>.Success(pdf);
