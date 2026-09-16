@@ -29,12 +29,18 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException(
-                "ConnectionStrings:DefaultConnection is not configured.");
+                "ConnectionStrings:DefaultConnection is not configured. Supply it from the "
+                + "environment (ConnectionStrings__DefaultConnection) or, for local work, "
+                + "dotnet user-secrets. It is deliberately absent from appsettings.json so that "
+                + "a database password is never committed.");
 
         var jwtKey = configuration["Jwt:Key"];
         if (string.IsNullOrWhiteSpace(jwtKey) || System.Text.Encoding.UTF8.GetBytes(jwtKey).Length < 32)
             throw new InvalidOperationException(
-                "Jwt:Key must be configured with at least 32 bytes.");
+                "Jwt:Key must be configured with at least 32 bytes. Supply it from the environment "
+                + "(Jwt__Key) or dotnet user-secrets — for a local key: "
+                + "dotnet user-secrets set \"Jwt:Key\" \"$(openssl rand -base64 48)\". A key committed "
+                + "to the repository signs tokens anyone with the source can forge.");
 
         // ═══════════════════════════════════════════════════════════════
         // 1. PLATFORM DbContext (public schema — Identity, Tenants, Audit)
