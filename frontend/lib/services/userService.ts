@@ -48,19 +48,35 @@ export async function authenticate(
     expiresAt: data.expiresAt,
     requiresPasswordChange: data.requiresPasswordChange || false,
     requiresMfa: data.requiresMfa || false,
-    userProfile: {
-      userId: data.user?.id,
-      username: data.user?.username,
-      fullName: data.user?.fullName,
-      email: data.user?.email,
-      phoneNumber: data.user?.phoneNumber,
-      profileImageUrl: data.user?.profileImageUrl,
-      isFirstLogin: data.user?.isFirstLogin,
-      isSuperAdmin: data.user?.isSuperAdmin,
-      departmentId: data.user?.departmentId,
-    },
+    userProfile: toUserProfile(data.user),
     grantedClaims: data.user?.permissions || [],
     roles: data.user?.roles || [],
+  };
+}
+
+/**
+ * The API's UserProfileDto in the shape the session stores it.
+ *
+ * Worth having in one place because the two endpoints that return a profile — login and refresh —
+ * must produce identical objects. They did not: refresh passed the API's `user` through untouched,
+ * so the id arrived as `id` rather than `userId` and quietly became undefined on every refresh.
+ */
+function toUserProfile(user: any) {
+  if (!user) return undefined;
+  return {
+    userId: user.id,
+    username: user.username,
+    fullName: user.fullName,
+    email: user.email,
+    phoneNumber: user.phoneNumber,
+    profileImageUrl: user.profileImageUrl,
+    isFirstLogin: user.isFirstLogin,
+    isSuperAdmin: user.isSuperAdmin,
+    departmentId: user.departmentId,
+    // The agency, carried through so the header can name it. A platform account has none, and null
+    // has to survive as null — a missing agency and an unknown one look the same otherwise.
+    tenantId: user.tenantId ?? null,
+    tenantName: user.tenantName ?? null,
   };
 }
 
@@ -86,6 +102,6 @@ export async function refreshAccessToken(refreshToken: string) {
       | string[]
       | undefined,
     roles: (data.roles ?? data.user?.roles ?? undefined) as string[] | undefined,
-    userProfile: (data.userProfile ?? data.user ?? undefined) as unknown,
+    userProfile: toUserProfile(data.userProfile ?? data.user),
   };
 }

@@ -33,6 +33,10 @@ public record UserProfileDto(
     bool IsFirstLogin,
     bool IsSuperAdmin,
     Guid? DepartmentId,
+    // The agency this user works in. Null only for platform accounts, which belong to no agency —
+    // the UI distinguishes the two, so "no agency" and "agency not sent" must not look alike.
+    Guid? TenantId,
+    string? TenantName,
     IReadOnlyList<string> Permissions,
     IReadOnlyList<string> Roles);
 
@@ -138,11 +142,7 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
                 AccessToken: setupToken,
                 RefreshToken: string.Empty,
                 ExpiresAt: setupExpiry,
-                User: new UserProfileDto(
-                    user.Id, user.UserName!, user.FullName, user.Email!,
-                    user.PhoneNumber, user.ProfileImageUrl,
-                    user.IsFirstLogin, user.IsSuperAdmin, user.DepartmentId,
-                    [], roles),
+                User: await SignedInProfile.BuildAsync(user, [], roles, _context, cancellationToken),
                 RequiresMfaSetup: true));
         }
 
@@ -200,11 +200,7 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
             AccessToken: accessToken,
             RefreshToken: rawRefreshToken,
             ExpiresAt: expiresAt,
-            User: new UserProfileDto(
-                user.Id, user.UserName!, user.FullName, user.Email!,
-                user.PhoneNumber, user.ProfileImageUrl,
-                user.IsFirstLogin, user.IsSuperAdmin, user.DepartmentId,
-                permissions, roles),
+            User: await SignedInProfile.BuildAsync(user, permissions, roles, _context, ct),
             RequiresPasswordChange: requiresPasswordChange));
     }
 }

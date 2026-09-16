@@ -7,6 +7,13 @@ interface UserProfile {
   username: string;
   fullName: string;
   isFirstLogin: boolean;
+  isSuperAdmin?: boolean;
+  phoneNumber?: string | null;
+  profileImageUrl?: string | null;
+  departmentId?: string | null;
+  /** The agency this user belongs to. Null for platform accounts, which belong to none. */
+  tenantId?: string | null;
+  tenantName?: string | null;
 }
 
 interface CommonUserFields {

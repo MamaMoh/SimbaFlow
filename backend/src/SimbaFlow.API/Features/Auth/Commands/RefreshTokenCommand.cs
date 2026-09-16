@@ -12,7 +12,19 @@ namespace SimbaFlow.API.Features.Auth.Commands;
 public record RefreshTokenCommand(string RefreshToken) : IRequest<Result<RefreshResponse>>;
 
 // --- Response ---
-public record RefreshResponse(string AccessToken, string RefreshToken, long ExpiresAt);
+/// <summary>
+/// The rotated token pair, and the profile that goes with it.
+///
+/// The profile is included so a change to who the user is — their agency renamed, a role added —
+/// reaches the browser within the fifteen minutes an access token lives, instead of waiting for
+/// them to sign out and back in. Roles and permissions are already loaded here to mint the token;
+/// the profile costs one more small read.
+/// </summary>
+public record RefreshResponse(
+    string AccessToken,
+    string RefreshToken,
+    long ExpiresAt,
+    UserProfileDto? User = null);
 
 // --- Validator ---
 public class RefreshTokenValidator : AbstractValidator<RefreshTokenCommand>
@@ -114,6 +126,9 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
 
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15).ToUnixTimeMilliseconds();
 
-        return Result<RefreshResponse>.Success(new RefreshResponse(accessToken, rawNewToken, expiresAt));
+        var profile = await SignedInProfile.BuildAsync(user, permissions, roles, _context, cancellationToken);
+
+        return Result<RefreshResponse>.Success(
+            new RefreshResponse(accessToken, rawNewToken, expiresAt, profile));
     }
 }

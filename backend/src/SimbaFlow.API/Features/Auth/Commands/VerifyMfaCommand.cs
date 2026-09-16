@@ -120,10 +120,6 @@ public class VerifyMfaHandler : IRequestHandler<VerifyMfaCommand, Result<LoginRe
             AccessToken: accessToken,
             RefreshToken: rawRefreshToken,
             ExpiresAt: expiresAt,
-            User: new UserProfileDto(
-                user.Id, user.UserName!, user.FullName, user.Email!,
-                user.PhoneNumber, user.ProfileImageUrl,
-                user.IsFirstLogin, user.IsSuperAdmin, user.DepartmentId,
-                permissions, roles)));
+            User: await SignedInProfile.BuildAsync(user, permissions, roles, _context, cancellationToken)));
     }
 }
