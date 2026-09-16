@@ -22,11 +22,14 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function ArrivalBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("arrival.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useArrivalBoard({
     search: search || undefined,
@@ -35,6 +38,7 @@ export default function ArrivalBoardPage() {
 
   const columns = useMemo<ColumnDef<ArrivalBoardRow>[]>(
     () => [
+      selectionColumn<ArrivalBoardRow>(),
       indexColumn<ArrivalBoardRow>(),
       {
         accessorKey: "fullName",
@@ -102,6 +106,10 @@ export default function ArrivalBoardPage() {
   );
 
   const table = useReactTable({
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
+    enableRowSelection: true,
     data: candidates,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -147,7 +155,13 @@ export default function ArrivalBoardPage() {
           ) : (
             <DataTable
             rowClickOpensActions
-        exportFileName="arrivals" table={table} paginated emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures." />
+        exportFileName="arrivals"
+            toolbarEndActions={
+              <BulkDownloadButton
+                candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
+                onDownloaded={() => setRowSelection({})}
+              />
+            } table={table} paginated emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures." />
           )}
         </div>
       )}

@@ -22,11 +22,14 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function TicketBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("travel.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useTicketBoard({
     search: search || undefined,
@@ -35,6 +38,7 @@ export default function TicketBoardPage() {
 
   const columns = useMemo<ColumnDef<TravelBoardRow>[]>(
     () => [
+      selectionColumn<TravelBoardRow>(),
       indexColumn<TravelBoardRow>(),
       {
         accessorKey: "fullName",
@@ -92,6 +96,10 @@ export default function TicketBoardPage() {
   );
 
   const table = useReactTable({
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
+    enableRowSelection: true,
     data: candidates,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -137,7 +145,13 @@ export default function TicketBoardPage() {
           ) : (
             <DataTable
             rowClickOpensActions
-        exportFileName="tickets" table={table} paginated emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS." />
+        exportFileName="tickets"
+            toolbarEndActions={
+              <BulkDownloadButton
+                candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
+                onDownloaded={() => setRowSelection({})}
+              />
+            } table={table} paginated emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS." />
           )}
         </div>
       )}

@@ -30,11 +30,14 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function LmisBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("lmis.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [insurance, setInsurance] = useState<string>("all");
   const [milestone, setMilestone] = useState<string>("all");
   const [mirrorOnly, setMirrorOnly] = useState<string>("all");
@@ -49,6 +52,7 @@ export default function LmisBoardPage() {
 
   const columns = useMemo<ColumnDef<LmisBoardRow>[]>(
     () => [
+      selectionColumn<LmisBoardRow>(),
       indexColumn<LmisBoardRow>(),
       {
         accessorKey: "fullName",
@@ -117,6 +121,10 @@ export default function LmisBoardPage() {
   );
 
   const table = useReactTable({
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
+    enableRowSelection: true,
     data: candidates,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -211,6 +219,12 @@ export default function LmisBoardPage() {
           <DataTable
             rowClickOpensActions
         exportFileName="lmis"
+            toolbarEndActions={
+              <BulkDownloadButton
+                candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
+                onDownloaded={() => setRowSelection({})}
+              />
+            }
             table={table}
             enableGlobalFilter={false}
             paginated

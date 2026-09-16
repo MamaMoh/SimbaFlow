@@ -135,6 +135,15 @@ public class CandidateModule : ICarterModule
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // Every selected candidate's chosen paperwork, in one ZIP — one folder per candidate.
+        group.MapPost("/documents/bulk", async (DownloadCandidateDocumentsCommand command, ISender sender) =>
+        {
+            var result = await sender.Send(command);
+            return result.IsSuccess
+                ? Results.File(result.Data!, "application/zip", $"documents_{DateTime.UtcNow:yyyyMMddHHmmss}.zip")
+                : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // Generate Enjaz / visa application form
         // Visa and sponsor details captured when a candidate is marked Ready
         group.MapPost("/{candidateId:guid}/visa-details", async (

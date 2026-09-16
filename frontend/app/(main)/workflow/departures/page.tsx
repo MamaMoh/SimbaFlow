@@ -23,11 +23,14 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function DepartureBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("travel.read") || hasPermission("system.admin");
   const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [includeCanceled, setIncludeCanceled] = useState(false);
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useDepartureBoard({
@@ -38,6 +41,7 @@ export default function DepartureBoardPage() {
 
   const columns = useMemo<ColumnDef<TravelBoardRow>[]>(
     () => [
+      selectionColumn<TravelBoardRow>(),
       indexColumn<TravelBoardRow>(),
       {
         accessorKey: "fullName",
@@ -104,6 +108,10 @@ export default function DepartureBoardPage() {
   );
 
   const table = useReactTable({
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
+    enableRowSelection: true,
     data: candidates,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -161,7 +169,13 @@ export default function DepartureBoardPage() {
           ) : (
             <DataTable
             rowClickOpensActions
-        exportFileName="departures" table={table} paginated emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets." />
+        exportFileName="departures"
+            toolbarEndActions={
+              <BulkDownloadButton
+                candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
+                onDownloaded={() => setRowSelection({})}
+              />
+            } table={table} paginated emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets." />
           )}
         </div>
       )}

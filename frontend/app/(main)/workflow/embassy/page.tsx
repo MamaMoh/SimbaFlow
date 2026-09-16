@@ -27,6 +27,8 @@ import { Download, FileText, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function EmbassyBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
@@ -42,28 +44,7 @@ export default function EmbassyBoardPage() {
 
   const columns = useMemo<ColumnDef<EmbassyBoardRow>[]>(
     () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(v) => row.toggleSelected(!!v)}
-            aria-label="Select row"
-          />
-        ),
-        size: 36,
-        enableSorting: false,
-      },
+      selectionColumn<EmbassyBoardRow>(),
       indexColumn<EmbassyBoardRow>(),
       {
         accessorKey: "fullName",
@@ -288,6 +269,10 @@ export default function EmbassyBoardPage() {
                   <FileText className="h-3.5 w-3.5" />
                   {busy === "enjaze" ? "Building…" : "Print enjaze"}
                 </Button>
+                <BulkDownloadButton
+                  candidateIds={selectedIds}
+                  onDownloaded={() => setRowSelection({})}
+                />
               </div>
             }
             enableGlobalFilter={false}

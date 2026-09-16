@@ -21,6 +21,8 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function CaseExecutiveBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
@@ -29,6 +31,7 @@ export default function CaseExecutiveBoardPage() {
     hasPermission("embassy.read") ||
     hasPermission("system.admin");
   const [search, setSearch] = useState("");
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { candidates, totalCount, isLoading, error, mutate } = useCaseExecutiveBoard({
     search: search || undefined,
@@ -37,6 +40,7 @@ export default function CaseExecutiveBoardPage() {
 
   const columns = useMemo<ColumnDef<EmbassyBoardRow>[]>(
     () => [
+      selectionColumn<EmbassyBoardRow>(),
       indexColumn<EmbassyBoardRow>(),
       {
         accessorKey: "fullName",
@@ -94,6 +98,10 @@ export default function CaseExecutiveBoardPage() {
   );
 
   const table = useReactTable({
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => row.id,
+    enableRowSelection: true,
     data: candidates,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -146,6 +154,12 @@ export default function CaseExecutiveBoardPage() {
           <DataTable
             rowClickOpensActions
         exportFileName="case-executive"
+            toolbarEndActions={
+              <BulkDownloadButton
+                candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
+                onDownloaded={() => setRowSelection({})}
+              />
+            }
             table={table}
             enableGlobalFilter={false}
             paginated

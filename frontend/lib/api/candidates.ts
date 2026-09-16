@@ -163,6 +163,37 @@ export async function generateBulkCandidateCvs(candidateIds: string[]): Promise<
   return blob;
 }
 
+/**
+ * The selected candidates' selected documents, as one ZIP.
+ *
+ * `documentTypes` are the API's DocumentType numbers — see DOCUMENT_KINDS, which is the one place
+ * they are named.
+ */
+export async function downloadCandidateDocuments(
+  candidateIds: string[],
+  documentTypes: number[],
+): Promise<Blob> {
+  const res = await fetch("/api/proxy/candidates/documents/bulk", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidateIds, documentTypes }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || "Download failed");
+  }
+
+  const blob = await res.blob();
+  // A 200 carrying JSON is the API reporting a problem in the body; surface it rather than saving
+  // an unopenable "zip".
+  if ((blob.type || "").includes("json")) {
+    const parsed = JSON.parse(await blob.text());
+    throw new Error(parsed?.error || "Download failed");
+  }
+  return blob;
+}
+
 export async function generateCandidateVisaForm(candidateId: string): Promise<Blob> {
   const res = await fetch(`/api/proxy/candidates/${candidateId}/visa-form`, { method: "POST" });
   return readPdfBlob(res, "Visa form generation failed");

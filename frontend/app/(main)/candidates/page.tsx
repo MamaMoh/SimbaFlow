@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
+import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 function openPdfInNewTab(blob: Blob) {
   const pdfBlob =
@@ -87,6 +88,7 @@ export default function CandidatesPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
+  const [stageFilter, setStageFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -101,12 +103,39 @@ export default function CandidatesPage() {
     { revalidateOnFocus: false }
   );
 
-  const candidates: CandidateRow[] = data?.data?.items || [];
+  const allCandidates: CandidateRow[] = data?.data?.items || [];
+
+  // Stage is filtered here rather than in the query: the page already holds the whole list, and a
+  // round trip to narrow rows it is currently rendering would be slower than the filter it replaces.
+  const candidates = useMemo(
+    () =>
+      stageFilter === "all"
+        ? allCandidates
+        : allCandidates.filter(
+            (c) => (c.currentStageName?.trim() || "Intake") === stageFilter
+          ),
+    [allCandidates, stageFilter]
+  );
   const loadFailed = !!error || (data && data.isSuccess === false);
   const selectedIds = useMemo(
     () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
     [rowSelection]
   );
+
+  /**
+   * The stages actually present, with how many people are standing in each.
+   *
+   * Built from the rows rather than from the workflow definition, so a stage nobody is in does not
+   * offer itself as a filter that returns nothing.
+   */
+  const stageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of allCandidates) {
+      const stage = c.currentStageName?.trim() || "Intake";
+      counts.set(stage, (counts.get(stage) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [allCandidates]);
 
   const handleDelete = useCallback(async (id: string, name: string) => {
     setDeleteTarget({ id, name });
@@ -325,8 +354,46 @@ export default function CandidatesPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Candidates"
-        description="Manage candidate registrations and track their pipeline progress"
+        description="Every applicant and the stage they are standing in"
       />
+
+      {/*
+        Who is where, without opening six boards to find out. Each board shows one stage; this is
+        the whole pipeline in one row, and clicking a stage narrows the table below to it.
+      */}
+      {stageCounts.length > 0 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <button
+            type="button"
+            onClick={() => setStageFilter("all")}
+            className={
+              "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition " +
+              (stageFilter === "all"
+                ? "border-green-800 bg-green-800 text-white"
+                : "bg-background text-muted-foreground hover:text-foreground")
+            }
+          >
+            All stages
+            <span className="ml-1.5 opacity-70">{allCandidates.length}</span>
+          </button>
+          {stageCounts.map(([stage, count]) => (
+            <button
+              key={stage}
+              type="button"
+              onClick={() => setStageFilter(stage === stageFilter ? "all" : stage)}
+              className={
+                "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition " +
+                (stageFilter === stage
+                  ? "border-green-800 bg-green-800 text-white"
+                  : "bg-background text-muted-foreground hover:text-foreground")
+              }
+            >
+              {stage}
+              <span className="ml-1.5 opacity-70">{count}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {loadFailed && (
         <LoadError
@@ -381,6 +448,10 @@ export default function CandidatesPage() {
                   Generate CVs ({selectedIds.length})
                 </Button>
               ) : null}
+              <BulkDownloadButton
+                candidateIds={selectedIds}
+                onDownloaded={() => setRowSelection({})}
+              />
               {canWrite ? (
                 <Button
                   size="sm"
