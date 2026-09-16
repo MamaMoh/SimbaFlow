@@ -86,9 +86,16 @@ public static class ServiceExtensions
             // enough for a person who mistypes their address, far too slow to enumerate accounts.
             options.AddPolicy("auth", ClientPartition(permitLimit: 10, window: TimeSpan.FromMinutes(15)));
 
-            // Refresh is chatty — several tabs rotating a token at once is normal — so this is
-            // generous. It exists to make guessing at refresh tokens pointless, not to pace clients.
-            options.AddPolicy("refresh", ClientPartition(permitLimit: 60, window: TimeSpan.FromMinutes(1)));
+            // Refresh is deliberately loose, because unlike login it cannot be attributed to a
+            // caller: rotation happens in the Next.js jwt callback, server to server, with no
+            // request to read a client address from. Every refresh on the platform therefore lands
+            // in one partition, and a tight limit here would not throttle an attacker — it would
+            // log out every user at once the moment the platform got busy.
+            //
+            // Little is lost. A refresh token is 256 bits of CSPRNG output, so guessing one is not
+            // a threat a rate limit meaningfully changes, and replaying a rotated token already
+            // trips theft detection and revokes the user's sessions. This is flood control.
+            options.AddPolicy("refresh", ClientPartition(permitLimit: 600, window: TimeSpan.FromMinutes(1)));
 
             options.AddFixedWindowLimiter("general", opt =>
             {

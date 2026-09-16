@@ -258,12 +258,20 @@ export const authOptions: NextAuthOptions = {
         formdata.append("password", credentials.password);
 
         // The browser's address, so the API rate-limits sign-ins per caller rather than lumping
-        // every user of the platform together behind this server's address. nginx sets
-        // X-Forwarded-For; the left-most entry is the original client.
-        const forwarded = req?.headers?.["x-forwarded-for"];
-        const clientIp = (Array.isArray(forwarded) ? forwarded[0] : forwarded)
-          ?.split(",")[0]
-          ?.trim();
+        // every user of the platform together behind this server's address.
+        //
+        // X-Real-IP, not X-Forwarded-For. nginx sets X-Real-IP from the connection's own peer
+        // address and overwrites whatever arrived, whereas X-Forwarded-For is built with
+        // $proxy_add_x_forwarded_for — which *appends* to the header the caller sent. Trusting its
+        // left-most entry would hand the rate-limit key to the caller, who could then vary it per
+        // request and never be limited at all. Where XFF is the only thing available, the real
+        // client is the entry nginx appended: the last one, never the first.
+        const header = (name: string) => {
+          const v = req?.headers?.[name];
+          return Array.isArray(v) ? v[0] : v;
+        };
+        const forwarded = header("x-forwarded-for")?.split(",").map((s: string) => s.trim()).filter(Boolean);
+        const clientIp = header("x-real-ip")?.trim() || forwarded?.[forwarded.length - 1];
 
         try {
           const result = await authenticate(formdata, clientIp);
