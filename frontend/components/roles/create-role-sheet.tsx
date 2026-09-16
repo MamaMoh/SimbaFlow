@@ -23,9 +23,7 @@ import { toast } from "sonner";
 
 const createRoleSchema = z.object({
   name: z.string().min(2, "Role name required"),
-  code: z.string().min(2, "Code required").regex(/^[a-z][a-z0-9_-]*$/, "Lowercase, alphanumeric, hyphens/underscores"),
   description: z.string().optional(),
-  sortOrder: z.number().optional(),
 });
 
 type CreateRoleForm = z.infer<typeof createRoleSchema>;
@@ -39,6 +37,8 @@ interface CreateRoleSheetProps {
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleSheetProps) {
+  // Permission *ids*, not codes: the role/permission join is keyed on the id, and sending codes
+  // meant the server had to guess at a mapping that only the catalogue knows.
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const { data: permissionsData } = useSWR(
@@ -61,22 +61,21 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
     formState: { errors, isSubmitting },
   } = useForm<CreateRoleForm>({
     resolver: zodResolver(createRoleSchema),
-    defaultValues: { sortOrder: 0 },
   });
 
-  const togglePermission = (code: string) => {
+  const togglePermission = (id: string) => {
     setSelectedPermissions(prev =>
-      prev.includes(code) ? prev.filter(p => p !== code) : [...prev, code]
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
     );
   };
 
   const toggleModule = (module: string) => {
-    const moduleCodes = grouped[module].map(p => p.code);
-    const allSelected = moduleCodes.every(c => selectedPermissions.includes(c));
+    const moduleIds = grouped[module].map(p => p.id);
+    const allSelected = moduleIds.every(c => selectedPermissions.includes(c));
     if (allSelected) {
-      setSelectedPermissions(prev => prev.filter(c => !moduleCodes.includes(c)));
+      setSelectedPermissions(prev => prev.filter(c => !moduleIds.includes(c)));
     } else {
-      setSelectedPermissions(prev => [...new Set([...prev, ...moduleCodes])]);
+      setSelectedPermissions(prev => [...new Set([...prev, ...moduleIds])]);
     }
   };
 
@@ -87,8 +86,7 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          sortOrder: data.sortOrder || 0,
-          permissions: selectedPermissions,
+          permissionIds: selectedPermissions,
         }),
       });
       const result = await response.json();
@@ -134,12 +132,6 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
                   {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Code <span className="text-red-500">*</span></Label>
-                  <Input placeholder="e.g. embassy-officer" {...register("code")} />
-                  {errors.code && <p className="text-xs text-destructive mt-1">{errors.code.message}</p>}
-                  <p className="text-xs text-muted-foreground">Lowercase identifier. Cannot be changed later.</p>
-                </div>
-                <div className="space-y-1.5">
                   <Label>Description</Label>
                   <Textarea placeholder="What can this role do?" {...register("description")} rows={2} />
                 </div>
@@ -156,8 +148,8 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
               </h3>
 
               {Object.entries(grouped).map(([module, perms]) => {
-                const allChecked = perms.every(p => selectedPermissions.includes(p.code));
-                const someChecked = perms.some(p => selectedPermissions.includes(p.code));
+                const allChecked = perms.every(p => selectedPermissions.includes(p.id));
+                const someChecked = perms.some(p => selectedPermissions.includes(p.id));
 
                 return (
                   <div key={module} className="mb-4">
@@ -171,10 +163,10 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
                     </div>
                     <div className="ml-6 grid grid-cols-1 gap-1.5">
                       {perms.map(p => (
-                        <label key={p.code} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
+                        <label key={p.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1">
                           <Checkbox
-                            checked={selectedPermissions.includes(p.code)}
-                            onCheckedChange={() => togglePermission(p.code)}
+                            checked={selectedPermissions.includes(p.id)}
+                            onCheckedChange={() => togglePermission(p.id)}
                           />
                           <span className="flex-1">{p.name}</span>
                           <code className="text-[10px] text-muted-foreground">{p.code}</code>

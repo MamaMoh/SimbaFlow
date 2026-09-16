@@ -31,11 +31,9 @@ import { PageHeader } from "@/components/ui/page-header";
 interface RoleRow {
   id: string;
   name: string;
-  code: string;
   description: string | null;
   isSystemRole: boolean;
   isActive: boolean;
-  sortOrder: number;
   permissions: string[];
   userCount: number;
 }
@@ -89,9 +87,11 @@ export default function RolesPage() {
       ),
     },
     {
-      accessorKey: "code",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
-      cell: ({ getValue }) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{getValue() as string}</code>,
+      accessorKey: "description",
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
+      cell: ({ getValue }) => (
+        <span className="text-sm text-muted-foreground">{(getValue() as string) || "—"}</span>
+      ),
     },
     {
       accessorKey: "permissions",

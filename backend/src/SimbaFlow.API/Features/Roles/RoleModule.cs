@@ -1,12 +1,24 @@
 using Carter;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using SimbaFlow.Application.Common.Interfaces;
-using SimbaFlow.Application.Common.Models;
-using SimbaFlow.Domain.Entities.Tenancy;
+using SimbaFlow.API.Features.Roles.Commands;
+using SimbaFlow.API.Features.Roles.Queries;
 
 namespace SimbaFlow.API.Features.Roles;
 
+/// <summary>
+/// Roles and their permissions.
+///
+/// Every route dispatches through MediatR, which is the only way a request meets
+/// AuthorizationBehavior and so the only way IRequirePermission is enforced. The previous version
+/// of this module was written inline against the DbContext, which bypassed that pipeline entirely
+/// and left role administration — create, rewrite, delete — open to any signed-in user.
+///
+/// It also wrote to a second set of per-tenant RBAC tables that nothing ever read: tokens are built
+/// from the platform-schema RolePermissions joined on Identity roles. Editing a role there changed
+/// what this screen displayed and nothing else, so an administrator who removed a permission would
+/// have believed they had revoked access the user still had. These routes now read and write the
+/// tables that actually decide access.
+/// </summary>
 public class RoleModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
@@ -15,202 +27,66 @@ public class RoleModule : ICarterModule
             .WithTags("Roles & Permissions")
             .RequireAuthorization();
 
-        // List all roles for the current tenant
-        group.MapGet("/", async (ITenantDbContext context) =>
+        group.MapGet("/", async (ISender sender) =>
         {
-            var roles = await context.TenantRoles
-                .AsNoTracking()
-                .Where(r => !r.IsDeleted)
-                .OrderBy(r => r.SortOrder)
-                .Select(r => new RoleDto(
-                    r.Id, r.Name, r.Code, r.Description,
-                    r.IsSystemRole, r.IsActive, r.SortOrder,
-                    r.Permissions.Select(p => p.PermissionCode).ToList(),
-                    r.UserRoles.Count))
-                .ToListAsync();
-
-            return Results.Ok(new { isSuccess = true, data = roles });
+            var result = await sender.Send(new GetRolesQuery());
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Get all system permissions (the building blocks for role assignment)
-        group.MapGet("/permissions", async (IPlatformDbContext context) =>
+        // The permission catalogue, flattened. The query groups by module for callers that want
+        // that shape; the roles screen does its own grouping, so it is given the flat list.
+        group.MapGet("/permissions", async (ISender sender) =>
         {
-            var permissions = await context.Permissions
-                .AsNoTracking()
-                .Where(p => p.IsActive && !p.IsDeleted)
-                .OrderBy(p => p.Module)
-                .ThenBy(p => p.Code)
-                .Select(p => new PermissionDto(p.Id, p.Code, p.Name, p.Module))
-                .ToListAsync();
+            var result = await sender.Send(new GetPermissionsQuery());
+            if (!result.IsSuccess)
+                return Results.Json(result, statusCode: result.StatusCode);
 
-            return Results.Ok(new { isSuccess = true, data = permissions });
-        });
-
-        // Create a new role for the current tenant
-        group.MapPost("/", async (CreateRoleRequest request, ITenantDbContext context) =>
-        {
-            // Check code uniqueness
-            var exists = await context.TenantRoles
-                .AnyAsync(r => r.Code == request.Code && !r.IsDeleted);
-            if (exists)
-                return Results.Json(new { isSuccess = false, error = "A role with this code already exists" }, statusCode: 409);
-
-            var role = new TenantRole
-            {
-                Name = request.Name,
-                Code = request.Code,
-                Description = request.Description,
-                IsSystemRole = false,
-                IsActive = true,
-                SortOrder = request.SortOrder,
-            };
-
-            // Assign permissions
-            if (request.Permissions?.Count > 0)
-            {
-                foreach (var permCode in request.Permissions)
+            var flattened = (result.Data ?? [])
+                .SelectMany(g => g.Permissions.Select(p => new
                 {
-                    role.Permissions.Add(new TenantRolePermission
-                    {
-                        TenantRoleId = role.Id,
-                        PermissionCode = permCode,
-                    });
-                }
-            }
+                    p.Id,
+                    p.Code,
+                    p.Name,
+                    Module = g.Module,
+                }))
+                .ToList();
 
-            context.TenantRoles.Add(role);
-            await context.SaveChangesAsync();
-
-            return Results.Created($"/api/roles/{role.Id}", new { isSuccess = true, data = role.Id });
+            return Results.Ok(new { isSuccess = true, data = flattened });
         });
 
-        // Update role
-        group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, ITenantDbContext context) =>
+        group.MapGet("/{id:guid}", async (Guid id, ISender sender) =>
         {
-            var role = await context.TenantRoles
-                .Include(r => r.Permissions)
-                .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
-
-            if (role is null)
-                return Results.Json(new { isSuccess = false, error = "Role not found" }, statusCode: 404);
-
-            role.Name = request.Name;
-            role.Description = request.Description;
-            role.SortOrder = request.SortOrder;
-            role.IsActive = request.IsActive;
-
-            // Replace permissions
-            role.Permissions.Clear();
-            if (request.Permissions?.Count > 0)
-            {
-                foreach (var permCode in request.Permissions)
-                {
-                    role.Permissions.Add(new TenantRolePermission
-                    {
-                        TenantRoleId = role.Id,
-                        PermissionCode = permCode,
-                    });
-                }
-            }
-
-            await context.SaveChangesAsync();
-            return Results.Ok(new { isSuccess = true });
+            var result = await sender.Send(new GetRoleByIdQuery(id));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Delete role
-        group.MapDelete("/{id:guid}", async (Guid id, ITenantDbContext context) =>
+        group.MapPost("/", async (CreateRoleRequest request, ISender sender) =>
         {
-            var role = await context.TenantRoles
-                .FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
-
-            if (role is null)
-                return Results.Json(new { isSuccess = false, error = "Role not found" }, statusCode: 404);
-
-            if (role.IsSystemRole)
-                return Results.Json(new { isSuccess = false, error = "Cannot delete system roles" }, statusCode: 400);
-
-            role.IsDeleted = true;
-            await context.SaveChangesAsync();
-
-            return Results.NoContent();
+            var result = await sender.Send(
+                new CreateRoleCommand(request.Name, request.Description, request.PermissionIds ?? []));
+            return result.IsSuccess
+                ? Results.Created($"/api/roles/{result.Data}", result)
+                : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Assign role to user
-        group.MapPost("/{roleId:guid}/users/{userId:guid}", async (Guid roleId, Guid userId, ITenantDbContext context) =>
+        group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, ISender sender) =>
         {
-            var exists = await context.TenantUserRoles
-                .AnyAsync(ur => ur.UserId == userId && ur.TenantRoleId == roleId);
-
-            if (exists)
-                return Results.Ok(new { isSuccess = true, message = "User already has this role" });
-
-            context.TenantUserRoles.Add(new TenantUserRole
-            {
-                UserId = userId,
-                TenantRoleId = roleId,
-            });
-            await context.SaveChangesAsync();
-
-            return Results.Ok(new { isSuccess = true });
+            var result = await sender.Send(
+                new UpdateRoleCommand(id, request.Name, request.Description, request.PermissionIds ?? []));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Remove role from user
-        group.MapDelete("/{roleId:guid}/users/{userId:guid}", async (Guid roleId, Guid userId, ITenantDbContext context) =>
+        group.MapDelete("/{id:guid}", async (Guid id, ISender sender) =>
         {
-            var assignment = await context.TenantUserRoles
-                .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.TenantRoleId == roleId);
-
-            if (assignment is null)
-                return Results.Json(new { isSuccess = false, error = "Assignment not found" }, statusCode: 404);
-
-            context.TenantUserRoles.Remove(assignment);
-            await context.SaveChangesAsync();
-
-            return Results.NoContent();
+            var result = await sender.Send(new DeleteRoleCommand(id));
+            return result.IsSuccess ? Results.NoContent() : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Get users for a role
-        group.MapGet("/{roleId:guid}/users", async (Guid roleId, ITenantDbContext tenantContext, IPlatformDbContext platformContext) =>
-        {
-            var userRoles = await tenantContext.TenantUserRoles
-                .AsNoTracking()
-                .Where(ur => ur.TenantRoleId == roleId)
-                .ToListAsync();
-
-            var userIds = userRoles.Select(ur => ur.UserId).ToList();
-
-            var users = await platformContext.ApplicationUsers
-                .AsNoTracking()
-                .Where(u => userIds.Contains(u.Id))
-                .Select(u => new
-                {
-                    u.Id,
-                    u.UserName,
-                    FullName = u.FirstName + " " + u.LastName,
-                    u.Email,
-                })
-                .ToListAsync();
-
-            var result = users.Select(u =>
-            {
-                var ur = userRoles.First(x => x.UserId == u.Id);
-                return new
-                {
-                    u.Id,
-                    u.UserName,
-                    u.FullName,
-                    u.Email,
-                    ur.AssignedAt,
-                };
-            }).ToList();
-
-            return Results.Ok(new { isSuccess = true, data = result });
-        });
+        // Role membership is not managed here. It belongs to a user, and lives at
+        // PUT /api/users/{id}/roles — which is where the checks that stop someone granting
+        // themselves a platform role are applied.
     }
 }
 
-// DTOs
-public record RoleDto(Guid Id, string Name, string Code, string? Description, bool IsSystemRole, bool IsActive, int SortOrder, List<string> Permissions, int UserCount);
-public record PermissionDto(Guid Id, string Code, string Name, string Module);
-public record CreateRoleRequest(string Name, string Code, string? Description, int SortOrder, List<string>? Permissions);
-public record UpdateRoleRequest(string Name, string? Description, int SortOrder, bool IsActive, List<string>? Permissions);
+public record CreateRoleRequest(string Name, string? Description, List<Guid>? PermissionIds);
+public record UpdateRoleRequest(string Name, string? Description, List<Guid>? PermissionIds);
