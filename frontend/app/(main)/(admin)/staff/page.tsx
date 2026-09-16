@@ -25,8 +25,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CreateUserSheet } from "@/components/users/create-user-sheet";
 import { EditUserSheet, type EditableUser } from "@/components/users/edit-user-sheet";
+import {
+  ResetPasswordDialog,
+  type ResetPasswordTarget,
+} from "@/components/users/reset-password-dialog";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
-import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 
 interface UserRow {
@@ -55,6 +58,7 @@ export default function StaffPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EditableUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [resetTarget, setResetTarget] = useState<ResetPasswordTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, mutate } = useSWR(
@@ -81,22 +85,6 @@ export default function StaffPage() {
     mutate();
     setIsDeleting(false);
     setDeleteTarget(null);
-  };
-
-  const handleResetPassword = async (id: string) => {
-    const newPassword = prompt("Enter new password (min 8 chars, uppercase, lowercase, digit, special):");
-    if (!newPassword) return;
-    const res = await fetch(`/api/proxy/users/${id}/password`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newPassword }),
-    });
-    const result = await res.json();
-    if (result.isSuccess) {
-      toast.success("Password reset successfully");
-    } else {
-      toast.error(result.error || "Failed to reset password");
-    }
   };
 
   const columns: ColumnDef<UserRow>[] = useMemo(() => [
@@ -211,7 +199,15 @@ export default function StaffPage() {
             <DropdownMenuItem onClick={() => setEditTarget(row.original)}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleResetPassword(row.original.id)}>
+            <DropdownMenuItem
+              onClick={() =>
+                setResetTarget({
+                  id: row.original.id,
+                  username: row.original.username,
+                  fullName: `${row.original.firstName} ${row.original.lastName}`,
+                })
+              }
+            >
               <KeyRound className="h-4 w-4 mr-2" /> Reset Password
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -265,6 +261,11 @@ export default function StaffPage() {
         user={editTarget}
         onOpenChange={(open) => { if (!open) setEditTarget(null); }}
         onSaved={() => mutate()}
+      />
+      <ResetPasswordDialog
+        user={resetTarget}
+        onOpenChange={(open) => { if (!open) setResetTarget(null); }}
+        onReset={() => mutate()}
       />
       <CreateUserSheet open={createOpen} onOpenChange={setCreateOpen} onCreated={() => mutate()} />
       <DeleteDialog
