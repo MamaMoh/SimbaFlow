@@ -98,6 +98,20 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
             tenantId = _currentUser.TenantId;
         }
 
+        // Everyone belongs to an agency, except the handful of people who run the platform.
+        //
+        // Without this a user could be created with no agency at all, and the result was not an
+        // account with reduced access but a broken one: a tenant role with no tenant resolves to no
+        // schema, so the person signs in and every page they open is empty. Platform roles are the
+        // exception because they are defined by having no agency.
+        var isPlatformAccount = isSuperAdmin || rolesToAssign.Any(UserAccessGuard.IsPlatformRole);
+        if (tenantId is null && !isPlatformAccount)
+        {
+            return Result<Guid>.Failure(
+                "Choose an agency for this user. Only platform administrators may be created "
+                + "without one.", 400);
+        }
+
         var user = new ApplicationUser
         {
             UserName = request.Username,

@@ -53,6 +53,12 @@ public static class UserAccessGuard
     public static bool CanGrantRole(ICurrentUserService caller, string roleName) =>
         caller.IsSuperAdmin || !PlatformRoles.Contains(roleName);
 
+    /// <summary>
+    /// True if this role belongs to the platform rather than to one agency — and so is the only
+    /// kind of account allowed to exist without an agency.
+    /// </summary>
+    public static bool IsPlatformRole(string roleName) => PlatformRoles.Contains(roleName);
+
     /// <summary>The roles in <paramref name="roleNames"/> that the caller is not allowed to grant.</summary>
     public static IReadOnlyList<string> RolesCallerMayNotGrant(
         ICurrentUserService caller, IEnumerable<string> roleNames) =>

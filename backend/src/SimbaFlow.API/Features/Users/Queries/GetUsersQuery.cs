@@ -54,6 +54,10 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
         var query = _context.ApplicationUsers
             .AsNoTracking()
             .Include(u => u.Department)
+            // A removed account is removed. There is no global query filter on this entity, and
+            // nothing here excluded them — so people deleted months ago sat in the staff list
+            // looking exactly like working colleagues.
+            .Where(u => !u.IsDeleted)
             .AsQueryable();
 
         // Tenant isolation, stated so that every case is covered.

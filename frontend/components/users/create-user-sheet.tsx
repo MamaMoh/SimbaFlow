@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,8 +25,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { User, Shield, Key } from "lucide-react";
+import { User, Shield, Key, Building2 } from "lucide-react";
 import { toast } from "sonner";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { getActingTenantId } from "@/lib/tenant/acting-tenant";
+
+const PLATFORM_ONLY = "__platform__";
 
 const createUserSchema = z.object({
   firstName: z.string().min(2, "First name required"),
@@ -35,6 +41,7 @@ const createUserSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.string().min(1, "Role is required"),
   requireMfa: z.boolean().optional(),
+  tenantId: z.string().optional(),
 });
 
 type CreateUserForm = z.infer<typeof createUserSchema>;
@@ -44,6 +51,9 @@ interface CreateUserSheetProps {
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
 }
+
+/** Roles that run the platform and so have no agency of their own. */
+const PLATFORM_ROLES = ["PlatformAdmin"];
 
 const ROLES = [
   "AgencyOwner",
@@ -57,7 +67,27 @@ const ROLES = [
   "NotificationManager",
 ];
 
+type Agency = { id: string; name: string };
+
+const agencyFetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserSheetProps) {
+  // Only a platform administrator chooses the agency — everyone else creates people in their own,
+  // which the API enforces regardless of what is sent.
+  const { isSuperAdmin } = usePermissions();
+  const { data: agencyData } = useSWR(
+    open && isSuperAdmin ? "/api/proxy/tenants" : null,
+    agencyFetcher,
+    { revalidateOnFocus: false },
+  );
+  const agencies: Agency[] = Array.isArray(agencyData)
+    ? agencyData
+    : Array.isArray(agencyData?.data)
+      ? agencyData.data
+      : Array.isArray(agencyData?.items)
+        ? agencyData.items
+        : [];
+
   const {
     register,
     handleSubmit,
@@ -69,6 +99,16 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
     resolver: zodResolver(createUserSchema),
     defaultValues: { requireMfa: false },
   });
+
+  const selectedTenant = watch("tenantId");
+  const selectedRole = watch("role");
+
+  // Default to whichever agency they are already working inside, so the common case is one click.
+  useEffect(() => {
+    if (!open || !isSuperAdmin) return;
+    const acting = getActingTenantId();
+    if (acting) setValue("tenantId", acting);
+  }, [open, isSuperAdmin, setValue]);
 
   const onSubmit = async (data: CreateUserForm) => {
     try {
@@ -84,6 +124,10 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
           password: data.password,
           roleName: data.role,
           requireMfa: data.requireMfa || false,
+          // Null means a platform account with no agency, which the API accepts only for a
+          // platform role. A tenant admin's value is ignored — the API uses their own agency.
+          tenantId:
+            data.tenantId && data.tenantId !== PLATFORM_ONLY ? data.tenantId : null,
         }),
       });
 
@@ -115,6 +159,42 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+          {/* Agency — platform administrators only; everyone else creates inside their own. */}
+          {isSuperAdmin && (
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-semibold mb-4">
+                <Building2 className="h-4 w-4 text-green-700" />
+                Agency
+              </h3>
+              <div className="space-y-1.5">
+                <Label>Belongs to <span className="text-red-500">*</span></Label>
+                <Select
+                  value={selectedTenant || ""}
+                  onValueChange={(val) => setValue("tenantId", val)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an agency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agencies.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                    <SelectItem value={PLATFORM_ONLY}>
+                      Platform administrator — no agency
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedTenant === PLATFORM_ONLY
+                    ? "Choose a platform role below. An agency role without an agency cannot reach any data."
+                    : "Everyone works inside an agency, apart from the people who run the platform."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isSuperAdmin && <Separator />}
+
           {/* Basic Information */}
           <div>
             <h3 className="flex items-center gap-2 text-sm font-semibold mb-4">
@@ -190,7 +270,7 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLES.map(role => (
+                  {(selectedTenant === PLATFORM_ONLY ? PLATFORM_ROLES : ROLES).map(role => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
                 </SelectContent>

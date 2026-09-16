@@ -161,4 +161,22 @@ public class UserAccessGuardTests
         var caller = Caller(superAdmin: false, tenantId: null, "AgencyOwner");
         UserAccessGuard.CanManage(caller, User(TenantA)).Should().BeFalse();
     }
+
+    // ──── Who may exist without an agency ────
+
+    [Theory]
+    [InlineData("SuperAdmin")]
+    [InlineData("PlatformAdmin")]
+    [InlineData("platformadmin")]
+    public void PlatformRolesAreRecognised(string role) =>
+        UserAccessGuard.IsPlatformRole(role).Should().BeTrue();
+
+    [Theory]
+    [InlineData("DataEntryClerk")]
+    [InlineData("AgencyOwner")]
+    [InlineData("FieldAgent")]
+    public void AnAgencyRoleIsNotAPlatformRole(string role) =>
+        UserAccessGuard.IsPlatformRole(role).Should().BeFalse(
+            "an account with this role and no agency resolves to no schema — it signs in and finds "
+            + "every page empty, which is a broken account rather than a limited one");
 }

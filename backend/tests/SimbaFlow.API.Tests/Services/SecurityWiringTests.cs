@@ -165,4 +165,26 @@ public class SecurityWiringTests
         text.Should().Contain("TenantSignInGuard.RefusalFor",
             "{0} hands out a token, so it has to ask whether the agency may still be used", command);
     }
+
+    [Fact]
+    public void AUserCannotBeCreatedWithoutAnAgencyUnlessTheyRunThePlatform()
+    {
+        var command = Read(
+            "src", "SimbaFlow.API", "Features", "Users", "Commands", "CreateUserCommand.cs");
+
+        command.Should().Contain("UserAccessGuard.IsPlatformRole",
+            "the exception has to be the platform roles specifically, not any account that happens "
+            + "to arrive without a tenant");
+        command.Should().Contain("tenantId is null && !isPlatformAccount");
+    }
+
+    [Fact]
+    public void RemovedUsersAreNotListed()
+    {
+        var query = Read("src", "SimbaFlow.API", "Features", "Users", "Queries", "GetUsersQuery.cs");
+
+        // There is no global query filter on this entity, so the exclusion has to be written here.
+        query.Should().Contain("!u.IsDeleted",
+            "deleted accounts sat in the staff list looking like working colleagues");
+    }
 }
