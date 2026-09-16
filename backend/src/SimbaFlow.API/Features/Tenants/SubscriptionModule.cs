@@ -7,16 +7,19 @@ using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Tenants;
 
+// Enums arrive as their names — "Monthly", "Suspended" — because that is what the interface
+// shows and sends. The API has no string-enum converter registered, and adding one globally would
+// change every existing response, so these are parsed here instead.
 public record UpdateSubscriptionBody(
-    TenantStatus? Status,
-    BillingCycle? Cycle,
+    string? Status,
+    string? Cycle,
     decimal? Amount,
     string? Currency,
     DateOnly? NextPaymentDue);
 
 public record GenerateInvoiceBody(
     DateOnly? PeriodStart,
-    BillingCycle? Cycle,
+    string? Cycle,
     decimal? Amount,
     int? DueInDays);
 
@@ -86,8 +89,23 @@ public class SubscriptionModule : ICarterModule
             if (tenant is null)
                 return Results.Json(new { isSuccess = false, error = "Agency not found." }, statusCode: 404);
 
-            if (body.Status is TenantStatus status) tenant.SubscriptionStatus = status;
-            if (body.Cycle is BillingCycle cycle) tenant.BillingCycle = cycle;
+            if (!string.IsNullOrWhiteSpace(body.Status))
+            {
+                if (!Enum.TryParse<TenantStatus>(body.Status, ignoreCase: true, out var status))
+                    return Results.Json(
+                        new { isSuccess = false, error = $"'{body.Status}' is not a status this system has." },
+                        statusCode: 400);
+                tenant.SubscriptionStatus = status;
+            }
+
+            if (!string.IsNullOrWhiteSpace(body.Cycle))
+            {
+                if (!Enum.TryParse<BillingCycle>(body.Cycle, ignoreCase: true, out var cycle))
+                    return Results.Json(
+                        new { isSuccess = false, error = "Billing is either Monthly or Yearly." },
+                        statusCode: 400);
+                tenant.BillingCycle = cycle;
+            }
             if (body.Amount is decimal amount)
             {
                 if (amount < 0)
@@ -131,7 +149,14 @@ public class SubscriptionModule : ICarterModule
                 return Results.Json(new { isSuccess = false, error = "Agency not found." }, statusCode: 404);
 
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var cycle = body.Cycle ?? tenant.BillingCycle;
+            var cycle = tenant.BillingCycle;
+            if (!string.IsNullOrWhiteSpace(body.Cycle))
+            {
+                if (!Enum.TryParse<BillingCycle>(body.Cycle, ignoreCase: true, out cycle))
+                    return Results.Json(
+                        new { isSuccess = false, error = "A period is either Monthly or Yearly." },
+                        statusCode: 400);
+            }
             var start = body.PeriodStart ?? tenant.NextPaymentDue ?? today;
             var amount = body.Amount ?? tenant.SubscriptionAmount;
 
