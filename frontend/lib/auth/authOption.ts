@@ -54,15 +54,27 @@ export const authOptions: NextAuthOptions = {
     const secret = process.env.NEXTAUTH_SECRET;
     if (isBrowser) return secret || "client-side-placeholder";
 
-    // `next build` imports this module while collecting route data, and a container image
-    // must not have secrets baked into it — so don't fail the build. The check still applies
-    // at runtime, where the secret is supplied by the environment.
-    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+    if (secret) return secret;
 
-    if (!secret && process.env.NODE_ENV === "production" && !isBuildPhase) {
-      throw new Error("NEXTAUTH_SECRET is required in production");
+    // `next build` imports this module while collecting route data, and a container image must not
+    // have secrets baked into it — so don't fail the build. The check still applies at runtime,
+    // where the secret is supplied by the environment.
+    const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+    if (isBuildPhase) return "build-phase-placeholder";
+
+    // Anything that is not a local dev server must supply its own secret.
+    //
+    // Keying this on NODE_ENV === "production" alone was too narrow: a staging or preview
+    // deployment, or any process started without NODE_ENV set, signed its session cookies with the
+    // literal string below — which is published in this repository, so anyone could mint a session
+    // cookie that passes the Next.js middleware.
+    if (process.env.NODE_ENV !== "development") {
+      throw new Error(
+        "NEXTAUTH_SECRET is required. Only a local development server may run without one.",
+      );
     }
-    return secret || "development-secret-key-change-in-production";
+
+    return "development-secret-key-change-in-production";
   })(),
   callbacks: {
     async jwt({ token, user }) {
@@ -197,10 +209,15 @@ export const authOptions: NextAuthOptions = {
         return session;
       }
 
-      // Normal session — propagate tokens and profile
+      // Normal session — propagate the access token and profile.
+      //
+      // The refresh token is deliberately NOT copied here. /api/auth/session returns whatever this
+      // callback puts on the session, and any script on the page can read it — which would undo the
+      // httpOnly cookie entirely. Nothing client-side needs it: rotation happens server-side in the
+      // jwt callback above, which reads it from the encrypted cookie. Leaving it here turned one
+      // XSS into a seven-day renewable session rather than a fifteen-minute one.
       if ((token as any)?.accessToken) {
         (session.user as any).accessToken = (token as any).accessToken;
-        (session.user as any).refreshToken = (token as any).refreshToken;
       } else {
         (session as any).isError = true;
       }
@@ -233,15 +250,23 @@ export const authOptions: NextAuthOptions = {
         username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.username || !credentials?.password) return null;
 
         const formdata = new FormData();
         formdata.append("username", credentials.username);
         formdata.append("password", credentials.password);
 
+        // The browser's address, so the API rate-limits sign-ins per caller rather than lumping
+        // every user of the platform together behind this server's address. nginx sets
+        // X-Forwarded-For; the left-most entry is the original client.
+        const forwarded = req?.headers?.["x-forwarded-for"];
+        const clientIp = (Array.isArray(forwarded) ? forwarded[0] : forwarded)
+          ?.split(",")[0]
+          ?.trim();
+
         try {
-          const result = await authenticate(formdata);
+          const result = await authenticate(formdata, clientIp);
 
           if (!result) return null;
 
