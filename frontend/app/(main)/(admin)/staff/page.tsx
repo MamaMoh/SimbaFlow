@@ -42,6 +42,7 @@ interface UserRow {
   departmentName: string | null;
   tenantId: string | null;
   tenantName: string | null;
+  tenantRemoved: boolean;
   lastLoginAt: string | null;
   roles: string[];
 }
@@ -130,10 +131,25 @@ export default function StaffPage() {
     {
       accessorKey: "tenantName",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Agency" />,
-      cell: ({ getValue }) => {
-        const name = getValue() as string | null;
+      cell: ({ row }) => {
+        const { tenantName: name, tenantId, tenantRemoved } = row.original;
+        // An agency that has been removed still has people pointing at it, which is why this list
+        // can show more agencies than the Agencies page does. Saying so here is the difference
+        // between a puzzle and a job to do.
+        if (tenantRemoved) {
+          return (
+            <span className="flex items-center gap-1.5">
+              <span className="text-sm text-muted-foreground line-through">{name ?? "Unknown"}</span>
+              <Badge variant="outline" className="border-amber-300 bg-amber-50 text-[10px] text-amber-800">
+                Removed
+              </Badge>
+            </span>
+          );
+        }
         return name ? (
           <span className="text-sm">{name}</span>
+        ) : tenantId ? (
+          <span className="text-sm text-muted-foreground">—</span>
         ) : (
           <Badge variant="outline" className="text-xs">Platform</Badge>
         );

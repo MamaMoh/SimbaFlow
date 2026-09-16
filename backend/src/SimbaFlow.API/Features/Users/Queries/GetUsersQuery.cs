@@ -26,6 +26,7 @@ public record UserListDto(
     string? DepartmentName,
     Guid? TenantId,
     string? TenantName,
+    bool TenantRemoved,
     DateTime? LastLoginAt,
     IReadOnlyList<string> Roles,
     DateTime CreatedAt);
@@ -95,21 +96,28 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
 
         var items = new List<UserListDto>();
         var tenantIds = users.Where(u => u.TenantId.HasValue).Select(u => u.TenantId!.Value).Distinct().ToList();
+        // Deleted agencies are included deliberately. Their people still exist and still carry the
+        // agency id, so filtering them out here would blank the column and make the account look
+        // like a platform one. What the screen needs is the name *and* the fact that it is gone —
+        // otherwise this list and the agencies list disagree with no explanation on either.
         var tenants = tenantIds.Count > 0
             ? await _context.Tenants.AsNoTracking()
                 .Where(t => tenantIds.Contains(t.Id))
-                .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken)
-            : new Dictionary<Guid, string>();
+                .Select(t => new { t.Id, t.Name, t.IsDeleted })
+                .ToDictionaryAsync(t => t.Id, t => t, cancellationToken)
+            : [];
 
         foreach (var user in users)
         {
             var roles = await _userManager.GetRolesAsync(user);
-            var tenantName = user.TenantId.HasValue && tenants.TryGetValue(user.TenantId.Value, out var name) ? name : null;
+            var tenant = user.TenantId.HasValue && tenants.TryGetValue(user.TenantId.Value, out var t) ? t : null;
+            // No row at all is as removed as a soft-deleted one, from where this user stands.
+            var tenantRemoved = user.TenantId.HasValue && (tenant is null || tenant.IsDeleted);
             items.Add(new UserListDto(
                 user.Id, user.UserName!, user.FirstName, user.LastName,
                 user.Email!, user.PhoneNumber, user.IsActive, user.IsSuperAdmin,
                 user.TwoFactorEnabled, user.Department?.Name,
-                user.TenantId, tenantName,
+                user.TenantId, tenant?.Name, tenantRemoved,
                 user.LastLoginAt, roles.ToList(), user.CreatedAt));
         }
 
