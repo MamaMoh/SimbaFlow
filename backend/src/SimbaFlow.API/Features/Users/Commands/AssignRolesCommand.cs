@@ -68,8 +68,23 @@ public class AssignRolesHandler : IRequestHandler<AssignRolesCommand, Result<boo
             roleNamesToAssign.AddRange(request.RoleNames);
         }
 
+        // SECURITY: holding users.write lets you administer your own agency's people. It does not
+        // let you hand out a role that reaches past the agency — otherwise any agency owner could
+        // name themselves SuperAdmin here and then read every other agency on the platform.
+        var forbidden = UserAccessGuard.RolesCallerMayNotGrant(_currentUser, roleNamesToAssign);
+        if (forbidden.Count > 0)
+            return Result<bool>.Failure(
+                $"You cannot assign {string.Join(" or ", forbidden)} — that is a platform role.", 403);
+
         // Get current roles
         var currentRoles = await _userManager.GetRolesAsync(user);
+
+        // The same rule applies in reverse: this handler replaces the user's whole role set, so
+        // without the check below a tenant admin could strip a platform role rather than grant one.
+        var protectedExisting = UserAccessGuard.RolesCallerMayNotGrant(_currentUser, currentRoles);
+        if (protectedExisting.Count > 0)
+            return Result<bool>.Failure(
+                $"You cannot change {string.Join(" or ", protectedExisting)} on this account.", 403);
 
         // Remove all current roles
         if (currentRoles.Count > 0)

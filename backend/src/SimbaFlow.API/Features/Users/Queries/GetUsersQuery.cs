@@ -43,6 +43,10 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
         _currentUserService = currentUserService;
     }
 
+    private bool IsPlatformAdmin() =>
+        !_currentUserService.TenantId.HasValue
+        && _currentUserService.Roles.Contains("PlatformAdmin", StringComparer.OrdinalIgnoreCase);
+
     public async Task<Result<PaginatedList<UserListDto>>> Handle(
         GetUsersQuery request, CancellationToken cancellationToken)
     {
@@ -51,10 +55,24 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
             .Include(u => u.Department)
             .AsQueryable();
 
-        // Tenant isolation: non-SuperAdmin users can only see users from their own tenant
-        if (!_currentUserService.IsSuperAdmin && _currentUserService.TenantId.HasValue)
+        // Tenant isolation, stated so that every case is covered.
+        //
+        // The previous form — "not a super admin AND has a tenant" — fell through with no filter at
+        // all for a caller who was neither, and returned every user on the platform with their email
+        // address. That is not a hypothetical shape: PlatformAdmin is seeded with no tenant by
+        // design. Absence of a tenant must never widen a query.
+        if (_currentUserService.IsSuperAdmin || IsPlatformAdmin())
         {
-            query = query.Where(u => u.TenantId == _currentUserService.TenantId);
+            // Administers accounts across the platform; sees them all.
+        }
+        else if (_currentUserService.TenantId is Guid callerTenant)
+        {
+            query = query.Where(u => u.TenantId == callerTenant);
+        }
+        else
+        {
+            // Neither platform nor tenant: entitled to nobody.
+            query = query.Where(u => false);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))

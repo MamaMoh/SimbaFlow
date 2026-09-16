@@ -75,6 +75,19 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
         if (existingEmail is not null)
             return Result<Guid>.Failure("Email already exists", 409);
 
+        // Work out the roles first: refusing after the account exists would leave an orphan.
+        var rolesToAssign = request.RoleNames?.ToList() ?? [];
+        if (!string.IsNullOrEmpty(request.RoleName) && !rolesToAssign.Contains(request.RoleName))
+            rolesToAssign.Add(request.RoleName);
+
+        // SECURITY: the IsSuperAdmin flag below is already forced false for a tenant admin, but the
+        // SuperAdmin *role* is what CurrentUserService actually reads — so granting it here would
+        // confer exactly the privilege the flag was protecting.
+        var forbidden = UserAccessGuard.RolesCallerMayNotGrant(_currentUser, rolesToAssign);
+        if (forbidden.Count > 0)
+            return Result<Guid>.Failure(
+                $"You cannot assign {string.Join(" or ", forbidden)} — that is a platform role.", 403);
+
         // SECURITY: only a platform SuperAdmin may grant SuperAdmin or place a user in an
         // arbitrary tenant. Tenant admins can only create ordinary users in their OWN tenant.
         var isSuperAdmin = request.IsSuperAdmin;
@@ -110,10 +123,6 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
         }
 
         // Assign roles
-        var rolesToAssign = request.RoleNames?.ToList() ?? [];
-        if (!string.IsNullOrEmpty(request.RoleName) && !rolesToAssign.Contains(request.RoleName))
-            rolesToAssign.Add(request.RoleName);
-
         if (rolesToAssign.Count > 0)
         {
             var validRoles = new List<string>();
