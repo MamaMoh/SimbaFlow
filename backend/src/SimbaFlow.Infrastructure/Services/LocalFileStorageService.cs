@@ -166,9 +166,17 @@ public class LocalFileStorageService : IFileStorageService
 
     private string GetFullPath(string relativePath)
     {
-        // Prevent path traversal
+        // Prevent path traversal.
+        //
+        // The comparison includes the directory separator: a bare prefix test lets through any
+        // sibling directory whose name merely starts with the base — "/app/storage-backup" passes a
+        // check meant to confine paths to "/app/storage". Ordinal, because whether one path is
+        // inside another is not a question about language or culture.
+        var root = Path.GetFullPath(_basePath).TrimEnd(Path.DirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
         var normalized = Path.GetFullPath(Path.Combine(_basePath, relativePath));
-        if (!normalized.StartsWith(Path.GetFullPath(_basePath)))
+
+        if (!normalized.StartsWith(root, StringComparison.Ordinal))
             throw new InvalidOperationException("Invalid file path — access denied.");
 
         return normalized;

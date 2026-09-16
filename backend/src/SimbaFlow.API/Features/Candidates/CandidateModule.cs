@@ -69,21 +69,13 @@ public class CandidateModule : ICarterModule
         });
 
         group.MapGet("/{candidateId:guid}/documents/{documentId:guid}", async (
-            Guid candidateId,
-            Guid documentId,
-            ITenantDbContext context,
-            IFileStorageService storage) =>
+            Guid candidateId, Guid documentId, ISender sender) =>
         {
-            var doc = await context.CandidateDocuments.AsNoTracking()
-                .FirstOrDefaultAsync(d => d.Id == documentId && d.CandidateId == candidateId && !d.IsDeleted);
-            if (doc is null)
-                return Results.Json(Result.Failure("Document not found", 404), statusCode: 404);
+            var result = await sender.Send(new GetCandidateDocumentQuery(candidateId, documentId));
+            if (!result.IsSuccess || result.Data is null)
+                return Results.Json(result, statusCode: result.StatusCode);
 
-            var stream = await storage.DownloadAsync(doc.FilePath);
-            if (stream is null)
-                return Results.Json(Result.Failure("File is missing from storage", 404), statusCode: 404);
-
-            return Results.File(stream, doc.ContentType, doc.OriginalFileName);
+            return Results.File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
         });
 
         group.MapPost("/{candidateId:guid}/documents", async (

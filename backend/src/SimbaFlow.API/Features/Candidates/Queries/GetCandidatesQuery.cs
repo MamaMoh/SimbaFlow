@@ -273,7 +273,11 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
     }
 }
 
-public record GetCandidateDocumentsQuery(Guid CandidateId) : IRequest<Result<List<CandidateDocumentDto>>>;
+public record GetCandidateDocumentsQuery(Guid CandidateId)
+    : IRequest<Result<List<CandidateDocumentDto>>>, IRequirePermission
+{
+    public string RequiredPermission => "candidate.read";
+}
 
 public record CandidateDocumentDto(Guid Id, string OriginalFileName, string ContentType, int DocumentType, long FileSizeBytes, DateTime UploadedAt);
 
