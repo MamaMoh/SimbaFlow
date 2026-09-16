@@ -5,6 +5,7 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Common;
 using SimbaFlow.Domain.Entities.Audit;
 using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Domain.Entities.Billing;
 using SimbaFlow.Domain.Entities.Partners;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Entities.Tenancy;
@@ -54,6 +55,7 @@ public class PlatformDbContext
 
     // Partner catalog (platform)
     public DbSet<PartnerAgency> PartnerAgencies => Set<PartnerAgency>();
+    public DbSet<SubscriptionInvoice> SubscriptionInvoices => Set<SubscriptionInvoice>();
     public DbSet<PartnerLink> PartnerLinks => Set<PartnerLink>();
     public DbSet<ErrorEvent> ErrorEvents => Set<ErrorEvent>();
     public DbSet<PartnerAgreementDocument> PartnerAgreementDocuments => Set<PartnerAgreementDocument>();
@@ -169,6 +171,17 @@ public class PlatformDbContext
             entity.Property(p => p.ForeignLicenseId).HasMaxLength(128);
             entity.Property(p => p.ContactEmail).HasMaxLength(256);
             entity.Property(p => p.ContactPhone).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<SubscriptionInvoice>(entity =>
+        {
+            entity.ToTable("SubscriptionInvoices");
+            entity.Property(e => e.Number).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.Currency).HasMaxLength(8);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            // One agency's invoices are always read together, and a number must be unique.
+            entity.HasIndex(e => new { e.TenantId, e.PeriodStart });
+            entity.HasIndex(e => e.Number).IsUnique();
         });
 
         modelBuilder.Entity<PartnerLink>(entity =>

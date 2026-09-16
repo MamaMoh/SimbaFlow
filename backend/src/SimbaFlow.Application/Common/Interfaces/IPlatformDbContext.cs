@@ -27,6 +27,7 @@ public interface IPlatformDbContext
     DbSet<NotificationDelivery> NotificationDeliveries { get; }
     DbSet<ExchangeRate> ExchangeRates { get; }
     DbSet<PartnerAgency> PartnerAgencies { get; }
+    DbSet<SimbaFlow.Domain.Entities.Billing.SubscriptionInvoice> SubscriptionInvoices { get; }
     DbSet<PartnerLink> PartnerLinks { get; }
     DbSet<ErrorEvent> ErrorEvents { get; }
     DbSet<PartnerAgreementDocument> PartnerAgreementDocuments { get; }

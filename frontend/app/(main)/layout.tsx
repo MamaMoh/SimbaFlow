@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { LoadingSpinner } from "@/components/loading/loading-components";
 import { ImmediateLoading } from "@/components/loading/immediate-loading";
 import { RouteGuard } from "@/components/auth/route-guard";
+import { RenewalNotice } from "@/components/billing/renewal-notice";
 import { CommandPalette } from "@/components/command/command-palette";
 import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 
@@ -22,6 +23,11 @@ export default function DashboardLayout({
         <Header />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-muted/60 dark:bg-background border-l border-border/40 shadow-inner min-h-0">
           <ImmediateLoading />
+          {/* Above the page, not inside it: when an agency is suspended every page below this
+              has stopped working, and this is the only thing that says why. */}
+          <div className="mb-4 empty:mb-0">
+            <RenewalNotice />
+          </div>
           <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><LoadingSpinner size="lg" text="Loading..." /></div>}>
             <RouteGuard>{children}</RouteGuard>
           </Suspense>

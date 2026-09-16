@@ -38,6 +38,22 @@ public class TenantInfo : BaseEntity
     /// <summary>Current SaaS subscription/activation status.</summary>
     public TenantStatus SubscriptionStatus { get; set; } = TenantStatus.Active;
 
+    /// <summary>Monthly or yearly.</summary>
+    public BillingCycle BillingCycle { get; set; } = BillingCycle.Monthly;
+
+    /// <summary>What one period costs. Zero means the agency is not being charged.</summary>
+    public decimal SubscriptionAmount { get; set; }
+
+    public string SubscriptionCurrency { get; set; } = "ETB";
+
+    /// <summary>
+    /// When the next payment is due.
+    ///
+    /// Null means nothing is scheduled — a trial, or an agency being onboarded — and no renewal
+    /// notice is shown. It moves forward by one cycle each time an invoice is settled.
+    /// </summary>
+    public DateOnly? NextPaymentDue { get; set; }
+
     /// <summary>Maximum number of user accounts allowed for this tenant.</summary>
     public int MaxUsers { get; set; } = 50;
 

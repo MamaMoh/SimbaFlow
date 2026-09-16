@@ -171,6 +171,12 @@ export const navigation: NavItem[] = [
     claims: ["system.admin"],
   },
   {
+    name: "Subscriptions",
+    href: "/subscriptions",
+    icon: require("lucide-react").Receipt,
+    claims: ["system.admin"],
+  },
+  {
     name: "Tenants",
     href: "/tenants",
     icon: require("lucide-react").Server,
