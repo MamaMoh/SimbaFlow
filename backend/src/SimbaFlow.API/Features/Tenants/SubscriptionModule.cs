@@ -83,7 +83,11 @@ public class SubscriptionModule : ICarterModule
         });
 
         admin.MapPut("/{tenantId:guid}", async (
-            Guid tenantId, UpdateSubscriptionBody body, IPlatformDbContext db, CancellationToken ct) =>
+            Guid tenantId,
+            UpdateSubscriptionBody body,
+            IPlatformDbContext db,
+            ITenantSchemaResolver schemas,
+            CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsDeleted, ct);
             if (tenant is null)
@@ -119,6 +123,12 @@ public class SubscriptionModule : ICarterModule
             if (body.NextPaymentDue is DateOnly due) tenant.NextPaymentDue = due;
 
             await db.SaveChangesAsync(ct);
+
+            // The schema lookup is what enforces access, and it caches for five minutes. Without
+            // this, suspending an agency does nothing until that expires — they carry on working
+            // for another five minutes, and reactivating leaves them locked out just as long.
+            schemas.InvalidateCache(tenantId);
+
             return Results.Ok(new { isSuccess = true });
         });
 
