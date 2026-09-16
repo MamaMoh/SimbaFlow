@@ -64,6 +64,11 @@ public class VerifyMfaHandler : IRequestHandler<VerifyMfaCommand, Result<LoginRe
             return Result<LoginResponse>.Failure("Invalid credentials", 401);
         }
 
+        // Same agency check as the first factor. Without it, a user whose agency was suspended
+        // between entering their password and entering their code would still be let in.
+        if (await TenantSignInGuard.RefusalFor(user, _context, cancellationToken) is string refusal)
+            return Result<LoginResponse>.Failure(refusal, 403);
+
         // Only meaningful when the user actually enrolled MFA.
         if (!user.TwoFactorEnabled)
             return Result<LoginResponse>.Failure("MFA is not enabled for this account", 400);

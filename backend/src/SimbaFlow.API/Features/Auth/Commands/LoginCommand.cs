@@ -106,6 +106,13 @@ public class LoginHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
             return Result<LoginResponse>.Failure("Invalid credentials", 401);
         }
 
+        // The agency has to be in a state that allows its people in. Checked here, after the
+        // password and before any token is issued: signing someone in and then refusing every page
+        // tells them their account is broken, when what is actually wrong is their agency's
+        // subscription — and only one of those two messages tells them who to call.
+        if (await TenantSignInGuard.RefusalFor(user, _context, cancellationToken) is string refusal)
+            return Result<LoginResponse>.Failure(refusal, 403);
+
         var roles = (await _userManager.GetRolesAsync(user)).ToList();
 
         // Check if MFA is enabled → challenge for the TOTP code (second factor).

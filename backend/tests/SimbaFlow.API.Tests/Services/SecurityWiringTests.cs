@@ -150,4 +150,19 @@ public class SecurityWiringTests
         interceptor.Should().Contain("EscapeIdent(schemaName)",
             "the schema name is interpolated into SQL as an identifier and cannot be parameterised");
     }
+
+    [Theory]
+    [InlineData("LoginCommand.cs")]
+    [InlineData("VerifyMfaCommand.cs")]
+    [InlineData("RefreshTokenCommand.cs")]
+    public void EveryPathThatIssuesATokenChecksTheAgencyIsUsable(string command)
+    {
+        var text = Read("src", "SimbaFlow.API", "Features", "Auth", "Commands", command);
+
+        // Three separate doors into a session: first factor, second factor, and refresh. A check on
+        // only the first would let anyone already signed in keep working through a suspension, and
+        // anyone mid-MFA walk straight past it.
+        text.Should().Contain("TenantSignInGuard.RefusalFor",
+            "{0} hands out a token, so it has to ask whether the agency may still be used", command);
+    }
 }

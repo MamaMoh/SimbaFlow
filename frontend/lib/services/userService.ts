@@ -31,7 +31,13 @@ export async function authenticate(
   const json = await response.json();
 
   if (!response.ok || !json.isSuccess) {
-    throw new Error(json.error || "Authentication failed");
+    // The status travels with the error so the caller can tell the two kinds apart: 401 means the
+    // username and password did not match and should stay vague, while 403 means they did match
+    // and something else is in the way — a deactivated account, or a suspended agency. That second
+    // message is the whole point of the check, so it has to survive as far as the screen.
+    const error = new Error(json.error || "Authentication failed") as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
 
   // Unwrap the Result<T>.data envelope to match what authOption.ts expects

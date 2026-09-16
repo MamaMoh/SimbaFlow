@@ -60,6 +60,12 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
         if (user is null || !user.IsActive || user.IsDeleted)
             return Result<RefreshResponse>.Failure("User not found or inactive", 401);
 
+        // An agency suspended while its staff were working should not keep them working. Access
+        // tokens last fifteen minutes, so checking here is what turns a suspension into an actual
+        // sign-out rather than a slow puncture — and reactivating lets them straight back in.
+        if (await TenantSignInGuard.RefusalFor(user, _context, cancellationToken) is string refusal)
+            return Result<RefreshResponse>.Failure(refusal, 403);
+
         // Get fresh roles and permissions
         var roles = (await _userManager.GetRolesAsync(user)).ToList();
 

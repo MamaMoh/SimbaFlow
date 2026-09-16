@@ -19,7 +19,7 @@ import { Globe } from "lucide-react";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { ForgotPasswordDialog } from "./forgot-password-dialog";
 import { useNavigationLoadingStore } from "@/lib/stores/navigation-loading-store";
@@ -78,6 +78,9 @@ const LoginForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // A blocked agency is not a typo to retry — it is a state someone has to act on, so it stays on
+  // screen instead of leaving with a toast.
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
   const { setLoading } = useNavigationLoadingStore();
 
   const {
@@ -120,6 +123,7 @@ setIsSubmitting(false);
     }, 30000); // 30 second timeout
 
     try {
+      setBlockedReason(null);
       const response = await signIn("credentials", {
         redirect: false,
         username: data.username,
@@ -195,7 +199,10 @@ setIsSubmitting(false);
               userMessage = "Access denied. Your account may be deactivated.";
               break;
             default:
+              // Anything that is not one of NextAuth's own codes is a message the API wrote for
+              // this person to read — a suspended agency, a deactivated account. Keep it on screen.
               userMessage = errorCode || "Login failed. Please try again.";
+              setBlockedReason(userMessage);
               break;
           }
           toast.error(userMessage);
@@ -239,6 +246,19 @@ setIsSubmitting(false);
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {blockedReason && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            >
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <p className="font-medium">Sign-in unavailable</p>
+                <p className="mt-0.5 text-amber-800">{blockedReason}</p>
+              </div>
+            </div>
+          )}
+
           <form
             name="loginForm"
             onSubmit={handleFormSubmit}

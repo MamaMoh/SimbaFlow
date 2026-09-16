@@ -297,7 +297,18 @@ export const authOptions: NextAuthOptions = {
             requiresPasswordChange: result.requiresPasswordChange || false,
             requiresMfa: false,
           } as any;
-        } catch {
+        } catch (error) {
+          // Returning null makes NextAuth report "CredentialsSignin", which the sign-in screen
+          // renders as "invalid username or password". That is the right answer when the password
+          // really was wrong, and the wrong answer when the password was right and the agency is
+          // suspended — the user would spend the morning retyping a password that works.
+          //
+          // A 403 only ever happens after the password has been verified, so passing its message
+          // through leaks nothing and is the only way the person learns what to do next.
+          const status = (error as { status?: number })?.status;
+          if (status === 403 && error instanceof Error && error.message) {
+            throw error;
+          }
           return null;
         }
       },

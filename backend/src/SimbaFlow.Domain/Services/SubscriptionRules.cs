@@ -80,6 +80,36 @@ public static class SubscriptionRules
     public static bool HasAccess(TenantStatus status) => status == TenantStatus.Active;
 
     /// <summary>
+    /// Why the people of this agency cannot sign in, or null when they can.
+    ///
+    /// Said at the door rather than behind it. Letting a suspended agency's staff sign in and then
+    /// failing every page afterwards tells them their account is broken, when the truth is that
+    /// their agency's subscription needs attention — and that is a message for the person who can
+    /// act on it, phrased so they know who to call.
+    ///
+    /// Only the agency's own people are affected. A platform administrator belongs to no agency and
+    /// has to stay able to sign in: they are usually the one who has to lift the suspension.
+    /// </summary>
+    public static string? SignInRefusalFor(TenantStatus status) => status switch
+    {
+        TenantStatus.Active => null,
+        TenantStatus.Suspended =>
+            "Your agency's subscription is suspended, so sign-in is disabled. "
+            + "Contact your administrator to restore access.",
+        TenantStatus.Deactivated =>
+            "Your agency has been deactivated and can no longer be used. "
+            + "Contact your administrator.",
+        _ => "Your agency is not available. Contact your administrator.",
+    };
+
+    /// <summary>
+    /// Said when the agency's record has gone entirely — removed, or never finished provisioning.
+    /// Deliberately the same shape of message: from where the user stands it is the same problem.
+    /// </summary>
+    public const string SignInRefusalForMissingAgency =
+        "Your agency is no longer available. Contact your administrator.";
+
+    /// <summary>
     /// The next invoice number for a year, given the highest sequence that year has already used.
     ///
     /// Year-scoped and zero-padded so invoices sort in the order they were raised, and so the
