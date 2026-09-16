@@ -808,10 +808,13 @@ internal static class CvLayouts
 
                     root.Item().PaddingTop(4);
 
-                    // Top pair: applicant details + languages | passport
-                    root.Item().Row(topPair =>
+                    // One row, not two: the passport block and the photo share a column, so the
+                    // photo starts where the passport details end and runs down to the foot of
+                    // the skills. Split across two rows it left a dead gap the height of the
+                    // applicant table.
+                    root.Item().Row(main =>
                     {
-                        topPair.RelativeItem().Column(left =>
+                        main.RelativeItem().Column(left =>
                         {
                             left.Item().Border(0.75f).BorderColor(Border).Column(box =>
                             {
@@ -848,32 +851,10 @@ internal static class CvLayouts
                                 }
                                 BilingualRow(box, "Education", "التعليم", candidate.Qualification ?? "—");
                             });
-                        });
 
-                        topPair.ConstantItem(4);
-
-                        // AlignTop so the border hugs the 4 passport rows (Row otherwise stretches it).
-                        topPair.ConstantItem(190).AlignTop().Border(0.75f).BorderColor(Border).Column(box =>
-                        {
-                            SectionBar(box, "Passport Detail", "تفاصيل جواز السفر");
-                            CompactRow(box, "Passport No.", "رقم الجواز", candidate.PassportNumber);
-                            CompactRow(box, "Issue Date", "تاريخ الإصدار",
-                                candidate.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "—");
-                            CompactRow(box, "Place of Issue", "مكان الإصدار", passportPlace);
-                            CompactRow(box, "Expiry Date", "تاريخ الانتهاء",
-                                candidate.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "—");
-                        });
-                    });
-
-                    // Left: Work + Skills (one column). Right: full-body photo (fixed height — no ExtendVertical).
-                    root.Item().PaddingTop(3).Row(bottom =>
-                    {
-                        bottom.RelativeItem().Column(left =>
-                        {
-                            left.Item().Border(0.75f).BorderColor(Border).Column(box =>
+                            left.Item().PaddingTop(3).Border(0.75f).BorderColor(Border).Column(box =>
                             {
                                 SectionBar(box, "Work Experience", "خبرة العمل");
-                                // Single label+value column (no EN | value | AR stretch)
                                 SimpleRow(box, "Period",
                                     candidate.ExperienceAbroadYears.HasValue
                                         ? $"{candidate.ExperienceAbroadYears} Year(s)"
@@ -891,20 +872,38 @@ internal static class CvLayouts
                                     !string.IsNullOrWhiteSpace(candidate.CookingLevel)
                                         ? candidate.CookingLevel
                                         : YesNo(candidate.SkillCooking));
-                                BilingualRow(box, "Baby Sitting", "مجالسة الأطفال",
-                                    YesNo(candidate.SkillBabysitting || candidate.SkillChildCare));
+                                BilingualRow(box, "Arabic Cooking", "الطبخ العربي", YesNo(candidate.SkillArabicCooking));
+                                BilingualRow(box, "Baby Sitting", "مجالسة الأطفال", YesNo(candidate.SkillBabysitting));
+                                BilingualRow(box, "Children Care", "عناية الأطفال", YesNo(candidate.SkillChildCare));
+                                BilingualRow(box, "Ironing", "الكوي", YesNo(candidate.SkillIroning));
+                                BilingualRow(box, "Sewing", "خياطة", YesNo(candidate.SkillSewing));
                             });
                         });
 
-                        bottom.ConstantItem(4);
+                        main.ConstantItem(4);
 
-                        bottom.ConstantItem(190).AlignTop()
-                            .Height(168)
-                            .Border(0.75f).BorderColor(Border)
-                            .Background(Colors.Grey.Lighten4)
-                            .AlignCenter().AlignMiddle()
-                            .Element(e => PlaceFullBodyImage(e,
-                                fullPhotoBytes is { Length: > 0 } ? fullPhotoBytes : photoBytes));
+                        main.ConstantItem(190).Column(right =>
+                        {
+                            right.Item().Border(0.75f).BorderColor(Border).Column(box =>
+                            {
+                                SectionBar(box, "Passport Detail", "تفاصيل جواز السفر");
+                                CompactRow(box, "Passport No.", "رقم الجواز", candidate.PassportNumber);
+                                CompactRow(box, "Issue Date", "تاريخ الإصدار",
+                                    candidate.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "—");
+                                CompactRow(box, "Place of Issue", "مكان الإصدار", passportPlace);
+                                CompactRow(box, "Expiry Date", "تاريخ الانتهاء",
+                                    candidate.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "—");
+                            });
+
+                            // Takes whatever height the left column leaves, so the photo runs from
+                            // the foot of the passport block to the foot of the skills.
+                            right.Item().PaddingTop(3).ExtendVertical()
+                                .Border(0.75f).BorderColor(Border)
+                                .Background(Colors.Grey.Lighten4)
+                                .AlignCenter().AlignMiddle()
+                                .Element(e => PlaceFullBodyImage(e,
+                                    fullPhotoBytes is { Length: > 0 } ? fullPhotoBytes : photoBytes));
+                        });
                     });
                 });
             });
