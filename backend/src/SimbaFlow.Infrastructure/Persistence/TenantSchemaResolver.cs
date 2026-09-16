@@ -15,7 +15,19 @@ public class TenantSchemaResolver : ITenantSchemaResolver
     private readonly IMemoryCache _cache;
     private readonly IDbContextFactory<PlatformDbContext> _dbContextFactory;
     private readonly ILogger<TenantSchemaResolver> _logger;
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    /// <summary>
+    /// How long a resolved schema is trusted without re-reading the tenant row.
+    ///
+    /// This is the window in which a suspended agency keeps working, so it is deliberately short.
+    /// InvalidateCache closes it immediately for the instance that handled the suspension — but
+    /// IMemoryCache is per-process, so any other instance would carry on serving the agency until
+    /// its own entry expired. Thirty seconds bounds that to something survivable; the query behind
+    /// it is a single indexed lookup on a table with one row per agency.
+    ///
+    /// Running more than one API instance in earnest wants a shared cache (Redis) so that
+    /// invalidation reaches every process. Until then, this duration is the guarantee.
+    /// </summary>
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
 
     public TenantSchemaResolver(
         IMemoryCache cache,

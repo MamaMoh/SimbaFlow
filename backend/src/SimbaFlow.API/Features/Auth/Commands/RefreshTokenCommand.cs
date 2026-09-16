@@ -77,12 +77,27 @@ public class RefreshTokenHandler : IRequestHandler<RefreshTokenCommand, Result<R
         // Generate new access token
         var accessToken = _jwtTokenService.GenerateAccessToken(user, permissions, roles);
 
-        // Update session activity
-        var session = await _context.UserSessions
-            .Where(s => s.UserId == user.Id && s.IsActive)
-            .OrderByDescending(s => s.LoginAt)
+        // Update the activity of the session this token actually belongs to.
+        //
+        // Picking the most recently created session instead meant that, with two devices signed in,
+        // refreshing on the phone rewrote the laptop's row: the session list showed the wrong device
+        // as active, and SessionCleanupService reaped the wrong one. The presented token is found
+        // through the link the rotation leaves behind — the old token records the hash of the one
+        // that replaced it.
+        var previousTokenId = await _context.RefreshTokens
+            .Where(t => t.ReplacedByTokenHash == newToken.TokenHash)
+            .Select(t => (Guid?)t.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
+        var session = previousTokenId is Guid previousId
+            ? await _context.UserSessions.FirstOrDefaultAsync(
+                s => s.UserId == user.Id && s.IsActive && s.RefreshTokenId == previousId,
+                cancellationToken)
+            : null;
+
+        // When the session cannot be identified — a concurrent refresh is issued a fresh token with
+        // no predecessor — nothing is touched. Leaving a row slightly stale is better than writing
+        // the wrong device's.
         if (session is not null)
         {
             session.LastActivityAt = DateTime.UtcNow;

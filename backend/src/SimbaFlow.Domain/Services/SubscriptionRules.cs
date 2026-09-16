@@ -80,11 +80,45 @@ public static class SubscriptionRules
     public static bool HasAccess(TenantStatus status) => status == TenantStatus.Active;
 
     /// <summary>
-    /// The next invoice number for a year, given how many that year already has.
+    /// The next invoice number for a year, given the highest sequence that year has already used.
     ///
     /// Year-scoped and zero-padded so invoices sort in the order they were raised, and so the
-    /// count does not carry over into a new year.
+    /// numbering does not carry over into a new year.
+    ///
+    /// Takes the highest number used rather than a count of rows. A count moves when a row is
+    /// removed: soft-delete any invoice and the next one is handed a number that already exists,
+    /// which the unique index rejects — so billing stops working, on a Tuesday, for a reason
+    /// nobody can see without reading the Postgres log.
     /// </summary>
-    public static string NextInvoiceNumber(int year, int issuedThisYear) =>
-        $"INV-{year}-{issuedThisYear + 1:D4}";
+    public static string NextInvoiceNumber(int year, int highestSequenceThisYear) =>
+        $"INV-{year}-{highestSequenceThisYear + 1:D4}";
+
+    /// <summary>
+    /// The sequence number encoded in an invoice number, or 0 if it is not one of ours.
+    ///
+    /// Tolerant on purpose: a number entered by hand, or carried over from another system, should
+    /// not stop the next invoice being raised.
+    /// </summary>
+    public static int SequenceOf(string? invoiceNumber, int year)
+    {
+        var prefix = $"INV-{year}-";
+        if (string.IsNullOrWhiteSpace(invoiceNumber)
+            || !invoiceNumber.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
+        return int.TryParse(invoiceNumber.AsSpan(prefix.Length), out var sequence) ? sequence : 0;
+    }
+
+    /// <summary>The next invoice number for a year, given every number that year has used.</summary>
+    public static string NextInvoiceNumber(int year, IEnumerable<string?> existingNumbers)
+    {
+        var highest = existingNumbers
+            .Select(n => SequenceOf(n, year))
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return NextInvoiceNumber(year, highest);
+    }
 }

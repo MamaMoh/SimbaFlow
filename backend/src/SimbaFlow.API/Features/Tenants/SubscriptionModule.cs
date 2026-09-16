@@ -124,9 +124,9 @@ public class SubscriptionModule : ICarterModule
 
             await db.SaveChangesAsync(ct);
 
-            // The schema lookup is what enforces access, and it caches for five minutes. Without
-            // this, suspending an agency does nothing until that expires — they carry on working
-            // for another five minutes, and reactivating leaves them locked out just as long.
+            // The schema lookup is what enforces access, and it caches its answer. Without this,
+            // suspending an agency does nothing until that entry expires — they carry on working,
+            // and reactivating would leave them locked out just as long.
             schemas.InvalidateCache(tenantId);
 
             return Results.Ok(new { isSuccess = true });
@@ -187,13 +187,9 @@ public class SubscriptionModule : ICarterModule
                     new { isSuccess = false, error = $"An invoice already covers the period from {periodStart:dd MMM yyyy}." },
                     statusCode: 409);
 
-            var issuedThisYear = await db.SubscriptionInvoices
-                .CountAsync(i => i.IssuedOn.Year == today.Year && !i.IsDeleted, ct);
-
             var invoice = new SubscriptionInvoice
             {
                 TenantId = tenantId,
-                Number = SubscriptionRules.NextInvoiceNumber(today.Year, issuedThisYear),
                 PeriodStart = periodStart,
                 PeriodEnd = periodEnd,
                 Cycle = cycle,
@@ -204,8 +200,35 @@ public class SubscriptionModule : ICarterModule
                 Status = InvoiceStatus.Issued,
             };
 
-            db.SubscriptionInvoices.Add(invoice);
-            await db.SaveChangesAsync(ct);
+            // Reading the numbers and inserting are two steps, so two invoices raised at the same
+            // moment can pick the same one — and Number is uniquely indexed, so the second insert
+            // throws. Rather than surface that as a bare 500, look again and retry: the second
+            // attempt reads the number the first one just committed.
+            //
+            // Soft-deleted and void rows are included deliberately. A number that has been used is
+            // used, whatever later happened to the invoice that used it.
+            const int attempts = 3;
+            for (var attempt = 1; ; attempt++)
+            {
+                var usedThisYear = await db.SubscriptionInvoices
+                    .AsNoTracking()
+                    .Where(i => i.IssuedOn.Year == today.Year)
+                    .Select(i => i.Number)
+                    .ToListAsync(ct);
+
+                invoice.Number = SubscriptionRules.NextInvoiceNumber(today.Year, usedThisYear);
+
+                try
+                {
+                    if (attempt == 1) db.SubscriptionInvoices.Add(invoice);
+                    await db.SaveChangesAsync(ct);
+                    break;
+                }
+                catch (DbUpdateException) when (attempt < attempts)
+                {
+                    // Someone else took the number between the read and the write. Go round again.
+                }
+            }
 
             return Results.Ok(new { isSuccess = true, data = new { invoice.Id, invoice.Number } });
         });
@@ -227,8 +250,15 @@ public class SubscriptionModule : ICarterModule
             // Settling the current period moves the agency's next payment on by one cycle, so
             // recording a payment and rescheduling are not two things to remember.
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == invoice.TenantId && !t.IsDeleted, ct);
-            if (tenant is not null && tenant.NextPaymentDue <= invoice.PeriodEnd)
+            // "is null ||" matters: NextPaymentDue is a DateOnly?, and a comparison against null is
+            // false rather than true. A newly provisioned agency has no due date yet, so without
+            // this it pays its first invoice and still has none — the renewal notice stays None for
+            // ever and nobody is reminded again.
+            if (tenant is not null
+                && (tenant.NextPaymentDue is null || tenant.NextPaymentDue <= invoice.PeriodEnd))
+            {
                 tenant.NextPaymentDue = invoice.PeriodEnd.AddDays(1);
+            }
 
             await db.SaveChangesAsync(ct);
             return Results.Ok(new { isSuccess = true });

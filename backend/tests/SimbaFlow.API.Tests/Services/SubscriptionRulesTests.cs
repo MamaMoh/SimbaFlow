@@ -108,4 +108,83 @@ public class SubscriptionRulesTests
         SubscriptionRules.NextInvoiceNumber(2027, 0).Should().Be("INV-2027-0001",
             "the count restarts with the year");
     }
+
+    // ──── Invoice numbering ────
+    //
+    // The number was derived from a count of the year's invoices, and Number is uniquely indexed.
+    // A count moves when a row is removed, so soft-deleting any invoice handed the next one a
+    // number that already existed — and billing stopped, with the reason only in the Postgres log.
+
+    [Fact]
+    public void TheFirstInvoiceOfAYearIsNumberOne()
+    {
+        SubscriptionRules.NextInvoiceNumber(2026, Array.Empty<string>())
+            .Should().Be("INV-2026-0001");
+    }
+
+    [Fact]
+    public void NumberingFollowsTheHighestUsed_NotHowManySurvive()
+    {
+        // Every number the year has issued, including any since voided or soft-deleted — a
+        // soft-deleted row is still a row, and the unique index on Number still holds it.
+        string[] used = ["INV-2026-0001", "INV-2026-0002", "INV-2026-0003"];
+
+        SubscriptionRules.NextInvoiceNumber(2026, used).Should().Be("INV-2026-0004");
+    }
+
+    [Fact]
+    public void RemovingAnInvoiceDoesNotSendNumberingBackwards()
+    {
+        // The trap this replaced. Numbering came from a count of surviving rows, so voiding two of
+        // three invoices made the next one 0002 — a number already taken, which the unique index
+        // rejected. Billing then stopped for a reason visible only in the Postgres log.
+        //
+        // Expressed as a property: what the next number is must not depend on how many of the
+        // year's invoices are still alive.
+        string[] allThree = ["INV-2026-0001", "INV-2026-0002", "INV-2026-0003"];
+        var countOfSurvivors = 1;
+
+        SubscriptionRules.NextInvoiceNumber(2026, allThree)
+            .Should().NotBe(SubscriptionRules.NextInvoiceNumber(2026, countOfSurvivors));
+    }
+
+    [Fact]
+    public void NumberingIsScopedToItsYear()
+    {
+        string[] used = ["INV-2025-0001", "INV-2025-0002", "INV-2026-0001"];
+
+        SubscriptionRules.NextInvoiceNumber(2026, used).Should().Be("INV-2026-0002");
+        SubscriptionRules.NextInvoiceNumber(2027, used).Should().Be("INV-2027-0001",
+            "a new year starts again at one");
+    }
+
+    [Fact]
+    public void ANumberFromSomewhereElseDoesNotStopTheNextOne()
+    {
+        // Entered by hand, or carried over from whatever the agency used before.
+        string[] used = ["INV-2026-0001", "2026/07/ACME", "", "INV-2026-nope"];
+
+        SubscriptionRules.NextInvoiceNumber(2026, used).Should().Be("INV-2026-0002");
+    }
+
+    [Theory]
+    [InlineData("INV-2026-0007", 2026, 7)]
+    [InlineData("INV-2026-0007", 2025, 0)]
+    [InlineData("INV-2026-0042", 2026, 42)]
+    [InlineData(null, 2026, 0)]
+    [InlineData("nonsense", 2026, 0)]
+    public void ASequenceIsReadBackFromItsNumber(string? number, int year, int expected)
+    {
+        SubscriptionRules.SequenceOf(number, year).Should().Be(expected);
+    }
+
+    [Fact]
+    public void NumbersStaySortableAsTheYearFillsUp()
+    {
+        // Zero padding is what keeps them in order in a list sorted as text.
+        var ninth = SubscriptionRules.NextInvoiceNumber(2026, 8);
+        var tenth = SubscriptionRules.NextInvoiceNumber(2026, 9);
+
+        string.CompareOrdinal(ninth, tenth).Should().BeNegative();
+    }
 }
