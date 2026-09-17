@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
@@ -15,14 +14,21 @@ namespace SimbaFlow.API.Tests.Behaviors;
 ///
 /// An embassy run needs the passport, photo and CV for twenty people at once. Doing that a document
 /// at a time is sixty clicks and twenty trips into a candidate's page, which is why the desk was
-/// asking for it.
+/// asking for it. What comes back is one PDF, because the packet is printed and stapled as one.
+///
+/// The merge itself is qpdf's job and is not exercised here — these tests pin what goes into the
+/// bundle and in what order, which is the part this handler decides.
 /// </summary>
 public class DownloadCandidateDocumentsTests : IDisposable
 {
     private readonly TenantDbContext _context;
     private readonly IFileStorageService _storage = Substitute.For<IFileStorageService>();
     private readonly ICvGenerationService _cv = Substitute.For<ICvGenerationService>();
+    private readonly IPdfBundleService _bundle = Substitute.For<IPdfBundleService>();
     private readonly DownloadCandidateDocumentsHandler _handler;
+
+    /// <summary>What the handler last asked to be merged, in the order it asked for it.</summary>
+    private IReadOnlyList<PdfBundleItem> _merged = [];
 
     public DownloadCandidateDocumentsTests()
     {
@@ -31,8 +37,8 @@ public class DownloadCandidateDocumentsTests : IDisposable
             .Options;
         _context = new TenantDbContext(options, Substitute.For<ICurrentUserService>());
 
-        // Every stored file reads back as its own path, so a ZIP entry can be traced to the row
-        // that put it there.
+        // Every stored file reads back as its own path, so a page in the bundle can be traced to
+        // the row that put it there.
         _storage.DownloadAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(call => Task.FromResult<Stream?>(
                 new MemoryStream(System.Text.Encoding.UTF8.GetBytes(call.Arg<string>()))));
@@ -40,17 +46,28 @@ public class DownloadCandidateDocumentsTests : IDisposable
         _cv.GenerateAsync(Arg.Any<Candidate>(), Arg.Any<byte[]?>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new byte[] { 0x25, 0x50, 0x44, 0x46 }));
 
-        _handler = new DownloadCandidateDocumentsHandler(_context, _storage, _cv);
+        // Stands in for qpdf, and keeps the real service's one contractual answer: nothing to page
+        // means null, which is how the handler knows to say 404 rather than serve an empty file.
+        _bundle.MergeAsync(Arg.Any<IReadOnlyList<PdfBundleItem>>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                _merged = call.Arg<IReadOnlyList<PdfBundleItem>>();
+                return Task.FromResult<byte[]?>(
+                    _merged.Any(i => !i.IsDivider) ? [0x25, 0x50, 0x44, 0x46] : null);
+            });
+
+        _handler = new DownloadCandidateDocumentsHandler(_context, _storage, _cv, _bundle);
     }
 
-    private async Task<Guid> GivenCandidate(string passport, params DocumentType[] documents)
+    private async Task<Guid> GivenCandidate(
+        string passport, string firstName, string lastName, params DocumentType[] documents)
     {
         var id = Guid.NewGuid();
         _context.Candidates.Add(new Candidate
         {
             Id = id,
-            FirstName = "SEADA",
-            LastName = "MEKONNEN",
+            FirstName = firstName,
+            LastName = lastName,
             PassportNumber = passport,
         });
 
@@ -71,43 +88,63 @@ public class DownloadCandidateDocumentsTests : IDisposable
         return id;
     }
 
-    private static IReadOnlyList<string> EntriesOf(byte[] zip)
-    {
-        using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
-        return archive.Entries.Select(e => e.FullName).ToList();
-    }
+    /// <summary>The titles of what was merged — dividers marked, so order is visible at a glance.</summary>
+    private IReadOnlyList<string> MergedTitles() =>
+        _merged.Select(i => i.IsDivider ? $"[{i.Title}]" : i.Title).ToList();
 
     [Fact]
-    public async Task EachCandidateGetsTheirOwnFolder()
+    public async Task EachCandidatesPagesOpenWithADividerCarryingTheirName()
     {
-        var a = await GivenCandidate("EQ1030621", DocumentType.Passport, DocumentType.Photo);
-        var b = await GivenCandidate("EP7798713", DocumentType.Passport, DocumentType.Photo);
+        var seada = await GivenCandidate(
+            "EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport, DocumentType.Photo);
+        var hanan = await GivenCandidate(
+            "EP7798713", "HANAN", "ABDI", DocumentType.Passport, DocumentType.Photo);
 
         var result = await _handler.Handle(
-            new DownloadCandidateDocumentsCommand([a, b], [(int)DocumentType.Passport, (int)DocumentType.Photo]),
+            new DownloadCandidateDocumentsCommand(
+                [seada, hanan], [(int)DocumentType.Passport, (int)DocumentType.Photo]),
             default);
 
         result.IsSuccess.Should().BeTrue();
-        var entries = EntriesOf(result.Data!);
 
-        entries.Should().HaveCount(4);
-        entries.Should().OnlyContain(e => e.Contains('/'), "a flat ZIP of forty files is unusable");
-        entries.Where(e => e.StartsWith("EQ1030621")).Should().HaveCount(2);
-        entries.Where(e => e.StartsWith("EP7798713")).Should().HaveCount(2);
+        // Sorted by last name, so a stack of twenty can be found in the way a person would file it.
+        MergedTitles().Should().Equal(
+            "[HANAN ABDI]",
+            "HANAN ABDI · Passport",
+            "HANAN ABDI · Photo",
+            "[SEADA MEKONNEN]",
+            "SEADA MEKONNEN · Passport",
+            "SEADA MEKONNEN · Photo");
+    }
+
+    [Fact]
+    public async Task OneCandidateNeedsNoDivider()
+    {
+        // A divider in front of the only name in the stack is a page nobody needs to print.
+        var id = await GivenCandidate(
+            "EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport, DocumentType.Photo);
+
+        var result = await _handler.Handle(
+            new DownloadCandidateDocumentsCommand(
+                [id], [(int)DocumentType.Passport, (int)DocumentType.Photo]),
+            default);
+
+        result.IsSuccess.Should().BeTrue();
+        _merged.Should().NotContain(i => i.IsDivider);
     }
 
     [Fact]
     public async Task OnlyTheKindsAskedForAreIncluded()
     {
         var id = await GivenCandidate(
-            "EQ1030621", DocumentType.Passport, DocumentType.Photo, DocumentType.MedicalCertificate);
+            "EQ1030621", "SEADA", "MEKONNEN",
+            DocumentType.Passport, DocumentType.Photo, DocumentType.MedicalCertificate);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.Passport]), default);
 
-        var entries = EntriesOf(result.Data!);
-        entries.Should().HaveCount(1);
-        entries[0].Should().Contain("Passport");
+        result.IsSuccess.Should().BeTrue();
+        MergedTitles().Should().Equal("SEADA MEKONNEN · Passport");
     }
 
     [Fact]
@@ -115,13 +152,13 @@ public class DownloadCandidateDocumentsTests : IDisposable
     {
         // Every other document has to have been uploaded by someone. A CV is drawn from the
         // candidate's own record, so asking for one and getting nothing would be a strange answer.
-        var id = await GivenCandidate("EQ1030621", DocumentType.Passport);
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.CV]), default);
 
         result.IsSuccess.Should().BeTrue();
-        EntriesOf(result.Data!).Should().ContainSingle(e => e.Contains("CV_"));
+        MergedTitles().Should().Equal("SEADA MEKONNEN · CV");
         await _cv.Received(1).GenerateAsync(
             Arg.Any<Candidate>(), Arg.Any<byte[]?>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>());
     }
@@ -129,7 +166,7 @@ public class DownloadCandidateDocumentsTests : IDisposable
     [Fact]
     public async Task AStoredCvIsUsedRatherThanRegenerated()
     {
-        var id = await GivenCandidate("EQ1030621", DocumentType.CV);
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.CV);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.CV]), default);
@@ -142,8 +179,8 @@ public class DownloadCandidateDocumentsTests : IDisposable
     [Fact]
     public async Task AMissingFileDoesNotSinkTheWholeBatch()
     {
-        var a = await GivenCandidate("EQ1030621", DocumentType.Passport);
-        var b = await GivenCandidate("EP7798713", DocumentType.Passport);
+        var seada = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
+        var hanan = await GivenCandidate("EP7798713", "HANAN", "ABDI", DocumentType.Passport);
 
         // One row outlived its file — the other nineteen people still need their paperwork.
         _storage.DownloadAsync(
@@ -151,16 +188,19 @@ public class DownloadCandidateDocumentsTests : IDisposable
             .Returns(Task.FromResult<Stream?>(null));
 
         var result = await _handler.Handle(
-            new DownloadCandidateDocumentsCommand([a, b], [(int)DocumentType.Passport]), default);
+            new DownloadCandidateDocumentsCommand(
+                [seada, hanan], [(int)DocumentType.Passport]),
+            default);
 
         result.IsSuccess.Should().BeTrue();
-        EntriesOf(result.Data!).Should().ContainSingle(e => e.StartsWith("EP7798713"));
+        _merged.Where(i => !i.IsDivider).Select(i => i.Title)
+            .Should().Equal("HANAN ABDI · Passport");
     }
 
     [Fact]
-    public async Task NothingToCollectIsSaidPlainly_NotHandedBackAsAnEmptyZip()
+    public async Task NothingToCollectIsSaidPlainly_NotHandedBackAsAnEmptyFile()
     {
-        var id = await GivenCandidate("EQ1030621", DocumentType.Passport);
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.MedicalCertificate]), default);
@@ -175,7 +215,7 @@ public class DownloadCandidateDocumentsTests : IDisposable
     [InlineData(false, true)]
     public async Task BothHalvesOfTheRequestAreRequired(bool candidates, bool types)
     {
-        var id = await GivenCandidate("EQ1030621", DocumentType.Passport);
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand(
@@ -190,7 +230,7 @@ public class DownloadCandidateDocumentsTests : IDisposable
     [Fact]
     public async Task AnUnknownDocumentTypeIsIgnoredRatherThanTrusted()
     {
-        var id = await GivenCandidate("EQ1030621", DocumentType.Passport);
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand([id], [4242]), default);

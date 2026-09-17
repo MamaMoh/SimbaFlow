@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
@@ -8,12 +7,14 @@ using SimbaFlow.Domain.Enums;
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
 /// <summary>
-/// The selected candidates' selected paperwork, as one ZIP.
+/// The selected candidates' selected paperwork, as one PDF.
 ///
 /// This is the job the desk actually has: an embassy run needs the passport, the photo and the CV
 /// for twenty people, and collecting that a document at a time is twenty times three clicks plus
-/// twenty trips into a candidate's page. One folder per candidate, named so the folders sort the
-/// way a person would file them.
+/// twenty trips into a candidate's page. It comes back as a single document because the packet is
+/// printed and stapled as one — a folder of loose files means one print dialog per file. Each
+/// candidate's pages open with a divider carrying their name, so the stack can be split by hand
+/// afterwards.
 /// </summary>
 public record DownloadCandidateDocumentsCommand(
     List<Guid> CandidateIds,
@@ -34,15 +35,18 @@ public class DownloadCandidateDocumentsHandler
     private readonly ITenantDbContext _context;
     private readonly IFileStorageService _fileStorage;
     private readonly ICvGenerationService _cvGeneration;
+    private readonly IPdfBundleService _pdfBundle;
 
     public DownloadCandidateDocumentsHandler(
         ITenantDbContext context,
         IFileStorageService fileStorage,
-        ICvGenerationService cvGeneration)
+        ICvGenerationService cvGeneration,
+        IPdfBundleService pdfBundle)
     {
         _context = context;
         _fileStorage = fileStorage;
         _cvGeneration = cvGeneration;
+        _pdfBundle = pdfBundle;
     }
 
     public async Task<Result<byte[]>> Handle(
@@ -69,6 +73,8 @@ public class DownloadCandidateDocumentsHandler
         var candidates = await _context.Candidates
             .AsNoTracking()
             .Where(c => ids.Contains(c.Id) && !c.IsDeleted)
+            .OrderBy(c => c.LastName)
+            .ThenBy(c => c.FirstName)
             .ToListAsync(ct);
 
         if (candidates.Count == 0)
@@ -84,64 +90,59 @@ public class DownloadCandidateDocumentsHandler
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var wantsCv = types.Contains(DocumentType.CV);
-        var included = 0;
-        var missing = new List<string>();
+        var items = new List<PdfBundleItem>();
 
-        await using var zipMs = new MemoryStream();
-        using (var archive = new ZipArchive(zipMs, ZipArchiveMode.Create, leaveOpen: true))
+        foreach (var candidate in candidates)
         {
-            foreach (var candidate in candidates)
+            ct.ThrowIfCancellationRequested();
+
+            // Only worth a divider when there is more than one name in the stack.
+            if (candidates.Count > 1)
+                items.Add(PdfBundleItem.Divider(candidate.FullName));
+
+            var found = (byCandidate.GetValueOrDefault(candidate.Id) ?? [])
+                // Every candidate's pages come in the same order, so a stack of twenty can be
+                // checked by flicking through rather than reading each page.
+                .OrderBy(d => d.DocumentType)
+                .ThenBy(d => d.UploadedAt)
+                .ToList();
+
+            foreach (var doc in found)
             {
-                ct.ThrowIfCancellationRequested();
+                var bytes = await ReadAsync(doc.FilePath, ct);
 
-                var folder = SafeName(
-                    $"{candidate.PassportNumber}_{candidate.LastName}_{candidate.FirstName}");
-                var found = byCandidate.GetValueOrDefault(candidate.Id) ?? [];
+                // The row survived but the file did not. Skipped rather than failed: the rest of
+                // the packet is still worth printing.
+                if (bytes is null) continue;
 
-                foreach (var doc in found)
-                {
-                    await using var stream = await _fileStorage.DownloadAsync(doc.FilePath, ct);
-                    if (stream is null)
-                    {
-                        // The row survived but the file did not. Say which, rather than handing
-                        // back a folder that is quietly short one document.
-                        missing.Add($"{candidate.FullName}: {doc.DocumentType}");
-                        continue;
-                    }
+                items.Add(PdfBundleItem.Document(
+                    $"{candidate.FullName} · {doc.DocumentType}", bytes));
+            }
 
-                    var name = SafeName($"{doc.DocumentType}_{doc.OriginalFileName ?? doc.FileName}");
-                    var entry = archive.CreateEntry($"{folder}/{name}", CompressionLevel.Fastest);
-                    await using var entryStream = entry.Open();
-                    await stream.CopyToAsync(entryStream, ct);
-                    included++;
-                }
-
-                // A CV is the one document that can always be produced, because it is drawn from
-                // the candidate's own record. Asking for it and getting nothing because nobody has
-                // pressed the button before would be a strange answer.
-                if (wantsCv && !found.Any(d => d.DocumentType == DocumentType.CV))
-                {
-                    var pdf = await _cvGeneration.GenerateAsync(
+            // A CV is the one document that can always be produced, because it is drawn from the
+            // candidate's own record. Asking for it and getting nothing because nobody has pressed
+            // the button before would be a strange answer.
+            if (wantsCv && !found.Any(d => d.DocumentType == DocumentType.CV))
+            {
+                items.Add(PdfBundleItem.Document(
+                    $"{candidate.FullName} · CV",
+                    await _cvGeneration.GenerateAsync(
                         candidate,
                         await ReadAsync(candidate.PhotoPath, ct),
                         await ReadAsync(candidate.FullPhotoPath, ct),
-                        ct);
-
-                    var entry = archive.CreateEntry($"{folder}/CV_{folder}.pdf", CompressionLevel.Fastest);
-                    await using var entryStream = entry.Open();
-                    await entryStream.WriteAsync(pdf, ct);
-                    included++;
-                }
+                        ct)));
             }
         }
 
-        if (included == 0)
+        var pdf = await _pdfBundle.MergeAsync(items, ct);
+
+        if (pdf is null)
         {
             return Result<byte[]>.Failure(
                 "None of the selected candidates have any of those documents yet.", 404);
         }
 
-        return Result<byte[]>.Success(zipMs.ToArray());
+        return Result<byte[]>.Success(pdf);
     }
 
     private async Task<byte[]?> ReadAsync(string? path, CancellationToken ct)
@@ -152,14 +153,5 @@ public class DownloadCandidateDocumentsHandler
         using var buffer = new MemoryStream();
         await stream.CopyToAsync(buffer, ct);
         return buffer.ToArray();
-    }
-
-    /// <summary>A name a filesystem will accept, on every platform the ZIP might be opened on.</summary>
-    private static string SafeName(string value)
-    {
-        var name = value.Replace(' ', '_');
-        foreach (var c in Path.GetInvalidFileNameChars())
-            name = name.Replace(c, '_');
-        return name;
     }
 }

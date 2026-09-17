@@ -23,7 +23,7 @@ test.describe("Candidates intake", () => {
     await expect(page.getByRole("heading", { name: /passport & photos/i })).toBeVisible();
 
     // Identity fields are on the same page, not behind a step
-    await expect(page.locator('input[name="givenNames"]')).toBeVisible();
+    await expect(page.locator('input[name="fullName"]')).toBeVisible();
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
   });
 
@@ -56,8 +56,9 @@ test.describe("Candidates intake", () => {
       .toMatch(/EP8273953/i);
 
     await expect(page.locator('input[name="passportNumber"]')).toBeVisible();
-    await expect(page.locator('input[name="lastName"]')).toHaveValue(/TESEMA/i);
-    await expect(page.locator('input[name="givenNames"]')).toHaveValue(/MENEN/i);
+    // The scan writes the whole name into the single box, family name included.
+    await expect(page.locator('input[name="fullName"]')).toHaveValue(/MENEN/i);
+    await expect(page.locator('input[name="fullName"]')).toHaveValue(/TESEMA/i);
     const dob = await page.locator('input[name="dateOfBirth"]').inputValue();
     const issue = await page.locator('input[name="passportIssueDate"]').inputValue();
     if (issue) expect(issue).not.toBe(dob);

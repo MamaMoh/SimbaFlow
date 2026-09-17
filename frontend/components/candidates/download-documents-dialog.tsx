@@ -68,7 +68,7 @@ export function DownloadDocumentsDialog({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `documents_${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = `documents_${new Date().toISOString().slice(0, 10)}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -97,7 +97,9 @@ export function DownloadDocumentsDialog({
           <DialogDescription>
             {count === 0
               ? "Select candidates first."
-              : `One folder per candidate, for ${count} selected.`}
+              : count === 1
+                ? "Merged into one PDF, ready to print."
+                : `Merged into one PDF, for ${count} selected — a divider page per candidate.`}
           </DialogDescription>
         </DialogHeader>
 

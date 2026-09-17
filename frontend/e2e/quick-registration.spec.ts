@@ -14,7 +14,7 @@ test.describe("Candidate registration", () => {
 
     // A field from the first section and one from the last, both present without navigating.
     await expect(page.getByRole("heading", { name: /passport & photos/i })).toBeVisible();
-    await expect(page.locator('input[name="givenNames"]')).toBeVisible();
+    await expect(page.locator('input[name="fullName"]')).toBeVisible();
     await expect(page.getByRole("heading", { name: /sponsor & visa/i })).toBeVisible();
 
     // No stepper controls survive.
@@ -39,8 +39,8 @@ test.describe("Candidate registration", () => {
     await page.waitForTimeout(1500);
 
     const stamp = Date.now().toString().slice(-6);
-    await page.locator('input[name="givenNames"]').fill("E2E Tester");
-    await page.locator('input[name="lastName"]').fill("OnePage");
+    // One box for the whole name; the form splits it into first / middle / family on save.
+    await page.locator('input[name="fullName"]').fill("E2E Tester OnePage");
     await page.locator('input[name="passportNumber"]').fill("EP" + stamp);
     await page.locator('input[name="dateOfBirth"]').fill("1998-05-04");
 

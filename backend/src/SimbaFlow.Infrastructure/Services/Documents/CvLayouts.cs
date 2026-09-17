@@ -470,7 +470,6 @@ internal static class CvLayouts
                             Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
                             Row3(t, "Height", V(c.Height), "ارتفاع");
                             Row3(t, "Weight", V(c.Weight), "الوزن");
-                            Row3(t, "Complexion", V(c.Complexion), "البشرة");
                             Row3(t, "Age", Age(c), "العمر");
                             Row3(t, "Date", DateTime.UtcNow.ToString("dd/MM/yyyy"), "تاريخ");
                         });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,7 +22,6 @@ import {
   Mail,
   MapPin,
   FileText,
-  ChevronDown,
   Stamp,
   Users,
   Upload,
@@ -34,7 +33,6 @@ import {
   BookOpen,
   ArrowLeft,
   AlertTriangle,
-  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FormSection } from "@/components/candidates/form-section";
@@ -43,11 +41,7 @@ import { useIntakeDefaults } from "@/lib/api/intake-defaults";
 import { CountrySelect } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import { Progress } from "@/components/ui/progress";
-import type { DepartmentListItem } from "@/lib/schemas/department";
-import {
-  generateCandidateVisaForm,
-  uploadCandidateDocument,
-} from "@/lib/api/candidates";
+import { generateCandidateVisaForm, uploadCandidateDocument } from "@/lib/api/candidates";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -225,8 +219,8 @@ function parseMeasure(value?: string | null): string {
 }
 
 const registerCandidateSchema = z.object({
-  firstName: z.string().min(1, "First name is required").min(2, "First name must be at least 2 characters"),
-  lastName: z.string().min(1, "Last name is required").min(2, "Last name must be at least 2 characters"),
+  firstName: z.string().min(1, "Full name is required").min(2, "Full name must be at least 2 characters"),
+  lastName: z.string().min(1, "Enter a family name after the first name").min(2, "Family name must be at least 2 characters"),
   middleName: opt,
   localFullName: opt,
   passportNumber: z
@@ -284,7 +278,6 @@ const registerCandidateSchema = z.object({
   skillArabicCooking: z.boolean().optional(),
   skillTutoring: z.boolean().optional(),
   skillComputer: z.boolean().optional(),
-  complexion: opt,
   skillBabysitting: z.boolean().optional(),
   skillChildCare: z.boolean().optional(),
   visaNumber: opt,
@@ -373,7 +366,6 @@ const defaults: Partial<RegisterCandidateForm> = {
   skillArabicCooking: false,
   skillTutoring: false,
   skillComputer: false,
-  complexion: "",
   skillBabysitting: false,
   skillChildCare: false,
 };
@@ -687,6 +679,7 @@ export function CandidateApplicationForm({
     fullPhoto: boolean;
     passport: boolean;
   }>({ photo: false, fullPhoto: false, passport: false });
+  const [nameText, setNameText] = useState("");
 
   const {
     register,
@@ -702,17 +695,31 @@ export function CandidateApplicationForm({
   });
 
   /**
-   * First and middle name are entered together, the way a passport prints them, and split on the
-   * last space when saving. Staff were guessing where the break fell, and OCR guessed differently
-   * again, so the two fields disagreed on the same person.
+   * The whole Latin name is typed in one box, the way a passport prints it, and split when saving:
+   * first word is the given name, last word the family name, anything between is the middle name.
+   * Staff were guessing where the break between the boxes fell, and OCR guessed differently again,
+   * so the boxes disagreed on the same person.
    */
   const firstName = watch("firstName");
   const middleName = watch("middleName");
-  const givenNames = [firstName, middleName].filter(Boolean).join(" ");
-  const setGivenNames = (value: string) => {
+  const lastName = watch("lastName");
+  const nameParts = [firstName, middleName, lastName].filter(Boolean).join(" ");
+
+  // The box keeps its own text so a trailing space survives long enough to type the next name.
+  // Passport OCR and the edit prefill write the three parts directly, so mirror them back in
+  // whenever they say something the box does not.
+  useEffect(() => {
+    setNameText((current) =>
+      current.trim().split(/\s+/).filter(Boolean).join(" ") === nameParts ? current : nameParts
+    );
+  }, [nameParts]);
+
+  const setFullName = (value: string) => {
+    setNameText(value);
     const parts = value.trim().split(/\s+/).filter(Boolean);
-    setValue("firstName", parts.length ? parts[0] : "", { shouldValidate: true });
-    setValue("middleName", parts.slice(1).join(" "));
+    setValue("firstName", parts[0] ?? "", { shouldValidate: true });
+    setValue("middleName", parts.slice(1, -1).join(" "));
+    setValue("lastName", parts.length > 1 ? parts[parts.length - 1] : "", { shouldValidate: true });
   };
 
   const applyPassportOcr = async (file: File) => {
@@ -844,7 +851,6 @@ export function CandidateApplicationForm({
       skillArabicCooking: !!d.skillArabicCooking,
       skillTutoring: !!d.skillTutoring,
       skillComputer: !!d.skillComputer,
-      complexion: d.complexion ?? "",
       skillBabysitting: !!d.skillBabysitting,
       skillChildCare: !!d.skillChildCare,
       visaNumber: d.visaNumber || "",
@@ -1012,7 +1018,6 @@ export function CandidateApplicationForm({
     skillArabicCooking: !!data.skillArabicCooking,
     skillTutoring: !!data.skillTutoring,
     skillComputer: !!data.skillComputer,
-    complexion: data.complexion || null,
     skillBabysitting: !!data.skillBabysitting,
     skillChildCare: !!data.skillChildCare,
     visaNumber: data.visaNumber || null,
@@ -1316,34 +1321,26 @@ export function CandidateApplicationForm({
                   <Input type="date" {...register("signedOn")} />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label>
-                    Given name(s) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    name="givenNames"
-                    value={givenNames}
-                    onChange={(e) => setGivenNames(e.target.value)}
-                    placeholder="First and father's name"
-                  />
-                  {/* The split values still travel with the form; the single box is only the
-                      way they are entered. */}
-                  <input type="hidden" {...register("firstName")} />
-                  <input type="hidden" {...register("middleName")} />
-                  {errors.firstName && (
-                    <p className="text-xs text-destructive">{errors.firstName.message}</p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Last Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input {...register("lastName")} />
-                  {errors.lastName && (
-                    <p className="text-xs text-destructive">{errors.lastName.message}</p>
-                  )}
-                </div>
+              <div className="space-y-1.5">
+                <Label>
+                  Full Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  name="fullName"
+                  value={nameText}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="First, father's and grandfather's name"
+                />
+                {/* The split parts still travel with the form; the single box is only the
+                    way they are entered. */}
+                <input type="hidden" {...register("firstName")} />
+                <input type="hidden" {...register("middleName")} />
+                <input type="hidden" {...register("lastName")} />
+                {(errors.firstName || errors.lastName) && (
+                  <p className="text-xs text-destructive">
+                    {errors.firstName?.message ?? errors.lastName?.message}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Full Name (local / Amharic)</Label>
@@ -2027,10 +2024,6 @@ export function CandidateApplicationForm({
                   checked={!!watch("skillComputer")}
                   onChange={(v) => setValue("skillComputer", v)}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="complexion">Complexion</Label>
-                <Input id="complexion" {...register("complexion")} placeholder="e.g. Fair" />
               </div>
               <div className="space-y-1.5">
                 <Label>Remark</Label>

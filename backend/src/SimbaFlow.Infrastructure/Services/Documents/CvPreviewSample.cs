@@ -27,8 +27,6 @@ internal static class CvPreviewSample
         NumberOfChildren = 0,
         Height = "165 cm",
         Weight = "58 kg",
-        Complexion = "Fair",
-
         PassportNumber = "EP0000000",
         PassportType = "Normal",
         PassportPlaceOfIssue = "ADDIS ABABA",

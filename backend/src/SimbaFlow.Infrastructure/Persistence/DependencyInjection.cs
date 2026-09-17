@@ -153,6 +153,7 @@ public static class DependencyInjection
         services.AddScoped<IWorkflowEngineService, WorkflowEngineService>();
         services.AddScoped<IDocumentBrandingService, Services.Documents.DocumentBrandingService>();
         services.AddScoped<ICvGenerationService, CvGenerationService>();
+        services.AddScoped<IPdfBundleService, Services.Documents.PdfBundleService>();
         services.AddScoped<IReportExportService, Services.Reporting.ReportExportService>();
         services.AddScoped<IWorkflowDefinitionUpgrader, WorkflowDefinitionUpgrader>();
         services.AddScoped<ICandidateNotifier, TelegramCandidateNotifier>();
