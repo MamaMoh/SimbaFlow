@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
+using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Enums;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
@@ -32,21 +34,58 @@ public class DownloadCandidateDocumentsHandler
     /// </summary>
     private const int MaxCandidates = 50;
 
+    /// <summary>
+    /// The order each candidate's pages come out in.
+    ///
+    /// It is the order the download dialog lists the kinds in, which is the order the desk
+    /// assembles the packet in — CV on top, then the passport and the photos, then the rest.
+    /// Sorting on DocumentType instead ordered the packet by the order the kinds happened to be
+    /// added to the enum, which puts the passport (0) ahead of the CV (3) and scatters the rest.
+    ///
+    /// Keep in step with DOCUMENT_KINDS in
+    /// frontend/components/candidates/download-documents-dialog.tsx.
+    /// </summary>
+    private static readonly DocumentType[] PageOrder =
+    [
+        DocumentType.CV,
+        DocumentType.Passport,
+        DocumentType.Photo,
+        DocumentType.FullPhoto,
+        DocumentType.Contract,
+        DocumentType.VisaForm,
+        DocumentType.MedicalCertificate,
+        DocumentType.LMIS,
+        DocumentType.TasheerDocument,
+        DocumentType.TicketBooking,
+        DocumentType.Other,
+    ];
+
+    private static readonly Dictionary<DocumentType, int> PageRank =
+        PageOrder.Select((type, index) => (type, index))
+            .ToDictionary(x => x.type, x => x.index);
+
+    /// <summary>A kind added to the enum but not to the list above sorts last, not first.</summary>
+    private static int RankOf(DocumentType type) =>
+        PageRank.TryGetValue(type, out var rank) ? rank : PageOrder.Length;
+
     private readonly ITenantDbContext _context;
     private readonly IFileStorageService _fileStorage;
     private readonly ICvGenerationService _cvGeneration;
     private readonly IPdfBundleService _pdfBundle;
+    private readonly ILogger<DownloadCandidateDocumentsHandler> _logger;
 
     public DownloadCandidateDocumentsHandler(
         ITenantDbContext context,
         IFileStorageService fileStorage,
         ICvGenerationService cvGeneration,
-        IPdfBundleService pdfBundle)
+        IPdfBundleService pdfBundle,
+        ILogger<DownloadCandidateDocumentsHandler> logger)
     {
         _context = context;
         _fileStorage = fileStorage;
         _cvGeneration = cvGeneration;
         _pdfBundle = pdfBundle;
+        _logger = logger;
     }
 
     public async Task<Result<byte[]>> Handle(
@@ -100,12 +139,22 @@ public class DownloadCandidateDocumentsHandler
             if (candidates.Count > 1)
                 items.Add(PdfBundleItem.Divider(candidate.FullName));
 
-            var found = (byCandidate.GetValueOrDefault(candidate.Id) ?? [])
+            var onFile = byCandidate.GetValueOrDefault(candidate.Id) ?? [];
+
+            // The CV leads, and is drawn rather than read — see RenderCvAsync.
+            if (wantsCv)
+            {
+                var cv = await RenderCvAsync(candidate, onFile, ct);
+                if (cv is not null)
+                    items.Add(PdfBundleItem.Document($"{candidate.FullName} · CV", cv));
+            }
+
+            var found = onFile
+                .Where(d => d.DocumentType != DocumentType.CV)
                 // Every candidate's pages come in the same order, so a stack of twenty can be
                 // checked by flicking through rather than reading each page.
-                .OrderBy(d => d.DocumentType)
-                .ThenBy(d => d.UploadedAt)
-                .ToList();
+                .OrderBy(d => RankOf(d.DocumentType))
+                .ThenBy(d => d.UploadedAt);
 
             foreach (var doc in found)
             {
@@ -118,20 +167,6 @@ public class DownloadCandidateDocumentsHandler
                 items.Add(PdfBundleItem.Document(
                     $"{candidate.FullName} · {doc.DocumentType}", bytes));
             }
-
-            // A CV is the one document that can always be produced, because it is drawn from the
-            // candidate's own record. Asking for it and getting nothing because nobody has pressed
-            // the button before would be a strange answer.
-            if (wantsCv && !found.Any(d => d.DocumentType == DocumentType.CV))
-            {
-                items.Add(PdfBundleItem.Document(
-                    $"{candidate.FullName} · CV",
-                    await _cvGeneration.GenerateAsync(
-                        candidate,
-                        await ReadAsync(candidate.PhotoPath, ct),
-                        await ReadAsync(candidate.FullPhotoPath, ct),
-                        ct)));
-            }
         }
 
         var pdf = await _pdfBundle.MergeAsync(items, ct);
@@ -143,6 +178,49 @@ public class DownloadCandidateDocumentsHandler
         }
 
         return Result<byte[]>.Success(pdf);
+    }
+
+    /// <summary>
+    /// This candidate's CV, drawn now, in the layout the agency has chosen.
+    ///
+    /// Drawn rather than taken from file, even when a copy is on file. A stored CV is a snapshot of
+    /// whichever layout was selected the day someone last pressed the button, so a packet assembled
+    /// from stored copies is a packet of whatever layouts happen to be lying around rather than the
+    /// agency's own — and because every press used to file a fresh row, one candidate can have
+    /// several, which arrived as several CVs in several layouts. Drawing it here is also what makes
+    /// it possible to put the CV first: it is the one page in the packet that does not have to
+    /// exist yet.
+    /// </summary>
+    private async Task<byte[]?> RenderCvAsync(
+        Candidate candidate, IReadOnlyList<CandidateDocument> onFile, CancellationToken ct)
+    {
+        try
+        {
+            return await _cvGeneration.GenerateAsync(
+                candidate,
+                await ReadAsync(candidate.PhotoPath, ct),
+                await ReadAsync(candidate.FullPhotoPath, ct),
+                ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A photo the renderer cannot open should cost this candidate their CV page, not the
+            // other nineteen people theirs. The newest copy on file is a stale layout but a real
+            // document, which beats a hole in the packet.
+            _logger.LogWarning(
+                ex, "Could not draw a CV for candidate {CandidateId}; falling back to the copy on file",
+                candidate.Id);
+
+            foreach (var doc in onFile
+                .Where(d => d.DocumentType == DocumentType.CV)
+                .OrderByDescending(d => d.UploadedAt))
+            {
+                var bytes = await ReadAsync(doc.FilePath, ct);
+                if (bytes is not null) return bytes;
+            }
+
+            return null;
+        }
     }
 
     private async Task<byte[]?> ReadAsync(string? path, CancellationToken ct)

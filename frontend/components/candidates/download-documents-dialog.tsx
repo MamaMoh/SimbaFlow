@@ -20,10 +20,12 @@ import { downloadCandidateDocuments } from "@/lib/api/candidates";
  * The document kinds, with the numbers the API's DocumentType enum uses.
  *
  * Named the way the desk names them rather than the way the enum does — "Passport", not
- * "Passport = 0". The order is the order the paperwork is usually assembled in.
+ * "Passport = 0". The order is the order the paperwork is usually assembled in, and so also the
+ * order the merged download comes out in: keep it in step with PageOrder in
+ * backend/src/SimbaFlow.API/Features/Candidates/Commands/DownloadCandidateDocumentsCommand.cs.
  */
 export const DOCUMENT_KINDS: { type: number; label: string; hint?: string }[] = [
-  { type: 3, label: "CV", hint: "Generated if not already on file" },
+  { type: 3, label: "CV", hint: "Drawn fresh, in the agency's chosen layout" },
   { type: 0, label: "Passport" },
   { type: 1, label: "Photo" },
   { type: 8, label: "Full size photo" },

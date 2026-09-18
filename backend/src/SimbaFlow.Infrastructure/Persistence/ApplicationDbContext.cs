@@ -154,8 +154,9 @@ public class ApplicationDbContext
         {
             entity.Property(t => t.Settings)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => string.IsNullOrEmpty(v) ? new Domain.Entities.Tenancy.TenantSettings() : System.Text.Json.JsonSerializer.Deserialize<Domain.Entities.Tenancy.TenantSettings>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
+                    v => TenantSettingsJson.Serialize(v),
+                    v => TenantSettingsJson.Deserialize(v),
+                    TenantSettingsJson.Comparer);
 
             entity.Property(t => t.LicensedCountries)
                 .HasColumnType("jsonb")

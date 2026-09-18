@@ -38,7 +38,7 @@ import { cn } from "@/lib/utils";
 import { FormSection } from "@/components/candidates/form-section";
 import { toast } from "sonner";
 import { useIntakeDefaults } from "@/lib/api/intake-defaults";
-import { CountrySelect } from "@/components/ui/country-select";
+import { CountrySelect, countryName } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import { Progress } from "@/components/ui/progress";
 import { generateCandidateVisaForm, uploadCandidateDocument } from "@/lib/api/candidates";
@@ -127,6 +127,20 @@ function withValue(list: readonly string[], current?: string | null): string[] {
   return current && !list.includes(current) ? [current, ...list] : [...list];
 }
 
+/**
+ * A saved answer spelled the way the preset spells it.
+ *
+ * A dropdown shows its placeholder when the value matches no option, so "single" — from a bulk
+ * import, an older build, or a passport scan — made an answered question look unanswered, and
+ * saving again wrote the blank back over it. Anything the list does not know is returned as it
+ * came, for withValue to carry.
+ */
+function matchOption(list: readonly string[], value?: string | null): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  return list.find((o) => o.toLowerCase() === trimmed.toLowerCase()) ?? trimmed;
+}
+
 const LANGUAGE_OPTIONS = [
   "English",
   "Arabic",
@@ -176,8 +190,12 @@ function rowsFromCandidate(d: {
   otherLanguages?: string | null;
 }): LanguageRow[] {
   const rows: LanguageRow[] = [];
-  if (d.englishLevel) rows.push(newLanguageRow("English", d.englishLevel));
-  if (d.arabicLevel) rows.push(newLanguageRow("Arabic", d.arabicLevel));
+  if (d.englishLevel) {
+    rows.push(newLanguageRow("English", matchOption(LANGUAGE_LEVELS, d.englishLevel)));
+  }
+  if (d.arabicLevel) {
+    rows.push(newLanguageRow("Arabic", matchOption(LANGUAGE_LEVELS, d.arabicLevel)));
+  }
   if (d.otherLanguages) {
     for (const part of d.otherLanguages.split(";")) {
       const trimmed = part.trim();
@@ -185,7 +203,10 @@ function rowsFromCandidate(d: {
       const idx = trimmed.indexOf(":");
       if (idx > 0) {
         rows.push(
-          newLanguageRow(trimmed.slice(0, idx).trim(), trimmed.slice(idx + 1).trim())
+          newLanguageRow(
+            trimmed.slice(0, idx).trim(),
+            matchOption(LANGUAGE_LEVELS, trimmed.slice(idx + 1))
+          )
         );
       }
     }
@@ -685,6 +706,7 @@ export function CandidateApplicationForm({
     register,
     handleSubmit,
     setValue,
+    getValues,
     watch,
     reset,
     trigger,
@@ -815,14 +837,16 @@ export function CandidateApplicationForm({
       partnerAgencyId: d.partnerAgencyId || "",
       contractDate: d.contractDate || "",
       placeOfBirth: d.placeOfBirth || "",
-      religion: d.religion || "",
-      maritalStatus: d.maritalStatus || "",
+      // Through matchOption: a saved answer whose spelling differs from the preset's is still that
+      // answer, and a dropdown that cannot match it shows nothing at all.
+      religion: matchOption(RELIGIONS, d.religion),
+      maritalStatus: matchOption(MARITAL_STATUSES, d.maritalStatus),
       numberOfChildren: d.numberOfChildren != null ? String(d.numberOfChildren) : "0",
       height: parseMeasure(d.height),
       weight: parseMeasure(d.weight),
       nationalId: d.nationalId || "",
       biometricId: d.biometricId || "",
-      passportType: d.passportType || "Normal",
+      passportType: matchOption(PASSPORT_TYPES, d.passportType) || "Normal",
       passportPlaceOfIssue: d.passportPlaceOfIssue || "ETHIOPIA",
       passportIssueDate: d.passportIssueDate || "",
       passportExpiryDate: d.passportExpiryDate || "",
@@ -830,19 +854,19 @@ export function CandidateApplicationForm({
       subcity: d.subcity || "",
       woreda: d.woreda || "",
       houseNo: d.houseNo || "",
-      occupation: d.occupation || "HOUSE MAID",
+      occupation: matchOption(OCCUPATIONS, d.occupation) || "HOUSE MAID",
       qualification: d.qualification || "SECONDARY LEVEL",
       monthlySalary: d.monthlySalary || "1000",
       contractPeriod: d.contractPeriod || "2 Years",
-      englishLevel: d.englishLevel || "",
-      arabicLevel: d.arabicLevel || "",
+      englishLevel: matchOption(LANGUAGE_LEVELS, d.englishLevel),
+      arabicLevel: matchOption(LANGUAGE_LEVELS, d.arabicLevel),
       otherLanguages: d.otherLanguages || "",
       experienceAbroadYears:
         d.experienceAbroadYears != null ? String(d.experienceAbroadYears) : "",
       worksIn: d.worksIn || "",
       referenceNo: d.referenceNo || "",
       remark: d.remark || "",
-      cookingLevel: d.cookingLevel || "",
+      cookingLevel: matchOption(LANGUAGE_LEVELS, d.cookingLevel),
       skillCleaning: !!d.skillCleaning,
       skillWashing: !!d.skillWashing,
       skillCooking: !!d.skillCooking,
@@ -854,7 +878,7 @@ export function CandidateApplicationForm({
       skillBabysitting: !!d.skillBabysitting,
       skillChildCare: !!d.skillChildCare,
       visaNumber: d.visaNumber || "",
-      visaType: d.visaType || "Work",
+      visaType: matchOption(VISA_TYPES, d.visaType) || "Work",
       sponsorName: d.sponsorName || "",
       sponsorIdNumber: d.sponsorIdNumber || "",
       sponsorPhone: d.sponsorPhone || "",
@@ -924,23 +948,71 @@ export function CandidateApplicationForm({
 
   // Agency defaults fill a blank form only. On an edit the saved record is the truth, and a
   // default quietly overwriting it is exactly the bug this list already reported twice.
+  //
+  // Re-applied when a later SWR payload actually has values: visiting settings caches an empty
+  // GET, and a one-shot ref then ignored the real save. Empty agency values must not wipe the
+  // form's own starting points (HOUSE MAID, Single, Ethiopia, …).
   const { defaults: agencyDefaults } = useIntakeDefaults(!isEdit);
-  const agencyDefaultsApplied = useRef(false);
   useEffect(() => {
-    if (isEdit || !agencyDefaults || agencyDefaultsApplied.current) return;
-    agencyDefaultsApplied.current = true;
-    if (agencyDefaults.gender) setValue("gender", agencyDefaults.gender);
-    if (agencyDefaults.occupation) setValue("occupation", agencyDefaults.occupation);
-    if (agencyDefaults.religion) setValue("religion", agencyDefaults.religion);
-    if (agencyDefaults.nationality) setValue("nationality", agencyDefaults.nationality);
-    if (agencyDefaults.passportType) setValue("passportType", agencyDefaults.passportType);
-    if (agencyDefaults.maritalStatus) setValue("maritalStatus", agencyDefaults.maritalStatus);
-    if (agencyDefaults.contractPeriod) setValue("contractPeriod", agencyDefaults.contractPeriod);
-    if (agencyDefaults.countryOfTravel) {
-      setValue("countryOfTravel", agencyDefaults.countryOfTravel);
-      setValue("country", agencyDefaults.countryOfTravel);
+    if (isEdit || !agencyDefaults) return;
+    const stillAt = (field: "gender" | "occupation" | "religion" | "nationality" | "passportType" | "maritalStatus" | "contractPeriod" | "countryOfTravel", formDefault: string) => {
+      const shown = getValues(field) || "";
+      return !shown || shown === formDefault;
+    };
+    // Through matchOption as well: the agency types these into its settings by hand, so they
+    // arrive in whatever spelling was used there — "House Maid" for a list that says "HOUSE MAID".
+    if (agencyDefaults.gender && stillAt("gender", "")) {
+      setValue("gender", normalizeGender(agencyDefaults.gender) || agencyDefaults.gender);
     }
-  }, [agencyDefaults, isEdit, setValue]);
+    if (agencyDefaults.occupation && stillAt("occupation", defaults.occupation ?? "")) {
+      setValue("occupation", matchOption(OCCUPATIONS, agencyDefaults.occupation));
+    }
+    if (agencyDefaults.religion && stillAt("religion", defaults.religion ?? "")) {
+      setValue("religion", matchOption(RELIGIONS, agencyDefaults.religion));
+    }
+    if (agencyDefaults.nationality && stillAt("nationality", defaults.nationality ?? "")) {
+      setValue("nationality", countryName(agencyDefaults.nationality) || agencyDefaults.nationality);
+    }
+    if (agencyDefaults.passportType && stillAt("passportType", defaults.passportType ?? "")) {
+      setValue("passportType", matchOption(PASSPORT_TYPES, agencyDefaults.passportType));
+    }
+    if (agencyDefaults.maritalStatus && stillAt("maritalStatus", defaults.maritalStatus ?? "")) {
+      setValue("maritalStatus", matchOption(MARITAL_STATUSES, agencyDefaults.maritalStatus));
+    }
+    if (agencyDefaults.contractPeriod && stillAt("contractPeriod", defaults.contractPeriod ?? "")) {
+      setValue("contractPeriod", agencyDefaults.contractPeriod);
+    }
+    if (agencyDefaults.countryOfTravel && stillAt("countryOfTravel", "")) {
+      const destination = countryName(agencyDefaults.countryOfTravel) || agencyDefaults.countryOfTravel;
+      setValue("countryOfTravel", destination);
+      setValue("country", destination);
+    }
+  }, [agencyDefaults, isEdit, setValue, getValues]);
+
+  /**
+   * The partner already on the record, listed even when it is no longer one this agency holds a
+   * live agreement with — and even for the moment before the linked list has finished loading.
+   *
+   * A Select whose value matches none of its options reports itself as empty, and this one wrote
+   * that back: opening an existing application showed "Select linked partner" over a candidate who
+   * had one, and saving then cleared the agency off the record. The destination is the last thing
+   * an edit should drop on the way past.
+   */
+  const savedPartnerId = watch("partnerAgencyId");
+  const savedPartnerName = watch("partnerName");
+  const partnerOptions = useMemo(() => {
+    const options = linkedPartners.map((p) => ({
+      id: p.id,
+      label: `${p.name} · ${p.country}`,
+    }));
+    if (savedPartnerId && !options.some((p) => p.id === savedPartnerId)) {
+      options.unshift({
+        id: savedPartnerId,
+        label: savedPartnerName ? `${savedPartnerName} (on file)` : "Partner on file",
+      });
+    }
+    return options;
+  }, [linkedPartners, savedPartnerId, savedPartnerName]);
 
   const goBack = () => {
     if (isEdit && candidateId) router.push(`/candidates/${candidateId}`);
@@ -1366,13 +1438,15 @@ export function CandidateApplicationForm({
                   <Label>Passport Type</Label>
                   <Select
                     value={watch("passportType") || undefined}
-                    onValueChange={(v) => setValue("passportType", v)}
+                    onValueChange={(v) => v && setValue("passportType", v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Select type">
+                        {watch("passportType") || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {PASSPORT_TYPES.map((t) => (
+                      {withValue(PASSPORT_TYPES, watch("passportType")).map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}
                         </SelectItem>
@@ -1459,7 +1533,7 @@ export function CandidateApplicationForm({
                   </Label>
                   <Select
                     value={watch("gender") || undefined}
-                    onValueChange={(v) => setValue("gender", v, { shouldValidate: true })}
+                    onValueChange={(v) => v && setValue("gender", v, { shouldValidate: true })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select" />
@@ -1477,10 +1551,12 @@ export function CandidateApplicationForm({
                   <Label>Religion</Label>
                   <Select
                     value={watch("religion") || undefined}
-                    onValueChange={(v) => setValue("religion", v)}
+                    onValueChange={(v) => v && setValue("religion", v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select religion" />
+                      <SelectValue placeholder="Select religion">
+                        {watch("religion") || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
                       {withValue(RELIGIONS, watch("religion")).map((r) => (
@@ -1495,13 +1571,15 @@ export function CandidateApplicationForm({
                   <Label>Marital Status</Label>
                   <Select
                     value={watch("maritalStatus") || undefined}
-                    onValueChange={(v) => setValue("maritalStatus", v)}
+                    onValueChange={(v) => v && setValue("maritalStatus", v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder="Select status">
+                        {watch("maritalStatus") || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {MARITAL_STATUSES.map((s) => (
+                      {withValue(MARITAL_STATUSES, watch("maritalStatus")).map((s) => (
                         <SelectItem key={s} value={s}>
                           {s}
                         </SelectItem>
@@ -1555,13 +1633,22 @@ export function CandidateApplicationForm({
                   <Label>Occupation</Label>
                   <Select
                     value={watch("occupation") || undefined}
-                    onValueChange={(v) => setValue("occupation", v)}
+                    // The guard, here and on every dropdown on this form: a Select announces an
+                    // empty value when its current one matches no option, which a saved answer the
+                    // preset list has never heard of does. Writing that back turned an answer that
+                    // merely looked missing into one that was, and saved the blank over it. None of
+                    // these dropdowns offer an empty option, so a blank from one is never a choice.
+                    onValueChange={(v) => v && setValue("occupation", v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select occupation" />
+                      {/* The stored answer as the text, so a value outside the preset list reads
+                          as itself rather than as "nothing selected". */}
+                      <SelectValue placeholder="Select occupation">
+                        {watch("occupation") || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {OCCUPATIONS.map((o) => (
+                      {withValue(OCCUPATIONS, watch("occupation")).map((o) => (
                         <SelectItem key={o} value={o}>
                           {o}
                         </SelectItem>
@@ -1571,9 +1658,13 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Nationality</Label>
+                  {/* The name, not the code: this is printed on the CV and the visa form, where
+                      "ET" would be wrong, and it is what passport OCR reads off the MRZ. */}
                   <CountrySelect
                     value={watch("nationality") || ""}
-                    onChange={(v) => setValue("nationality", v)}
+                    onChange={(_code, name) =>
+                      setValue("nationality", name, { shouldValidate: true })
+                    }
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1681,6 +1772,10 @@ export function CandidateApplicationForm({
                   <Label>Medical Place</Label>
                   <Input {...register("medicalPlace")} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Reference No.</Label>
+                  <Input {...register("referenceNo")} />
+                </div>
               </div>
             </FormSection>
           </div>
@@ -1698,6 +1793,7 @@ export function CandidateApplicationForm({
                   <Select
                     value={watch("partnerAgencyId") || undefined}
                     onValueChange={(id) => {
+                      if (!id) return;
                       setValue("partnerAgencyId", id, { shouldValidate: true });
                       const p = linkedPartners.find((x) => x.id === id);
                       if (p) {
@@ -1712,17 +1808,19 @@ export function CandidateApplicationForm({
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select linked partner" />
+                      <SelectValue placeholder="Select linked partner">
+                        {partnerOptions.find((p) => p.id === savedPartnerId)?.label || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {linkedPartners.map((p) => (
+                      {partnerOptions.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} · {p.country}
+                          {p.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  {linkedPartners.length === 0 ? (
+                  {partnerOptions.length === 0 ? (
                     <p className="text-xs text-amber-800">
                       No partners linked. An agency owner should link partners under Partners first.
                     </p>
@@ -1762,16 +1860,45 @@ export function CandidateApplicationForm({
                   <Input {...register("nationalId")} />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>Biometric ID</Label>
+                  <Input {...register("biometricId")} />
+                </div>
+                {/* These seven were saved, sent back by the API and carried in the form's state,
+                    but had nowhere to appear — so an edit looked as though the paperwork numbers
+                    had been lost, and the only way to correct one was a database. */}
+                <div className="space-y-1.5">
+                  <Label>Agent Name</Label>
+                  <Input {...register("agentName")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>File No.</Label>
+                  <Input {...register("fileNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Wakala No.</Label>
+                  <Input {...register("wakalaNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contract No.</Label>
+                  <Input {...register("contractNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sticker Visa No.</Label>
+                  <Input {...register("stickerVisaNo")} />
+                </div>
+                <div className="space-y-1.5">
                   <Label>Visa Type</Label>
                   <Select
                     value={watch("visaType") || undefined}
-                    onValueChange={(v) => setValue("visaType", v)}
+                    onValueChange={(v) => v && setValue("visaType", v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Select type">
+                        {watch("visaType") || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {VISA_TYPES.map((t) => (
+                      {withValue(VISA_TYPES, watch("visaType")).map((t) => (
                         <SelectItem key={t} value={t}>
                           {t}
                         </SelectItem>
@@ -1828,6 +1955,7 @@ export function CandidateApplicationForm({
                       <Select
                         value={row.language || undefined}
                         onValueChange={(language) => {
+                          if (!language) return;
                           const next = languageRows.map((r) =>
                             r.id === row.id ? { ...r, language } : r
                           );
@@ -1836,10 +1964,14 @@ export function CandidateApplicationForm({
                         }}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select language" />
+                          {/* A language the preset list has never heard of — anything an import or
+                              an older build put in otherLanguages — still reads as itself. */}
+                          <SelectValue placeholder="Select language">
+                            {row.language || undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent position="popper" className="z-[200]">
-                          {LANGUAGE_OPTIONS.map((lang) => (
+                          {withValue(LANGUAGE_OPTIONS, row.language).map((lang) => (
                             <SelectItem key={lang} value={lang}>
                               {lang}
                             </SelectItem>
@@ -1852,6 +1984,7 @@ export function CandidateApplicationForm({
                       <Select
                         value={row.level || undefined}
                         onValueChange={(level) => {
+                          if (!level) return;
                           const next = languageRows.map((r) =>
                             r.id === row.id ? { ...r, level } : r
                           );
@@ -1860,7 +1993,9 @@ export function CandidateApplicationForm({
                         }}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select level" />
+                          <SelectValue placeholder="Select level">
+                            {row.level || undefined}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent position="popper" className="z-[200]">
                           {withValue(LANGUAGE_LEVELS, row.level).map((l) => (
@@ -1917,9 +2052,10 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Country worked in</Label>
+                  {/* The name, for the same reason as Nationality above. */}
                   <CountrySelect
                     value={watch("worksIn") || ""}
-                    onChange={(v) => setValue("worksIn", v)}
+                    onChange={(_code, name) => setValue("worksIn", name)}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1946,10 +2082,12 @@ export function CandidateApplicationForm({
                   <Label>Cooking Level</Label>
                   <Select
                     value={watch("cookingLevel") || undefined}
-                    onValueChange={(v) => setValue("cookingLevel", v)}
+                    onValueChange={(v) => v && setValue("cookingLevel", v)}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select level" />
+                      <SelectValue placeholder="Select level">
+                        {watch("cookingLevel") || undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
                       {withValue(LANGUAGE_LEVELS, watch("cookingLevel")).map((l) => (

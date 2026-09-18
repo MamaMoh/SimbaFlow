@@ -118,7 +118,11 @@ public static class CandidateIntakeMapper
         candidate.SkillArabicCooking = p.SkillArabicCooking;
         candidate.SkillTutoring = p.SkillTutoring;
         candidate.SkillComputer = p.SkillComputer;
-        candidate.Complexion = p.Complexion?.Trim();
+        // Only when the caller actually says something. The intake form stopped asking for
+        // complexion, so every save now arrives without it — and assigning that through would
+        // erase the answer on file for every candidate anyone happened to edit.
+        if (p.Complexion is not null)
+            candidate.Complexion = NullIfEmpty(p.Complexion);
         candidate.SkillBabysitting = p.SkillBabysitting;
         candidate.SkillChildCare = p.SkillChildCare;
         candidate.VisaNumber = NullIfEmpty(p.VisaNumber);

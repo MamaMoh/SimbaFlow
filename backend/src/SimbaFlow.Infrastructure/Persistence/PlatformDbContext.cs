@@ -129,8 +129,9 @@ public class PlatformDbContext
         {
             entity.Property(t => t.Settings)
                 .HasConversion(
-                    v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                    v => string.IsNullOrEmpty(v) ? new TenantSettings() : System.Text.Json.JsonSerializer.Deserialize<TenantSettings>(v, (System.Text.Json.JsonSerializerOptions?)null)!);
+                    v => TenantSettingsJson.Serialize(v),
+                    v => TenantSettingsJson.Deserialize(v),
+                    TenantSettingsJson.Comparer);
 
             entity.Property(t => t.LicensedCountries)
                 .HasColumnType("jsonb")

@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using SimbaFlow.API.Features.Candidates.Commands;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Candidates;
@@ -56,7 +58,9 @@ public class DownloadCandidateDocumentsTests : IDisposable
                     _merged.Any(i => !i.IsDivider) ? [0x25, 0x50, 0x44, 0x46] : null);
             });
 
-        _handler = new DownloadCandidateDocumentsHandler(_context, _storage, _cv, _bundle);
+        _handler = new DownloadCandidateDocumentsHandler(
+            _context, _storage, _cv, _bundle,
+            Substitute.For<ILogger<DownloadCandidateDocumentsHandler>>());
     }
 
     private async Task<Guid> GivenCandidate(
@@ -164,16 +168,97 @@ public class DownloadCandidateDocumentsTests : IDisposable
     }
 
     [Fact]
-    public async Task AStoredCvIsUsedRatherThanRegenerated()
+    public async Task TheCvIsDrawnFreshEvenWhenACopyIsOnFile()
     {
+        // A stored CV is a snapshot of whichever layout was selected the day someone last pressed
+        // the button. Serving it back means the packet is printed in whatever layouts happen to be
+        // on file rather than the one the agency chose.
         var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.CV);
 
         var result = await _handler.Handle(
             new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.CV]), default);
 
         result.IsSuccess.Should().BeTrue();
-        await _cv.DidNotReceive().GenerateAsync(
+        MergedTitles().Should().Equal("SEADA MEKONNEN · CV");
+        await _cv.Received(1).GenerateAsync(
             Arg.Any<Candidate>(), Arg.Any<byte[]?>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SeveralCopiesOnFileStillMakeOneCvPage()
+    {
+        // Every press of the button used to file a fresh row, so candidates registered before that
+        // changed have a pile of them — which arrived in the packet as several CVs in several
+        // layouts, one per copy.
+        var id = await GivenCandidate(
+            "EQ1030621", "SEADA", "MEKONNEN",
+            DocumentType.CV, DocumentType.CV, DocumentType.CV, DocumentType.Passport);
+
+        var result = await _handler.Handle(
+            new DownloadCandidateDocumentsCommand(
+                [id], [(int)DocumentType.CV, (int)DocumentType.Passport]),
+            default);
+
+        result.IsSuccess.Should().BeTrue();
+        MergedTitles().Should().Equal(
+            "SEADA MEKONNEN · CV",
+            "SEADA MEKONNEN · Passport");
+    }
+
+    [Fact]
+    public async Task ACvThatWillNotDrawFallsBackToTheCopyOnFile()
+    {
+        // A photo the renderer cannot open should cost this candidate their CV page at worst, and
+        // not the other nineteen people theirs.
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.CV);
+        _cv.GenerateAsync(Arg.Any<Candidate>(), Arg.Any<byte[]?>(), Arg.Any<byte[]?>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("unreadable photo"));
+
+        var result = await _handler.Handle(
+            new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.CV]), default);
+
+        result.IsSuccess.Should().BeTrue();
+        MergedTitles().Should().Equal("SEADA MEKONNEN · CV");
+    }
+
+    [Fact]
+    public async Task ThePagesComeOutInTheOrderTheDialogListsTheKinds()
+    {
+        // The order the desk assembles the packet in, and so the order the dialog offers. Sorting
+        // on the DocumentType value instead orders it by the order the kinds were added to the
+        // enum, which puts the passport (0) ahead of the CV (3) and scatters the rest.
+        var id = await GivenCandidate(
+            "EQ1030621", "SEADA", "MEKONNEN",
+            DocumentType.Other,
+            DocumentType.TicketBooking,
+            DocumentType.TasheerDocument,
+            DocumentType.LMIS,
+            DocumentType.MedicalCertificate,
+            DocumentType.VisaForm,
+            DocumentType.Contract,
+            DocumentType.FullPhoto,
+            DocumentType.Photo,
+            DocumentType.Passport);
+
+        var result = await _handler.Handle(
+            new DownloadCandidateDocumentsCommand(
+                [id],
+                [.. Enum.GetValues<DocumentType>().Select(t => (int)t)]),
+            default);
+
+        result.IsSuccess.Should().BeTrue();
+        MergedTitles().Should().Equal(
+            "SEADA MEKONNEN · CV",
+            "SEADA MEKONNEN · Passport",
+            "SEADA MEKONNEN · Photo",
+            "SEADA MEKONNEN · FullPhoto",
+            "SEADA MEKONNEN · Contract",
+            "SEADA MEKONNEN · VisaForm",
+            "SEADA MEKONNEN · MedicalCertificate",
+            "SEADA MEKONNEN · LMIS",
+            "SEADA MEKONNEN · TasheerDocument",
+            "SEADA MEKONNEN · TicketBooking",
+            "SEADA MEKONNEN · Other");
     }
 
     [Fact]

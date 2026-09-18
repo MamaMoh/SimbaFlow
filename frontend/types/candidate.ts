@@ -47,6 +47,10 @@ export interface Candidate {
   skillCooking?: boolean;
   skillIroning?: boolean;
   skillSewing?: boolean;
+  skillArabicCooking?: boolean;
+  skillTutoring?: boolean;
+  skillComputer?: boolean;
+  complexion?: string;
   skillBabysitting?: boolean;
   skillChildCare?: boolean;
   countryOfTravel?: string;

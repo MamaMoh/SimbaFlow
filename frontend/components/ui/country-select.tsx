@@ -28,6 +28,7 @@ export const COUNTRIES: CountryOption[] = COUNTRY_DATA.map(([code, name, flag]) 
 }));
 
 const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c]));
+const BY_NAME = new Map(COUNTRIES.map((c) => [c.name.toUpperCase(), c]));
 
 /** Destinations Ethiopian agencies actually deploy to — floated to the top of the list. */
 const COMMON_DESTINATIONS = ["SA", "AE", "KW", "QA", "BH", "OM", "JO", "LB"];
@@ -35,6 +36,21 @@ const COMMON_DESTINATIONS = ["SA", "AE", "KW", "QA", "BH", "OM", "JO", "LB"];
 export function countryName(code: string | null | undefined): string {
   if (!code) return "";
   return BY_CODE.get(code.toUpperCase())?.name ?? code;
+}
+
+/**
+ * The code for a stored value that may be either.
+ *
+ * Not every caller keeps the code: a candidate's nationality is stored as the name, because it is
+ * printed on the CV and the visa form where "ET" would be wrong, and passport OCR reads it off the
+ * MRZ as a name too. Resolving both here means a picker shows the country either way instead of
+ * sitting empty on a value it could not match.
+ */
+export function countryCode(value: string | null | undefined): string {
+  if (!value) return "";
+  const upper = value.trim().toUpperCase();
+  if (BY_CODE.has(upper)) return upper;
+  return BY_NAME.get(upper)?.code ?? "";
 }
 
 export function CountrySelect({
@@ -64,7 +80,7 @@ export function CountrySelect({
   return (
     <Combobox
       items={items}
-      value={value?.toUpperCase() ?? ""}
+      value={countryCode(value)}
       onValueChange={(code) => onChange(code, countryName(code))}
       placeholder={placeholder}
       disabled={disabled}

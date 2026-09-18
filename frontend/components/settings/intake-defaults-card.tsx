@@ -62,7 +62,7 @@ export function IntakeDefaultsCard() {
     e.preventDefault();
     setSaving(true);
     try {
-      await saveIntakeDefaults({
+      const saved = await saveIntakeDefaults({
         gender,
         occupation,
         religion,
@@ -73,8 +73,9 @@ export function IntakeDefaultsCard() {
         contractPeriod,
         cvTemplate,
       });
+      // Keep the layouts list from the GET; the save echo does not repeat it.
+      await mutate({ ...defaults, ...saved, cvTemplates: saved.cvTemplates ?? defaults?.cvTemplates }, { revalidate: true });
       toast.success("New candidate forms will start with these");
-      void mutate();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save");
     } finally {
@@ -185,12 +186,13 @@ export function IntakeDefaultsCard() {
 
         <div className="space-y-1.5">
           <Label>Nationality</Label>
-          <CountrySelect value={nationality} onChange={setNationality} />
+          {/* The name, matching the registration form — "ET" is the picker key, not what a CV prints. */}
+          <CountrySelect value={nationality} onChange={(_code, name) => setNationality(name)} />
         </div>
 
         <div className="space-y-1.5">
           <Label>Country of travel</Label>
-          <CountrySelect value={countryOfTravel} onChange={setCountryOfTravel} />
+          <CountrySelect value={countryOfTravel} onChange={(_code, name) => setCountryOfTravel(name)} />
         </div>
 
         <div className="space-y-1.5">
@@ -269,7 +271,7 @@ export function IntakeDefaultsCard() {
         </div>
       </div>
 
-      <Button type="submit" disabled={saving} className="bg-green-800 text-white hover:bg-green-900">
+      <Button type="submit" disabled={saving || !defaults} className="bg-green-800 text-white hover:bg-green-900">
         {saving ? "Saving…" : "Save defaults"}
       </Button>
     </form>

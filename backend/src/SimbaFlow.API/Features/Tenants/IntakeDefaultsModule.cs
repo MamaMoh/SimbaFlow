@@ -2,19 +2,27 @@ using Carter;
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Tenancy;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Tenants;
 
-public record IntakeDefaultsBody(
-    string Gender,
-    string Occupation,
-    string Religion,
-    string Nationality,
-    string PassportType,
-    string MaritalStatus,
-    string CountryOfTravel,
-    string ContractPeriod,
-    string? CvTemplate = null);
+/// <summary>
+/// Body of the intake-defaults save. A class rather than a positional record: the optional
+/// CvTemplate trailing parameter made System.Text.Json skip sibling properties on some payloads,
+/// so gender and occupation arrived null while the layout still bound.
+/// </summary>
+public sealed class IntakeDefaultsBody
+{
+    public string? Gender { get; set; }
+    public string? Occupation { get; set; }
+    public string? Religion { get; set; }
+    public string? Nationality { get; set; }
+    public string? PassportType { get; set; }
+    public string? MaritalStatus { get; set; }
+    public string? CountryOfTravel { get; set; }
+    public string? ContractPeriod { get; set; }
+    public string? CvTemplate { get; set; }
+}
 
 /// <summary>
 /// The values a blank candidate form starts with, per agency.
@@ -30,24 +38,7 @@ public class IntakeDefaultsModule : ICarterModule
             var tenant = await LoadAsync(db, user);
             // A blank form is not an error: an agency that has set nothing gets the built-in values.
             var settings = tenant?.Settings ?? new TenantSettings();
-            return Results.Ok(new
-            {
-                isSuccess = true,
-                data = new
-                {
-                    settings.Intake.Gender,
-                    settings.Intake.Occupation,
-                    settings.Intake.Religion,
-                    settings.Intake.Nationality,
-                    settings.Intake.PassportType,
-                    settings.Intake.MaritalStatus,
-                    settings.Intake.CountryOfTravel,
-                    settings.Intake.ContractPeriod,
-                    CvTemplate = Domain.Services.CvTemplates.Normalise(settings.Documents.CvTemplate),
-                    CvTemplates = Domain.Services.CvTemplates.All
-                        .Select(x => new { value = x.Value, name = x.Name, description = x.Description }),
-                },
-            });
+            return Results.Ok(new { isSuccess = true, data = ToDto(settings) });
         });
 
         // What a layout looks like, drawn with stand-in details and this agency's own letterhead.
@@ -81,59 +72,75 @@ public class IntakeDefaultsModule : ICarterModule
             if (tenant is null)
                 return Results.Json(new { isSuccess = false, error = "No agency on this account." }, statusCode: 400);
 
-            // Reassigning the whole object matters: Settings is stored as JSON through a value
-            // converter, which only notices a change when the reference changes.
-            tenant.Settings = new TenantSettings
-            {
-                DefaultLanguage = tenant.Settings.DefaultLanguage,
-                SupportedLanguages = tenant.Settings.SupportedLanguages,
-                DefaultCurrency = tenant.Settings.DefaultCurrency,
-                SupportedCurrencies = tenant.Settings.SupportedCurrencies,
-                MaxFileUploadSizeMB = tenant.Settings.MaxFileUploadSizeMB,
-                SignalREnabled = tenant.Settings.SignalREnabled,
-                BotEnabled = tenant.Settings.BotEnabled,
-                Documents = new DocumentSettings
-                {
-                    CvTemplate = body.CvTemplate is null
-                        ? Domain.Services.CvTemplates.Normalise(tenant.Settings.Documents.CvTemplate)
-                        : Domain.Services.CvTemplates.Normalise(body.CvTemplate),
-                },
-                Intake = new IntakeDefaults
-                {
-                    // Empty is a real answer: an agency that places both men and women should be
-                    // able to leave the form asking rather than guessing.
-                    Gender = body.Gender is "0" or "1" ? body.Gender : "",
-                    Occupation = (body.Occupation ?? "").Trim(),
-                    Religion = (body.Religion ?? "").Trim(),
-                    Nationality = (body.Nationality ?? "").Trim(),
-                    PassportType = (body.PassportType ?? "").Trim(),
-                    MaritalStatus = (body.MaritalStatus ?? "").Trim(),
-                    CountryOfTravel = (body.CountryOfTravel ?? "").Trim(),
-                    ContractPeriod = (body.ContractPeriod ?? "").Trim(),
-                },
-            };
+            tenant.Settings = Apply(tenant.Settings, body);
+
+            // Settings is a JSON converted property. IPlatformDbContext does not expose Entry, so
+            // mark the column dirty through the concrete context — otherwise SaveChanges can
+            // return success without writing a row.
+            if (db is DbContext ctx)
+                ctx.Entry(tenant).Property(t => t.Settings).IsModified = true;
 
             await db.SaveChangesAsync(default);
-            // Echo the layout too — the caller just set it, and returning only the intake half
-            // makes the response look like the template was ignored.
-            return Results.Ok(new
-            {
-                isSuccess = true,
-                data = new
-                {
-                    tenant.Settings.Intake.Gender,
-                    tenant.Settings.Intake.Occupation,
-                    tenant.Settings.Intake.Religion,
-                    tenant.Settings.Intake.Nationality,
-                    tenant.Settings.Intake.PassportType,
-                    tenant.Settings.Intake.MaritalStatus,
-                    tenant.Settings.Intake.CountryOfTravel,
-                    tenant.Settings.Intake.ContractPeriod,
-                    tenant.Settings.Documents.CvTemplate,
-                },
-            });
+            return Results.Ok(new { isSuccess = true, data = ToDto(tenant.Settings) });
         });
     }
+
+    /// <summary>
+    /// Merge a save payload onto the agency's current settings. Empty field values are kept:
+    /// "No default — ask each time" is a real answer, not a request to restore the built-in
+    /// starting points.
+    /// </summary>
+    public static TenantSettings Apply(TenantSettings current, IntakeDefaultsBody body)
+    {
+        current ??= new TenantSettings();
+        body ??= new IntakeDefaultsBody();
+        return new TenantSettings
+        {
+            DefaultLanguage = current.DefaultLanguage,
+            SupportedLanguages = current.SupportedLanguages,
+            DefaultCurrency = current.DefaultCurrency,
+            SupportedCurrencies = current.SupportedCurrencies,
+            MaxFileUploadSizeMB = current.MaxFileUploadSizeMB,
+            SignalREnabled = current.SignalREnabled,
+            BotEnabled = current.BotEnabled,
+            Documents = new DocumentSettings
+            {
+                CvTemplate = string.IsNullOrWhiteSpace(body.CvTemplate)
+                    ? CvTemplates.Normalise(current.Documents.CvTemplate)
+                    : CvTemplates.Normalise(body.CvTemplate),
+            },
+            Intake = new IntakeDefaults
+            {
+                Gender = body.Gender is "0" or "1" ? body.Gender : "",
+                Occupation = (body.Occupation ?? "").Trim(),
+                Religion = (body.Religion ?? "").Trim(),
+                Nationality = (body.Nationality ?? "").Trim(),
+                PassportType = (body.PassportType ?? "").Trim(),
+                MaritalStatus = (body.MaritalStatus ?? "").Trim(),
+                CountryOfTravel = (body.CountryOfTravel ?? "").Trim(),
+                ContractPeriod = (body.ContractPeriod ?? "").Trim(),
+            },
+        };
+    }
+
+    /// <summary>
+    /// Explicit camelCase names so the settings page and the new-candidate form read the same
+    /// object even if HTTP JSON naming is not applied to inferred anonymous-type properties.
+    /// </summary>
+    public static object ToDto(TenantSettings settings) => new
+    {
+        gender = settings.Intake.Gender,
+        occupation = settings.Intake.Occupation,
+        religion = settings.Intake.Religion,
+        nationality = settings.Intake.Nationality,
+        passportType = settings.Intake.PassportType,
+        maritalStatus = settings.Intake.MaritalStatus,
+        countryOfTravel = settings.Intake.CountryOfTravel,
+        contractPeriod = settings.Intake.ContractPeriod,
+        cvTemplate = CvTemplates.Normalise(settings.Documents.CvTemplate),
+        cvTemplates = CvTemplates.All
+            .Select(x => new { value = x.Value, name = x.Name, description = x.Description }),
+    };
 
     private static async Task<Domain.Entities.Identity.TenantInfo?> LoadAsync(
         IPlatformDbContext db, ICurrentUserService user) =>
