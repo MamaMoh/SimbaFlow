@@ -10,7 +10,6 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { Icons } from "./icons";
 
 interface ConfirmDialogProps {
   open: boolean;

@@ -16,13 +16,9 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { CommissionStatusBadge } from "@/components/finance/commission-status-badge";
-import {
-  formatEtb,
-  useCommissionBoard,
-  type CommissionBoardRow,
-} from "@/lib/api/commissions";
+import { formatEtb, useCommissionBoard, type CommissionBoardRow } from "@/lib/api/commissions";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,9 +14,8 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { EmbassyRowActions } from "@/components/workflow/embassy-row-actions";
 import { embassyApi, useEmbassyBoard, type EmbassyBoardRow } from "@/lib/api/embassy";

@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useNavigationLoadingStore } from "@/lib/stores/navigation-loading-store";
-import { LoadingSpinner } from "@/components/loading/loading-components";
-
-export function ImmediateLoading() {
-  return null;
-}
 
 export function NavigationLoading() {
   const [isNavigating, setIsNavigating] = useState(false);

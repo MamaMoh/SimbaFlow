@@ -82,12 +82,6 @@ export function SiteFooter() {
             © {new Date().getFullYear()} SimbaFlow. All rights reserved.
           </p>
           <div className="flex items-center gap-5 text-[12.5px] text-[var(--mkt-faint)]">
-            <Link href="#" className="transition-colors hover:text-[var(--mkt-strong)]">
-              Privacy
-            </Link>
-            <Link href="#" className="transition-colors hover:text-[var(--mkt-strong)]">
-              Terms
-            </Link>
             <span className="inline-flex items-center gap-1.5">
               <span className="mkt-pulse h-1.5 w-1.5 rounded-full bg-[var(--mkt-green)]" />
               All systems operational · PostgreSQL 16

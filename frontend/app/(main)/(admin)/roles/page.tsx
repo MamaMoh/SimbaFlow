@@ -15,12 +15,11 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Pencil, Trash2, Users, Shield } from "lucide-react";
+import { MoreHorizontal, Trash2, Users, Shield } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
@@ -128,38 +127,29 @@ export default function RolesPage() {
       ),
     },
     {
+      // Delete is the only thing this menu ever did. "Edit Permissions" and "View Users" were
+      // toasts saying "coming soon" — a menu that answers a click with an apology is worse than a
+      // shorter menu, and the counts those two promised are already columns in this table.
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {canManage && (
-              <DropdownMenuItem onClick={() => toast.info("Edit permissions — coming soon")}>
-                <Pencil className="h-4 w-4 mr-2" /> Edit Permissions
+      cell: ({ row }) =>
+        !canManage || row.original.isSystemRole ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem onClick={() => toast.info("View users — coming soon")}>
-              <Users className="h-4 w-4 mr-2" /> View Users
-            </DropdownMenuItem>
-            {canManage && !row.original.isSystemRole && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" /> Delete
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
       size: 60,
       enableSorting: false,
     },

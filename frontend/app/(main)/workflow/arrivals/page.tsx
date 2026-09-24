@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,7 +12,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { ArrivalRowActions } from "@/components/workflow/arrival-row-actions";
 import { useArrivalBoard, type ArrivalBoardRow } from "@/lib/api/arrival";

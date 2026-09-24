@@ -116,7 +116,7 @@ export function CommandPalette() {
         {canReadCandidates && (
           <CommandItem
             value="Register new candidate"
-            onSelect={() => go("/candidates/register")}
+            onSelect={() => go("/candidates/new")}
           >
             <UserPlus />
             <span>Register new candidate</span>

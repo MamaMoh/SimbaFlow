@@ -17,7 +17,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { CreatePartnerSheet } from "@/components/partners/create-partner-sheet";
 import { LinkPartnerSheet } from "@/components/partners/link-partner-sheet";

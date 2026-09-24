@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -19,12 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { ExceptionStatusBadge } from "@/components/workflow/remaining-days-badge";
-import {
-  useExceptionCases,
-  type ExceptionCaseListItem,
-} from "@/lib/api/exceptions";
+import { useExceptionCases, type ExceptionCaseListItem } from "@/lib/api/exceptions";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";

@@ -22,12 +22,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
-import {
-  accountingApi,
-  useExchangeRates,
-  type ExchangeRateRow,
-} from "@/lib/api/accounting";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
+import { accountingApi, useExchangeRates, type ExchangeRateRow } from "@/lib/api/accounting";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";

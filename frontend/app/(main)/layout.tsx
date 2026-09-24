@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { LoadingSpinner } from "@/components/loading/loading-components";
-import { ImmediateLoading } from "@/components/loading/immediate-loading";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { RenewalNotice } from "@/components/billing/renewal-notice";
 import { CommandPalette } from "@/components/command/command-palette";
@@ -22,7 +21,6 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0 bg-background/90">
         <Header />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-muted/60 dark:bg-background border-l border-border/40 shadow-inner min-h-0">
-          <ImmediateLoading />
           {/* Above the page, not inside it: when an agency is suspended every page below this
               has stopped working, and this is the only thing that says why. */}
           <div className="mb-4 empty:mb-0">

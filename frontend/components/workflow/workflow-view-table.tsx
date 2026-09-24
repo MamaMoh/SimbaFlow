@@ -16,11 +16,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
-import {
-  useAvailableActions,
-  updateWorkflowStatus,
-  type ViewCandidateDto,
-} from "@/lib/api/workflow";
+import { useAvailableActions, type ViewCandidateDto } from "@/lib/api/workflow";
 import { Button } from "@/components/ui/button";
 import { Check, Eye, MoreHorizontal, Undo2 } from "lucide-react";
 import { toast } from "sonner";

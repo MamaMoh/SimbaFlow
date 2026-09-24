@@ -6,7 +6,6 @@ import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { usePopperInteractionGuard } from "@/components/ui/dialog";
-import clsx from "clsx";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;

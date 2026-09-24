@@ -1,13 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
-import { botApi, useBotStatus } from "@/lib/api/bot";
-import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
 import { IntakeDefaultsCard } from "@/components/settings/intake-defaults-card";
@@ -31,78 +25,9 @@ export default function SettingsPage() {
   const agencyLogoPath: string | null = branding?.data?.logoPath ?? null;
   const agencyLetterheadPath: string | null = branding?.data?.letterheadPath ?? null;
 
-  const [agencyDisplayName, setAgencyDisplayName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [linking, setLinking] = useState(false);
-  const [linkCode, setLinkCode] = useState<string | null>(null);
-  const { data: botStatus, error: botStatusError, mutate: mutateBotStatus } =
-    useBotStatus(canUseBot);
-
   if (!canReadSettings && !canUseBot) {
     return <AccessDenied resource="settings" />;
   }
-
-  const onSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch("/api/proxy/settings/tenant", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName: agencyDisplayName }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) {
-        toast.success("Settings saved");
-      } else {
-        toast.error(
-          body?.error ||
-            "Tenant settings API is not available yet. Preferences will persist when the backend ships."
-        );
-      }
-    } catch {
-      toast.error(
-        "Tenant settings API is not available yet. Preferences will persist when the backend ships."
-      );
-    }
-    setSaving(false);
-  };
-
-  const onGenerateLinkCode = async () => {
-    setLinking(true);
-    try {
-      const result = await botApi.createLinkCode();
-      if (result?.isSuccess) {
-        setLinkCode(result.data?.code ?? null);
-        toast.success("Bot link code created");
-        mutateBotStatus();
-      } else {
-        toast.error(result?.error || "Could not create bot link code");
-      }
-    } catch {
-      toast.error("Could not create bot link code");
-    } finally {
-      setLinking(false);
-    }
-  };
-
-  const onUnlink = async () => {
-    setLinking(true);
-    try {
-      const result = await botApi.unlink();
-      if (result?.isSuccess) {
-        setLinkCode(null);
-        toast.success("Bot unlinked");
-        mutateBotStatus();
-      } else {
-        toast.error(result?.error || "Could not unlink bot");
-      }
-    } catch {
-      toast.error("Could not unlink bot");
-    } finally {
-      setLinking(false);
-    }
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,68 +36,31 @@ export default function SettingsPage() {
         description="Agency preferences and system options"
       />
 
-      {/* The short settings sit two-up; the CV layouts need the whole width for their
-          previews, so they get a row of their own below. */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {canManageSettings ? (
-          <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm">
-            <div>
-              <h2 className="text-sm font-semibold">Agency branding</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Used on candidate documents when the candidate has no partner agency. PNG or
-                JPEG, up to 2MB each.
-              </p>
-            </div>
-            <LogoUpload
-              endpoint="/api/proxy/branding/agency/letterhead"
-              logoPath={agencyLetterheadPath}
-              onChange={() => mutateBranding()}
-              label="Letterhead"
-              hint="The wide banner printed across the top of generated CVs and visa forms."
-            />
-            <LogoUpload
-              endpoint="/api/proxy/branding/agency/logo"
-              logoPath={agencyLogoPath}
-              onChange={() => mutateBranding()}
-              label="Logo"
-              hint="The mark. Stands in at the top of a document if no letterhead is uploaded."
-            />
+      {canManageSettings ? (
+        <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm lg:max-w-xl">
+          <div>
+            <h2 className="text-sm font-semibold">Agency branding</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Used on candidate documents when the candidate has no partner agency. PNG or
+              JPEG, up to 2MB each.
+            </p>
           </div>
-        ) : null}
-
-        {canAdmin ? (
-          <div className="flex flex-col gap-6">
-            <form
-              onSubmit={onSave}
-              className="space-y-4 rounded-lg border bg-card p-4 shadow-sm"
-            >
-              <h2 className="text-sm font-semibold">Agency</h2>
-              <div className="space-y-1.5">
-                <Label htmlFor="agency-name">Agency display name</Label>
-                <Input
-                  id="agency-name"
-                  value={agencyDisplayName}
-                  onChange={(e) => setAgencyDisplayName(e.target.value)}
-                  placeholder="Your agency name"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="bg-green-800 hover:bg-green-900"
-              >
-                {saving ? "Saving…" : "Save"}
-              </Button>
-            </form>
-
-            <PageAlert
-              variant="info"
-              title="Account settings"
-              description="Change your password from your profile."
-            />
-          </div>
-        ) : null}
-      </div>
+          <LogoUpload
+            endpoint="/api/proxy/branding/agency/letterhead"
+            logoPath={agencyLetterheadPath}
+            onChange={() => mutateBranding()}
+            label="Letterhead"
+            hint="The wide banner printed across the top of generated CVs and visa forms."
+          />
+          <LogoUpload
+            endpoint="/api/proxy/branding/agency/logo"
+            logoPath={agencyLogoPath}
+            onChange={() => mutateBranding()}
+            label="Logo"
+            hint="The mark. Stands in at the top of a document if no letterhead is uploaded."
+          />
+        </div>
+      ) : null}
 
       {canAdmin ? <IntakeDefaultsCard /> : null}
 

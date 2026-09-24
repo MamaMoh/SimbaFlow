@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { HubConnectionBuilder, HubConnectionState, LogLevel, type HubConnection } from "@microsoft/signalr";
+import { HubConnectionBuilder, LogLevel, type HubConnection } from "@microsoft/signalr";
 import { useSession } from "next-auth/react";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "reconnecting";

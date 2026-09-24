@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -21,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { LmisRowActions } from "@/components/workflow/lmis-row-actions";
 import { useLmisBoard, type LmisBoardRow } from "@/lib/api/lmis";

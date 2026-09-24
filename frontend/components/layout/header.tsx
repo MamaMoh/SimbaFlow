@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { TenantBadge } from "@/components/layout/tenant-badge";
 import {
   DropdownMenu,
@@ -11,14 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Bell,
-  LogOut,
-  Menu,
-  PanelLeftClose,
-  PanelLeft,
-  Search,
-} from "lucide-react";
+import { Bell, LogOut, Menu, PanelLeftClose, PanelLeft, Search } from "lucide-react";
 import { useCommandPalette } from "@/lib/stores/command-store";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useSidebarStore } from "@/lib/stores/sidebar-store";

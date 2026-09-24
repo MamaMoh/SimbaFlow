@@ -94,18 +94,6 @@ export default function BotAdminPage() {
       {canUseBot ? <BotLinkCard /> : null}
 
       <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold">WhatsApp</h2>
-          <p className="text-sm text-muted-foreground">Deferred to a later batch.</p>
-        </div>
-        <PageAlert
-          variant="info"
-          title="Not available yet"
-          description="WhatsApp messaging is not enabled."
-        />
-      </div>
-
-      <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Recent deliveries</h2>

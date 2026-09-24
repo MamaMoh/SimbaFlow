@@ -3,7 +3,6 @@
 import { PendingCell } from "@/components/data-table/pending-cell";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,7 +12,7 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Input } from "@/components/ui/input";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { TravelRowActions } from "@/components/workflow/travel-row-actions";
 import { useTicketBoard, type TravelBoardRow } from "@/lib/api/travel";
