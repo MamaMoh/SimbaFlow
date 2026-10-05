@@ -40,6 +40,20 @@ public static class BotNotificationRules
                || reply.Contains("ደረጃ:", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Whether a given recipient should hear about a change at all.
+    ///
+    /// The person who pressed the button already knows. Telling them anyway is most of what made
+    /// the chat unreadable: an agency where one person works the boards and has the bot linked got
+    /// a notification for every click they made.
+    /// </summary>
+    public static bool ShouldNotify(string? recipientUserName, string? actorUserName)
+    {
+        if (string.IsNullOrWhiteSpace(actorUserName)) return true;
+        if (string.IsNullOrWhiteSpace(recipientUserName)) return true;
+        return !string.Equals(recipientUserName.Trim(), actorUserName.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
     public static string UnlinkedInstructionsReply() =>
         "This chat is not linked yet. Generate a link code in the web app, then send /link CODE.";
 

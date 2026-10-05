@@ -238,6 +238,7 @@ public class WorkflowEngineService : IWorkflowEngineService
         candidate.AddDomainEvent(new CandidateStageChangedEvent(
             candidate.Id,
             candidate.FullName,
+            candidate.PassportNumber,
             _currentUser.TenantId ?? Guid.Empty,
             fromStageId,
             fromStageName,

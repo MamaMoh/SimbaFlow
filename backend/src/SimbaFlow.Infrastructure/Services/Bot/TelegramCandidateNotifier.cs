@@ -49,14 +49,22 @@ public sealed class TelegramCandidateNotifier : ICandidateNotifier
 
         var recipients = await _platform.ApplicationUsers
             .Where(u => u.TenantId == tenantId && u.BotLinked && u.TelegramChatId != null && !u.IsDeleted)
-            .Select(u => new { u.Id, u.TelegramChatId, u.PreferredLanguage })
+            .Select(u => new { u.Id, u.UserName, u.TelegramChatId, u.PreferredLanguage })
             .ToListAsync(cancellationToken);
 
         foreach (var recipient in recipients)
         {
-            var text = string.Equals(recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)
-                ? $"ማሳወቂያ: {candidate.FullName} - {messageKey}"
-                : $"Notification: {candidate.FullName} - {messageKey}";
+            // The person who triggered this does not need to be told about it.
+            if (!BotNotificationRules.ShouldNotify(recipient.UserName, _currentUser.UserName))
+                continue;
+
+            // Was "Notification: FOZIYA SEID YIMER - departure.notified" — the system talking to
+            // itself in front of the user. BotMessages turns the key into a sentence.
+            var text = BotMessages.EventHeadline(
+                candidate.FullName,
+                candidate.PassportNumber,
+                messageKey,
+                string.Equals(recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase));
 
             var delivery = new NotificationDelivery
             {

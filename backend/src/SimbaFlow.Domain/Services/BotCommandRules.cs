@@ -80,19 +80,19 @@ public static class BotCommandRules
     /// </summary>
     public static bool LooksLikeLinkCode(string? raw) => BotLinkCodeRules.LooksLikeLinkCode(raw);
 
-    public static string HelpText(bool amharic) => amharic
-        ? "የሚከተሉትን መጠቀም ይችላሉ:\n\n"
-          + "• የፓስፖርት ቁጥር ወይም ስም ብቻ ይላኩ — እጩውን እናገኛለን\n"
-          + "• 📊 Stats — የዚህ ሳምንት/ወር/ዓመት ቁጥሮች\n"
-          + "• /cv <ፓስፖርት> — ሲቪ ማውረድ\n"
-          + "• /lang en — ወደ እንግሊዝኛ መቀየር"
-        : "Here is what I can do:\n\n"
-          + "• Just send a passport number or a name — I will find the candidate\n"
-          + "• 📊 Stats — this week / month / year, or a stage e.g. \"stats embassy\"\n"
-          + "• /cv <passport> — download the candidate's CV\n"
-          + "• /lang am — switch to Amharic";
+    /// <summary>
+    /// The menu Telegram shows when someone types "/". Registered at startup via setMyCommands.
+    /// Descriptions are deliberately short — Telegram truncates them in a narrow list.
+    /// </summary>
+    public const string MyCommandsJson =
+        """
+        [
+          {"command":"find","description":"Find a candidate by passport or name"},
+          {"command":"cv","description":"Get a candidate's CV as a PDF"},
+          {"command":"stats","description":"Where the agency stands"},
+          {"command":"lang","description":"Switch between English and Amharic"},
+          {"command":"help","description":"What this bot can do"}
+        ]
+        """;
 
-    public static string UnknownReply(bool amharic) => amharic
-        ? "አላገኘሁትም። የፓስፖርት ቁጥር ወይም ስም ይላኩ፣ ወይም ❓ Help ይጫኑ።"
-        : "I didn't understand that. Send a passport number or a name, or tap ❓ Help.";
 }

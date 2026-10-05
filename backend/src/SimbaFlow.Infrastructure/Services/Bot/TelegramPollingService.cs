@@ -34,6 +34,12 @@ public sealed class TelegramPollingService : BackgroundService
     private static string CommandWordOf(string? text) =>
         string.IsNullOrWhiteSpace(text) ? "(empty)" : text.TrimStart().Split(' ')[0];
 
+    /// <summary>
+    /// The "/" menu is registered once per connection rather than on every poll — Telegram rate
+    /// limits it, and it only changes when the code does.
+    /// </summary>
+    private bool _commandsPublished;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -55,6 +61,14 @@ public sealed class TelegramPollingService : BackgroundService
                 _state.IsConnected = me is not null;
                 _state.LastConnectedAt = me is not null ? DateTime.UtcNow : _state.LastConnectedAt;
                 _state.LastError = null;
+
+                if (me is not null && !_commandsPublished)
+                {
+                    _commandsPublished = await _telegram.SetMyCommandsAsync(
+                        Domain.Services.BotCommandRules.MyCommandsJson, stoppingToken);
+                    if (_commandsPublished)
+                        _logger.LogInformation("Telegram command menu published for @{Bot}", me.Username);
+                }
 
                 var updates = await _telegram.GetUpdatesAsync(
                     _state.LastUpdateId + 1,

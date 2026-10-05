@@ -5,6 +5,7 @@ namespace SimbaFlow.Domain.Events;
 public record CandidateStageChangedEvent(
     Guid CandidateId,
     string CandidateName,
+    string? PassportNumber,
     Guid TenantId,
     Guid? FromStageId,
     string? FromStageName,

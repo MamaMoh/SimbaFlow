@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimbaFlow.Application.Common.Interfaces;
+using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Services;
 using SimbaFlow.Domain.Enums;
@@ -56,26 +57,47 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             if (string.IsNullOrWhiteSpace(code))
             {
                 await _telegram.SendMessageAsync(update.ChatId,
-                    "Send the code from the web app, e.g. /link ABCD2345", ct);
+                    BotMessages.AskForLinkCode(false), ct);
                 return;
             }
 
             var result = await _botLinkService.ConsumeLinkCodeAsync(update.ChatId, code, ct);
+            if (!result.IsSuccess)
+            {
+                await _telegram.SendMessageAsync(update.ChatId,
+                    BotMessages.Escape(result.Error ?? "That code did not work. Generate a new one in the web app."),
+                    ct);
+                return;
+            }
+
+            var linked = await _userManager.Users.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.TelegramChatId == update.ChatId && x.BotLinked && !x.IsDeleted, ct);
+            var agencyName = linked?.TenantId is Guid linkedTenant
+                ? await _platform.Tenants.AsNoTracking()
+                    .Where(t => t.Id == linkedTenant).Select(t => t.Name).FirstOrDefaultAsync(ct)
+                : null;
+
             await _telegram.SendMessageAsync(update.ChatId,
-                result.IsSuccess
-                    ? "Linked. You can now send a passport number or a name to look someone up."
-                    : result.Error ?? "Link failed.",
-                result.IsSuccess ? BotCommandRules.KeyboardJson : null,
+                BotMessages.LinkSucceeded(linked?.FullName ?? linked?.UserName ?? "there", agencyName,
+                    string.Equals(linked?.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)),
+                BotCommandRules.KeyboardJson,
                 ct);
             return;
         }
 
         if (parsed.Command == BotCommand.Start)
         {
+            var known = await _userManager.Users.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.TelegramChatId == update.ChatId && x.BotLinked && !x.IsDeleted, ct);
+
+            // Telling someone who is already linked to go and link is the bot not knowing who it
+            // is talking to — /start is the button Telegram shows on every reopen.
             await _telegram.SendMessageAsync(update.ChatId,
-                "Welcome to SimbaFlow.\n\n"
-                + "To get started, open the web app, generate a link code under Settings, "
-                + "then send it here as:\n/link CODE",
+                known is null
+                    ? BotMessages.Welcome(false)
+                    : BotMessages.AlreadyLinked(
+                        known.FullName ?? known.UserName ?? "there",
+                        string.Equals(known.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)),
                 BotCommandRules.KeyboardJson,
                 ct);
             return;
@@ -98,13 +120,18 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             if (string.IsNullOrWhiteSpace(requested))
             {
                 await _telegram.SendMessageAsync(update.ChatId,
-                    "Send /lang en for English or /lang am for Amharic.", ct);
+                    BotMessages.LanguageChoices(
+                        string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)),
+                    ct);
                 return;
             }
             var resolved = BotNotificationRules.ResolveLanguage(requested, user.PreferredLanguage);
             if (!BotNotificationRules.IsValidLanguage(requested))
             {
-                await _telegram.SendMessageAsync(update.ChatId, "Language must be 'en' or 'am'.", ct);
+                await _telegram.SendMessageAsync(update.ChatId,
+                    BotMessages.LanguageChoices(
+                        string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)),
+                    ct);
                 return;
             }
 
@@ -114,14 +141,18 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 linkedUser.PreferredLanguage = resolved;
                 await _platform.SaveChangesAsync(ct);
             }
-            await _telegram.SendMessageAsync(update.ChatId, resolved == "am" ? "ቋንቋ ተቀይሯል።" : "Language updated.", ct);
+            await _telegram.SendMessageAsync(update.ChatId,
+                BotMessages.LanguageUpdated(resolved == "am"), BotCommandRules.KeyboardJson, ct);
             return;
         }
 
         if (parsed.Command == BotCommand.Help)
         {
+            var helpAm = string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase);
             await _telegram.SendMessageAsync(update.ChatId,
-                BotCommandRules.HelpText(user.PreferredLanguage == "am"),
+                // "🔍 Find candidate" arrives here carrying "find". It used to print the whole help
+                // text, which answers a question nobody asked; it is a prompt, so prompt.
+                parsed.Argument == "find" ? BotMessages.AskForCandidate(helpAm) : BotMessages.Help(helpAm),
                 BotCommandRules.KeyboardJson,
                 ct);
             return;
@@ -132,10 +163,13 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         if (!user.TenantId.HasValue && !user.IsSuperAdmin)
         {
             await _telegram.SendMessageAsync(update.ChatId,
-                "This account is not attached to an agency, so there is nothing to look up. "
-                + "Ask your administrator to assign you to one.", ct);
+                BotMessages.NoAgency(
+                    string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)),
+                ct);
             return;
         }
+
+        var amLang = string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase);
 
         // A bare passport number or name is treated as a lookup — staff type that by instinct.
         if (parsed.Command == BotCommand.Status || parsed.Command == BotCommand.Search)
@@ -143,44 +177,75 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             var query = parsed.Argument;
             if (string.IsNullOrWhiteSpace(query))
             {
-                await _telegram.SendMessageAsync(update.ChatId,
-                    user.PreferredLanguage == "am"
-                        ? "የፓስፖርት ቁጥር ወይም ስም ይላኩ።"
-                        : "Send a passport number or a name.", ct);
+                await _telegram.SendMessageAsync(update.ChatId, BotMessages.AskForCandidate(amLang), ct);
                 return;
             }
+
             await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
-            var candidate = await tenantDb.Candidates
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c =>
-                    !c.IsDeleted &&
-                    (c.PassportNumber == query || (c.FirstName + " " + c.LastName).Contains(query)), ct);
+            var matches = await FindCandidatesAsync(tenantDb, query, ct);
 
-            var reply = candidate is null
-                ? (user.PreferredLanguage == "am"
-                    ? "እጩ አልተገኘም።"
-                    : "Candidate not found.")
-                : (user.PreferredLanguage == "am"
-                    ? $"እጩ: {candidate.FullName}\nደረጃ: {candidate.CurrentStageName ?? "Unknown"}\nሁኔታ: {candidate.Status}"
-                    : $"Candidate: {candidate.FullName}\nStage: {candidate.CurrentStageName ?? "Unknown"}\nStatus: {candidate.Status}");
+            if (matches.Count == 0)
+            {
+                await _telegram.SendMessageAsync(update.ChatId, BotMessages.CandidateNotFound(query, amLang), ct);
+                return;
+            }
 
-            await _telegram.SendMessageAsync(update.ChatId, reply, ct);
+            if (matches.Count == 1)
+            {
+                var c = matches[0];
+                await _telegram.SendMessageAsync(update.ChatId,
+                    BotMessages.CandidateCard(
+                        c.FullName, c.PassportNumber, c.CurrentStageName, c.Status.ToString(),
+                        c.CountryOfTravel, amLang),
+                    ct);
+                return;
+            }
+
+            // Several people answer to that name. Showing the shortlist beats picking one for
+            // them, which is how the wrong candidate's details leave the building.
+            var shown = matches.Take(BotCandidateSearch.MaxChoices)
+                .Select(c => (c.FullName, c.PassportNumber, (string?)c.CurrentStageName))
+                .ToList();
+            await _telegram.SendMessageAsync(update.ChatId,
+                BotMessages.CandidateChoices(shown, matches.Count, amLang), ct);
             return;
         }
 
         if (parsed.Command == BotCommand.Cv)
         {
-            var passport = parsed.Argument;
-            await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
-            var candidate = await tenantDb.Candidates
-                .AsNoTracking()
-                .FirstOrDefaultAsync(c => !c.IsDeleted && c.PassportNumber == passport, ct);
-
-            if (candidate is null)
+            var query = parsed.Argument;
+            if (string.IsNullOrWhiteSpace(query))
             {
-                await _telegram.SendMessageAsync(update.ChatId, "Candidate not found.", ct);
+                // Was a lookup for PassportNumber == "", which answered "Candidate not found" and
+                // left the user thinking the command was broken rather than incomplete.
+                await _telegram.SendMessageAsync(update.ChatId, BotMessages.AskForCandidate(amLang), ct);
                 return;
             }
+
+            await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
+            var found = await FindCandidatesAsync(tenantDb, query, ct);
+
+            if (found.Count == 0)
+            {
+                await _telegram.SendMessageAsync(update.ChatId, BotMessages.CandidateNotFound(query, amLang), ct);
+                return;
+            }
+
+            if (found.Count > 1)
+            {
+                var choices = found.Take(BotCandidateSearch.MaxChoices)
+                    .Select(c => (c.FullName, c.PassportNumber, (string?)c.CurrentStageName))
+                    .ToList();
+                await _telegram.SendMessageAsync(update.ChatId,
+                    BotMessages.CandidateChoices(choices, found.Count, amLang), ct);
+                return;
+            }
+
+            var candidate = found[0];
+
+            // A CV takes about a second to draw. Without this the chat sits silent and the user
+            // presses the button again.
+            await _telegram.SendMessageAsync(update.ChatId, BotMessages.CvBeingPrepared(amLang), ct);
 
             var pdf = await _cvGenerationService.GenerateAsync(candidate, cancellationToken: ct);
             await _telegram.SendDocumentAsync(update.ChatId, pdf, $"{candidate.PassportNumber}-cv.pdf", candidate.FullName, ct);
@@ -194,11 +259,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             // Agency-wide numbers are management information, so require a reporting permission.
             if (!await HasStatsPermissionAsync(user, ct))
             {
-                await _telegram.SendMessageAsync(update.ChatId,
-                    am
-                        ? "ይህን መረጃ ለማየት ፈቃድ የለዎትም።"
-                        : "You do not have permission to view agency statistics.",
-                    ct);
+                await _telegram.SendMessageAsync(update.ChatId, BotMessages.NoStatsPermission(am), ct);
                 return;
             }
 
@@ -326,19 +387,63 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         if (text.StartsWith("/medical", StringComparison.OrdinalIgnoreCase) ||
             text.StartsWith("/arrived", StringComparison.OrdinalIgnoreCase))
         {
-            await _telegram.SendMessageAsync(update.ChatId,
-                user.PreferredLanguage == "am"
-                    ? "ይህ ከድር መተግበሪያው ይከናወናል።"
-                    : "Please do this from the web app.",
-                ct);
+            await _telegram.SendMessageAsync(update.ChatId, BotMessages.WebAppOnly(amLang), ct);
             return;
         }
 
         await _telegram.SendMessageAsync(update.ChatId,
-            BotCommandRules.UnknownReply(user.PreferredLanguage == "am"),
+            BotMessages.NotUnderstood(amLang),
             BotCommandRules.KeyboardJson,
             ct);
         _logger.LogDebug("Unhandled telegram command from {ChatId}: {Text}", update.ChatId, text);
+    }
+
+    /// <summary>
+    /// Finds the candidates a typed query could mean.
+    ///
+    /// A passport number is matched exactly and answers on its own. Anything else is treated as a
+    /// name: every word has to appear somewhere in first/middle/last, in any order and in any
+    /// case. The old predicate concatenated first and last only, so "ETENESH ACHALU TOLESA" — a
+    /// perfectly ordinary Ethiopian name — matched nobody, and because Postgres LIKE is
+    /// case-sensitive, neither did "etenesh".
+    ///
+    /// Matching runs in the database for the passport case and in memory for names, over the
+    /// tenant's candidates only. Name matching cannot be expressed as a translatable predicate
+    /// once the query has an arbitrary number of terms.
+    /// </summary>
+    private static async Task<List<Candidate>> FindCandidatesAsync(
+        ITenantDbContext db, string query, CancellationToken ct)
+    {
+        var trimmed = query.Trim();
+
+        if (BotCandidateSearch.LooksLikePassport(trimmed))
+        {
+            var byPassport = await db.Candidates.AsNoTracking()
+                .Where(c => !c.IsDeleted && c.PassportNumber.ToLower() == trimmed.ToLower())
+                .ToListAsync(ct);
+            if (byPassport.Count > 0) return byPassport;
+            // Not a passport we hold — fall through and try it as a name.
+        }
+
+        var terms = BotCandidateSearch.NameTerms(trimmed);
+        if (terms.Count == 0) return [];
+
+        // Narrow in the database on the first term, then apply the rest in memory. One term is
+        // enough to cut the set to a handful even in an agency with thousands of candidates.
+        var lead = terms[0];
+        var shortlist = await db.Candidates.AsNoTracking()
+            .Where(c => !c.IsDeleted &&
+                (c.FirstName.ToLower().Contains(lead)
+                 || c.LastName.ToLower().Contains(lead)
+                 || (c.MiddleName != null && c.MiddleName.ToLower().Contains(lead))))
+            .OrderBy(c => c.FirstName).ThenBy(c => c.LastName)
+            .Take(200)
+            .ToListAsync(ct);
+
+        return shortlist
+            .Where(c => BotCandidateSearch.NameMatches(
+                c.FirstName, c.MiddleName, c.LastName, c.LocalFullName, trimmed))
+            .ToList();
     }
 
     /// <summary>

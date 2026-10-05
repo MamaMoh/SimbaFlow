@@ -20,7 +20,7 @@ public class CandidateSignalRHandlerTests
 
         var tenantId = Guid.NewGuid();
         var evt = new CandidateStageChangedEvent(
-            Guid.NewGuid(), "Ada Lovelace", tenantId,
+            Guid.NewGuid(), "Ada Lovelace", "EP7788990", tenantId,
             Guid.NewGuid(), "Intake", Guid.NewGuid(), "Embassy", "tester");
 
         await handler.Handle(evt, CancellationToken.None);
@@ -33,8 +33,17 @@ public class CandidateSignalRHandlerTests
                 && m.OldValue == "Intake"
                 && m.NewValue == "Embassy"));
 
+        // The push now carries who moved them and where from, so the bot can leave the actor
+        // alone and keep rewriting one message instead of sending a new one each hop.
         await push.Received(1).PushStageChangedAsync(
-            tenantId, "Ada Lovelace", "Embassy", Arg.Any<CancellationToken>());
+            Arg.Is<StageChangePush>(p =>
+                p.TenantId == tenantId
+                && p.CandidateName == "Ada Lovelace"
+                && p.PassportNumber == "EP7788990"
+                && p.FromStageName == "Intake"
+                && p.ToStageName == "Embassy"
+                && p.ChangedByUserName == "tester"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -69,7 +78,7 @@ public class CandidateSignalRHandlerTests
             broadcaster, push, NullLogger<CandidateStageChangedHandler>.Instance);
 
         var evt = new CandidateStageChangedEvent(
-            Guid.NewGuid(), "X", Guid.Empty,
+            Guid.NewGuid(), "X", null, Guid.Empty,
             null, null, Guid.NewGuid(), "Embassy", "tester");
 
         await handler.Handle(evt, CancellationToken.None);
@@ -77,6 +86,6 @@ public class CandidateSignalRHandlerTests
         await broadcaster.DidNotReceiveWithAnyArgs()
             .BroadcastCandidateUpdateAsync(default, default!);
         await push.DidNotReceiveWithAnyArgs()
-            .PushStageChangedAsync(default, default!, default, default);
+            .PushStageChangedAsync(default!, default);
     }
 }

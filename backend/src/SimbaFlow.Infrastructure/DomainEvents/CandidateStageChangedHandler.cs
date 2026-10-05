@@ -48,9 +48,14 @@ public class CandidateStageChangedHandler : INotificationHandler<CandidateStageC
         try
         {
             await _push.PushStageChangedAsync(
-                notification.TenantId,
-                notification.CandidateName,
-                notification.ToStageName,
+                new Services.Bot.StageChangePush(
+                    notification.TenantId,
+                    notification.CandidateId,
+                    notification.CandidateName,
+                    notification.PassportNumber,
+                    notification.FromStageName,
+                    notification.ToStageName,
+                    notification.ChangedBy),
                 cancellationToken);
         }
         catch (Exception ex)

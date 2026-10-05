@@ -107,7 +107,8 @@ public class BotCommandRulesTests
     [Fact]
     public void HelpTextIsLocalisedAndMentionsBareSearch()
     {
-        BotCommandRules.HelpText(amharic: false).Should().Contain("passport number");
-        BotCommandRules.HelpText(amharic: true).Should().Contain("ፓስፖርት");
+        // Help lives in BotMessages with the rest of the bot's voice.
+        BotMessages.Help(amharic: false).Should().Contain("passport number");
+        BotMessages.Help(amharic: true).Should().Contain("ፓስፖርት");
     }
 }
