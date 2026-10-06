@@ -110,12 +110,25 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    // What the system needs to run at all: the permission catalogue, the roles that carry those
+    // permissions, the departments an agency is organised into, and one administrator to sign in.
     await PermissionSeeder.SeedPermissionsAsync(services);
-    await PermissionSeeder.SeedDefaultTenantAsync(services);
     await AdminSeeder.SeedDefaultAdminAsync(services);
     await DepartmentSeeder.SeedDepartmentsAsync(services);
-    await PartnerAgencySeeder.SeedPartnerAgenciesAsync(services);
     await RolePermissionSeeder.SeedRolePermissionsAsync(services);
+
+    // Sample business records: a demonstration agency called "Default Agency", and a starter
+    // catalogue of ten foreign partner agencies. These are what the system needs to look
+    // populated, not what it needs to work — and they used to come back by themselves, so
+    // emptying the database and restarting handed you a tenant and ten partners you did not
+    // create. Off unless asked for, so a fresh install comes up empty and the first agency on it
+    // is a real one. Both are idempotent and only act on empty tables, so an existing deployment
+    // is unaffected whichever way this is set.
+    if (app.Configuration.GetValue("Seeding:SampleData", false))
+    {
+        await PermissionSeeder.SeedDefaultTenantAsync(services);
+        await PartnerAgencySeeder.SeedPartnerAgenciesAsync(services);
+    }
 
     // One user per role, for trying each role out. Opt-in rather than automatic: these are real
     // sign-ins, so they appear only when someone names a tenant to attach them to, and the
