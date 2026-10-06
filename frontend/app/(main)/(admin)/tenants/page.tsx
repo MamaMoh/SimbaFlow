@@ -108,7 +108,7 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "name",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Agency Name" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Agency name" />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-green-700" />
@@ -118,7 +118,7 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "slug",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Slug" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="URL identifier" />,
       cell: ({ getValue }) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{getValue() as string}</code>,
     },
     {
@@ -139,7 +139,7 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "contactEmail",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Contact Email" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Contact email" />,
     },
     {
       accessorKey: "status",

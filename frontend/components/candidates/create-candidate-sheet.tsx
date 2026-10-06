@@ -1427,7 +1427,7 @@ export function CandidateApplicationForm({
             <SectionHeading title="Identity" />
             <FormSection
               icon={FileText}
-              title="Basic Information"
+              title="Basic information"
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1575,7 +1575,7 @@ export function CandidateApplicationForm({
 
             <FormSection
               icon={User}
-              title="Details of Applicant"
+              title="Applicant details"
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1751,7 +1751,7 @@ export function CandidateApplicationForm({
             <SectionHeading title="Family" />
             <FormSection
               icon={Users}
-              title="Relative Information"
+              title="Relative information"
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -1797,7 +1797,7 @@ export function CandidateApplicationForm({
               </div>
             </FormSection>
 
-            <FormSection icon={Mail} title="Other Information">
+            <FormSection icon={Mail} title="Other information">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Contact person (2nd)</Label>
@@ -1836,7 +1836,7 @@ export function CandidateApplicationForm({
             <SectionHeading title="Placement" />
             <FormSection
               icon={Stamp}
-              title="Sponsor & Visa"
+              title="Sponsor & visa"
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5 sm:col-span-2">
@@ -1980,7 +1980,7 @@ export function CandidateApplicationForm({
 
           <div id="experience" className="scroll-mt-24 space-y-4">
             <SectionHeading title="Experience" />
-            <FormSection icon={FileText} title="Languages & Education">
+            <FormSection icon={FileText} title="Languages & education">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">Add spoken languages and education level.</p>
                 <Button
@@ -2083,7 +2083,7 @@ export function CandidateApplicationForm({
                 />
               </div>
             </FormSection>
-            <FormSection icon={MapPin} title="Work Experience">
+            <FormSection icon={MapPin} title="Work experience">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Period (years abroad)</Label>
@@ -2127,7 +2127,7 @@ export function CandidateApplicationForm({
                 </div>
               </div>
             </FormSection>
-            <FormSection icon={Stamp} title="Skills & Experience">
+            <FormSection icon={Stamp} title="Skills & experience">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Cooking level</Label>

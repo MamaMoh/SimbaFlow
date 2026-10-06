@@ -21,6 +21,19 @@ type DocumentListProps = {
   documents: CandidateDocument[];
 };
 
+/**
+ * "PDF", "JPG" — what the file is, in the form a person would say it.
+ *
+ * The extension is what the reader recognises; the MIME type is only a fallback
+ * for a file uploaded without one.
+ */
+function fileKind(fileName: string, contentType?: string | null): string {
+  const ext = fileName.split(".").pop();
+  if (ext && ext !== fileName && ext.length <= 4) return ext.toUpperCase();
+  const sub = contentType?.split("/").pop();
+  return sub ? sub.toUpperCase() : "FILE";
+}
+
 export function DocumentList({ documents }: DocumentListProps) {
   if (documents.length === 0) {
     return (
@@ -58,7 +71,7 @@ export function DocumentList({ documents }: DocumentListProps) {
                     {doc.uploadedBy ? ` · ${doc.uploadedBy}` : ""}
                   </p>
                 </div>
-                <Badge variant="outline">{doc.contentType}</Badge>
+                <Badge variant="outline">{fileKind(doc.originalFileName, doc.contentType)}</Badge>
               </li>
             ))}
           </ul>

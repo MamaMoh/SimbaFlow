@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -167,15 +166,6 @@ export default function CommissionsPage() {
         </div>
       ) : null}
 
-      <p className="text-sm text-muted-foreground">
-        <Link href="/workflow/arrivals" className="text-primary underline-offset-4 hover:underline">
-          Go to Arrivals board
-        </Link>
-        {" · "}
-        <Link href="/finance/rates" className="text-primary underline-offset-4 hover:underline">
-          Exchange rates
-        </Link>
-      </p>
     </div>
   );
 }

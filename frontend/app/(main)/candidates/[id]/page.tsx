@@ -333,7 +333,7 @@ export default function CandidateDetailPage() {
             </Button>
           </div>
         <ShowEmptyFields.Provider value={showEmpty}>
-          <ProfileSection icon={FileText} title="Basic Information">
+          <ProfileSection icon={FileText} title="Basic information">
             <Field
               label="Gender"
               value={GENDER_LABELS[candidate.gender] ?? String(candidate.gender)}
@@ -363,7 +363,7 @@ export default function CandidateDetailPage() {
             <Field label="Country" value={candidate.country} />
           </ProfileSection>
 
-          <ProfileSection icon={User} title="Details of Applicant">
+          <ProfileSection icon={User} title="Applicant details">
             <Field label="Nationality" value={candidate.nationality} />
             <Field label="Religion" value={candidate.religion} />
             <Field label="Date of birth" value={candidate.dateOfBirth} />
@@ -381,13 +381,13 @@ export default function CandidateDetailPage() {
             <Field label="Weight" value={candidate.weight} />
           </ProfileSection>
 
-          <ProfileSection icon={FileText} title="Languages & Education">
+          <ProfileSection icon={FileText} title="Languages & education">
             <Field label="English" value={candidate.englishLevel} />
             <Field label="Arabic" value={candidate.arabicLevel} />
             <Field label="Education" value={candidate.qualification} />
           </ProfileSection>
 
-          <ProfileSection icon={MapPin} title="Work Experience">
+          <ProfileSection icon={MapPin} title="Work experience">
             <Field
               label="Period"
               value={
@@ -402,7 +402,7 @@ export default function CandidateDetailPage() {
             <Field label="Contract period" value={candidate.contractPeriod} />
           </ProfileSection>
 
-          <ProfileSection icon={Stamp} title="Skills & Experience">
+          <ProfileSection icon={Stamp} title="Skills & experience">
             <Field label="Cooking level" value={candidate.cookingLevel} />
             <Field
               label="Skills"
@@ -426,7 +426,7 @@ export default function CandidateDetailPage() {
             <Field label="Remark" value={candidate.remark} />
           </ProfileSection>
 
-          <ProfileSection icon={Plane} title="Travel & Contract">
+          <ProfileSection icon={Plane} title="Travel & contract">
             <Field label="Country of travel" value={candidate.countryOfTravel} />
             <Field label="Partner agency" value={candidate.partnerName} />
             <Field label="Contract date" value={candidate.contractDate} />
@@ -440,7 +440,7 @@ export default function CandidateDetailPage() {
             />
           </ProfileSection>
 
-          <ProfileSection icon={Stamp} title="Sponsor & Visa">
+          <ProfileSection icon={Stamp} title="Sponsor & visa">
             <Field label="Visa number" value={candidate.visaNumber} />
             <Field label="Visa type" value={candidate.visaType} />
             <Field label="Sponsor name" value={candidate.sponsorName} />
@@ -455,14 +455,14 @@ export default function CandidateDetailPage() {
             <Field label="Sticker visa #" value={candidate.stickerVisaNo} />
           </ProfileSection>
 
-          <ProfileSection icon={Users} title="Relative Information">
+          <ProfileSection icon={Users} title="Relative information">
             <Field label="Name" value={candidate.relativeName} />
             <Field label="Phone" value={candidate.relativePhone} />
             <Field label="Kinship" value={candidate.relativeKinship} />
             <Field label="City" value={candidate.relativeCity} />
           </ProfileSection>
 
-          <ProfileSection icon={Mail} title="Other Information">
+          <ProfileSection icon={Mail} title="Other information">
             <Field label="Contact (2nd)" value={candidate.contactPerson2} />
             <Field label="Phone (2nd)" value={candidate.contactPhone2} />
             <Field label="COC center" value={candidate.cocCenterName} />

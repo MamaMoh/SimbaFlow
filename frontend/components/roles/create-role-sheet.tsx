@@ -184,7 +184,7 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting} className="bg-green-800 hover:bg-green-900 text-white">
-              {isSubmitting ? "Creating..." : "Create Role"}
+              {isSubmitting ? "Creating…" : "Create role"}
             </Button>
           </div>
         </form>

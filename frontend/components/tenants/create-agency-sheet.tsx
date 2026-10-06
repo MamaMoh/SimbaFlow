@@ -220,7 +220,7 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                 </div>
                 <div className="space-y-1.5">
                   <Label>
-                    Slug (URL identifier) <span className="text-red-500">*</span>
+                    URL identifier <span className="text-red-500">*</span>
                   </Label>
                   <Input placeholder="e.g. ethio-star" {...register("slug")} />
                   {errors.slug && (

@@ -80,7 +80,7 @@ export default function RolesPage() {
     },
     {
       accessorKey: "name",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Role Name" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Role name" />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-green-700" />
@@ -182,7 +182,7 @@ export default function RolesPage() {
           toolbarEndActions={
             canManage ? (
               <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
-                <span className="mr-1">+</span> Create Role
+                <span className="mr-1">+</span> Create role
               </Button>
             ) : null
           }

@@ -117,7 +117,7 @@ export function CandidateListActions({
         {canRead && (
           <>
             <DropdownMenuItem onClick={() => router.push(`/candidates/${candidateId}`)}>
-              <Eye className="h-4 w-4 mr-2" /> View Details
+              <Eye className="h-4 w-4 mr-2" /> View details
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onGenerateCv(candidateId)}>
               <FileText className="h-4 w-4 mr-2" /> Generate CV

@@ -117,7 +117,7 @@ export default function StaffPage() {
     },
     {
       id: "fullName",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Full Name" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Full name" />,
       accessorFn: (row) => `${row.firstName} ${row.lastName}`,
     },
     {
@@ -180,7 +180,7 @@ export default function StaffPage() {
     },
     {
       accessorKey: "lastLoginAt",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Last Login" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Last login" />,
       cell: ({ getValue }) => {
         const date = getValue() as string | null;
         return date ? new Date(date).toLocaleDateString() : "Never";
@@ -217,11 +217,11 @@ export default function StaffPage() {
                 })
               }
             >
-              <KeyRound className="h-4 w-4 mr-2" /> Reset Password
+              <KeyRound className="h-4 w-4 mr-2" /> Reset password
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleDelete(row.original.id, row.original.username)} className="text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" /> Delete User
+              <Trash2 className="h-4 w-4 mr-2" /> Delete user
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

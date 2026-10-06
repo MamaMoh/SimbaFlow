@@ -250,7 +250,7 @@ export default function CandidatesPage() {
       },
       {
         accessorKey: "worksIn",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Works In" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Works in" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {

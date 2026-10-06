@@ -96,7 +96,7 @@ export function EditAgencySheet({ agencyId, open, onOpenChange, onUpdated }: Edi
             Edit Agency
           </SheetTitle>
           <SheetDescription>
-            Update agency details. Slug and schema cannot be changed after creation.
+            The URL identifier and schema cannot be changed after creation.
           </SheetDescription>
         </SheetHeader>
 
@@ -115,7 +115,7 @@ export function EditAgencySheet({ agencyId, open, onOpenChange, onUpdated }: Edi
                   {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Slug (URL identifier)</Label>
+                  <Label>URL identifier</Label>
                   <Input value={data?.data?.slug || ""} disabled className="bg-muted" />
                   <p className="text-xs text-muted-foreground">Used for database schema. Cannot be changed later.</p>
                 </div>

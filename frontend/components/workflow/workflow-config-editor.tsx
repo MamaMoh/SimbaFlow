@@ -268,7 +268,7 @@ export function WorkflowConfigEditor() {
                       ? ` · ${stage.parallelTracks.length} track${stage.parallelTracks.length === 1 ? "" : "s"}`
                       : ""}
                     {stage.statuses?.length
-                      ? ` · ${stage.statuses.length} status(es)`
+                      ? ` · ${stage.statuses.length} status${stage.statuses.length === 1 ? "" : "es"}`
                       : ""}
                   </p>
                 </div>
