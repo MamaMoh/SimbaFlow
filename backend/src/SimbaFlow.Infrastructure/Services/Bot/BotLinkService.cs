@@ -115,7 +115,7 @@ public sealed class BotLinkService : IBotLinkService
         {
             _logger.LogWarning("Bot link throttled for chat {ChatId}", chatId);
             return Result.Failure(
-                $"Too many attempts. Try again in {retryAfter.Minutes + 1} minute(s).", 429);
+                $"Too many attempts. Try again in {PluralText.Count(retryAfter.Minutes + 1, "minute")}.", 429);
         }
 
         var normalized = BotLinkCodeRules.Normalize(code);

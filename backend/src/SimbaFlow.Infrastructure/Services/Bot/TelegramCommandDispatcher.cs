@@ -299,7 +299,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 {
                     am
                         ? $"📊 <b>{BotMessages.Escape(stage.Name)}</b> — {inStage} እጩ"
-                        : $"📊 <b>{BotMessages.Escape(stage.Name)}</b> — {inStage} candidate(s)",
+                        : $"📊 <b>{BotMessages.Escape(stage.Name)}</b> — {PluralText.Count(inStage, "candidate")}",
                 };
                 if (mirrored > 0)
                     lines.Add(am ? $"(+{mirrored} በማንጸባረቅ)" : $"(+{mirrored} mirrored in)");
@@ -365,7 +365,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 var total = await active.CountAsync(ct);
                 var header = am
                     ? $"📊 {BotStatsRules.PeriodLabel(p, true)}: {registered} አዲስ ምዝገባ\nጠቅላላ ንቁ እጩ: {total}"
-                    : $"📊 {BotStatsRules.PeriodLabel(p, false)}: {registered} new registration(s)\nTotal active: {total}";
+                    : $"📊 {BotStatsRules.PeriodLabel(p, false)}: {PluralText.Count(registered, "new registration")}\nTotal active: {total}";
 
                 var stageLines = stages
                     .Select(s => $"• {BotMessages.Escape(s.Name)}: {byStage.GetValueOrDefault(s.Id, 0)}")

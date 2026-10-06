@@ -47,9 +47,6 @@ export default function BotAdminPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">Telegram</h2>
-            <p className="text-sm text-muted-foreground">
-              Connection health and runtime polling status.
-            </p>
           </div>
           <Button onClick={onTest} className="bg-green-800 hover:bg-green-900 text-white">
             Test connection
@@ -88,9 +85,6 @@ export default function BotAdminPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">Recent deliveries</h2>
-            <p className="text-sm text-muted-foreground">
-              Latest bot push attempts recorded by the platform.
-            </p>
           </div>
           <Button variant="outline" onClick={() => mutateDeliveries()}>
             Refresh

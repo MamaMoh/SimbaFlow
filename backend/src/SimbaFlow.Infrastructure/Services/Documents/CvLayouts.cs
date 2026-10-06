@@ -868,7 +868,7 @@ internal static class CvLayouts
                                 SectionBar(box, "Work Experience", "خبرة العمل");
                                 SimpleRow(box, "Period",
                                     candidate.ExperienceAbroadYears.HasValue
-                                        ? $"{candidate.ExperienceAbroadYears} Year(s)"
+                                        ? PluralText.Count(candidate.ExperienceAbroadYears.Value, "Year")
                                         : "—");
                                 SimpleRow(box, "Country",
                                     candidate.WorksIn ?? candidate.CountryOfTravel ?? "—");

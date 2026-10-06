@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Reports.Queries;
 
@@ -157,7 +158,7 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
 
         return new ReportTable(
             "pipeline", "Pipeline summary",
-            $"{total} active candidate(s) across {stages.Count} stage(s).",
+            $"{PluralText.Count(total, "active candidate")} across {PluralText.Count(stages.Count, "stage")}.",
             [
                 new("stage", "Stage"),
                 new("candidates", "Candidates", ReportColumnType.Number),
@@ -275,7 +276,7 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
 
         return new ReportTable(
             "overdue", "Overdue / stuck candidates",
-            $"{rows.Count} candidate(s) in the same stage for more than {ReportCatalog.OverdueThresholdDays} days.",
+            $"{PluralText.Count(rows.Count, "candidate")} in the same stage for more than {ReportCatalog.OverdueThresholdDays} days.",
             [
                 new("candidate", "Candidate"),
                 new("passport", "Passport"),
@@ -313,7 +314,7 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
 
         return new ReportTable(
             "financial-summary", "Financial summary",
-            $"{totals?.Open ?? 0} open commission record(s).",
+            $"{PluralText.Count(totals?.Open ?? 0, "open commission record")}.",
             [
                 new("metric", "Metric"),
                 new("amount", "Amount (ETB)", ReportColumnType.Money),

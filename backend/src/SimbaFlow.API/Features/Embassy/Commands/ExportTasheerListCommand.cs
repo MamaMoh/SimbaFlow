@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Embassy.Commands;
 
@@ -56,7 +57,7 @@ public class ExportTasheerListHandler : IRequestHandler<ExportTasheerListCommand
         var table = new ReportTable(
             Key: "tasheer-list",
             Title: "Tasheer submission list",
-            Subtitle: $"{rows.Count} candidate(s) · prepared {DateTime.UtcNow:dd MMM yyyy}",
+            Subtitle: $"{PluralText.Count(rows.Count, "candidate")} · prepared {DateTime.UtcNow:dd MMM yyyy}",
             Columns:
             [
                 new ReportColumn("no", "No."),
