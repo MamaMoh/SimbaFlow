@@ -12,8 +12,14 @@ namespace SimbaFlow.Domain.Services;
 /// </summary>
 public static class BotCandidateSearch
 {
-    /// <summary>Enough choices to recognise the right person, few enough to read on a phone.</summary>
-    public const int MaxChoices = 5;
+    /// <summary>
+    /// How many candidates one search may return.
+    ///
+    /// Typing a first name is meant to produce everyone who has it, not a sample. The cap exists
+    /// only so that a one-letter slip cannot try to list the whole agency; it sits far above any
+    /// real first name's share of a book of candidates.
+    /// </summary>
+    public const int MaxResults = 200;
 
     /// <summary>
     /// A passport number is a single token of digits and letters with no spaces. Treating one as a
@@ -46,7 +52,7 @@ public static class BotCandidateSearch
             .Select(t => t.ToLowerInvariant())
             .Where(t => t.Length > 1)
             .Distinct()
-            .Take(5)
+            .Take(6)
             .ToList();
 
     /// <summary>

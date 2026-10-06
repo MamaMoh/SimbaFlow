@@ -86,38 +86,68 @@ public static class BotMessages
     }
 
     /// <summary>
-    /// Several people matched. Listing them beats silently picking one, which is what a
-    /// FirstOrDefault does and is how the wrong person's CV gets sent to an embassy.
+    /// Telegram rejects a message over 4096 characters. Chunking at 3,500 leaves room for the
+    /// markup and the trailing line without counting bytes precisely.
     /// </summary>
-    public static string CandidateChoices(
+    private const int MaxMessageLength = 3500;
+
+    /// <summary>
+    /// Everyone who matched, as a numbered list split across as many messages as it takes.
+    ///
+    /// Typing a first name is a legitimate way to ask "who do we have called this?", so the answer
+    /// is the whole set rather than the first few with an instruction to be more specific. The
+    /// entries are one line each — name, passport, stage — because a card per person would turn
+    /// thirty matches into a scroll nobody reads.
+    /// </summary>
+    public static IReadOnlyList<string> CandidateList(
         IReadOnlyList<(string FullName, string PassportNumber, string? StageName)> matches,
-        int totalMatches,
+        string query,
+        bool truncated,
         bool amharic)
     {
-        var sb = new StringBuilder();
-        sb.Append(amharic
-            ? $"<b>{totalMatches}</b> እጩዎች ተገኝተዋል። የትኛው?\n\n"
-            : $"Found <b>{totalMatches}</b> candidates. Which one?\n\n");
+        var header = amharic
+            ? $"<b>{matches.Count}</b> እጩዎች — “{Escape(query)}”\n\n"
+            : $"<b>{matches.Count}</b> candidates matching “{Escape(query)}”\n\n";
+
+        var pages = new List<string>();
+        var sb = new StringBuilder(header);
+        var index = 0;
 
         foreach (var m in matches)
         {
-            sb.Append($"<b>{Escape(m.FullName)}</b>\n");
-            sb.Append($"<code>{Escape(m.PassportNumber)}</code>");
+            index++;
+            var line = new StringBuilder();
+            line.Append($"{index}. <b>{Escape(m.FullName)}</b>\n");
+            line.Append($"    <code>{Escape(m.PassportNumber)}</code>");
             if (!string.IsNullOrWhiteSpace(m.StageName))
-                sb.Append($" — {Escape(m.StageName)}");
-            sb.Append("\n\n");
+                line.Append($" · {Escape(m.StageName)}");
+            line.Append('\n');
+
+            if (sb.Length + line.Length > MaxMessageLength)
+            {
+                pages.Add(sb.ToString().TrimEnd());
+                sb = new StringBuilder();
+            }
+            sb.Append(line);
         }
 
-        if (totalMatches > matches.Count)
-            sb.Append(amharic
-                ? $"…እና {totalMatches - matches.Count} ተጨማሪ። ስሙን የበለጠ ይግለጹ።\n\n"
-                : $"…and {totalMatches - matches.Count} more. Try a fuller name.\n\n");
+        var tail = new StringBuilder();
+        if (truncated)
+            tail.Append(amharic
+                ? $"\nከ{MaxResultsHint} በላይ ተገኝተዋል። ስሙን የበለጠ ይግለጹ።"
+                : $"\nMore than {MaxResultsHint} matched. Add another part of the name to narrow it.");
 
-        sb.Append(amharic
-            ? "የፓስፖርት ቁጥሩን ይላኩ።"
-            : "Send the passport number of the one you want.");
-        return sb.ToString();
+        tail.Append(amharic
+            ? "\nየሚፈልጉትን የፓስፖርት ቁጥር ይላኩ።"
+            : "\nSend a passport number to open one.");
+
+        sb.Append(tail);
+        pages.Add(sb.ToString().TrimEnd());
+        return pages;
     }
+
+    /// <summary>Mirrors BotCandidateSearch.MaxResults; kept here so the wording stays in one file.</summary>
+    private const int MaxResultsHint = 200;
 
     public static string CandidateNotFound(string query, bool amharic) => amharic
         ? $"<b>{Escape(query)}</b> የሚል እጩ አልተገኘም።\n\nየፓስፖርት ቁጥሩን ወይም የስሙን የተወሰነ ክፍል ይሞክሩ።"

@@ -201,13 +201,9 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 return;
             }
 
-            // Several people answer to that name. Showing the shortlist beats picking one for
-            // them, which is how the wrong candidate's details leave the building.
-            var shown = matches.Take(BotCandidateSearch.MaxChoices)
-                .Select(c => (c.FullName, c.PassportNumber, (string?)c.CurrentStageName))
-                .ToList();
-            await _telegram.SendMessageAsync(update.ChatId,
-                BotMessages.CandidateChoices(shown, matches.Count, amLang), ct);
+            // Several people answer to that name, which is what someone typing a first name is
+            // asking for. Send all of them rather than a sample.
+            await SendCandidateListAsync(update.ChatId, matches, query, amLang, ct);
             return;
         }
 
@@ -233,11 +229,8 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             if (found.Count > 1)
             {
-                var choices = found.Take(BotCandidateSearch.MaxChoices)
-                    .Select(c => (c.FullName, c.PassportNumber, (string?)c.CurrentStageName))
-                    .ToList();
-                await _telegram.SendMessageAsync(update.ChatId,
-                    BotMessages.CandidateChoices(choices, found.Count, amLang), ct);
+                // A CV is one document, so the bot cannot guess which of them you meant.
+                await SendCandidateListAsync(update.ChatId, found, query, amLang, ct);
                 return;
             }
 
@@ -399,6 +392,23 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
     }
 
     /// <summary>
+    /// Sends a match list, split across messages when it is longer than Telegram allows.
+    /// </summary>
+    private async Task SendCandidateListAsync(
+        string chatId, List<Candidate> matches, string query, bool amharic, CancellationToken ct)
+    {
+        var rows = matches
+            .Select(c => (c.FullName, c.PassportNumber, (string?)c.CurrentStageName))
+            .ToList();
+
+        var pages = BotMessages.CandidateList(
+            rows, query, truncated: matches.Count >= BotCandidateSearch.MaxResults, amharic);
+
+        foreach (var page in pages)
+            await _telegram.SendMessageAsync(chatId, page, ct);
+    }
+
+    /// <summary>
     /// Finds the candidates a typed query could mean.
     ///
     /// A passport number is matched exactly and answers on its own. Anything else is treated as a
@@ -435,9 +445,10 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             .Where(c => !c.IsDeleted &&
                 (c.FirstName.ToLower().Contains(lead)
                  || c.LastName.ToLower().Contains(lead)
-                 || (c.MiddleName != null && c.MiddleName.ToLower().Contains(lead))))
-            .OrderBy(c => c.FirstName).ThenBy(c => c.LastName)
-            .Take(200)
+                 || (c.MiddleName != null && c.MiddleName.ToLower().Contains(lead))
+                 || (c.LocalFullName != null && c.LocalFullName.ToLower().Contains(lead))))
+            .OrderBy(c => c.FirstName).ThenBy(c => c.MiddleName).ThenBy(c => c.LastName)
+            .Take(BotCandidateSearch.MaxResults)
             .ToListAsync(ct);
 
         return shortlist

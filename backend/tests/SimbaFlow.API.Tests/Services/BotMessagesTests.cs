@@ -83,24 +83,57 @@ public class BotMessagesTests
     }
 
     [Fact]
-    public void AmbiguousNamesAreListedRatherThanGuessedAt()
+    public void EveryMatchIsListed_NotASample()
     {
-        var text = BotMessages.CandidateChoices(
-            [("ALMAZ BEKELE", "EP1", "Embassy"), ("ALMAZ TESFAYE", "EP2", "LMIS")], 2, false);
+        // Typing a first name is asking "who do we have called this?" — the answer is all of them.
+        var many = Enumerable.Range(1, 30)
+            .Select(i => ($"ALMAZ CANDIDATE {i}", $"EP{i:0000000}", (string?)"Embassy"))
+            .ToList();
 
-        text.Should().Contain("ALMAZ BEKELE");
-        text.Should().Contain("ALMAZ TESFAYE");
-        text.Should().Contain("EP1");
-        text.Should().Contain("EP2");
+        var pages = BotMessages.CandidateList(many, "almaz", truncated: false, amharic: false);
+        var all = string.Join("\n", pages);
+
+        all.Should().Contain("ALMAZ CANDIDATE 1");
+        all.Should().Contain("ALMAZ CANDIDATE 30");
+        all.Should().Contain("<b>30</b> candidates");
+        foreach (var (_, passport, _) in many)
+            all.Should().Contain(passport);
     }
 
     [Fact]
-    public void AVeryCommonNameSaysHowManyMoreThereAre()
+    public void ALongListIsSplitSoTelegramAcceptsIt()
     {
-        var text = BotMessages.CandidateChoices([("ALMAZ BEKELE", "EP1", null)], 12, false);
+        // Telegram rejects anything over 4096 characters outright — one oversized message is a
+        // search that silently returns nothing.
+        var many = Enumerable.Range(1, 200)
+            .Select(i => ($"CANDIDATE WITH A FAIRLY LONG NAME {i}", $"EP{i:0000000}", (string?)"New Contracts"))
+            .ToList();
 
-        text.Should().Contain("12");
-        text.Should().Contain("11 more");
+        var pages = BotMessages.CandidateList(many, "candidate", truncated: true, amharic: false);
+
+        pages.Count.Should().BeGreaterThan(1);
+        pages.Should().OnlyContain(p => p.Length <= 4096);
+        string.Join("\n", pages).Should().Contain("CANDIDATE WITH A FAIRLY LONG NAME 200");
+    }
+
+    [Fact]
+    public void AShortListFitsInOneMessage()
+    {
+        var pages = BotMessages.CandidateList(
+            [("ALMAZ BEKELE", "EP1", "Embassy"), ("ALMAZ TESFAYE", "EP2", "LMIS")],
+            "almaz", truncated: false, amharic: false);
+
+        pages.Should().ContainSingle();
+        pages[0].Should().Contain("ALMAZ BEKELE").And.Contain("ALMAZ TESFAYE");
+    }
+
+    [Fact]
+    public void HittingTheCapSaysSoRatherThanPretendingThatIsEverybody()
+    {
+        var pages = BotMessages.CandidateList(
+            [("A B", "EP1", null)], "a", truncated: true, amharic: false);
+
+        string.Join("\n", pages).Should().Contain("narrow");
     }
 
     [Theory]
