@@ -177,7 +177,22 @@ public sealed class TelegramGateway : ITelegramGateway
             using var content = values is null ? null : new FormUrlEncodedContent(values);
             using var response = await _httpClient.PostAsync(BuildUrl(method), content, ct);
             var body = await response.Content.ReadAsStringAsync(ct);
-            return JsonDocument.Parse(body);
+            var parsed = JsonDocument.Parse(body);
+
+            // Telegram answers 200-with-ok:false as readily as it answers 400, and this used to be
+            // thrown away: a message it refused simply never arrived and nothing anywhere said so.
+            // /stats went silent for days because one reply contained a literal "<stage>" and HTML
+            // parse mode read it as a tag.
+            if (parsed.RootElement.TryGetProperty("ok", out var ok) && !ok.GetBoolean())
+            {
+                var description = parsed.RootElement.TryGetProperty("description", out var d)
+                    ? d.GetString()
+                    : "(no description)";
+                _logger.LogWarning(
+                    "Telegram rejected {Method}: {Description}", method, description);
+            }
+
+            return parsed;
         }
         catch (Exception ex)
         {

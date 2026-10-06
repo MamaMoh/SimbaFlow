@@ -246,6 +246,17 @@ public static class BotMessages
           + "• <code>/lang am</code> — switch to Amharic\n\n"
           + "I'll tell you when a candidate moves stage — never for changes you made yourself.";
 
+    /// <summary>
+    /// The "what else can /stats do" line.
+    ///
+    /// This used to end with a literal &lt;stage&gt;, which Telegram read as an opening tag and
+    /// rejected the whole message for — /stats answered with silence. Placeholders are written in
+    /// braces now, and the examples are real stage-less words so there is nothing to parse.
+    /// </summary>
+    public static string StatsFooter(bool amharic) => amharic
+        ? "ተጨማሪ: <code>/stats week</code> · <code>/stats month</code> · <code>/stats year</code> · <code>/stats embassy</code>"
+        : "More: <code>/stats week</code> · <code>/stats month</code> · <code>/stats year</code> · <code>/stats embassy</code>";
+
     public static string NotUnderstood(bool amharic) => amharic
         ? "አልገባኝም። የፓስፖርት ቁጥር ወይም ስም ይላኩ፣ ወይም ❓ Help ይጫኑ።"
         : "I didn't catch that. Send a passport number or a name, or tap ❓ Help.";

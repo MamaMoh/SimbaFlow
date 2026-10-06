@@ -278,7 +278,8 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                         .Where(s => !s.IsDeleted).OrderBy(s => s.SortOrder)
                         .Select(s => s.Name).ToListAsync(ct);
                     await _telegram.SendMessageAsync(update.ChatId,
-                        (am ? "ደረጃ አልተገኘም። ያሉት: " : "Stage not found. Available: ") + string.Join(", ", names),
+                        (am ? "ደረጃ አልተገኘም። ያሉት: " : "Stage not found. Available: ")
+                            + string.Join(", ", names.Select(BotMessages.Escape)),
                         ct);
                     return;
                 }
@@ -296,7 +297,9 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
                 var lines = new List<string>
                 {
-                    am ? $"📊 {stage.Name} — {inStage} እጩ" : $"📊 {stage.Name} — {inStage} candidate(s)",
+                    am
+                        ? $"📊 <b>{BotMessages.Escape(stage.Name)}</b> — {inStage} እጩ"
+                        : $"📊 <b>{BotMessages.Escape(stage.Name)}</b> — {inStage} candidate(s)",
                 };
                 if (mirrored > 0)
                     lines.Add(am ? $"(+{mirrored} በማንጸባረቅ)" : $"(+{mirrored} mirrored in)");
@@ -329,8 +332,9 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                             counts[v] = counts.GetValueOrDefault(v) + 1;
                         }
                         if (counts.Count == 0) continue;
-                        var parts = counts.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}");
-                        lines.Add($"• {track}: {string.Join(", ", parts)}");
+                        var parts = counts.OrderByDescending(kv => kv.Value)
+                            .Select(kv => $"{BotMessages.Escape(kv.Key)} {kv.Value}");
+                        lines.Add($"• {BotMessages.Escape(track)}: {string.Join(", ", parts)}");
                     }
                 }
 
@@ -364,13 +368,11 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                     : $"📊 {BotStatsRules.PeriodLabel(p, false)}: {registered} new registration(s)\nTotal active: {total}";
 
                 var stageLines = stages
-                    .Select(s => $"• {s.Name}: {byStage.GetValueOrDefault(s.Id, 0)}")
+                    .Select(s => $"• {BotMessages.Escape(s.Name)}: {byStage.GetValueOrDefault(s.Id, 0)}")
                     .ToList();
 
                 reply = header + "\n\n" + (am ? "በደረጃ:" : "By stage:") + "\n" + string.Join("\n", stageLines)
-                    + "\n\n" + (am
-                        ? "ተጨማሪ: /stats week | month | year | <ደረጃ>"
-                        : "More: /stats week | month | year | <stage>");
+                    + "\n\n" + BotMessages.StatsFooter(am);
             }
 
             await _telegram.SendMessageAsync(update.ChatId, reply, ct);

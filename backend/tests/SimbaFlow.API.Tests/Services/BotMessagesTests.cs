@@ -162,4 +162,72 @@ public class BotMessagesTests
     {
         BotNotificationRules.ShouldNotify(recipient, actor).Should().Be(expected);
     }
+
+    /// <summary>
+    /// Telegram's HTML parse mode supports a short list of tags and rejects the whole message for
+    /// anything else — not the offending characters, the message. A reply ending in a literal
+    /// "&lt;stage&gt;" made /stats answer with silence for days, because the refusal was a 200
+    /// with ok:false that nothing logged.
+    /// </summary>
+    private static readonly string[] AllowedTags =
+        ["b", "/b", "i", "/i", "u", "/u", "s", "/s", "code", "/code", "pre", "/pre",
+         "tg-spoiler", "/tg-spoiler", "blockquote", "/blockquote"];
+
+    private static void AssertParsesAsTelegramHtml(string text)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] != '<') continue;
+            var close = text.IndexOf('>', i);
+            close.Should().BeGreaterThan(i, $"an unclosed '<' in: {text}");
+
+            var tag = text[(i + 1)..close];
+            var ok = AllowedTags.Contains(tag) || tag.StartsWith("a href=") || tag == "/a";
+            ok.Should().BeTrue($"\"<{tag}>\" is not a tag Telegram accepts, in: {text}");
+            i = close;
+        }
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EveryMessageSurvivesTelegramsHtmlParser(bool amharic)
+    {
+        AssertParsesAsTelegramHtml(BotMessages.StatsFooter(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.Welcome(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.Help(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.AlreadyLinked("Mohammed Anwar", amharic));
+        AssertParsesAsTelegramHtml(BotMessages.LinkSucceeded("Mohammed Anwar", "Tango Foreign Employment Agent", amharic));
+        AssertParsesAsTelegramHtml(BotMessages.AskForLinkCode(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.AskForCandidate(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.CandidateNotFound("almaz", amharic));
+        AssertParsesAsTelegramHtml(BotMessages.NotUnderstood(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.NoAgency(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.NoStatsPermission(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.WebAppOnly(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.LanguageChoices(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.LanguageUpdated(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.CvBeingPrepared(amharic));
+        AssertParsesAsTelegramHtml(BotMessages.SomethingWentWrong(amharic));
+        AssertParsesAsTelegramHtml(
+            BotMessages.CandidateCard("SEADA MEKONNEN", "EQ1030621", "LMIS", "Active", "Saudi Arabia", amharic));
+        AssertParsesAsTelegramHtml(
+            BotMessages.StageMoved("FOZIYA YIMER", "EQ1", "New Contracts", "Commission", "mohammed", amharic));
+        AssertParsesAsTelegramHtml(
+            BotMessages.EventHeadline("FOZIYA YIMER", "EQ1", "departure.notified", amharic));
+        foreach (var page in BotMessages.CandidateList(
+                     [("ALMAZ BEKELE", "EP1", "Embassy")], "almaz", truncated: true, amharic: amharic))
+            AssertParsesAsTelegramHtml(page);
+    }
+
+    [Fact]
+    public void AnAgencysOwnNamesCannotBreakAMessage()
+    {
+        // A stage called "Medical & Tasheer" or a candidate called "Tsehay <sic>" goes out as HTML
+        // like everything else.
+        AssertParsesAsTelegramHtml(
+            BotMessages.CandidateCard("Tsehay <sic> & Co", "EQ1", "Medical & Tasheer", "Active", "UAE", false));
+        AssertParsesAsTelegramHtml(
+            BotMessages.StageMoved("A & B", "EQ1", "X <1>", "Y & Z", "user<1>", false));
+    }
 }
