@@ -1,4 +1,5 @@
 using Carter;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,32 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 builder.Services.AddApiServices(builder.Configuration);
+
+// Keep the data-protection key ring on the storage volume rather than inside the container.
+//
+// It defaulted to /app/.aspnet/DataProtection-Keys, which is container-local, so every deploy
+// started with fresh keys. Password-reset tokens are protected with these: someone who clicked
+// "forgot password", read their email and followed the link after a release found the link
+// rejected, with nothing to say why. The volume at FileStorage:BasePath already outlives the
+// container, and the application name pins the ring so a rename cannot silently orphan it.
+var keyRingPath = Path.Combine(
+    builder.Configuration["FileStorage:BasePath"] ?? "/data", "data-protection-keys");
+try
+{
+    Directory.CreateDirectory(keyRingPath);
+    builder.Services
+        .AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keyRingPath))
+        .SetApplicationName("SimbaFlow");
+}
+catch (Exception ex)
+{
+    // A read-only or missing volume is not a reason to refuse to start; it is a reason to say
+    // that reset links will not survive the next deploy.
+    Log.Warning(ex,
+        "Could not persist data-protection keys to {Path}; password reset links will stop working "
+        + "when this container is replaced", keyRingPath);
+}
 
 var app = builder.Build();
 
