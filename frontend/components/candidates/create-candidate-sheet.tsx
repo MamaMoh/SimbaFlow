@@ -279,7 +279,7 @@ const registerCandidateSchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   nationality: z.string().min(1, "Nationality is required"),
   phoneNumber: opt,
-  email: z.string().email().optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
   address: opt,
   city: opt,
   country: opt,
@@ -1313,7 +1313,7 @@ export function CandidateApplicationForm({
           </Link>
           <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <User className="h-6 w-6 text-emerald-700" />
-            {isEdit ? "Edit Application" : "New Application"}
+            {isEdit ? "Edit application" : "New application"}
           </h1>
         </div>
       </div>
@@ -1446,7 +1446,7 @@ export function CandidateApplicationForm({
               </div>
               <div className="space-y-1.5">
                 <Label>
-                  Full Name <span className="text-red-500">*</span>
+                  Full name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   name="fullName"
@@ -1506,11 +1506,11 @@ export function CandidateApplicationForm({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Place of Issue</Label>
+                  <Label>Place of issue</Label>
                   <Input {...register("passportPlaceOfIssue")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Place of Birth</Label>
+                  <Label>Place of birth</Label>
                   <Input {...register("placeOfBirth")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1535,7 +1535,7 @@ export function CandidateApplicationForm({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Date of Expiry</Label>
+                  <Label>Date of expiry</Label>
                   <Input
                     type="date"
                     {...register("passportExpiryDate", {
@@ -1551,7 +1551,7 @@ export function CandidateApplicationForm({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Date of Issue</Label>
+                  <Label>Date of issue</Label>
                   <Input type="date" {...register("passportIssueDate")} />
                   <p className="text-[11px] text-muted-foreground">
                     Expiry less {passportValidityYears} years — override if the booklet differs.
@@ -1559,9 +1559,12 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>
-                    Date of Birth <span className="text-red-500">*</span>
+                    Date of birth <span className="text-red-500">*</span>
                   </Label>
                   <Input type="date" {...register("dateOfBirth")} />
+                  {errors.dateOfBirth && (
+                    <p className="text-xs text-destructive">{errors.dateOfBirth.message}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Phone No.</Label>
@@ -1639,7 +1642,7 @@ export function CandidateApplicationForm({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>No. of Children</Label>
+                  <Label>No. of children</Label>
                   <Input
                     type="number"
                     min={0}
@@ -1717,6 +1720,9 @@ export function CandidateApplicationForm({
                       setValue("nationality", name, { shouldValidate: true })
                     }
                   />
+                  {errors.nationality && (
+                    <p className="text-xs text-destructive">{errors.nationality.message}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Region</Label>
@@ -1808,7 +1814,7 @@ export function CandidateApplicationForm({
                   <Input {...register("contactPhone2")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>COC Center</Label>
+                  <Label>COC center</Label>
                   <Input {...register("cocCenterName")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1960,6 +1966,9 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Email</Label>
                   <Input type="email" {...register("email")} />
+                  {errors.email && (
+                    <p className="text-xs text-destructive">{errors.email.message}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Labour ID</Label>
@@ -2224,7 +2233,7 @@ export function CandidateApplicationForm({
                   disabled={isSubmitting}
                   className="bg-emerald-800 text-white hover:bg-emerald-900"
                 >
-                  {isSubmitting ? "Saving…" : isEdit ? "Save Changes" : "Save Application"}
+                  {isSubmitting ? "Saving…" : isEdit ? "Save changes" : "Save application"}
                 </Button>
               </div>
             </div>
