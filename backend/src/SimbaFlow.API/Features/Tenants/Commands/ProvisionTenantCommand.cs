@@ -174,25 +174,44 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
             await _tenantMigrator.EnsureSchemaAndMigrateAsync(schemaName, cancellationToken);
 
             var connectionString = _configuration.GetConnectionString("DefaultConnection");
-            if (!string.IsNullOrWhiteSpace(connectionString))
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                await WorkflowSeeder.SeedDefaultWorkflowIntoSchemaAsync(
-                    connectionString, schemaName, tenant.Id, cancellationToken);
-                await _workflowUpgrader.EnsureUnit3ArtifactsIntoSchemaAsync(
-                    connectionString, schemaName, tenant.Id, cancellationToken);
-                await _workflowUpgrader.EnsureUnit4ArtifactsIntoSchemaAsync(
-                    connectionString, schemaName, tenant.Id, cancellationToken);
-                await _financeSeed.EnsureUnit5ArtifactsIntoSchemaAsync(
-                    connectionString, schemaName, tenant.Id, cancellationToken);
-                _logger.LogInformation(
-                    "Seeded default workflow for schema {Schema} (level {Level}: ≤{PerCountry}/country, countries cap {CountryCap})",
-                    schemaName, tenant.AgencyLevel, maxPartnersPerCountry,
-                    maxCountriesCap?.ToString() ?? "unlimited");
+                // Skipping the seed quietly left the agency with tables and no workflow, which
+                // fails later as "no stages" rather than here as "not configured".
+                throw new InvalidOperationException(
+                    "No DefaultConnection is configured, so the agency's schema cannot be seeded.");
             }
+
+            await WorkflowSeeder.SeedDefaultWorkflowIntoSchemaAsync(
+                connectionString, schemaName, tenant.Id, cancellationToken);
+            await _workflowUpgrader.EnsureUnit3ArtifactsIntoSchemaAsync(
+                connectionString, schemaName, tenant.Id, cancellationToken);
+            await _workflowUpgrader.EnsureUnit4ArtifactsIntoSchemaAsync(
+                connectionString, schemaName, tenant.Id, cancellationToken);
+            await _financeSeed.EnsureUnit5ArtifactsIntoSchemaAsync(
+                connectionString, schemaName, tenant.Id, cancellationToken);
+            _logger.LogInformation(
+                "Seeded default workflow for schema {Schema} (level {Level}: ≤{PerCountry}/country, countries cap {CountryCap})",
+                schemaName, tenant.AgencyLevel, maxPartnersPerCountry,
+                maxCountriesCap?.ToString() ?? "unlimited");
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to migrate/seed schema {Schema}", schemaName);
+            // This used to be a warning, and provisioning carried on to report success. The
+            // agency existed, its owner could sign in, and every page they opened then failed
+            // on `relation "candidates" does not exist` — because the schema behind it was
+            // never built. An agency that cannot be used has not been created, so say so here,
+            // while the person who asked for it is still looking, and leave nothing behind.
+            _logger.LogError(ex,
+                "Failed to migrate/seed schema {Schema}; rolling back tenant {TenantId}",
+                schemaName, tenant.Id);
+
+            _context.Tenants.Remove(tenant);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return Result<Guid>.Failure(
+                $"The agency's database could not be prepared, so the agency was not created: {ex.Message}",
+                500);
         }
 
         var adminUser = new ApplicationUser
