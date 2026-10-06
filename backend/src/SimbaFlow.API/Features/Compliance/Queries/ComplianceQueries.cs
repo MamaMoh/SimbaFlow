@@ -85,7 +85,9 @@ public class GetComplianceAlertsHandler
             var days = licenceEnd.DayNumber - today.DayNumber;
             alerts.Add(new ComplianceAlertDto(
                 Guid.Empty, tenant.Name, tenant.LicenseNumber, "Agency licence",
-                days < 0 ? $"Licence expired {Math.Abs(days)} day(s) ago" : $"Licence expires in {days} day(s)",
+                days < 0
+                    ? $"Licence expired {PluralText.Count(Math.Abs(days), "day")} ago"
+                    : $"Licence expires in {PluralText.Count(days, "day")}",
                 licenceEnd, days, BucketFor(days)));
         }
 
@@ -127,7 +129,9 @@ public class GetComplianceAlertsHandler
                 var days = expiry.DayNumber - today.DayNumber;
                 alerts.Add(new ComplianceAlertDto(
                     c.Id, name, c.PassportNumber, "Passport",
-                    days < 0 ? $"Passport expired {-days} day(s) ago" : $"Passport expires in {days} day(s)",
+                    days < 0
+                        ? $"Passport expired {PluralText.Count(-days, "day")} ago"
+                        : $"Passport expires in {PluralText.Count(days, "day")}",
                     expiry, days, BucketFor(days)));
             }
 

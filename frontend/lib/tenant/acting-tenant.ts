@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 /**
  * Which agency a platform admin is currently working inside.
  *
@@ -51,4 +53,25 @@ export function setActingTenant(id: string | null, name?: string | null): void {
     ? `simba_acting_tenant=${encodeURIComponent(id)}; path=/; max-age=86400; samesite=lax`
     : "simba_acting_tenant=; path=/; max-age=0; samesite=lax";
   window.dispatchEvent(new CustomEvent(ACTING_TENANT_EVENT, { detail: { id, name } }));
+}
+
+/**
+ * The agency a platform administrator is currently working inside, as React state.
+ *
+ * `undefined` until it has been read — localStorage cannot be touched while
+ * rendering on the server, and a page that assumed "null" on the first paint
+ * would flash the wrong message before correcting itself.
+ */
+export function useActingTenantId(): string | null | undefined {
+  const [id, setId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    setId(getActingTenantId());
+    const onChange = (e: Event) =>
+      setId((e as CustomEvent<{ id: string | null }>).detail?.id ?? null);
+    window.addEventListener(ACTING_TENANT_EVENT, onChange);
+    return () => window.removeEventListener(ACTING_TENANT_EVENT, onChange);
+  }, []);
+
+  return id;
 }

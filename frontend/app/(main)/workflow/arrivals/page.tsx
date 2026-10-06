@@ -64,7 +64,7 @@ export default function ArrivalBoardPage() {
         id: "arrival",
         header: "Status",
         cell: ({ row }) => (
-          <TrackChip label="arrival" value={row.original.statusValues?.arrival} />
+          <TrackChip value={row.original.statusValues?.arrival} />
         ),
       },
       {

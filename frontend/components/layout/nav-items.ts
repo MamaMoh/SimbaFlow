@@ -43,7 +43,7 @@ export const navigation: NavItem[] = [
   { name: "sep-workflow", isSeparator: true, icon: null, sectionLabel: "Workflow" },
 
   {
-    name: "New contracts",
+    name: "New Contracts",
     href: "/workflow/new-contracts",
     icon: require("lucide-react").FileText,
     claims: ["workflow.view", "system.admin"],
@@ -55,7 +55,7 @@ export const navigation: NavItem[] = [
     claims: ["embassy.read", "system.admin"],
   },
   {
-    name: "Case executive",
+    name: "Case Executive",
     href: "/workflow/case-executive",
     icon: require("lucide-react").Briefcase,
     // Only embassy.case_view — the board's own query requires it, so listing embassy.read here

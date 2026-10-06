@@ -60,7 +60,7 @@ export default function CaseExecutiveBoardPage() {
         id: "visa",
         header: "Visa",
         cell: ({ row }) => (
-          <TrackChip label="visa" value={row.original.statusValues?.visa} />
+          <TrackChip value={row.original.statusValues?.visa} />
         ),
       },
       {

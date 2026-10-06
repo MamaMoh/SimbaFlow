@@ -69,7 +69,7 @@ export default function EmbassyBoardPage() {
         header: "Medical",
         cell: ({ row }) => {
           const v = row.original.statusValues?.medical;
-          return <TrackChip label="medical" value={v} warn={v === "Unfit"} />;
+          return <TrackChip value={v} warn={v === "Unfit"} />;
         },
       },
       {
@@ -77,14 +77,14 @@ export default function EmbassyBoardPage() {
         header: "Tasheer",
         cell: ({ row }) => {
           const v = row.original.statusValues?.tasheer;
-          return <TrackChip label="tasheer" value={v} warn={v === "Expired"} />;
+          return <TrackChip value={v} warn={v === "Expired"} />;
         },
       },
       {
         id: "visa",
         header: "Visa",
         cell: ({ row }) => (
-          <TrackChip label="visa" value={row.original.statusValues?.visa} />
+          <TrackChip value={row.original.statusValues?.visa} />
         ),
       },
       {

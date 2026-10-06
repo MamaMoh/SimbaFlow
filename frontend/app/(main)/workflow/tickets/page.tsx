@@ -74,7 +74,7 @@ export default function TicketBoardPage() {
         id: "ticket",
         header: "Ticket",
         cell: ({ row }) => (
-          <TrackChip label="ticket" value={row.original.statusValues?.ticket_status} />
+          <TrackChip value={row.original.statusValues?.ticket_status} />
         ),
       },
       {

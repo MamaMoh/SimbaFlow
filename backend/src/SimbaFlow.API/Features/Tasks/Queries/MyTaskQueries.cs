@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Tasks.Queries;
 
@@ -83,7 +84,7 @@ public class GetMyTasksHandler : IRequestHandler<GetMyTasksQuery, Result<MyTasks
             items.Add(new MyTaskItemDto(
                 "exception",
                 $"{e.Type} case open",
-                $"Opened {(int)Math.Floor((now - e.OpenedAt).TotalDays)} day(s) ago",
+                $"Opened {PluralText.Count((int)Math.Floor((now - e.OpenedAt).TotalDays), "day")} ago",
                 "high",
                 e.CandidateId,
                 $"/candidates/{e.CandidateId}"));
@@ -95,7 +96,9 @@ public class GetMyTasksHandler : IRequestHandler<GetMyTasksQuery, Result<MyTasks
             items.Add(new MyTaskItemDto(
                 "passport",
                 $"{c.FirstName} {c.LastName}".Trim(),
-                days < 0 ? $"Passport expired {-days} day(s) ago" : $"Passport expires in {days} day(s)",
+                days < 0
+                    ? $"Passport expired {PluralText.Count(-days, "day")} ago"
+                    : $"Passport expires in {PluralText.Count(days, "day")}",
                 days < 0 ? "high" : "medium",
                 c.Id,
                 $"/candidates/{c.Id}"));
@@ -107,7 +110,7 @@ public class GetMyTasksHandler : IRequestHandler<GetMyTasksQuery, Result<MyTasks
             items.Add(new MyTaskItemDto(
                 "overdue",
                 $"{c.FirstName} {c.LastName}".Trim(),
-                $"{days} day(s) in {c.CurrentStageName ?? "current stage"}",
+                $"{PluralText.Count(days, "day")} in {c.CurrentStageName ?? "current stage"}",
                 "medium",
                 c.Id,
                 $"/candidates/{c.Id}"));

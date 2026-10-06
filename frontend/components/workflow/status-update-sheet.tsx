@@ -198,7 +198,12 @@ export function TrackChip({
   value,
   warn,
 }: {
-  label: string;
+  /**
+   * Only when the chip does not sit under a column header that already says it.
+   * Every board but one put the header's own word back inside each cell, so the
+   * Medical column read "medical: Fit" all the way down.
+   */
+  label?: string;
   value?: string | null;
   warn?: boolean;
 }): ReactNode {
@@ -211,7 +216,7 @@ export function TrackChip({
         TONE_CLASSES[tone],
       )}
     >
-      <span className="mr-1 opacity-70">{label}:</span>
+      {label && <span className="mr-1 opacity-70">{label}:</span>}
       {value ? value.replace(/_/g, " ") : "—"}
     </span>
   );

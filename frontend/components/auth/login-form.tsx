@@ -10,7 +10,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "../ui/card";
@@ -238,12 +237,9 @@ setIsSubmitting(false);
           <div className="flex items-center justify-center mb-2">
             <Globe className="h-16 w-16 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold text-center">
-            {"SimbaFlow Login"}
+          <CardTitle className="text-center text-xl font-semibold tracking-tight">
+            Sign in
           </CardTitle>
-          <CardDescription className="text-center text-muted-foreground">
-            {"SimbaFlow"}
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {blockedReason && (

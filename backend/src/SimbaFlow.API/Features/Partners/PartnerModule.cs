@@ -26,8 +26,11 @@ public class PartnerModule : ICarterModule
         {
             if (linkedOnly == true)
             {
+                // No acting agency — a platform administrator on "All agencies". "Which partners
+                // has my agency linked" has an answer there: none. It used to 400, and the page
+                // that asked could not tell a refused request from a broken one.
                 if (user.TenantId is not Guid tenantId)
-                    return Results.Json(new { isSuccess = false, error = "Tenant context required" }, statusCode: 400);
+                    return Results.Ok(new { isSuccess = true, data = Array.Empty<object>() });
 
                 // Deliberately NOT filtered to Active-only: the Partners page must surface expired
                 // and suspended agreements so the agency can renew them. Intake filtering happens

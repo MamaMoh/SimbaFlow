@@ -77,7 +77,7 @@ export default function DepartureBoardPage() {
         id: "notification",
         header: "Notify",
         cell: ({ row }) => (
-          <TrackChip label="notify" value={row.original.statusValues?.notification_status} />
+          <TrackChip value={row.original.statusValues?.notification_status} />
         ),
       },
       {
@@ -85,7 +85,6 @@ export default function DepartureBoardPage() {
         header: "Status",
         cell: ({ row }) => (
           <TrackChip
-            label="dep"
             value={
               row.original.isCanceled
                 ? "Canceled"

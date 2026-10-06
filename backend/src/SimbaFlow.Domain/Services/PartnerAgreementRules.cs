@@ -72,9 +72,9 @@ public static class PartnerAgreementRules
     public static string Describe(AgreementState state, int daysRemaining) => state switch
     {
         AgreementState.Expired => daysRemaining < 0
-            ? $"Expired {Math.Abs(daysRemaining)} day(s) ago"
+            ? $"Expired {PluralText.Count(Math.Abs(daysRemaining), "day")} ago"
             : "Expired",
-        AgreementState.ExpiringSoon => $"Ends in {daysRemaining} day(s)",
+        AgreementState.ExpiringSoon => $"Ends in {PluralText.Count(daysRemaining, "day")}",
         AgreementState.NotStarted => "Not started yet",
         AgreementState.Suspended => "Suspended",
         _ => "Active"

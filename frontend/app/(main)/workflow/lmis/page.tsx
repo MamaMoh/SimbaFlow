@@ -80,7 +80,6 @@ export default function LmisBoardPage() {
         header: "Insurance",
         cell: ({ row }) => (
           <TrackChip
-            label="insurance"
             value={row.original.insurance ?? row.original.statusValues?.insurance}
           />
         ),
@@ -90,7 +89,6 @@ export default function LmisBoardPage() {
         header: "Milestone",
         cell: ({ row }) => (
           <TrackChip
-            label="milestone"
             value={row.original.milestone ?? row.original.statusValues?.milestone}
           />
         ),

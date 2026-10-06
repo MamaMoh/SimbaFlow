@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { useActingTenantId } from "@/lib/tenant/acting-tenant";
 import { CreatePartnerSheet } from "@/components/partners/create-partner-sheet";
 import { LinkPartnerSheet } from "@/components/partners/link-partner-sheet";
 import { Link2, Plus, Unlink } from "lucide-react";
@@ -68,6 +69,8 @@ export default function PartnersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [tab, setTab] = useState<"catalog" | "linked">("linked");
+  const actingTenantId = useActingTenantId();
+  const noAgencyChosen = isSuperAdmin && actingTenantId === null;
   const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
 
   const catalogUrl =
@@ -258,7 +261,7 @@ export default function PartnersPage() {
         }
       />
 
-      {tab === "linked" ? <CapacityStrip enabled={canRead} /> : null}
+      {tab === "linked" && !noAgencyChosen ? <CapacityStrip enabled={canRead} /> : null}
 
       <div className="flex gap-2">
         <Button
@@ -281,7 +284,11 @@ export default function PartnersPage() {
         <LoadError message="Could not load partners" onRetry={() => mutate()} />
       ) : null}
 
-
+      {noAgencyChosen && tab === "linked" ? (
+        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+          Choose an agency in the switcher above to see the partners it works with.
+        </div>
+      ) : (
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
             onRowClick={(row: { id: string }) => router.push(`/partners/${row.id}`)}
@@ -293,6 +300,7 @@ export default function PartnersPage() {
           paginated
         />
       </div>
+      )}
 
       <CreatePartnerSheet
         open={createOpen}
