@@ -14,13 +14,16 @@ public class TenantSettings
     public bool BotEnabled { get; set; }
 
     /// <summary>
-    /// What a new candidate form starts with. Agencies deploy to one corridor and one job for
-    /// months at a time, so typing the same three answers into every registration is wasted
-    /// keystrokes. These only pre-fill a blank form — they never overwrite a saved record.
+    /// Legacy JSON copy of new-candidate defaults. Live values now live in agency_intake_defaults
+    /// (tenant schema). Kept so a first read after upgrade can copy production settings into the
+    /// table instead of resetting every agency to HOUSE MAID / Female.
     /// </summary>
     public IntakeDefaults Intake { get; set; } = new();
 
-    /// <summary>How this agency's generated paperwork is laid out.</summary>
+    /// <summary>
+    /// Other document settings. CvTemplate is also legacy: the chosen layout is stored on
+    /// agency_intake_defaults and copied from here on first read.
+    /// </summary>
     public DocumentSettings Documents { get; set; } = new();
 }
 

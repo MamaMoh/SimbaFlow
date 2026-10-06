@@ -217,7 +217,8 @@ public record CandidateDetailDto(
     string? CurrentStageName,
     Guid? CurrentStageId,
     DateTime RegisteredAt,
-    string? RegisteredBy);
+    string? RegisteredBy,
+    IReadOnlyList<string> ExtraSkills);
 
 public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Result<CandidateDetailDto>>
 {
@@ -264,7 +265,11 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                 c.CertifiedDate.HasValue ? c.CertifiedDate.Value.ToString("yyyy-MM-dd") : null,
                 c.MedicalPlace,
                 c.CurrentStageName, c.CurrentStageId,
-                c.RegisteredAt, c.RegisteredBy))
+                c.RegisteredAt, c.RegisteredBy,
+                c.ExtraSkills
+                    .Where(s => !s.IsDeleted && s.IsSelected)
+                    .Select(s => s.Name)
+                    .ToArray()))
             .FirstOrDefaultAsync(cancellationToken);
 
         return candidate is not null

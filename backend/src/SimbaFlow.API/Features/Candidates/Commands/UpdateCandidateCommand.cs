@@ -50,6 +50,7 @@ public class UpdateCandidateHandler : IRequestHandler<UpdateCandidateCommand, Re
     public async Task<Result> Handle(UpdateCandidateCommand request, CancellationToken cancellationToken)
     {
         var candidate = await _context.Candidates
+            .Include(c => c.ExtraSkills)
             .FirstOrDefaultAsync(c => c.Id == request.Id && !c.IsDeleted, cancellationToken);
 
         if (candidate is null)
@@ -124,6 +125,7 @@ public class DeleteCandidateHandler : IRequestHandler<DeleteCandidateCommand, Re
     public async Task<Result> Handle(DeleteCandidateCommand request, CancellationToken cancellationToken)
     {
         var candidate = await _context.Candidates
+            .Include(c => c.ExtraSkills)
             .FirstOrDefaultAsync(c => c.Id == request.Id && !c.IsDeleted, cancellationToken);
 
         if (candidate is null)

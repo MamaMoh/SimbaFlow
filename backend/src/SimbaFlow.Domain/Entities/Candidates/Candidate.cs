@@ -162,6 +162,7 @@ public class Candidate : BaseEntity
 
     // ──── Navigation ────
     public ICollection<CandidateDocument> Documents { get; set; } = [];
+    public ICollection<CandidateSkill> ExtraSkills { get; set; } = [];
 
     // ──── Computed ────
     public string FullName => string.IsNullOrEmpty(MiddleName)

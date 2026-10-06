@@ -415,6 +415,10 @@ export default function CandidateDetailPage() {
                 candidate.skillChildCare && "Child care",
                 candidate.skillIroning && "Ironing",
                 candidate.skillSewing && "Sewing",
+                candidate.skillArabicCooking && "Arabic cooking",
+                candidate.skillTutoring && "Tutoring",
+                candidate.skillComputer && "Computer",
+                ...(candidate.extraSkills ?? []),
               ]
                 .filter(Boolean)
                 .join(", ") || undefined}

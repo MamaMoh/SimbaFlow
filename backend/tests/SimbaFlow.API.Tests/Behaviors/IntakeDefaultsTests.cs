@@ -1,10 +1,14 @@
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using NSubstitute;
 using SimbaFlow.API.Features.Tenants;
+using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Tenancy;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Persistence;
+using SimbaFlow.Infrastructure.Persistence.Seeds;
 
 namespace SimbaFlow.API.Tests.Behaviors;
 
@@ -93,16 +97,121 @@ public class IntakeDefaultsTests : IDisposable
     [Fact]
     public void TheDtoTheBrowserReadsUsesCamelCaseNames()
     {
-        var dto = JsonSerializer.Serialize(IntakeDefaultsModule.ToDto(new TenantSettings
+        var dto = JsonSerializer.Serialize(IntakeDefaultsModule.ToDto(new AgencyIntakeDefaults
         {
-            Intake = new IntakeDefaults { Gender = "1", Occupation = "NANNY" },
-            Documents = new DocumentSettings { CvTemplate = "layout2" },
-        }));
+            Gender = "1",
+            Occupation = "NANNY",
+            CvTemplate = "layout2",
+        }, []));
 
         dto.Should().Contain("\"gender\":\"1\"");
         dto.Should().Contain("\"occupation\":\"NANNY\"");
         dto.Should().Contain("\"cvTemplate\":\"layout2\"");
         dto.Should().Contain("\"cvTemplates\":");
+        dto.Should().Contain("\"skills\":");
+        dto.Should().Contain("\"cookingLevel\":");
+    }
+
+    [Fact]
+    public void SkillsInTheDtoUseCamelCaseNamesTheCardUnderstands()
+    {
+        var skill = new AgencySkill
+        {
+            Id = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+            Name = "Driving",
+            IsBuiltIn = false,
+            IsDefaultSelected = true,
+            SortOrder = 10,
+        };
+
+        var dto = JsonSerializer.Serialize(IntakeDefaultsModule.ToDto(new AgencyIntakeDefaults(), [skill]));
+
+        dto.Should().Contain("\"name\":\"Driving\"");
+        dto.Should().Contain("\"isDefaultSelected\":true");
+        dto.Should().Contain("\"isBuiltIn\":false");
+        dto.Should().Contain("\"builtInKey\":null");
+    }
+
+    [Fact]
+    public async Task ASaveIsWrittenToTheIntakeDefaultsTableNotTheJsonBlob()
+    {
+        var options = new DbContextOptionsBuilder<TenantDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var db = new TenantDbContext(options, Substitute.For<ICurrentUserService>());
+
+        await AgencyIntakeSeeder.EnsureAsync(db, new TenantSettings
+        {
+            Intake = new IntakeDefaults { Gender = "0", Occupation = "DRIVER" },
+            Documents = new DocumentSettings { CvTemplate = "layout2" },
+        });
+
+        var row = await db.AgencyIntakeDefaults.SingleAsync();
+        row.Gender.Should().Be("0");
+        row.Occupation.Should().Be("DRIVER");
+        row.CvTemplate.Should().Be("layout2");
+
+        var skills = await db.AgencySkills.Where(s => !s.IsDeleted).ToListAsync();
+        skills.Should().HaveCount(BuiltInSkills.All.Count);
+        skills.Should().Contain(s => s.BuiltInKey == BuiltInSkills.Cleaning && s.IsDefaultSelected);
+        skills.Should().Contain(s => s.BuiltInKey == BuiltInSkills.Washing && s.IsDefaultSelected);
+
+        IntakeDefaultsModule.Apply(row, new IntakeDefaultsBody
+        {
+            Gender = "1",
+            Occupation = "NANNY",
+            Religion = "Muslim",
+            Nationality = "Ethiopia",
+            PassportType = "Official",
+            MaritalStatus = "Married",
+            CountryOfTravel = "Saudi Arabia",
+            ContractPeriod = "2 Years",
+            CookingLevel = "Good",
+            CvTemplate = "layout2",
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var reloaded = await db.AgencyIntakeDefaults.SingleAsync();
+        reloaded.Gender.Should().Be("1");
+        reloaded.Occupation.Should().Be("NANNY");
+        reloaded.Religion.Should().Be("Muslim");
+        reloaded.CookingLevel.Should().Be("Good");
+        reloaded.CvTemplate.Should().Be("layout2");
+    }
+
+    [Fact]
+    public async Task CustomSkillsCanBeAddedAndTickedAsDefault()
+    {
+        var options = new DbContextOptionsBuilder<TenantDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var db = new TenantDbContext(options, Substitute.For<ICurrentUserService>());
+        await AgencyIntakeSeeder.EnsureAsync(db, new TenantSettings());
+
+        var existing = await db.AgencySkills.Where(s => !s.IsDeleted).ToListAsync();
+        var payload = existing.Select((s, i) => new IntakeSkillBody
+        {
+            Id = s.Id,
+            Name = s.Name,
+            IsDefaultSelected = s.BuiltInKey == BuiltInSkills.Cleaning,
+            SortOrder = i,
+        }).ToList();
+        payload.Add(new IntakeSkillBody
+        {
+            Name = "Driving",
+            IsDefaultSelected = true,
+            SortOrder = payload.Count,
+        });
+
+        IntakeDefaultsModule.ApplySkills(db, existing, payload);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var skills = await db.AgencySkills.Where(s => !s.IsDeleted).OrderBy(s => s.SortOrder).ToListAsync();
+        skills.Should().Contain(s => s.Name == "Driving" && s.IsDefaultSelected && !s.IsBuiltIn);
+        skills.Single(s => s.BuiltInKey == BuiltInSkills.Cleaning).IsDefaultSelected.Should().BeTrue();
+        skills.Single(s => s.BuiltInKey == BuiltInSkills.Washing).IsDefaultSelected.Should().BeFalse();
     }
 
     [Fact]

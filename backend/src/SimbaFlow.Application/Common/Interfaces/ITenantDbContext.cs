@@ -17,6 +17,11 @@ public interface ITenantDbContext
     // Candidates
     DbSet<Candidate> Candidates { get; }
     DbSet<CandidateDocument> CandidateDocuments { get; }
+    DbSet<CandidateSkill> CandidateSkills { get; }
+
+    // Agency intake defaults (one row per tenant schema)
+    DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults { get; }
+    DbSet<AgencySkill> AgencySkills { get; }
 
     // Workflow
     DbSet<WorkflowDefinition> WorkflowDefinitions { get; }

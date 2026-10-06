@@ -23,6 +23,7 @@ namespace SimbaFlow.API.Tests.Services;
 public class DocumentBrandingServiceTests : IDisposable
 {
     private readonly PlatformDbContext _context;
+    private readonly TenantDbContext _tenant;
     private readonly IFileStorageService _storage = Substitute.For<IFileStorageService>();
     private readonly ICurrentUserService _currentUser = Substitute.For<ICurrentUserService>();
     private readonly Guid _tenantId = Guid.NewGuid();
@@ -39,6 +40,11 @@ public class DocumentBrandingServiceTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _context = new PlatformDbContext(options, _currentUser);
+        _tenant = new TenantDbContext(
+            new DbContextOptionsBuilder<TenantDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options,
+            _currentUser);
         _currentUser.TenantId.Returns(_tenantId);
 
         _storage.DownloadAsync("agency/logo.png", Arg.Any<CancellationToken>())
@@ -52,7 +58,7 @@ public class DocumentBrandingServiceTests : IDisposable
     }
 
     private DocumentBrandingService Service() => new(
-        _context, _storage, _currentUser, Substitute.For<ILogger<DocumentBrandingService>>());
+        _context, _tenant, _storage, _currentUser, Substitute.For<ILogger<DocumentBrandingService>>());
 
     private void GivenAgencyLogo(string? path, string? letterhead = null)
     {
@@ -207,5 +213,23 @@ public class DocumentBrandingServiceTests : IDisposable
         (await Service().GetCvTemplateAsync()).Should().Be(CvTemplates.Default);
     }
 
-    public void Dispose() => _context.Dispose();
+    [Fact]
+    public async Task TheTableLayoutWinsOverTheLegacyJsonBlob()
+    {
+        GivenAgencyLogo(null);
+        _tenant.AgencyIntakeDefaults.Add(new AgencyIntakeDefaults
+        {
+            SingletonKey = 1,
+            CvTemplate = "layout5",
+        });
+        await _tenant.SaveChangesAsync();
+
+        (await Service().GetCvTemplateAsync()).Should().Be("layout5");
+    }
+
+    public void Dispose()
+    {
+        _context.Dispose();
+        _tenant.Dispose();
+    }
 }

@@ -10,17 +10,20 @@ namespace SimbaFlow.Infrastructure.Services.Documents;
 public sealed class DocumentBrandingService : IDocumentBrandingService
 {
     private readonly IPlatformDbContext _platform;
+    private readonly ITenantDbContext _tenant;
     private readonly IFileStorageService _storage;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<DocumentBrandingService> _logger;
 
     public DocumentBrandingService(
         IPlatformDbContext platform,
+        ITenantDbContext tenant,
         IFileStorageService storage,
         ICurrentUserService currentUser,
         ILogger<DocumentBrandingService> logger)
     {
         _platform = platform;
+        _tenant = tenant;
         _storage = storage;
         _currentUser = currentUser;
         _logger = logger;
@@ -65,6 +68,14 @@ public sealed class DocumentBrandingService : IDocumentBrandingService
     {
         if (_currentUser.TenantId is not Guid tenantId)
             return CvTemplates.Default;
+
+        var fromTable = await _tenant.AgencyIntakeDefaults
+            .AsNoTracking()
+            .Where(x => !x.IsDeleted)
+            .Select(x => x.CvTemplate)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(fromTable))
+            return CvTemplates.Normalise(fromTable);
 
         var settings = await _platform.Tenants
             .AsNoTracking()

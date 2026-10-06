@@ -37,7 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import { FormSection } from "@/components/candidates/form-section";
 import { toast } from "sonner";
-import { useIntakeDefaults } from "@/lib/api/intake-defaults";
+import { useIntakeDefaults, type AgencySkill } from "@/lib/api/intake-defaults";
 import { CountrySelect, countryName } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import { Progress } from "@/components/ui/progress";
@@ -120,6 +120,32 @@ const OCCUPATIONS = [
 ] as const;
 
 const LANGUAGE_LEVELS = ["None", "Fair", "Good", "Excellent"] as const;
+
+const BUILTIN_SKILL_FIELDS = {
+  cleaning: "skillCleaning",
+  washing: "skillWashing",
+  cooking: "skillCooking",
+  babysitting: "skillBabysitting",
+  childCare: "skillChildCare",
+  ironing: "skillIroning",
+  sewing: "skillSewing",
+  arabicCooking: "skillArabicCooking",
+  tutoring: "skillTutoring",
+  computer: "skillComputer",
+} as const;
+
+const FALLBACK_SKILLS: AgencySkill[] = [
+  { id: "cleaning", name: "Cleaning", builtInKey: "cleaning", isBuiltIn: true, isDefaultSelected: true, sortOrder: 0 },
+  { id: "washing", name: "Washing", builtInKey: "washing", isBuiltIn: true, isDefaultSelected: true, sortOrder: 1 },
+  { id: "cooking", name: "Cooking", builtInKey: "cooking", isBuiltIn: true, isDefaultSelected: false, sortOrder: 2 },
+  { id: "babysitting", name: "Baby Sitting", builtInKey: "babysitting", isBuiltIn: true, isDefaultSelected: false, sortOrder: 3 },
+  { id: "childCare", name: "Child care", builtInKey: "childCare", isBuiltIn: true, isDefaultSelected: false, sortOrder: 4 },
+  { id: "ironing", name: "Ironing", builtInKey: "ironing", isBuiltIn: true, isDefaultSelected: false, sortOrder: 5 },
+  { id: "sewing", name: "Sewing", builtInKey: "sewing", isBuiltIn: true, isDefaultSelected: false, sortOrder: 6 },
+  { id: "arabicCooking", name: "Arabic cooking", builtInKey: "arabicCooking", isBuiltIn: true, isDefaultSelected: false, sortOrder: 7 },
+  { id: "tutoring", name: "Tutoring", builtInKey: "tutoring", isBuiltIn: true, isDefaultSelected: false, sortOrder: 8 },
+  { id: "computer", name: "Computer", builtInKey: "computer", isBuiltIn: true, isDefaultSelected: false, sortOrder: 9 },
+];
 
 /** Preset options plus the current value if it isn't already one — prevents a saved value that
  *  predates the preset list from showing as an empty dropdown on edit. */
@@ -301,6 +327,7 @@ const registerCandidateSchema = z.object({
   skillComputer: z.boolean().optional(),
   skillBabysitting: z.boolean().optional(),
   skillChildCare: z.boolean().optional(),
+  extraSkills: z.array(z.object({ name: z.string(), selected: z.boolean() })).optional(),
   visaNumber: opt,
   visaType: opt,
   sponsorName: opt,
@@ -389,6 +416,7 @@ const defaults: Partial<RegisterCandidateForm> = {
   skillComputer: false,
   skillBabysitting: false,
   skillChildCare: false,
+  extraSkills: [],
 };
 
 function formatApiError(result: {
@@ -715,6 +743,7 @@ export function CandidateApplicationForm({
     resolver: zodResolver(registerCandidateSchema),
     defaultValues: defaults,
   });
+  const skillsTouched = useRef(false);
 
   /**
    * The whole Latin name is typed in one box, the way a passport prints it, and split when saving:
@@ -877,6 +906,10 @@ export function CandidateApplicationForm({
       skillComputer: !!d.skillComputer,
       skillBabysitting: !!d.skillBabysitting,
       skillChildCare: !!d.skillChildCare,
+      extraSkills: (Array.isArray(d.extraSkills) ? d.extraSkills : [])
+        .map((name: unknown) => String(name ?? "").trim())
+        .filter(Boolean)
+        .map((name: string) => ({ name, selected: true })),
       visaNumber: d.visaNumber || "",
       visaType: matchOption(VISA_TYPES, d.visaType) || "Work",
       sponsorName: d.sponsorName || "",
@@ -952,10 +985,10 @@ export function CandidateApplicationForm({
   // Re-applied when a later SWR payload actually has values: visiting settings caches an empty
   // GET, and a one-shot ref then ignored the real save. Empty agency values must not wipe the
   // form's own starting points (HOUSE MAID, Single, Ethiopia, …).
-  const { defaults: agencyDefaults } = useIntakeDefaults(!isEdit);
+  const { defaults: agencyDefaults } = useIntakeDefaults(true);
   useEffect(() => {
     if (isEdit || !agencyDefaults) return;
-    const stillAt = (field: "gender" | "occupation" | "religion" | "nationality" | "passportType" | "maritalStatus" | "contractPeriod" | "countryOfTravel", formDefault: string) => {
+    const stillAt = (field: "gender" | "occupation" | "religion" | "nationality" | "passportType" | "maritalStatus" | "contractPeriod" | "countryOfTravel" | "cookingLevel", formDefault: string) => {
       const shown = getValues(field) || "";
       return !shown || shown === formDefault;
     };
@@ -986,6 +1019,23 @@ export function CandidateApplicationForm({
       const destination = countryName(agencyDefaults.countryOfTravel) || agencyDefaults.countryOfTravel;
       setValue("countryOfTravel", destination);
       setValue("country", destination);
+    }
+    if (agencyDefaults.cookingLevel && stillAt("cookingLevel", defaults.cookingLevel ?? "")) {
+      setValue("cookingLevel", matchOption(LANGUAGE_LEVELS, agencyDefaults.cookingLevel));
+    }
+    if (!skillsTouched.current && agencyDefaults.skills?.length) {
+      const extra: { name: string; selected: boolean }[] = [];
+      for (const skill of agencyDefaults.skills) {
+        const field = skill.builtInKey
+          ? BUILTIN_SKILL_FIELDS[skill.builtInKey as keyof typeof BUILTIN_SKILL_FIELDS]
+          : undefined;
+        if (field) {
+          setValue(field, skill.isDefaultSelected);
+        } else {
+          extra.push({ name: skill.name, selected: skill.isDefaultSelected });
+        }
+      }
+      setValue("extraSkills", extra);
     }
   }, [agencyDefaults, isEdit, setValue, getValues]);
 
@@ -1092,6 +1142,7 @@ export function CandidateApplicationForm({
     skillComputer: !!data.skillComputer,
     skillBabysitting: !!data.skillBabysitting,
     skillChildCare: !!data.skillChildCare,
+    extraSkills: (data.extraSkills ?? []).filter((s) => s.selected).map((s) => ({ name: s.name, selected: true })),
     visaNumber: data.visaNumber || null,
     visaType: data.visaType || "Work",
     sponsorName: data.sponsorName || null,
@@ -2100,68 +2151,53 @@ export function CandidateApplicationForm({
                 </div>
               </div>
               <div className="flex flex-wrap gap-4 pt-1">
-                <SkillCheck
-                  id="skillCleaning"
-                  label="Cleaning"
-                  checked={!!watch("skillCleaning")}
-                  onChange={(v) => setValue("skillCleaning", v)}
-                />
-                <SkillCheck
-                  id="skillWashing"
-                  label="Washing"
-                  checked={!!watch("skillWashing")}
-                  onChange={(v) => setValue("skillWashing", v)}
-                />
-                <SkillCheck
-                  id="skillCooking"
-                  label="Cooking"
-                  checked={!!watch("skillCooking")}
-                  onChange={(v) => setValue("skillCooking", v)}
-                />
-                <SkillCheck
-                  id="skillBabysitting"
-                  label="Baby Sitting"
-                  checked={!!watch("skillBabysitting")}
-                  onChange={(v) => setValue("skillBabysitting", v)}
-                />
-                <SkillCheck
-                  id="skillChildCare"
-                  label="Child care"
-                  checked={!!watch("skillChildCare")}
-                  onChange={(v) => setValue("skillChildCare", v)}
-                />
-                <SkillCheck
-                  id="skillIroning"
-                  label="Ironing"
-                  checked={!!watch("skillIroning")}
-                  onChange={(v) => setValue("skillIroning", v)}
-                />
-                <SkillCheck
-                  id="skillSewing"
-                  label="Sewing"
-                  checked={!!watch("skillSewing")}
-                  onChange={(v) => setValue("skillSewing", v)}
-                />
-                {/* The partner CV forms list these three alongside the rest; without them those
-                    rows print blank on every candidate, which reads as "cannot" not "not asked". */}
-                <SkillCheck
-                  id="skillArabicCooking"
-                  label="Arabic cooking"
-                  checked={!!watch("skillArabicCooking")}
-                  onChange={(v) => setValue("skillArabicCooking", v)}
-                />
-                <SkillCheck
-                  id="skillTutoring"
-                  label="Tutoring"
-                  checked={!!watch("skillTutoring")}
-                  onChange={(v) => setValue("skillTutoring", v)}
-                />
-                <SkillCheck
-                  id="skillComputer"
-                  label="Computer"
-                  checked={!!watch("skillComputer")}
-                  onChange={(v) => setValue("skillComputer", v)}
-                />
+                {(() => {
+                  const catalog = agencyDefaults?.skills?.length ? agencyDefaults.skills : FALLBACK_SKILLS;
+                  const extras = watch("extraSkills") ?? [];
+                  const extraOnly = extras.filter(
+                    (e) => !catalog.some((s) => s.name.toLowerCase() === e.name.toLowerCase()),
+                  );
+                  const items = [
+                    ...catalog,
+                    ...extraOnly.map((e, i) => ({
+                      id: `extra-${e.name}`,
+                      name: e.name,
+                      builtInKey: null as string | null,
+                      isBuiltIn: false,
+                      isDefaultSelected: false,
+                      sortOrder: 1000 + i,
+                    })),
+                  ];
+                  return items.map((skill) => {
+                    const field = skill.builtInKey
+                      ? BUILTIN_SKILL_FIELDS[skill.builtInKey as keyof typeof BUILTIN_SKILL_FIELDS]
+                      : undefined;
+                    const extra = extras.find(
+                      (s) => s.name.toLowerCase() === skill.name.toLowerCase(),
+                    );
+                    const checked = field ? !!watch(field) : !!extra?.selected;
+                    return (
+                      <SkillCheck
+                        key={skill.id || skill.name}
+                        id={`skill-${skill.id || skill.name}`}
+                        label={skill.name}
+                        checked={checked}
+                        onChange={(v) => {
+                          skillsTouched.current = true;
+                          if (field) {
+                            setValue(field, v);
+                            return;
+                          }
+                          const current = watch("extraSkills") ?? [];
+                          const rest = current.filter(
+                            (s) => s.name.toLowerCase() !== skill.name.toLowerCase(),
+                          );
+                          setValue("extraSkills", [...rest, { name: skill.name, selected: v }]);
+                        }}
+                      />
+                    );
+                  });
+                })()}
               </div>
               <div className="space-y-1.5">
                 <Label>Remark</Label>

@@ -84,6 +84,7 @@ public class TenantSchemaMigrator : ITenantSchemaMigrator
         try
         {
             await context.Database.MigrateAsync(cancellationToken);
+            await SeedIntakeDefaultsAsync(context, schemaName, cancellationToken);
         }
         catch (PostgresException ex) when (ex.SqlState == "42P07")
         {
@@ -102,9 +103,24 @@ public class TenantSchemaMigrator : ITenantSchemaMigrator
                 schemaName);
             await ResetSchemaAsync(csb.ConnectionString, schemaName, cancellationToken);
             await context.Database.MigrateAsync(cancellationToken);
+            await SeedIntakeDefaultsAsync(context, schemaName, cancellationToken);
         }
 
         _logger.LogInformation("Applied tenant migrations to schema {Schema}", schemaName);
+    }
+
+    private async Task SeedIntakeDefaultsAsync(
+        TenantDbContext context,
+        string schemaName,
+        CancellationToken cancellationToken)
+    {
+        var legacy = await _platform.Tenants
+            .AsNoTracking()
+            .Where(t => t.SchemaName == schemaName && !t.IsDeleted)
+            .Select(t => t.Settings)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        await Seeds.AgencyIntakeSeeder.EnsureAsync(context, legacy, cancellationToken);
     }
 
     private static async Task<bool> TableExistsAsync(

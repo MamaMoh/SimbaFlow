@@ -36,6 +36,11 @@ public class TenantDbContext : DbContext, ITenantDbContext
     // Candidates
     public DbSet<Candidate> Candidates => Set<Candidate>();
     public DbSet<CandidateDocument> CandidateDocuments => Set<CandidateDocument>();
+    public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
+
+    // Agency intake defaults (one row per tenant schema)
+    public DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults => Set<AgencyIntakeDefaults>();
+    public DbSet<AgencySkill> AgencySkills => Set<AgencySkill>();
 
     // Workflow
     public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
@@ -109,6 +114,47 @@ public class TenantDbContext : DbContext, ITenantDbContext
         {
             entity.ToTable("candidate_documents");
             entity.HasIndex(d => d.CandidateId);
+        });
+
+        modelBuilder.Entity<CandidateSkill>(entity =>
+        {
+            entity.ToTable("candidate_skills");
+            entity.HasIndex(s => new { s.CandidateId, s.Name })
+                .IsUnique()
+                .HasFilter("is_deleted = FALSE");
+            entity.Property(s => s.Name).HasMaxLength(128);
+            entity.HasOne(s => s.Candidate)
+                .WithMany(c => c.ExtraSkills)
+                .HasForeignKey(s => s.CandidateId);
+        });
+
+        modelBuilder.Entity<AgencyIntakeDefaults>(entity =>
+        {
+            entity.ToTable("agency_intake_defaults");
+            entity.HasIndex(x => x.SingletonKey).IsUnique();
+            entity.Property(x => x.Gender).HasMaxLength(8);
+            entity.Property(x => x.Occupation).HasMaxLength(128);
+            entity.Property(x => x.Religion).HasMaxLength(64);
+            entity.Property(x => x.Nationality).HasMaxLength(128);
+            entity.Property(x => x.PassportType).HasMaxLength(64);
+            entity.Property(x => x.MaritalStatus).HasMaxLength(64);
+            entity.Property(x => x.CountryOfTravel).HasMaxLength(128);
+            entity.Property(x => x.ContractPeriod).HasMaxLength(64);
+            entity.Property(x => x.CvTemplate).HasMaxLength(32);
+            entity.Property(x => x.CookingLevel).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<AgencySkill>(entity =>
+        {
+            entity.ToTable("agency_skills");
+            entity.HasIndex(s => s.Name)
+                .IsUnique()
+                .HasFilter("is_deleted = FALSE");
+            entity.HasIndex(s => s.BuiltInKey)
+                .IsUnique()
+                .HasFilter("built_in_key IS NOT NULL AND is_deleted = FALSE");
+            entity.Property(s => s.Name).HasMaxLength(128);
+            entity.Property(s => s.BuiltInKey).HasMaxLength(64);
         });
 
         // Workflow

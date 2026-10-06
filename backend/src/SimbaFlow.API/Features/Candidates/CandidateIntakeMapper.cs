@@ -1,4 +1,5 @@
 using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates;
 
@@ -75,7 +76,10 @@ public record CandidateIntakePayload(
     string? CocCenterName = null,
     string? CertificateNo = null,
     string? CertifiedDate = null,
-    string? MedicalPlace = null);
+    string? MedicalPlace = null,
+    IReadOnlyList<CandidateExtraSkill>? ExtraSkills = null);
+
+public record CandidateExtraSkill(string Name, bool Selected = true);
 
 public static class CandidateIntakeMapper
 {
@@ -125,6 +129,8 @@ public static class CandidateIntakeMapper
             candidate.Complexion = NullIfEmpty(p.Complexion);
         candidate.SkillBabysitting = p.SkillBabysitting;
         candidate.SkillChildCare = p.SkillChildCare;
+        if (p.ExtraSkills is not null)
+            SyncExtraSkills(candidate, p.ExtraSkills);
         candidate.VisaNumber = NullIfEmpty(p.VisaNumber);
         candidate.VisaType = setVisaDefault
             ? (NullIfEmpty(p.VisaType) ?? "Work")
@@ -157,6 +163,37 @@ public static class CandidateIntakeMapper
         candidate.CertificateNo = NullIfEmpty(p.CertificateNo);
         candidate.CertifiedDate = ParseDate(p.CertifiedDate);
         candidate.MedicalPlace = NullIfEmpty(p.MedicalPlace);
+    }
+
+    public static void SyncExtraSkills(Candidate candidate, IReadOnlyList<CandidateExtraSkill> extras)
+    {
+        var selected = extras
+            .Where(s => s.Selected && !string.IsNullOrWhiteSpace(s.Name))
+            .Select(s => s.Name.Trim())
+            .Where(name => !BuiltInSkills.IsBuiltInName(name))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var existing = candidate.ExtraSkills.ToList();
+        foreach (var row in existing.Where(s => !s.IsDeleted))
+        {
+            if (!selected.Any(name => name.Equals(row.Name, StringComparison.OrdinalIgnoreCase)))
+                row.IsDeleted = true;
+        }
+
+        foreach (var name in selected)
+        {
+            var row = existing.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (row is null)
+            {
+                candidate.ExtraSkills.Add(new CandidateSkill { Name = name, IsSelected = true });
+            }
+            else
+            {
+                row.IsDeleted = false;
+                row.IsSelected = true;
+            }
+        }
     }
 
     private static string? NullIfEmpty(string? value) =>

@@ -53,6 +53,7 @@ export interface Candidate {
   complexion?: string;
   skillBabysitting?: boolean;
   skillChildCare?: boolean;
+  extraSkills?: string[];
   countryOfTravel?: string;
   partnerName?: string;
   partnerAgencyId?: string | null;
