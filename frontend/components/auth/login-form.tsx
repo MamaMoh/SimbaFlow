@@ -354,7 +354,7 @@ setIsSubmitting(false);
                 onClick={() => setShowForgotPassword(true)}
                 disabled={isSubmitting}
               >
-                Forgot Password?
+                Forgot password?
               </Button>
             </div>
           </form>

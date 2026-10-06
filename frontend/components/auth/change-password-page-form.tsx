@@ -318,7 +318,7 @@ export function ChangePasswordPageForm() {
                       {/* Strength Slider */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground font-medium">Adjust Strength:</span>
+                          <span className="text-muted-foreground font-medium">Adjust strength:</span>
                           <span className={getPasswordStrengthTextColor(samplePasswordStrength.level)}>
                             {targetStrength[0]}%
                           </span>
@@ -361,7 +361,7 @@ export function ChangePasswordPageForm() {
                           </Button>
                         </div>
                         {/* <div className="flex items-center justify-between text-xs">
-                          <span className="text-blue-700">Current Strength:</span>
+                          <span className="text-blue-700">Current strength:</span>
                           <span className={getPasswordStrengthTextColor(samplePasswordStrength.level)}>
                             {getPasswordStrengthLabel(samplePasswordStrength.level)} ({samplePasswordStrength.percentage}%)
                           </span>
@@ -542,7 +542,7 @@ export function ChangePasswordPageForm() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm New Password</FormLabel>
+                    <FormLabel>Confirm new password</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
                         <div className="relative">
@@ -581,7 +581,7 @@ export function ChangePasswordPageForm() {
                         {confirmPasswordValue && confirmPasswordValue === newPasswordValue && confirmPasswordStrength && (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Confirmed Password Strength</span>
+                              <span className="text-muted-foreground">Confirmed password strength</span>
                               <span className={getPasswordStrengthTextColor(confirmPasswordStrength.level)}>
                                 {getPasswordStrengthLabel(confirmPasswordStrength.level)}
                               </span>

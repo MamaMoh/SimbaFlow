@@ -203,7 +203,7 @@ export function DataTableToolbar<TData>({
               <div className="flex items-center gap-2.5 pl-3 border-l border-border/50">
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Calendar className="h-3.5 w-3.5" />
-                  <span className="font-medium">Date Range:</span>
+                  <span className="font-medium">Date range:</span>
                 </div>
                 {searchableColumns.map((column) => {
                   const columnId = String(column.id);

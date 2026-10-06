@@ -179,7 +179,7 @@ export function ChangePasswordForm({
               name="confirmPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Confirm New Password</FormLabel>
+                  <FormLabel>Confirm new password</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
