@@ -170,17 +170,14 @@ export default function RolesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Roles & Permissions"
-        description="Define custom roles and assign permissions for your agency"
-      />
+      <PageHeader title="Roles & permissions" />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
             rowClickOpensActions
           table={table}
           enableGlobalFilter={true}
-          searchPlaceholder="Search roles..."
+          searchPlaceholder="Search roles…"
           paginated={true}
           toolbarEndActions={
             canManage ? (

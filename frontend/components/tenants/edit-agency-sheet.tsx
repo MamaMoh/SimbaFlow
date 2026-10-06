@@ -110,7 +110,7 @@ export function EditAgencySheet({ agencyId, open, onOpenChange, onUpdated }: Edi
               </h3>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Agency Name <span className="text-red-500">*</span></Label>
+                  <Label>Agency name <span className="text-red-500">*</span></Label>
                   <Input placeholder="e.g. Ethio Star Labour Export" {...register("name")} />
                   {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
                 </div>
@@ -120,12 +120,12 @@ export function EditAgencySheet({ agencyId, open, onOpenChange, onUpdated }: Edi
                   <p className="text-xs text-muted-foreground">Used for database schema. Cannot be changed later.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Contact Email <span className="text-red-500">*</span></Label>
+                  <Label>Contact email <span className="text-red-500">*</span></Label>
                   <Input type="email" placeholder="agency@example.com" {...register("contactEmail")} />
                   {errors.contactEmail && <p className="text-xs text-destructive mt-1">{errors.contactEmail.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Contact Phone</Label>
+                  <Label>Contact phone</Label>
                   <PhoneInputField value={watch("contactPhone") || ""} onChange={(val) => setValue("contactPhone", val)} />
                 </div>
               </div>
@@ -145,16 +145,16 @@ export function EditAgencySheet({ agencyId, open, onOpenChange, onUpdated }: Edi
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label>First Name</Label>
+                    <Label>First name</Label>
                     <Input value={data?.data?.ownerFirstName || "—"} disabled className="bg-muted" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Last Name</Label>
+                    <Label>Last name</Label>
                     <Input value={data?.data?.ownerLastName || "—"} disabled className="bg-muted" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Admin Email</Label>
+                  <Label>Admin email</Label>
                   <Input value={data?.data?.ownerEmail || "—"} disabled className="bg-muted" />
                   <p className="text-xs text-muted-foreground">This is their login username.</p>
                 </div>
@@ -171,12 +171,12 @@ export function EditAgencySheet({ agencyId, open, onOpenChange, onUpdated }: Edi
               </h3>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Max Users</Label>
+                  <Label>Max users</Label>
                   <Input type="number" placeholder="50" {...register("maxUsers", { valueAsNumber: true })} />
                   <p className="text-xs text-muted-foreground">Maximum number of user accounts for this agency.</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Schema Name</Label>
+                  <Label>Schema name</Label>
                   <Input value={data?.data?.schemaName || ""} disabled className="bg-muted font-mono text-sm" />
                   <p className="text-xs text-muted-foreground">Database schema. Cannot be changed.</p>
                 </div>

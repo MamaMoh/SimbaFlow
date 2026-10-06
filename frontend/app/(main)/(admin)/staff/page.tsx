@@ -247,7 +247,7 @@ export default function StaffPage() {
   if (!permsLoading && !canView) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Users & Staff" description="Manage system users, roles, and access" />
+        <PageHeader title="Staff" />
         <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
           You do not have permission to view user accounts.
         </div>
@@ -257,17 +257,14 @@ export default function StaffPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Users & Staff"
-        description="Manage system users, roles, and access"
-      />
+      <PageHeader title="Staff" />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
             rowClickOpensActions
           table={table}
           enableGlobalFilter={true}
-          searchPlaceholder="Search users..."
+          searchPlaceholder="Search users…"
           paginated={true}
           toolbarEndActions={
             canManage ? (

@@ -127,7 +127,7 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
               </h3>
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label>Role Name <span className="text-red-500">*</span></Label>
+                  <Label>Role name <span className="text-red-500">*</span></Label>
                   <Input placeholder="e.g. Embassy Officer" {...register("name")} />
                   {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
                 </div>

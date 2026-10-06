@@ -16,11 +16,11 @@ export default function Loading() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-xl" />
+          <Skeleton key={i} className="h-24 rounded-lg" />
         ))}
       </div>
 
-      <div className="rounded-xl border p-4">
+      <div className="rounded-lg border p-4">
         <div className="flex items-center justify-between gap-4">
           <Skeleton className="h-9 w-64" />
           <Skeleton className="h-9 w-32" />

@@ -32,12 +32,10 @@ export function TrendChart({
   isLoading?: boolean;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm">
+    <div className="rounded-lg border bg-card p-5 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-base font-semibold">Intake & outcomes</h2>
-        <p className="text-sm text-muted-foreground">
-          Registrations, commissions and exceptions over the last 12 months
-        </p>
+        <h2 className="text-sm font-semibold">Intake & outcomes</h2>
+        <p className="text-xs text-muted-foreground">Last 12 months</p>
       </div>
 
       {isLoading ? (

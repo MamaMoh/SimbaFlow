@@ -150,7 +150,7 @@ export default function LmisBoardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="LMIS"
-        description={<>Insurance &amp; milestones · {totalCount} candidate{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <Input
             className="max-w-xs"

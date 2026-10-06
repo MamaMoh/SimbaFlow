@@ -137,7 +137,7 @@ export default function DepartureBoardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Departures"
-        description={<>Countdown by flight date · {totalCount} candidate{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">

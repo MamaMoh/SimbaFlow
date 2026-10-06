@@ -147,8 +147,7 @@ export function MirrorRuleEditor({
           <div className="space-y-2">
             <Label>Conditions</Label>
             <p className="text-xs text-muted-foreground">
-              The candidate appears on the second board once these are met. Leave empty to
-              mirror everyone. Values are matched ignoring case.
+              Leave empty to mirror everyone. Values are matched ignoring case.
             </p>
             <ConditionBuilder value={conditions} onChange={setConditions} />
           </div>

@@ -14,7 +14,7 @@ import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { CreatePartnerSheet } from "@/components/partners/create-partner-sheet";
 import { usePartners, type PartnerRow } from "@/lib/api/partners";
@@ -153,11 +153,7 @@ export default function AdminPartnersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Partner catalog"
-        description={<>Shared catalog of foreign partner agencies. Agencies link from{" "}
-<a href="/partners" className="underline underline-offset-2">
-Partners
-</a>
-.</>}
+        description="Shared by every agency on the platform"
         actions={
           <Button
             size="sm"
@@ -168,12 +164,6 @@ Partners
             Add partner
           </Button>
         }
-      />
-
-      <PageAlert
-        variant="info"
-        title="Platform catalog"
-        description="Every agency registers its own partners from the Partners page; they all land here. This view is for platform oversight — check before adding a duplicate."
       />
 
       {error ? (

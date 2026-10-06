@@ -176,7 +176,7 @@ export default function EmbassyBoardPage() {
     try {
       const blob = await embassyApi.exportTasheerList(selectedIds);
       download(blob, `tasheer-list-${new Date().toISOString().slice(0, 10)}.xlsx`);
-      toast.success(`${selectedIds.length} candidate(s) exported`);
+      toast.success(`${selectedIds.length} candidate${selectedIds.length === 1 ? "" : "s"} exported`);
       setRowSelection({});
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Export failed");
@@ -193,7 +193,7 @@ export default function EmbassyBoardPage() {
       const blob = await generateBulkVisaForms(selectedIds);
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
-      toast.success(`${selectedIds.length} enjaze form(s) ready to print`);
+      toast.success(`${selectedIds.length} enjaze form${selectedIds.length === 1 ? "" : "s"} ready to print`);
       setRowSelection({});
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build the enjaze forms");
@@ -217,7 +217,7 @@ export default function EmbassyBoardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Embassy"
-        description={<>Medical, Tasheer &amp; Visa · {totalCount} candidate{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <Input
             className="max-w-xs"

@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { AccessDenied, PageAlert } from "@/components/ui/page-alert";
-import { Button } from "@/components/ui/button";
 import { useAccounts } from "@/lib/api/accounting";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { Loader2 } from "lucide-react";
@@ -30,26 +28,7 @@ export default function AccountingPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Accounting"
-        description="Chart of accounts, commissions and exchange rates."
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button asChild size="sm" variant="outline" className="h-8">
-              <Link href="/finance/rates">Exchange rates</Link>
-            </Button>
-            <Button asChild size="sm" variant="outline" className="h-8">
-              <Link href="/workflow/commissions">Commissions</Link>
-            </Button>
-          </div>
-        }
-      />
-
-      <PageAlert
-        variant="info"
-        title="Payment journals"
-        description="Each payment posts to cash and revenue."
-      />
+      <PageHeader title="Accounting" />
 
       {error ? (
         <PageAlert
@@ -60,11 +39,11 @@ export default function AccountingPage() {
       ) : null}
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
-        <h2 className="mb-3 text-lg font-medium">Chart of accounts</h2>
+        <h2 className="mb-3 text-sm font-semibold">Chart of accounts</h2>
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : accounts.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No accounts seeded yet.</p>
+          <p className="text-sm text-muted-foreground">No accounts yet.</p>
         ) : (
           <Table>
             <TableHeader>
@@ -92,9 +71,6 @@ export default function AccountingPage() {
             </TableBody>
           </Table>
         )}
-        <p className="mt-3 text-xs text-muted-foreground">
-          Seeded defaults include Cash/Bank (1100) and Commission Revenue (4100).
-        </p>
       </div>
     </div>
   );

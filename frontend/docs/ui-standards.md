@@ -11,6 +11,40 @@ tables, status colors, headers, or form layouts.
 - Domain helpers: `commissionTone`, `exceptionTone`, `tenantTone`, `remainingDays`, `statusTone`.
 - Never write `bg-green-*/bg-red-*` for a status inline. Add/adjust the mapping in `status.ts` instead.
 
+## Words on screen
+- **One name per destination.** A page's title is the sidebar label that opens it, spelled the
+  same way. "Dashboard" in the sidebar must not open a page headed "Command center".
+- **Sentence case** everywhere: titles, nav labels, headings, buttons, form labels. Proper nouns
+  and acronyms keep their capitals (Embassy, LMIS, Tasheer, ETB, Visa No.).
+- **A page description must earn its place.** Write one only when it carries something the title
+  cannot — which record this is, a date, a status, the stage's own configured description. Never
+  a restatement: the sidebar already said where we are, and a second sentence saying it again is
+  noise on every page, forever.
+- **Counts are numbers, not sentences.** `<PageHeader count={total} />`, not
+  `description="Medical, Tasheer & Visa · 142 candidates"`.
+- **No `(s)`.** The count is in hand, so the word agrees with it:
+  `${n} item${n === 1 ? "" : "s"}`.
+- **One line for an empty state**, and no banner that only describes the page you are looking at.
+  Keep an alert when it is actionable (an error, a blocked transition, an open dispute).
+- **Explain the constraint, not the feature.** "PNG or JPEG, up to 2MB" earns its place; why the
+  feature exists belongs in these docs.
+
+## Type scale
+Four sizes, and nothing else:
+- Page title — `text-xl font-semibold tracking-tight` (what `PageHeader` renders; a detail page
+  that rolls its own header uses the same).
+- Section heading inside a card — `text-sm font-semibold`.
+- Body / field text — `text-sm`.
+- Help, hints, tile labels — `text-xs text-muted-foreground`.
+A number read off a tile is `text-2xl font-semibold tabular-nums`.
+
+## Cards and tiles
+- One radius for every content surface: **`rounded-lg`**. The standard card is
+  `rounded-lg border bg-card p-4 shadow-sm`.
+- One number on a card is `<StatTile>` (`components/ui/stat-tile.tsx`) — label, value, optional
+  one-line detail, optional icon, `tone` for a number that is bad news. Do not hand-roll another:
+  there were five, and the label sat above the value on one page and below it on the next.
+
 ## Page layout
 - Top of every page: `<PageHeader title description actions />` (`components/ui/page-header.tsx`).
   Title left, **primary action button on the right**. Page content below in a `flex flex-col gap-6`.

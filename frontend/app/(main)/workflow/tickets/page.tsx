@@ -125,7 +125,7 @@ export default function TicketBoardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Tickets"
-        description={<>Book flights · {totalCount} candidate{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <Input
             className="max-w-xs"

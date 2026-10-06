@@ -44,8 +44,7 @@ export default function OverviewPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Command center"
-        description="Agency pipeline, performance and what needs attention today"
+        title="Dashboard"
         actions={
           <Link
             href="/reports"

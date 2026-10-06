@@ -24,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
 import { ActionButtonBar } from "@/components/workflow/action-button-bar";
 import { DocumentUploader } from "@/components/candidates/document-uploader";
@@ -201,7 +200,7 @@ export default function CandidateDetailPage() {
               {/* Names can be very long — clamp to two lines, full value on hover. */}
               <h1
                 title={fullName}
-                className="line-clamp-2 break-words text-xl font-semibold tracking-tight text-foreground md:text-2xl"
+                className="line-clamp-2 break-words text-xl font-semibold tracking-tight text-foreground"
               >
                 {fullName}
               </h1>
@@ -393,7 +392,7 @@ export default function CandidateDetailPage() {
               label="Period"
               value={
                 candidate.experienceAbroadYears != null
-                  ? `${candidate.experienceAbroadYears} Year(s)`
+                  ? `${candidate.experienceAbroadYears} year${candidate.experienceAbroadYears === 1 ? "" : "s"}`
                   : undefined
               }
             />
@@ -477,7 +476,7 @@ export default function CandidateDetailPage() {
         <TabsContent value="documents" className="mt-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
             {hasPermission("candidate.update") && (
-              <div className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="rounded-lg border bg-card p-4 shadow-sm">
                 <div className="mb-3 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <h2 className="text-sm font-semibold">Upload</h2>
@@ -488,7 +487,7 @@ export default function CandidateDetailPage() {
                 />
               </div>
             )}
-            <div className="rounded-xl border bg-card p-4 shadow-sm min-h-[220px]">
+            <div className="rounded-lg border bg-card p-4 shadow-sm min-h-[220px]">
               <h2 className="mb-3 text-sm font-semibold">Files</h2>
               <DocumentList documents={documents} />
             </div>
@@ -496,20 +495,13 @@ export default function CandidateDetailPage() {
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
-          <div className="rounded-xl border bg-card p-5 shadow-sm">
+          <div className="rounded-lg border bg-card p-5 shadow-sm">
             <CandidateTimeline events={events} />
           </div>
         </TabsContent>
 
         <TabsContent value="actions" className="mt-4">
-          <div className="rounded-xl border bg-card p-5 shadow-sm space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold">Workflow transitions</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Move this candidate to the next stage when requirements are met.
-              </p>
-            </div>
-            <Separator />
+          <div className="rounded-lg border bg-card p-5 shadow-sm">
             {hasPermission("workflow.execute") || hasPermission("workflow.view") ? (
               <ActionButtonBar
                 candidateId={candidate.id}

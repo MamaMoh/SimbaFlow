@@ -394,7 +394,7 @@ export function ChangePasswordPageForm() {
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current Password</FormLabel>
+                    <FormLabel>Current password</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
@@ -430,7 +430,7 @@ export function ChangePasswordPageForm() {
                 name="newPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New Password</FormLabel>
+                    <FormLabel>New password</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
                         <div className="relative">
@@ -465,7 +465,7 @@ export function ChangePasswordPageForm() {
                         {newPasswordValue && (
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">Password Strength</span>
+                              <span className="text-muted-foreground">Password strength</span>
                               <span className={getPasswordStrengthTextColor(newPasswordStrength.level)}>
                                 {getPasswordStrengthLabel(newPasswordStrength.level)}
                               </span>

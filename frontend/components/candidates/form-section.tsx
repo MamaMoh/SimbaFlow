@@ -35,7 +35,7 @@ export function FormSection({
   return (
     <section
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-white shadow-sm",
+        "rounded-lg border border-slate-200/90 bg-white shadow-sm",
         className
       )}
     >

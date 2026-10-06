@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Ban, CheckCircle2, FileText, Loader2, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { StatTile } from "@/components/ui/stat-tile";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,17 +90,14 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Subscriptions"
-        description="What each agency pays, when it is next due, and whether they can use the system."
-      />
+      <PageHeader title="Subscriptions" />
 
       {error ? (
         <LoadError message="Could not load subscriptions" onRetry={() => mutate()} />
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+        <StatTile
           label="Agencies"
           value={String(totals.agencies)}
           detail={
@@ -109,18 +107,18 @@ export default function SubscriptionsPage() {
           }
           tone={totals.suspended > 0 ? "warn" : "plain"}
         />
-        <StatCard
+        <StatTile
           label="Monthly recurring"
           value={money(Math.round(totals.recurring), totals.currency)}
           detail="Yearly plans counted per month"
         />
-        <StatCard
+        <StatTile
           label="Unpaid invoices"
           value={String(totals.unpaid)}
           detail={totals.unpaid === 0 ? "Nothing outstanding" : "Across all agencies"}
           tone={totals.unpaid > 0 ? "warn" : "plain"}
         />
-        <StatCard
+        <StatTile
           label="Needs attention"
           value={String(totals.overdue + totals.dueSoon)}
           detail={
@@ -250,32 +248,6 @@ export default function SubscriptionsPage() {
 
       <PlanDialog row={editing} onClose={() => setEditing(null)} onSaved={() => void mutate()} />
       <InvoiceDialog row={invoicing} onClose={() => setInvoicing(null)} onSaved={() => void mutate()} />
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  detail,
-  tone = "plain",
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone?: "plain" | "warn" | "bad";
-}) {
-  return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p
-        className={`mt-1 text-2xl font-semibold tabular-nums ${
-          tone === "bad" ? "text-red-700" : tone === "warn" ? "text-amber-700" : ""
-        }`}
-      >
-        {value}
-      </p>
-      <p className="mt-0.5 text-sm text-muted-foreground">{detail}</p>
     </div>
   );
 }

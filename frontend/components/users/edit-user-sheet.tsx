@@ -206,9 +206,8 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
                   <Label className="flex items-center gap-1.5 text-muted-foreground">
                     <Building2 className="h-3.5 w-3.5" /> Username and agency
                   </Label>
-                  <p className="text-sm text-muted-foreground">
-                    A username is how someone signs in and cannot be changed here. Moving a person
-                    between agencies is done from Agencies.
+                  <p className="text-xs text-muted-foreground">
+                    Neither can be changed here. Move someone between agencies from Agencies.
                   </p>
                 </div>
               </div>
@@ -223,8 +222,7 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
               </h3>
               {user?.isSuperAdmin ? (
                 <p className="text-sm text-muted-foreground">
-                  This is a platform administrator. Their role is managed at platform level and is
-                  not editable from here.
+                  Platform administrator roles are managed at platform level.
                 </p>
               ) : (
                 <div className="space-y-1.5">
@@ -240,8 +238,7 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Changing this changes what they can see and do. It takes effect the next time
-                    they sign in.
+                    Takes effect the next time they sign in.
                   </p>
                 </div>
               )}

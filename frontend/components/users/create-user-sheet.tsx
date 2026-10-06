@@ -183,11 +183,12 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {selectedTenant === PLATFORM_ONLY
-                    ? "Choose a platform role below. An agency role without an agency cannot reach any data."
-                    : "Everyone works inside an agency, apart from the people who run the platform."}
-                </p>
+                {selectedTenant === PLATFORM_ONLY && (
+                  <p className="text-xs text-muted-foreground">
+                    Choose a platform role below. An agency role without an agency cannot reach
+                    any data.
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -203,12 +204,12 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>First Name <span className="text-red-500">*</span></Label>
+                  <Label>First name <span className="text-red-500">*</span></Label>
                   <Input placeholder="First name" {...register("firstName")} />
                   {errors.firstName && <p className="text-xs text-destructive mt-1">{errors.firstName.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Last Name <span className="text-red-500">*</span></Label>
+                  <Label>Last name <span className="text-red-500">*</span></Label>
                   <Input placeholder="Last name" {...register("lastName")} />
                   {errors.lastName && <p className="text-xs text-destructive mt-1">{errors.lastName.message}</p>}
                 </div>
@@ -224,7 +225,7 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
                 {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label>Phone Number</Label>
+                <Label>Phone number</Label>
                 <Input placeholder="Enter phone number" {...register("phoneNumber")} />
               </div>
             </div>

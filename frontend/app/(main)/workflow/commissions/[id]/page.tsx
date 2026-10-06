@@ -79,7 +79,7 @@ export default function CommissionDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">{commission.candidateName}</h1>
+              <h1 className="text-xl font-semibold tracking-tight">{commission.candidateName}</h1>
               <CommissionStatusBadge status={commission.status} />
             </div>
             <p className="text-sm text-muted-foreground">
@@ -122,7 +122,7 @@ export default function CommissionDetailPage({
       </div>
 
       <section className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
-        <h2 className="text-lg font-medium">Fee breakdown</h2>
+        <h2 className="text-sm font-semibold">Fee breakdown</h2>
         <FeeBreakdownEditor
           commissionId={commission.id}
           fees={commission.fees}
@@ -133,7 +133,7 @@ export default function CommissionDetailPage({
 
       <section className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-medium">Payments</h2>
+          <h2 className="text-sm font-semibold">Payments</h2>
           {canPost ? (
             <Button size="sm" className="h-8" onClick={() => setPaymentOpen(true)}>
               Record payment
@@ -191,7 +191,7 @@ export default function CommissionDetailPage({
       </section>
 
       <section className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
-        <h2 className="text-lg font-medium">Disputes</h2>
+        <h2 className="text-sm font-semibold">Disputes</h2>
         <DisputePanel
           commissionId={commission.id}
           disputes={commission.disputes}

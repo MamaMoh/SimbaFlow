@@ -25,7 +25,7 @@ useEffect(() => {
         <div className="text-center space-y-4">
           <div className="h-12 w-12 bg-primary/20 rounded-lg animate-pulse mx-auto" />
           <div>
-            <h3 className="text-lg font-semibold">Logging Out</h3>
+            <h3 className="text-sm font-semibold">Logging out</h3>
             <p className="text-sm text-muted-foreground mt-2">
               Please wait while we securely log you out...
             </p>

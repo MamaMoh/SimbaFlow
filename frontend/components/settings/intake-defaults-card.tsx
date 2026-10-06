@@ -143,7 +143,7 @@ export function IntakeDefaultsCard() {
       <div>
         <h2 className="text-sm font-semibold">New candidate defaults</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Pre-filled on a new registration. Editing an existing candidate is never affected.
+          Pre-filled on a new registration only.
         </p>
       </div>
 
@@ -315,8 +315,7 @@ export function IntakeDefaultsCard() {
         <div>
           <Label>Skills</Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Ticked skills are pre-checked on a new registration. Add names your agency uses that
-            are not already on the list.
+            Ticked skills are pre-checked on a new registration.
           </p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -369,8 +368,7 @@ export function IntakeDefaultsCard() {
         <div>
           <Label>CV layout</Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Which form a generated CV is printed on. The one a partner will accept depends on who
-            you are sending it to, so it is set here rather than chosen on every download.
+            Which layout a generated CV is printed on.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

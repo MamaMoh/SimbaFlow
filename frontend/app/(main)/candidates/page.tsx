@@ -351,10 +351,7 @@ export default function CandidatesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Candidates"
-        description="Every applicant and the stage they are standing in"
-      />
+      <PageHeader title="Candidates" />
 
       {/*
         Who is where, without opening six boards to find out. Each board shows one stage; this is

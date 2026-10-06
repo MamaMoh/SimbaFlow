@@ -39,23 +39,14 @@ export default function BotAdminPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Bot & notifications"
-        description="Telegram connection status, delivery activity, and deferred WhatsApp setup."
-      />
-
-      <PageAlert
-        variant="info"
-        title="Telegram"
-        description="The bot token is managed on the server."
-      />
+      <PageHeader title="Bot & notifications" />
 
       {error ? <LoadError message={error.message} onRetry={() => mutate()} /> : null}
 
       <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Telegram</h2>
+            <h2 className="text-sm font-semibold">Telegram</h2>
             <p className="text-sm text-muted-foreground">
               Connection health and runtime polling status.
             </p>
@@ -96,7 +87,7 @@ export default function BotAdminPage() {
       <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Recent deliveries</h2>
+            <h2 className="text-sm font-semibold">Recent deliveries</h2>
             <p className="text-sm text-muted-foreground">
               Latest bot push attempts recorded by the platform.
             </p>

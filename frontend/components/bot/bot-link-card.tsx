@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { PageAlert } from "@/components/ui/page-alert";
 import { botApi, useBotStatus } from "@/lib/api/bot";
 
 /**
@@ -62,30 +61,17 @@ export function BotLinkCard() {
   return (
     <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Link my Telegram</h2>
-        <p className="text-sm text-muted-foreground">
-          Connect your own Telegram so you can look up candidates from your phone.
+        <h2 className="text-sm font-semibold">Link my Telegram</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Look up candidates from your phone.
         </p>
       </div>
 
-      <PageAlert
-        variant="info"
-        title="Three steps"
-        description={
-          botName
-            ? `Generate a code, open @${botName} on Telegram, and send it as a message.`
-            : "Generate a code, open the SimbaFlow bot on Telegram, and send it as a message."
-        }
-      />
-
       {linkCode ? (
         <div className="rounded-md border border-dashed p-3">
-          <div className="text-xs uppercase tracking-wide text-muted-foreground">
-            Your code — valid 10 minutes
-          </div>
-          <div className="mt-1 text-3xl font-semibold tracking-widest">{linkCode}</div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Send this to {botName ? `@${botName}` : "the bot"}. Generating a new code cancels this one.
+          <div className="text-3xl font-semibold tracking-widest tabular-nums">{linkCode}</div>
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Send this to {botName ? `@${botName}` : "the bot"} on Telegram. Valid 10 minutes.
           </p>
         </div>
       ) : null}

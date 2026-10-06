@@ -1311,7 +1311,7 @@ export function CandidateApplicationForm({
             <ArrowLeft className="h-4 w-4" />
             Back to {isEdit ? "profile" : "candidates"}
           </Link>
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <User className="h-6 w-6 text-emerald-700" />
             {isEdit ? "Edit Application" : "New Application"}
           </h1>
@@ -1440,7 +1440,7 @@ export function CandidateApplicationForm({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Signed On</Label>
+                  <Label>Signed on</Label>
                   <Input type="date" {...register("signedOn")} />
                 </div>
               </div>
@@ -1466,7 +1466,7 @@ export function CandidateApplicationForm({
                 )}
               </div>
               <div className="space-y-1.5">
-                <Label>Full Name (local / Amharic)</Label>
+                <Label>Full name (local / Amharic)</Label>
                 <Input {...register("localFullName")} />
               </div>
             </FormSection>
@@ -1486,7 +1486,7 @@ export function CandidateApplicationForm({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Passport Type</Label>
+                  <Label>Passport type</Label>
                   <Select
                     value={watch("passportType") || undefined}
                     onValueChange={(v) => v && setValue("passportType", v)}
@@ -1514,7 +1514,7 @@ export function CandidateApplicationForm({
                   <Input {...register("placeOfBirth")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Passport Validity</Label>
+                  <Label>Passport validity</Label>
                   <Select
                     value={String(passportValidityYears)}
                     onValueChange={(v) => {
@@ -1619,7 +1619,7 @@ export function CandidateApplicationForm({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Marital Status</Label>
+                  <Label>Marital status</Label>
                   <Select
                     value={watch("maritalStatus") || undefined}
                     onValueChange={(v) => v && setValue("maritalStatus", v)}
@@ -1755,19 +1755,19 @@ export function CandidateApplicationForm({
             >
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Relative Name</Label>
+                  <Label>Relative name</Label>
                   <Input {...register("relativeName")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Relative Kinship</Label>
+                  <Label>Relative kinship</Label>
                   <Input {...register("relativeKinship")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Relative Phone</Label>
+                  <Label>Relative phone</Label>
                   <Input {...register("relativePhone")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Relative Gender</Label>
+                  <Label>Relative gender</Label>
                   <Input {...register("relativeGender")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1791,7 +1791,7 @@ export function CandidateApplicationForm({
                   <Input {...register("relativeHouseNo")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Birth Date</Label>
+                  <Label>Birth date</Label>
                   <Input type="date" {...register("relativeBirthDate")} />
                 </div>
               </div>
@@ -1800,11 +1800,11 @@ export function CandidateApplicationForm({
             <FormSection icon={Mail} title="Other Information">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Contact Person (2nd)</Label>
+                  <Label>Contact person (2nd)</Label>
                   <Input {...register("contactPerson2")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Contact Phone (2nd)</Label>
+                  <Label>Contact phone (2nd)</Label>
                   <Input {...register("contactPhone2")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1816,11 +1816,11 @@ export function CandidateApplicationForm({
                   <Input {...register("certificateNo")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Certified Date</Label>
+                  <Label>Certified date</Label>
                   <Input type="date" {...register("certifiedDate")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Medical Place</Label>
+                  <Label>Medical place</Label>
                   <Input {...register("medicalPlace")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1887,7 +1887,7 @@ export function CandidateApplicationForm({
                   <Input {...register("visaNumber")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Sponsor Name</Label>
+                  <Label>Sponsor name</Label>
                   <Input {...register("sponsorName")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1895,15 +1895,15 @@ export function CandidateApplicationForm({
                   <Input {...register("sponsorIdNumber")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Sponsor Phone</Label>
+                  <Label>Sponsor phone</Label>
                   <Input {...register("sponsorPhone")} />
                 </div>
                 <div className="space-y-1.5 col-span-2">
-                  <Label>Sponsor Address</Label>
+                  <Label>Sponsor address</Label>
                   <Input {...register("sponsorAddress")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Sponsor Arabic</Label>
+                  <Label>Sponsor name (Arabic)</Label>
                   <Input {...register("sponsorArabicName")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1918,7 +1918,7 @@ export function CandidateApplicationForm({
                     but had nowhere to appear — so an edit looked as though the paperwork numbers
                     had been lost, and the only way to correct one was a database. */}
                 <div className="space-y-1.5">
-                  <Label>Agent Name</Label>
+                  <Label>Agent name</Label>
                   <Input {...register("agentName")} />
                 </div>
                 <div className="space-y-1.5">
@@ -1938,7 +1938,7 @@ export function CandidateApplicationForm({
                   <Input {...register("stickerVisaNo")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Visa Type</Label>
+                  <Label>Visa type</Label>
                   <Select
                     value={watch("visaType") || undefined}
                     onValueChange={(v) => v && setValue("visaType", v)}
@@ -2122,7 +2122,7 @@ export function CandidateApplicationForm({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Contract Period</Label>
+                  <Label>Contract period</Label>
                   <Input {...register("contractPeriod")} placeholder="2 Years" />
                 </div>
               </div>
@@ -2130,7 +2130,7 @@ export function CandidateApplicationForm({
             <FormSection icon={Stamp} title="Skills & Experience">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Cooking Level</Label>
+                  <Label>Cooking level</Label>
                   <Select
                     value={watch("cookingLevel") || undefined}
                     onValueChange={(v) => v && setValue("cookingLevel", v)}

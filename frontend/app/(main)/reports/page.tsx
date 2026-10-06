@@ -39,10 +39,7 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Reports"
-        description="Operational and financial reports with Excel & PDF export"
-      />
+      <PageHeader title="Reports" />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
 
@@ -85,7 +82,7 @@ export default function ReportsPage() {
             <ReportView reportKey={selected} canExport={canExport} />
           ) : (
             !isLoading && (
-              <div className="flex h-64 items-center justify-center rounded-xl border bg-card text-sm text-muted-foreground">
+              <div className="flex h-64 items-center justify-center rounded-lg border bg-card text-sm text-muted-foreground">
                 Select a report to view.
               </div>
             )

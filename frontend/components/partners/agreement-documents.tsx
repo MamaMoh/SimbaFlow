@@ -105,7 +105,7 @@ export function AgreementDocuments({
   return (
     <div className="space-y-4">
       {canEdit ? (
-        <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="rounded-lg border bg-card p-4 shadow-sm">
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <div className="space-y-1.5">
               <Label>Document name (optional)</Label>
@@ -143,14 +143,14 @@ export function AgreementDocuments({
       ) : null}
 
       {docs.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed p-8 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
           <FileText className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             No contract documents yet{canEdit ? " — upload the signed agreement above." : "."}
           </p>
         </div>
       ) : (
-        <ul className="divide-y rounded-xl border bg-card shadow-sm">
+        <ul className="divide-y rounded-lg border bg-card shadow-sm">
           {docs.map((d) => (
             <li key={d.id} className="flex items-center gap-3 p-3">
               <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />

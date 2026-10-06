@@ -127,8 +127,7 @@ export default function CaseExecutiveBoardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Case Executive"
-        description={<>Mirror board (visa Ready / Submitted) · {totalCount} case
-{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <Input
             className="max-w-xs"

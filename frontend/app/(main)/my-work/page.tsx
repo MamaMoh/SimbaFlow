@@ -12,6 +12,7 @@ import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { useMyTasks, type MyTaskItem } from "@/lib/api/insights";
 import { PageHeader } from "@/components/ui/page-header";
+import { StatTile } from "@/components/ui/stat-tile";
 import { cn } from "@/lib/utils";
 
 const TYPE_ICON: Record<string, React.ElementType> = {
@@ -74,27 +75,17 @@ export default function MyWorkPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="My work"
-        description="Candidates and cases that need attention"
-      />
+      <PageHeader title="My work" />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
 
       <div className="grid grid-cols-3 gap-4">
-        {tiles.map((t) => {
-          const Icon = t.icon;
-          return (
-            <div key={t.key} className="rounded-xl border bg-card p-4 shadow-sm">
-              <Icon className="h-4 w-4 text-muted-foreground" />
-              <p className="mt-2 text-2xl font-bold tabular-nums">{t.value}</p>
-              <p className="text-xs text-muted-foreground">{t.label}</p>
-            </div>
-          );
-        })}
+        {tiles.map((t) => (
+          <StatTile key={t.key} label={t.label} value={t.value} icon={t.icon} />
+        ))}
       </div>
 
-      <div className="rounded-xl border bg-card shadow-sm">
+      <div className="rounded-lg border bg-card shadow-sm">
         <div className="border-b px-4 py-3">
           <h2 className="text-sm font-semibold">Action items</h2>
         </div>

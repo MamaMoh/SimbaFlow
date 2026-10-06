@@ -57,15 +57,6 @@ export function ProgressLoading({
           )}
         </div>
 
-        {/* Loading Tips */}
-        <div className="text-center space-y-2">
-          <p className="text-xs text-muted-foreground">
-            💡 <strong>Tip:</strong> First-time loading may take longer due to compilation
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Subsequent visits will be much faster!
-          </p>
-        </div>
       </div>
     </div>
   );

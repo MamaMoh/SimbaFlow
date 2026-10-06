@@ -193,7 +193,7 @@ export function WorkflowConfigEditor() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Workflow Config</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Workflow setup</h1>
           <p className="text-sm text-muted-foreground">
             {definition.name}
             {definition.description ? ` — ${definition.description}` : ""} · v
@@ -265,7 +265,7 @@ export function WorkflowConfigEditor() {
                     Order {stage.sortOrder}
                     {stage.description ? ` · ${stage.description}` : ""}
                     {stage.parallelTracks?.length
-                      ? ` · ${stage.parallelTracks.length} track(s)`
+                      ? ` · ${stage.parallelTracks.length} track${stage.parallelTracks.length === 1 ? "" : "s"}`
                       : ""}
                     {stage.statuses?.length
                       ? ` · ${stage.statuses.length} status(es)`
@@ -397,11 +397,9 @@ export function WorkflowConfigEditor() {
       <section className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Board mirroring</h2>
-            <p className="text-sm text-muted-foreground">
-              Which candidates show up on a second board without leaving the first. Government
-              rules differ by destination — some require tasheer before LMIS registration,
-              others only a fit medical — so these conditions are yours to set.
+            <h2 className="text-sm font-semibold">Board mirroring</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Which candidates show up on a second board without leaving the first.
             </p>
           </div>
           <Button

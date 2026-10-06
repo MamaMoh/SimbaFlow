@@ -25,7 +25,7 @@ export function PipelineFunnel({
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Pipeline funnel</h2>
+        <h2 className="text-sm font-semibold">Pipeline funnel</h2>
         <p className="text-sm text-muted-foreground">
           Active candidates by current stage
         </p>

@@ -55,20 +55,14 @@ export default function ErrorsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Errors"
-        description="Unhandled failures from the API and the browser, grouped so one recurring fault is one row."
-      />
+      <PageHeader title="Errors" />
 
       {groups.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center">
-          <p className="text-sm font-medium">No unresolved errors</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Anything that fails is recorded here, so you don&apos;t have to wait for someone to report it.
-          </p>
+        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
+          No unresolved errors.
         </div>
       ) : (
-        <ul className="divide-y rounded-xl border bg-card shadow-sm">
+        <ul className="divide-y rounded-lg border bg-card shadow-sm">
           {groups.map((g) => (
             <li key={g.fingerprint} className="flex flex-wrap items-start gap-4 p-4">
               <div className="min-w-0 flex-1">

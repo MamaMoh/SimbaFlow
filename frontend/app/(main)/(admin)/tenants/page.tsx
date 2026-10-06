@@ -210,7 +210,7 @@ export default function TenantsPage() {
   if (!permsLoading && !isSuperAdmin) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Agencies" description="Manage all labour export agencies on the platform" />
+        <PageHeader title="Agencies" />
         <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
           Managing agencies is reserved for platform administrators.
         </div>
@@ -220,21 +220,18 @@ export default function TenantsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Agencies"
-        description="Manage all labour export agencies on the platform"
-      />
+      <PageHeader title="Agencies" />
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
             rowClickOpensActions
           table={table}
           enableGlobalFilter={true}
-          searchPlaceholder="Search agencies..."
+          searchPlaceholder="Search agencies…"
           paginated={true}
           toolbarEndActions={
             <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
-              <span className="mr-1">+</span> Create Agency
+              <span className="mr-1">+</span> Create agency
             </Button>
           }
         />

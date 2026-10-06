@@ -97,7 +97,7 @@ export function ChangePasswordForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Change Password</DialogTitle>
+          <DialogTitle>Change password</DialogTitle>
           <DialogDescription>
             Enter your current password and choose a new one.
           </DialogDescription>
@@ -109,7 +109,7 @@ export function ChangePasswordForm({
               name="currentPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current Password</FormLabel>
+                  <FormLabel>Current password</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input
@@ -144,7 +144,7 @@ export function ChangePasswordForm({
               name="newPassword"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>New Password</FormLabel>
+                  <FormLabel>New password</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <Input

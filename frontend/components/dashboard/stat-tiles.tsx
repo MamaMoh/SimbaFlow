@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { Users, UserPlus, Banknote, AlertTriangle, Clock } from "lucide-react";
 import type { DashboardMetrics } from "@/lib/api/dashboard";
-import { cn } from "@/lib/utils";
+import { StatTile } from "@/components/ui/stat-tile";
 
 const ETB = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
@@ -71,36 +70,17 @@ export function StatTiles({
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-      {tiles.map((t) => {
-        const Icon = t.icon;
-        return (
-          <Link
-            key={t.key}
-            href={t.href}
-            className="group rounded-xl border bg-card p-4 shadow-sm transition hover:shadow-md hover:border-primary/40"
-          >
-            <div className="flex items-center justify-between">
-              <span
-                className={cn(
-                  "inline-flex h-9 w-9 items-center justify-center rounded-lg",
-                  t.accent
-                )}
-              >
-                <Icon className="h-4.5 w-4.5" />
-              </span>
-            </div>
-            <p
-              className={cn(
-                "mt-3 text-2xl font-bold tabular-nums tracking-tight",
-                isLoading && "animate-pulse text-muted-foreground"
-              )}
-            >
-              {t.value}
-            </p>
-            <p className="text-xs text-muted-foreground">{t.label}</p>
-          </Link>
-        );
-      })}
+      {tiles.map((t) => (
+        <StatTile
+          key={t.key}
+          label={t.label}
+          value={t.value}
+          icon={t.icon}
+          accent={t.accent}
+          href={t.href}
+          isLoading={isLoading}
+        />
+      ))}
     </div>
   );
 }

@@ -74,7 +74,7 @@ export default function ExceptionDetailPage() {
         <Link href="/workflow/exceptions" className="text-sm text-muted-foreground hover:underline">
           ← Exceptions
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{exceptionCase.candidateName}</h1>
+        <h1 className="mt-2 text-xl font-semibold tracking-tight">{exceptionCase.candidateName}</h1>
         <p className="text-sm text-muted-foreground">
           {exceptionCase.passportNumber} · {exceptionCase.type} ·{" "}
           <ExceptionStatusBadge status={exceptionCase.status} />

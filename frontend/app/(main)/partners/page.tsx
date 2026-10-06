@@ -231,7 +231,6 @@ export default function PartnersPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Partners"
-        description="Foreign agencies your agency has agreements with."
         actions={
           <div className="flex flex-wrap gap-2">
             {canCreateCatalog ? (

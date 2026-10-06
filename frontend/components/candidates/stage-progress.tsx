@@ -35,7 +35,7 @@ export function StageProgress({
   return (
     <nav
       aria-label="Pipeline progress"
-      className="overflow-x-auto rounded-xl border bg-card px-4 py-3 shadow-sm"
+      className="overflow-x-auto rounded-lg border bg-card px-4 py-3 shadow-sm"
     >
       <ol className="flex min-w-max items-center gap-1">
         {ordered.map((stage, index) => {

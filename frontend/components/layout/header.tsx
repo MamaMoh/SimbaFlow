@@ -159,7 +159,7 @@ export function Header() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setShowChangePassword(true)}>
                   <Key className="mr-2 h-4 w-4" />
-                  <span>Change Password</span>
+                  <span>Change password</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

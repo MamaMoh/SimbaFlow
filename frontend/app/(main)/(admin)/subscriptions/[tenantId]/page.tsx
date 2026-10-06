@@ -11,6 +11,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { StatTile } from "@/components/ui/stat-tile";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,7 @@ export default function AgencyBillingPage({
         </Link>
         <PageHeader
           title={agency?.name ?? "Billing history"}
-          description="Every invoice raised for this agency, and what happened to it."
+          description="Billing history"
           actions={
             agency ? (
               <Badge
@@ -103,7 +104,7 @@ export default function AgencyBillingPage({
       {error ? <LoadError message="Could not load invoices" onRetry={() => mutate()} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <SummaryCard
+        <StatTile
           label="Outstanding"
           value={money(summary.outstanding, summary.currency)}
           detail={
@@ -113,12 +114,12 @@ export default function AgencyBillingPage({
           }
           tone={summary.outstanding > 0 ? "warn" : "plain"}
         />
-        <SummaryCard
+        <StatTile
           label="Collected"
           value={money(summary.collected, summary.currency)}
           detail={`${summary.collectedCount} ${summary.collectedCount === 1 ? "invoice" : "invoices"} settled`}
         />
-        <SummaryCard
+        <StatTile
           label="Plan"
           value={
             agency && agency.subscriptionAmount > 0
@@ -235,32 +236,6 @@ export default function AgencyBillingPage({
 
       <RecordPaymentDialog invoice={paying} onClose={() => setPaying(null)} onSaved={refresh} />
       <VoidInvoiceDialog invoice={voiding} onClose={() => setVoiding(null)} onSaved={refresh} />
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  detail,
-  tone = "plain",
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone?: "plain" | "warn";
-}) {
-  return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm">
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p
-        className={`mt-1 text-2xl font-semibold tabular-nums ${
-          tone === "warn" ? "text-amber-700" : ""
-        }`}
-      >
-        {value}
-      </p>
-      <p className="mt-0.5 text-sm text-muted-foreground">{detail}</p>
     </div>
   );
 }

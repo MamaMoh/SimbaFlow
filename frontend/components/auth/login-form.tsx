@@ -106,7 +106,7 @@ const LoginForm = () => {
     const rateLimitCheck = checkRateLimit(rateLimitKey);
     if (!rateLimitCheck.allowed) {
       toast.error(
-        `Too many login attempts. Please try again in ${rateLimitCheck.remainingTime} minute(s).`
+        `Too many login attempts. Try again in ${rateLimitCheck.remainingTime} minute${rateLimitCheck.remainingTime === 1 ? "" : "s"}.`
       );
       return;
     }

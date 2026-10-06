@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { StatTile } from "@/components/ui/stat-tile";
 import { commissionTone } from "@/lib/ui/status";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import {
@@ -196,7 +197,7 @@ export default function PartnerDetailPage() {
           description={
             <>
               {country ? `${country} · ` : ""}
-              {candidates.data?.totalCandidates ?? 0} candidate(s) placed
+              {candidates.data?.totalCandidates ?? 0} placed
             </>
           }
         />
@@ -204,24 +205,9 @@ export default function PartnerDetailPage() {
 
       {canSeeBilling && billing.data ? (
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <p className="text-xs text-muted-foreground">Total fees (ETB)</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums">
-              {etb(billing.data.totalFees)}
-            </p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <p className="text-xs text-muted-foreground">Collected</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-              {etb(billing.data.totalPaid)}
-            </p>
-          </div>
-          <div className="rounded-xl border bg-card p-4 shadow-sm">
-            <p className="text-xs text-muted-foreground">Outstanding</p>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">
-              {etb(billing.data.outstanding)}
-            </p>
-          </div>
+          <StatTile label="Total fees (ETB)" value={etb(billing.data.totalFees)} />
+          <StatTile label="Collected" value={etb(billing.data.totalPaid)} tone="good" />
+          <StatTile label="Outstanding" value={etb(billing.data.outstanding)} tone="warn" />
         </div>
       ) : null}
 

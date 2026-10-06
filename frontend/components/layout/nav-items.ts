@@ -24,7 +24,7 @@ export const navigation: NavItem[] = [
     claims: ["candidate.read", "system.admin"],
   },
   {
-    name: "My Work",
+    name: "My work",
     href: "/my-work",
     icon: require("lucide-react").ListChecks,
     claims: ["candidate.read", "system.admin"],
@@ -40,10 +40,10 @@ export const navigation: NavItem[] = [
   },
 
   // ──── Separator: Workflow ────
-  { name: "sep-workflow", isSeparator: true, icon: null, sectionLabel: "Workflow Pipeline" },
+  { name: "sep-workflow", isSeparator: true, icon: null, sectionLabel: "Workflow" },
 
   {
-    name: "New Contracts",
+    name: "New contracts",
     href: "/workflow/new-contracts",
     icon: require("lucide-react").FileText,
     claims: ["workflow.view", "system.admin"],
@@ -55,7 +55,7 @@ export const navigation: NavItem[] = [
     claims: ["embassy.read", "system.admin"],
   },
   {
-    name: "Case Executive",
+    name: "Case executive",
     href: "/workflow/case-executive",
     icon: require("lucide-react").Briefcase,
     // Only embassy.case_view — the board's own query requires it, so listing embassy.read here
@@ -123,7 +123,7 @@ export const navigation: NavItem[] = [
   { name: "sep-admin", isSeparator: true, icon: null, sectionLabel: "Administration" },
 
   {
-    name: "Staff & Users",
+    name: "Staff & access",
     icon: require("lucide-react").UserCog,
     claims: ["users.read", "role.read", "system.admin"],
     children: [
@@ -137,7 +137,7 @@ export const navigation: NavItem[] = [
         claims: ["users.read", "system.admin"],
       },
       {
-        name: "Roles & Permissions",
+        name: "Roles & permissions",
         href: "/roles",
         icon: require("lucide-react").Shield,
         claims: ["role.read", "system.admin"],
@@ -157,13 +157,13 @@ export const navigation: NavItem[] = [
     claims: ["system.admin"],
   },
   {
-    name: "Workflow Config",
+    name: "Workflow setup",
     href: "/admin/workflow",
     icon: require("lucide-react").Workflow,
     claims: ["workflow.configure", "system.admin"],
   },
   {
-    name: "Bot & Notifications",
+    name: "Bot & notifications",
     href: "/admin/bot",
     icon: require("lucide-react").BellRing,
     claims: ["bot.configure", "system.admin"],
@@ -183,7 +183,7 @@ export const navigation: NavItem[] = [
   {
     // /api/tenants is behind the SuperAdmin policy, not a permission, so tenant.manage only ever
     // produced a link whose every request failed.
-    name: "Tenants",
+    name: "Agencies",
     href: "/tenants",
     icon: require("lucide-react").Server,
     claims: ["system.admin"],

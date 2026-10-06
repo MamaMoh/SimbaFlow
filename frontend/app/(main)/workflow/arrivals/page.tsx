@@ -135,7 +135,7 @@ export default function ArrivalBoardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Arrivals"
-        description={<>Permanent ledger · {totalCount} candidate{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <Input
             className="max-w-xs"

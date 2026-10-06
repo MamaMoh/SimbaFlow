@@ -31,18 +31,14 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Settings"
-        description="Agency preferences and system options"
-      />
+      <PageHeader title="Settings" />
 
       {canManageSettings ? (
         <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm lg:max-w-xl">
           <div>
-            <h2 className="text-sm font-semibold">Agency branding</h2>
+            <h2 className="text-sm font-semibold">Branding</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Used on candidate documents when the candidate has no partner agency. PNG or
-              JPEG, up to 2MB each.
+              PNG or JPEG, up to 2MB. Used when the candidate has no partner agency.
             </p>
           </div>
           <LogoUpload
@@ -50,14 +46,14 @@ export default function SettingsPage() {
             logoPath={agencyLetterheadPath}
             onChange={() => mutateBranding()}
             label="Letterhead"
-            hint="The wide banner printed across the top of generated CVs and visa forms."
+            hint="Printed across the top of CVs and visa forms."
           />
           <LogoUpload
             endpoint="/api/proxy/branding/agency/logo"
             logoPath={agencyLogoPath}
             onChange={() => mutateBranding()}
             label="Logo"
-            hint="The mark. Stands in at the top of a document if no letterhead is uploaded."
+            hint="Used when no letterhead is uploaded."
           />
         </div>
       ) : null}

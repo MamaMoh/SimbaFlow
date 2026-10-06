@@ -21,7 +21,7 @@ export function CapacityStrip({ enabled = true }: { enabled?: boolean }) {
     countryLimit != null && data.licensedCountriesUsed > countryLimit;
 
   return (
-    <div className="rounded-xl border bg-card p-4 shadow-sm">
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold">Partner capacity</h2>
         <span className="text-xs text-muted-foreground">{data.levelDescription}</span>

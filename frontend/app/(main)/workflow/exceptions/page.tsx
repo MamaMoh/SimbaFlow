@@ -110,7 +110,7 @@ export default function ExceptionsListPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Exceptions"
-        description={<>Returned / Runaway cases · {totalCount}</>}
+        count={totalCount}
         actions={
           <div className="flex flex-wrap gap-2">
             <Select value={status || "all"} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>

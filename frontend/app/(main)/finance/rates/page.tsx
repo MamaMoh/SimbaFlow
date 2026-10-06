@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import {
   useReactTable,
   getCoreRowModel,
@@ -119,18 +118,17 @@ export default function ExchangeRatesPage() {
     );
   }
 
-  if (!canView) return <AccessDenied resource="Exchange rates" />;
+  if (!canView) return <AccessDenied resource="exchange rates" />;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Exchange rates"
-        description="Platform rates used when recording non-ETB commission payments."
         actions={
           canPost ? (
             <Button size="sm" className="h-8 gap-1.5" onClick={() => setOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
-              Upsert rate
+              Add rate
             </Button>
           ) : null
         }
@@ -149,30 +147,18 @@ export default function ExchangeRatesPage() {
           <DataTable
             table={table}
             paginated
-            emptyMessage="No exchange rates yet — add USD→ETB (and other) rates before accepting foreign-currency payments."
+            emptyMessage="No exchange rates yet. Add one before recording a payment in another currency."
           />
         </div>
       ) : null}
 
-      <p className="text-sm text-muted-foreground">
-        <Link href="/finance/accounting" className="text-primary underline-offset-4 hover:underline">
-          Accounting overview
-        </Link>
-        {" · "}
-        <Link
-          href="/workflow/commissions"
-          className="text-primary underline-offset-4 hover:underline"
-        >
-          Commissions
-        </Link>
-      </p>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent className="w-[400px] sm:max-w-[400px] flex flex-col gap-4 px-6">
           <SheetHeader>
-            <SheetTitle>Upsert exchange rate</SheetTitle>
+            <SheetTitle>Add exchange rate</SheetTitle>
             <SheetDescription>
-              Creates or updates the rate for the same from/to/effective date.
+              Replaces any existing rate for the same pair and date.
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-3">

@@ -237,7 +237,7 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Contact Phone</Label>
+                  <Label>Contact phone</Label>
                   <PhoneInputField
                     value={watch("contactPhone") || ""}
                     onChange={(val) => setValue("contactPhone", val)}

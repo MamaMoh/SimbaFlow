@@ -23,7 +23,6 @@ export default function WorkflowViewPage() {
 
   const {
     stages,
-    definition,
     isLoading: loadingDef,
     error: defError,
     mutate: mutateDef,
@@ -95,7 +94,7 @@ export default function WorkflowViewPage() {
   if (!stage) {
     return (
       <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">Workflow View</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Workflow</h1>
         <PageAlert
           variant="error"
           title={`Unknown stage “${stageParam}”`}
@@ -109,9 +108,8 @@ export default function WorkflowViewPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title={stage.name}
-        description={<>{definition?.name ?? "Workflow"} · {totalCount} candidate
-{totalCount === 1 ? "" : "s"}
-{stage.description ? ` · ${stage.description}` : ""}</>}
+        description={stage.description || undefined}
+        count={totalCount}
         actions={
           <Input
             className="max-w-xs"

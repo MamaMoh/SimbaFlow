@@ -124,7 +124,7 @@ export default function CommissionsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Commissions"
-        description={<>Queue · {totalCount} record{totalCount === 1 ? "" : "s"}</>}
+        count={totalCount}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Input

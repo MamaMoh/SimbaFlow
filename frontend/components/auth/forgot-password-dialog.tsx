@@ -81,7 +81,7 @@ export function ForgotPasswordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Forgot Password</DialogTitle>
+          <DialogTitle>Forgot password</DialogTitle>
           <DialogDescription>
             Enter your email address and we'll send you a link to reset your password.
           </DialogDescription>

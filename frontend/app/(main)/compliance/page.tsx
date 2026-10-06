@@ -6,6 +6,7 @@ import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { useComplianceAlerts, type ComplianceAlert } from "@/lib/api/insights";
 import { PageHeader } from "@/components/ui/page-header";
+import { StatTile } from "@/components/ui/stat-tile";
 import { cn } from "@/lib/utils";
 
 const BUCKET_META: Record<
@@ -77,37 +78,24 @@ export default function CompliancePage() {
   if (!canRead) return <AccessDenied resource="compliance alerts" />;
 
   const tiles = [
-    { key: "expired", value: data?.expiredCount ?? 0, ...BUCKET_META.expired },
-    { key: "within30", value: data?.within30Count ?? 0, ...BUCKET_META.within30 },
-    { key: "within90", value: data?.within90Count ?? 0, ...BUCKET_META.within90 },
+    { key: "expired", value: data?.expiredCount ?? 0, tone: "bad" as const, ...BUCKET_META.expired },
+    { key: "within30", value: data?.within30Count ?? 0, tone: "warn" as const, ...BUCKET_META.within30 },
+    { key: "within90", value: data?.within90Count ?? 0, tone: "plain" as const, ...BUCKET_META.within90 },
   ];
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Compliance"
-        description="Passports and Tasheer bookings that are expired or expiring soon"
-      />
+      <PageHeader title="Compliance" />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
 
       <div className="grid grid-cols-3 gap-4">
         {tiles.map((t) => (
-          <div key={t.key} className="rounded-xl border bg-card p-4 shadow-sm">
-            <span
-              className={cn(
-                "inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                t.badge
-              )}
-            >
-              {t.label}
-            </span>
-            <p className="mt-2 text-2xl font-bold tabular-nums">{t.value}</p>
-          </div>
+          <StatTile key={t.key} label={t.label} value={t.value} tone={t.tone} />
         ))}
       </div>
 
-      <div className="rounded-xl border bg-card shadow-sm">
+      <div className="rounded-lg border bg-card shadow-sm">
         <div className="flex items-center gap-2 border-b px-4 py-3">
           <ShieldAlert className="h-4 w-4 text-amber-500" />
           <h2 className="text-sm font-semibold">Attention needed</h2>
