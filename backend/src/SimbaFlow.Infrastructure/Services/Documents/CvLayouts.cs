@@ -46,16 +46,6 @@ internal static class CvLayouts
 
     // ──── Shared field text ────
 
-    /// <summary>
-    /// Height of the 3rd layout's full-body photo, in points.
-    ///
-    /// Measured so the box ends on the same line as the foot of the Skills table beside it. The
-    /// left column is a fixed set of rows, so this holds — except when a candidate lists extra
-    /// languages, which adds rows on the left and leaves the photo a little short of the skills.
-    /// Short is the right way to be wrong here: too tall reintroduces the empty frame.
-    /// </summary>
-    private const float FullPhotoHeight = 303f;
-
     private static string V(string? s) => string.IsNullOrWhiteSpace(s) ? "" : s.Trim();
     private static string YesNo(bool v) => v ? "YES" : "NO";
 
@@ -838,8 +828,24 @@ internal static class CvLayouts
                     // photo starts where the passport details end and runs down to the foot of
                     // the skills. Split across two rows it left a dead gap the height of the
                     // applicant table.
-                    root.Item().Row(main =>
+                    //
+                    // Two layers rather than one row, because the photograph has to end exactly
+                    // where the skills table does and a Row will not stretch one child to match
+                    // its sibling — ExtendVertical inside a Row asks the *page* how much room is
+                    // left, and the page says "the rest of the sheet", which ran the frame down
+                    // to the bottom margin. Decoration and Table cells behave the same way.
+                    //
+                    // Layers do not: the primary layer is measured, and every other layer is then
+                    // given exactly that much space. So the left column is the primary and sets
+                    // the height, and the photograph is drawn over the gap the primary leaves for
+                    // it, where ExtendVertical now means "to the foot of the left column". That
+                    // matters beyond tidiness — the left column is not a fixed height. A candidate
+                    // who speaks a third language adds a row to it, and the constant this replaces
+                    // could not know that.
+                    root.Item().Layers(layers =>
                     {
+                        layers.PrimaryLayer().Row(main =>
+                        {
                         main.RelativeItem().Column(left =>
                         {
                             left.Item().Border(0.75f).BorderColor(Border).Column(box =>
@@ -908,33 +914,35 @@ internal static class CvLayouts
 
                         main.ConstantItem(4);
 
-                        main.ConstantItem(206).Column(right =>
-                        {
-                            right.Item().Border(0.75f).BorderColor(Border).Column(box =>
-                            {
-                                SectionBar(box, "Passport Detail", "تفاصيل جواز السفر");
-                                CompactRow(box, "Passport No.", "رقم الجواز", candidate.PassportNumber);
-                                CompactRow(box, "Issue Date", "تاريخ الإصدار",
-                                    candidate.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "—");
-                                CompactRow(box, "Place of Issue", "مكان الإصدار", passportPlace);
-                                CompactRow(box, "Expiry Date", "تاريخ الانتهاء",
-                                    candidate.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "—");
-                            });
+                        // The space the photograph is drawn into, left empty here so the left
+                        // column alone decides how tall this block is.
+                        main.ConstantItem(206);
+                        });
 
-                            // A measured height, not ExtendVertical. Extend asks for the space
-                            // available to the *page*, and the page has the whole sheet left — so
-                            // the box grew past the skills table and ran to the bottom margin,
-                            // leaving a tall empty frame under the form. Nothing in QuestPDF lets
-                            // one half of a Row take its height from the other half: Row does not
-                            // stretch its children, and neither Decoration nor Table cells do
-                            // either (all three were tried). Every other layout here sizes this
-                            // box the same way.
-                            right.Item().PaddingTop(3).Height(FullPhotoHeight)
-                                .Border(0.75f).BorderColor(Border)
-                                .Background(Colors.Grey.Lighten4)
-                                .AlignCenter().AlignMiddle()
-                                .Element(e => PlaceFullBodyImage(e,
-                                    fullPhotoBytes is { Length: > 0 } ? fullPhotoBytes : photoBytes));
+                        layers.Layer().Row(main =>
+                        {
+                            main.RelativeItem();
+                            main.ConstantItem(4);
+                            main.ConstantItem(206).Column(right =>
+                            {
+                                right.Item().Border(0.75f).BorderColor(Border).Column(box =>
+                                {
+                                    SectionBar(box, "Passport Detail", "تفاصيل جواز السفر");
+                                    CompactRow(box, "Passport No.", "رقم الجواز", candidate.PassportNumber);
+                                    CompactRow(box, "Issue Date", "تاريخ الإصدار",
+                                        candidate.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "—");
+                                    CompactRow(box, "Place of Issue", "مكان الإصدار", passportPlace);
+                                    CompactRow(box, "Expiry Date", "تاريخ الانتهاء",
+                                        candidate.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "—");
+                                });
+
+                                right.Item().PaddingTop(3).ExtendVertical()
+                                    .Border(0.75f).BorderColor(Border)
+                                    .Background(Colors.Grey.Lighten4)
+                                    .AlignCenter().AlignMiddle()
+                                    .Element(e => PlaceFullBodyImage(e,
+                                        fullPhotoBytes is { Length: > 0 } ? fullPhotoBytes : photoBytes));
+                            });
                         });
                     });
                 });
