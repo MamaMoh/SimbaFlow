@@ -27,13 +27,19 @@ import { Building2, User, Key, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { PhoneInputField } from "@/components/ui/phone-input";
 
-/** MoLS Directive 1126/2018 Arts. 18–22 */
+/**
+ * MoLS Directive 1126/2018 Arts. 18–22.
+ *
+ * The caps only. These labels used to describe each level's occupation scope — "Domestic only",
+ * "Domestic + labour" — which nothing in the system enforces, and which levels 3 and 4 shared,
+ * so the dropdown could not tell those two apart. What it shows now is what the level does.
+ */
 const AGENCY_LEVELS = [
-  { level: 1, maxPartnersPerCountry: 20, maxCountries: null as number | null, label: "Level 1 — All occupations" },
-  { level: 2, maxPartnersPerCountry: 20, maxCountries: 8, label: "Level 2 — Domestic / labour / skilled" },
-  { level: 3, maxPartnersPerCountry: 16, maxCountries: 8, label: "Level 3 — Domestic + labour" },
-  { level: 4, maxPartnersPerCountry: 8, maxCountries: 4, label: "Level 4 — Domestic + labour" },
-  { level: 5, maxPartnersPerCountry: 4, maxCountries: 2, label: "Level 5 — Domestic only" },
+  { level: 1, maxPartnersPerCountry: 20, maxCountries: null as number | null },
+  { level: 2, maxPartnersPerCountry: 20, maxCountries: 8 },
+  { level: 3, maxPartnersPerCountry: 16, maxCountries: 8 },
+  { level: 4, maxPartnersPerCountry: 8, maxCountries: 4 },
+  { level: 5, maxPartnersPerCountry: 4, maxCountries: 2 },
 ] as const;
 
 const DESTINATION_OPTIONS = [
@@ -297,21 +303,13 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                       <SelectValue placeholder="Select level" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
-                      {/* The caps, not just the occupations: levels 3 and 4 carry the same
-                          occupation scope, so on their labels alone the two were impossible to
-                          tell apart — while the numbers that actually differ, and that the
-                          system actually enforces, only appeared after choosing. */}
+                      {/* One line, so the closed trigger reads the same as the open list. */}
                       {AGENCY_LEVELS.map((l) => (
                         <SelectItem key={l.level} value={String(l.level)}>
-                          <span className="flex flex-col items-start">
-                            <span>{l.label}</span>
-                            <span className="text-xs text-muted-foreground">
-                              ≤{l.maxPartnersPerCountry} partners per country ·{" "}
-                              {l.maxCountries == null
-                                ? "any number of countries"
-                                : `up to ${l.maxCountries} ${l.maxCountries === 1 ? "country" : "countries"}`}
-                            </span>
-                          </span>
+                          Level {l.level} — ≤{l.maxPartnersPerCountry} per country,{" "}
+                          {l.maxCountries == null
+                            ? "any number of countries"
+                            : `up to ${l.maxCountries} ${l.maxCountries === 1 ? "country" : "countries"}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
