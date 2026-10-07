@@ -8,6 +8,15 @@ using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
+/// <summary>
+/// This candidate's contract.
+///
+/// Drawn from the candidate, their partner agency and the agency's licence — unless one has
+/// already been signed and filed, in which case that is the contract and this hands it back
+/// untouched. A Saudi placement runs on a contract the parties sign, which arrives as an upload;
+/// redrawing our version of it would give the desk a document with no signatures on it, differing
+/// from the real one in whatever has been edited since.
+/// </summary>
 public record GenerateContractCommand(Guid CandidateId)
     : IRequest<Result<GeneratedPdf>>, IRequirePermission
 {
@@ -45,6 +54,9 @@ public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, 
             .FirstOrDefaultAsync(c => c.Id == request.CandidateId && !c.IsDeleted, ct);
         if (candidate is null)
             return Result<GeneratedPdf>.Failure("Candidate not found", 404);
+
+        var signed = await SignedContractAsync(candidate, ct);
+        if (signed is not null) return Result<GeneratedPdf>.Success(signed);
 
         var downloadName = DocumentFileName.For(candidate.FullName, "Contract");
 
@@ -91,5 +103,61 @@ public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, 
         await _tenant.SaveChangesAsync(ct);
 
         return Result<GeneratedPdf>.Success(new GeneratedPdf(pdf, downloadName));
+    }
+
+    /// <summary>
+    /// The signed contract on file, if there is one.
+    ///
+    /// The newest upload wins — a contract re-signed after an amendment is uploaded again, and the
+    /// later one is the one in force. Named after the candidate like everything else they
+    /// download, but keeping the uploaded file's own extension: these come back from the parties
+    /// as scans as often as PDFs.
+    ///
+    /// A row whose file has gone missing falls through to drawing one. Better our version than an
+    /// error on a document the desk needs now.
+    /// </summary>
+    private async Task<GeneratedPdf?> SignedContractAsync(Candidate candidate, CancellationToken ct)
+    {
+        var uploads = await _tenant.CandidateDocuments
+            .AsNoTracking()
+            .Where(d => d.CandidateId == candidate.Id
+                        && d.DocumentType == DocumentType.Contract
+                        && !d.IsGenerated)
+            .OrderByDescending(d => d.UploadedAt)
+            .ToListAsync(ct);
+
+        foreach (var upload in uploads)
+        {
+            var bytes = await ReadAsync(upload.FilePath, ct);
+            if (bytes is null) continue;
+
+            var extension = Path.GetExtension(upload.OriginalFileName);
+            if (string.IsNullOrWhiteSpace(extension)) extension = Path.GetExtension(upload.FileName);
+
+            return new GeneratedPdf(
+                bytes,
+                DocumentFileName.For(candidate.FullName, "Contract", extension.TrimStart('.') is { Length: > 0 } e ? e : "pdf"),
+                string.IsNullOrWhiteSpace(upload.ContentType) ? "application/pdf" : upload.ContentType);
+        }
+
+        return null;
+    }
+
+    private async Task<byte[]?> ReadAsync(string? path, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        try
+        {
+            await using var stream = await _fileStorage.DownloadAsync(path, ct);
+            if (stream is null) return null;
+
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, ct);
+            return buffer.ToArray();
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 }

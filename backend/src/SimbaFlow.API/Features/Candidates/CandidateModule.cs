@@ -122,7 +122,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new GenerateCVCommand(candidateId));
             return result.IsSuccess
-                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
+                ? Results.File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -193,7 +193,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new GenerateContractCommand(candidateId));
             return result.IsSuccess
-                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
+                ? Results.File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -201,7 +201,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new GenerateVisaFormCommand(candidateId));
             return result.IsSuccess
-                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
+                ? Results.File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
     }

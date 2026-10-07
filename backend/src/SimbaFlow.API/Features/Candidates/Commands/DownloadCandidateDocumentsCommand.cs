@@ -149,7 +149,7 @@ public class DownloadCandidateDocumentsHandler
                     items.Add(PdfBundleItem.Document($"{candidate.FullName} · CV", cv));
             }
 
-            var found = onFile
+            var found = Preferred(onFile)
                 .Where(d => d.DocumentType != DocumentType.CV)
                 // Every candidate's pages come in the same order, so a stack of twenty can be
                 // checked by flicking through rather than reading each page.
@@ -179,6 +179,25 @@ public class DownloadCandidateDocumentsHandler
 
         return Result<byte[]>.Success(pdf);
     }
+
+    /// <summary>
+    /// The copies worth printing, where a candidate has more than one of a kind.
+    ///
+    /// A signed contract beats the one we drew. Once both exist — the contract was generated
+    /// before the parties sent theirs back, or the desk printed ours and then filed the signed
+    /// scan — the packet would otherwise carry two contracts that disagree, and the clerk has no
+    /// way to tell which is in force. The uploaded one is.
+    ///
+    /// Only where both kinds exist. Several uploads of the same kind are several documents and
+    /// all of them belong in the packet: a passport has pages, and "Other" is whatever the desk
+    /// decided to keep.
+    /// </summary>
+    private static IEnumerable<CandidateDocument> Preferred(IEnumerable<CandidateDocument> onFile) =>
+        onFile
+            .GroupBy(d => d.DocumentType)
+            .SelectMany(kind => kind.Any(d => !d.IsGenerated)
+                ? kind.Where(d => !d.IsGenerated)
+                : kind);
 
     /// <summary>
     /// This candidate's CV, drawn now, in the layout the agency has chosen.

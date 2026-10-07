@@ -157,7 +157,7 @@ export default function CandidateDetailPage() {
       // can find the one they just made.
       toast.success(`Saved ${file.name}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Contract generation failed");
+      toast.error(err instanceof Error ? err.message : "Could not get the contract");
     } finally {
       setGeneratingContract(false);
     }
@@ -276,7 +276,7 @@ export default function CandidateDetailPage() {
                   ) : (
                     <FileSignature className="mr-2 h-4 w-4" />
                   )}
-                  Generate contract
+                  Download contract
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

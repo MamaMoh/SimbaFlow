@@ -15,7 +15,10 @@ namespace SimbaFlow.API.Features.Candidates;
 /// had four identical PDFs on disk and four rows in the list — and the Documents tab stopped being
 /// a list of the candidate's paperwork and became a log of how often someone pressed a button.
 ///
-/// So the current one replaces the previous one.
+/// So the current one replaces the previous one — the previous *generated* one. An uploaded
+/// document of the same kind is untouched, because it is not another copy of this: the signed
+/// contract that came back from the parties is the only one of its kind, and a press of Generate
+/// that deleted it would be destroying the one document nobody can redraw.
 /// </summary>
 public static class GeneratedDocuments
 {
@@ -36,7 +39,7 @@ public static class GeneratedDocuments
         CancellationToken ct)
     {
         var superseded = await context.CandidateDocuments
-            .Where(d => d.CandidateId == candidate.Id && d.DocumentType == type)
+            .Where(d => d.CandidateId == candidate.Id && d.DocumentType == type && d.IsGenerated)
             .ToListAsync(ct);
 
         await using (var stream = new MemoryStream(bytes))
@@ -55,6 +58,7 @@ public static class GeneratedDocuments
                 FileSizeBytes = bytes.Length,
                 UploadedAt = DateTime.UtcNow,
                 UploadedBy = currentUser.UserName,
+                IsGenerated = true,
             });
         }
 

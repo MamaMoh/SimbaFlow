@@ -118,6 +118,44 @@ public class GeneratedDocumentsTests : IDisposable
     }
 
     [Fact]
+    public async Task AnUploadedCopyOfTheSameKindSurvivesThePrint()
+    {
+        // The one that would hurt. A Saudi placement runs on a contract the parties signed and
+        // someone uploaded; printing ours afterwards used to delete it, and it is the single
+        // document on the candidate that cannot be drawn again.
+        _context.CandidateDocuments.Add(new CandidateDocument
+        {
+            CandidateId = _candidate.Id,
+            DocumentType = DocumentType.Contract,
+            FileName = "signed.pdf",
+            OriginalFileName = "signed contract.pdf",
+            ContentType = "application/pdf",
+            FilePath = "path/signed.pdf",
+            IsGenerated = false,
+        });
+        await _context.SaveChangesAsync();
+
+        await Print(DocumentType.Contract);
+        await Print(DocumentType.Contract);
+
+        var contracts = await _context.CandidateDocuments
+            .Where(d => d.DocumentType == DocumentType.Contract)
+            .ToListAsync();
+
+        contracts.Should().HaveCount(2, "the signed one and the latest generated one");
+        contracts.Should().ContainSingle(d => !d.IsGenerated);
+        await _storage.DidNotReceive().DeleteAsync("path/signed.pdf", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task WhatIsPrintedIsMarkedAsPrinted()
+    {
+        await Print();
+
+        (await _context.CandidateDocuments.SingleAsync()).IsGenerated.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task AFileThatCannotBeDeletedDoesNotFailThePrint()
     {
         await Print();

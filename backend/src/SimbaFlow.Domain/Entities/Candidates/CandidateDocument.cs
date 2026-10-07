@@ -19,6 +19,17 @@ public class CandidateDocument : BaseEntity
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
     public string? UploadedBy { get; set; }
 
+    /// <summary>
+    /// Whether this document was drawn by us rather than handed to us.
+    ///
+    /// The difference matters in both directions. A generated document is a rendering of facts
+    /// already held, so printing it again replaces the last copy — but it must only replace
+    /// *other* generated copies, or pressing Generate destroys the signed original someone
+    /// uploaded. And a contract that exists because the parties signed it is the contract: asked
+    /// for it, we hand back that file rather than drawing a fresh one that nobody has signed.
+    /// </summary>
+    public bool IsGenerated { get; set; }
+
     // Navigation
     public Candidate? Candidate { get; set; }
 }

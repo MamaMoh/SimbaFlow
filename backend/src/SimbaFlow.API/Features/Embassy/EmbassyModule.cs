@@ -35,7 +35,7 @@ public class EmbassyModule : ICarterModule
         {
             var result = await sender.Send(new GenerateTasheerDocumentCommand(id, body?.AppointmentDate));
             return result.IsSuccess
-                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
+                ? Results.File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 

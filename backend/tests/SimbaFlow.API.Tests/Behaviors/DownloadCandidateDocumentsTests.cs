@@ -122,6 +122,54 @@ public class DownloadCandidateDocumentsTests : IDisposable
     }
 
     [Fact]
+    public async Task ThePacketCarriesTheSignedContractRatherThanBoth()
+    {
+        // Both exist whenever the contract was drawn before the parties sent theirs back. Two
+        // contracts that disagree, in one stapled packet, with nothing to say which is in force.
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN");
+        _context.CandidateDocuments.AddRange(
+            Document(id, DocumentType.Contract, "store/ours.pdf", generated: true),
+            Document(id, DocumentType.Contract, "store/signed.pdf", generated: false));
+        await _context.SaveChangesAsync();
+
+        await _handler.Handle(
+            new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.Contract]), default);
+
+        _merged.Should().ContainSingle();
+        await _storage.Received().DownloadAsync("store/signed.pdf", Arg.Any<CancellationToken>());
+        await _storage.DidNotReceive().DownloadAsync("store/ours.pdf", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SeveralUploadsOfOneKindAllGoInThePacket()
+    {
+        // The rule above is about choosing between a drawing and the real thing, not about
+        // collapsing uploads: a passport has pages, and all of them are wanted.
+        var id = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN");
+        _context.CandidateDocuments.AddRange(
+            Document(id, DocumentType.Passport, "store/p1.pdf", generated: false),
+            Document(id, DocumentType.Passport, "store/p2.pdf", generated: false));
+        await _context.SaveChangesAsync();
+
+        await _handler.Handle(
+            new DownloadCandidateDocumentsCommand([id], [(int)DocumentType.Passport]), default);
+
+        _merged.Should().HaveCount(2);
+    }
+
+    private static CandidateDocument Document(
+        Guid candidateId, DocumentType type, string path, bool generated) => new()
+    {
+        CandidateId = candidateId,
+        DocumentType = type,
+        FileName = Path.GetFileName(path),
+        OriginalFileName = Path.GetFileName(path),
+        ContentType = "application/pdf",
+        FilePath = path,
+        IsGenerated = generated,
+    };
+
+    [Fact]
     public async Task OneCandidateNeedsNoDivider()
     {
         // A divider in front of the only name in the stack is a page nobody needs to print.
