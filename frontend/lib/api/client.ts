@@ -37,11 +37,20 @@ async function unifiedFetch<T>(
       
       fullUrl = `${API_BASE_URL}${url}`;
     } else {
-      // Client-side execution: route requests through API proxy for security
-      const { getSession } = await import("next-auth/react");
-      const session = await getSession();
-      token = session?.user?.accessToken;
-      
+      // Client-side execution: route requests through API proxy for security.
+      //
+      // No token is attached here. The proxy route builds its own headers and sets
+      // Authorization from the session it reads server-side, without ever looking at the one
+      // that arrived — so anything put here was discarded.
+      //
+      // It was not free. Producing it meant getSession() on every single call, which is a
+      // round trip to /api/auth/session and a run of the NextAuth jwt callback. Switching
+      // agency revalidates every cached query at once, so dozens of those ran together, each
+      // willing to refresh an access token near expiry, all presenting the same refresh token.
+      // One rotation wins and the rest are a reused token, which is reuse detection working
+      // exactly as designed: every session for that user revoked, the app refreshing in a loop
+      // against tokens that will never be accepted again, and the tab pinned until Chrome
+      // offered to kill it.
       fullUrl = `/api/proxy${url}`;
     }
 
