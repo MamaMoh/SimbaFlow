@@ -54,7 +54,19 @@ internal static class CvLayouts
     private static string Gender(Candidate c) =>
         c.Gender == Domain.Enums.Gender.Male ? "Male" : "Female";
 
-    private static string Address(Candidate c) => FormatAddress(c) ?? "";
+    /// <summary>
+    /// The candidate's address, and the candidate's remark, cut to what a form row holds.
+    ///
+    /// These two are the only fields on a CV with no natural length: an address assembled from
+    /// seven parts, and a free-text note. Every layout here is a single sheet, so a field that can
+    /// grow without limit is a field that can silently produce a second page — which is a strip of
+    /// table with no heading on it, noticed when it is already in an envelope. The limits are
+    /// generous enough to hold what these fields are actually for; past that the form is no longer
+    /// the right place to read it.
+    /// </summary>
+    private static string Address(Candidate c) => Truncate(FormatAddress(c) ?? "", 60);
+
+    private static string Remark(Candidate c) => Truncate(V(c.Remark), 300);
 
     private static string Reference(Candidate c) =>
         V(c.ReferenceNo) is { Length: > 0 } r ? r
@@ -80,6 +92,34 @@ internal static class CvLayouts
             h.Item().Text("وكالة توظيف عمالة أجنبية").FontSize(8.5f).FontColor(Colors.White);
         });
     }
+
+    /// <summary>
+    /// A two-column band whose columns end on the same line.
+    ///
+    /// They did not. Every one of these forms is a photograph beside a stack of tables, and the two
+    /// sides are different heights for reasons that have nothing to do with each other — the tables
+    /// are as tall as the candidate's record, the photograph was whatever number someone measured
+    /// once. So one side's border stopped short of the other's and the sheet looked unfinished.
+    ///
+    /// A Row will not fix it. It does not stretch a child to match its sibling, and ExtendVertical
+    /// inside one asks the *page* how much room is left — the page says "the rest of the sheet",
+    /// and the frame runs to the bottom margin. Decoration and Table cells answer the same way.
+    ///
+    /// Layers do not. The primary layer is measured and every other layer is handed exactly that
+    /// much space, so <paramref name="measured"/> builds the side that sets the height — with a
+    /// plain spacer where the other side goes — and <paramref name="stretched"/> draws the other
+    /// side over it, where ExtendVertical finally means "to the foot of the column beside me".
+    ///
+    /// The stretched side is always the one holding the photograph, because a photograph is the
+    /// only thing on these forms that can be any height without being wrong.
+    /// </summary>
+    private static void AlignedColumns(
+        IContainer container, Action<RowDescriptor> measured, Action<RowDescriptor> stretched) =>
+        container.Layers(layers =>
+        {
+            layers.PrimaryLayer().Row(measured);
+            layers.Layer().Row(stretched);
+        });
 
     /// <summary>A heading bar: English left, Arabic right, reversed out of the panel colour.</summary>
     private static void Bar(ColumnDescriptor col, string en, string ar)
@@ -143,110 +183,125 @@ internal static class CvLayouts
             page.Margin(14);
             page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
-            page.Content().Row(main =>
-            {
-                main.ConstantItem(232).Column(left =>
+            // Wrapped in a Column so the band takes its own height. Handed page.Content()
+            // directly it is the size of the sheet, and the stretched side extends to the
+            // bottom margin instead of to the foot of the column beside it.
+            page.Content().Column(root => AlignedColumns(root.Item(),
+                measured: main =>
                 {
-                    left.Item().Height(330).Border(0.8f).BorderColor(Border)
-                        .Background(Colors.Grey.Lighten3)
-                        .AlignCenter().AlignMiddle().Element(e => PlaceFullBodyImage(e, portrait));
-
-                    left.Item().PaddingTop(6).Background(PanelBlue).Padding(8).Column(info =>
+                    // The tables set the height; the photo column is a spacer here.
+                    main.ConstantItem(232);
+                    main.ConstantItem(8);
+                    main.RelativeItem().Column(right =>
                     {
-                        info.Item().Background(Navy).PaddingVertical(3).AlignCenter()
-                            .Text("FULL NAME").FontSize(9).Bold().FontColor(Colors.White);
-                        info.Item().PaddingVertical(5).AlignCenter()
-                            .Text(c.FullName.ToUpperInvariant()).FontSize(10).Bold();
+                        Letterhead(right, logo, c, 70);
 
-                        info.Item().PaddingTop(4).Background(Navy).PaddingVertical(3).AlignCenter()
-                            .Text("ADDRESS").FontSize(9).Bold().FontColor(Colors.White);
-                        info.Item().PaddingTop(3).AlignCenter().Text(V(Address(c))).FontSize(8.5f);
-                        info.Item().AlignCenter().Text(V(c.PhoneNumber)).FontSize(8.5f);
-
-                        info.Item().PaddingTop(6).Background(Navy).PaddingVertical(3).AlignCenter()
-                            .Text("PASSPORT").FontSize(9).Bold().FontColor(Colors.White);
-                        info.Item().PaddingTop(3).Column(pp =>
+                        right.Item().PaddingTop(6);
+                        Bar(right, "PERSONAL INFORMATION", "البيانات الشخصية");
+                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
                         {
-                            PanelRow(pp, "PASSPORT #", V(c.PassportNumber));
-                            PanelRow(pp, "ISSUE", c.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "");
-                            PanelRow(pp, "EXPIRY", c.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "");
-                            PanelRow(pp, "PLACE", V(c.PassportPlaceOfIssue));
+                            Row3(t, "Nationality", V(c.Nationality), "الجنسية");
+                            Row3(t, "Religion", V(c.Religion), "الديانة");
+                            Row3(t, "Gender", Gender(c), "الجنس");
+                            Row3(t, "Age", Age(c), "عمر");
+                            Row3(t, "Date of Birth", Dob(c), "تاريخ الولادة");
+                            Row3(t, "Marital Status", V(c.MaritalStatus), "الحالة الزوجية");
+                            Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
+                            Row3(t, "Height", V(c.Height), "ارتفاع");
+                            Row3(t, "Weight", V(c.Weight), "وزن");
+                        });
+
+                        right.Item().PaddingTop(6);
+                        Bar(right, "CONTRACT PERIOD", "مدة العقد");
+                        right.Item().PaddingVertical(4).AlignCenter()
+                            .Text(V(c.ContractPeriod)).FontSize(10).Bold();
+
+                        right.Item().Row(sp =>
+                        {
+                            sp.RelativeItem().Column(s =>
+                            {
+                                s.Item().Background(Navy).PaddingVertical(3).AlignCenter()
+                                    .Text("MONTHLY SALARY").FontSize(8.5f).Bold().FontColor(Colors.White);
+                                s.Item().PaddingVertical(4).AlignCenter()
+                                    .Text(V(c.MonthlySalary)).FontSize(9.5f).Bold();
+                            });
+                            sp.ConstantItem(6);
+                            sp.RelativeItem().Column(s =>
+                            {
+                                s.Item().Background(Navy).PaddingVertical(3).AlignCenter()
+                                    .Text("POSITION").FontSize(8.5f).Bold().FontColor(Colors.White);
+                                s.Item().PaddingVertical(4).AlignCenter()
+                                    .Text(V(c.Occupation)).FontSize(9.5f).Bold();
+                            });
+                        });
+
+                        right.Item().PaddingTop(4).Background(Navy).PaddingVertical(5).AlignCenter()
+                            .Text("خارج الدولة").FontSize(11).Bold().FontColor(Colors.White);
+
+                        right.Item().PaddingTop(6);
+                        Bar(right, "LANGUAGE & EDUCATION", "اللغة والتعليم");
+                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        {
+                            Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
+                            Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
+                            Row3(t, "Education", V(c.Qualification), "المستوى التعليمي");
+                        });
+
+                        right.Item().PaddingTop(6);
+                        Bar(right, "Previous Employment Abroad", "خبرة خارج البلاد");
+                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        {
+                            Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
+                            Row3(t, "Country", V(c.WorksIn), "البلد");
+                        });
+
+                        right.Item().PaddingTop(6).Border(0.5f).BorderColor(Border).Column(t =>
+                        {
+                            foreach (var (en, ar, val) in Skills(c)) Row3(t, en, val, ar, 88);
+                            Row3(t, "Remark", Remark(c), "ملاحظات", 88);
                         });
                     });
-                });
-
-                main.ConstantItem(8);
-
-                main.RelativeItem().Column(right =>
+                },
+                stretched: main =>
                 {
-                    Letterhead(right, logo, c, 70);
-
-                    right.Item().PaddingTop(6);
-                    Bar(right, "PERSONAL INFORMATION", "البيانات الشخصية");
-                    right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                    // Decoration, not Column. A Column measures its children in order, so an
+                    // ExtendVertical photograph at the top takes the whole column and the panel
+                    // below it is pushed off the layer. A Decoration measures After first and
+                    // leaves Content the remainder, which is the behaviour wanted here: the panel
+                    // is whatever height its text needs, and the photograph fills what is left.
+                    main.ConstantItem(232).Decoration(left =>
                     {
-                        Row3(t, "Nationality", V(c.Nationality), "الجنسية");
-                        Row3(t, "Religion", V(c.Religion), "الديانة");
-                        Row3(t, "Gender", Gender(c), "الجنس");
-                        Row3(t, "Age", Age(c), "عمر");
-                        Row3(t, "Date of Birth", Dob(c), "تاريخ الولادة");
-                        Row3(t, "Marital Status", V(c.MaritalStatus), "الحالة الزوجية");
-                        Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
-                        Row3(t, "Height", V(c.Height), "ارتفاع");
-                        Row3(t, "Weight", V(c.Weight), "وزن");
-                    });
+                        left.Content().ExtendVertical().MinHeight(200).Border(0.8f).BorderColor(Border)
+                            .Background(Colors.Grey.Lighten3)
+                            .AlignCenter().AlignMiddle().Element(e => PlaceFullBodyImage(e, portrait));
 
-                    right.Item().PaddingTop(6);
-                    Bar(right, "CONTRACT PERIOD", "مدة العقد");
-                    right.Item().PaddingVertical(4).AlignCenter()
-                        .Text(V(c.ContractPeriod)).FontSize(10).Bold();
+                        left.After().PaddingTop(6).Background(PanelBlue).Padding(8).Column(info =>
+                        {
+                            info.Item().Background(Navy).PaddingVertical(3).AlignCenter()
+                                .Text("FULL NAME").FontSize(9).Bold().FontColor(Colors.White);
+                            info.Item().PaddingVertical(5).AlignCenter()
+                                .Text(c.FullName.ToUpperInvariant()).FontSize(10).Bold();
 
-                    right.Item().Row(sp =>
-                    {
-                        sp.RelativeItem().Column(s =>
-                        {
-                            s.Item().Background(Navy).PaddingVertical(3).AlignCenter()
-                                .Text("MONTHLY SALARY").FontSize(8.5f).Bold().FontColor(Colors.White);
-                            s.Item().PaddingVertical(4).AlignCenter()
-                                .Text(V(c.MonthlySalary)).FontSize(9.5f).Bold();
-                        });
-                        sp.ConstantItem(6);
-                        sp.RelativeItem().Column(s =>
-                        {
-                            s.Item().Background(Navy).PaddingVertical(3).AlignCenter()
-                                .Text("POSITION").FontSize(8.5f).Bold().FontColor(Colors.White);
-                            s.Item().PaddingVertical(4).AlignCenter()
-                                .Text(V(c.Occupation)).FontSize(9.5f).Bold();
+                            info.Item().PaddingTop(4).Background(Navy).PaddingVertical(3).AlignCenter()
+                                .Text("ADDRESS").FontSize(9).Bold().FontColor(Colors.White);
+                            info.Item().PaddingTop(3).AlignCenter().Text(V(Address(c))).FontSize(8.5f);
+                            info.Item().AlignCenter().Text(V(c.PhoneNumber)).FontSize(8.5f);
+
+                            info.Item().PaddingTop(6).Background(Navy).PaddingVertical(3).AlignCenter()
+                                .Text("PASSPORT").FontSize(9).Bold().FontColor(Colors.White);
+                            info.Item().PaddingTop(3).Column(pp =>
+                            {
+                                PanelRow(pp, "PASSPORT #", V(c.PassportNumber));
+                                PanelRow(pp, "ISSUE", c.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "");
+                                PanelRow(pp, "EXPIRY", c.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "");
+                                PanelRow(pp, "PLACE", V(c.PassportPlaceOfIssue));
+                            });
                         });
                     });
 
-                    right.Item().PaddingTop(4).Background(Navy).PaddingVertical(5).AlignCenter()
-                        .Text("خارج الدولة").FontSize(11).Bold().FontColor(Colors.White);
-
-                    right.Item().PaddingTop(6);
-                    Bar(right, "LANGUAGE & EDUCATION", "اللغة والتعليم");
-                    right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                    {
-                        Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
-                        Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
-                        Row3(t, "Education", V(c.Qualification), "المستوى التعليمي");
-                    });
-
-                    right.Item().PaddingTop(6);
-                    Bar(right, "Previous Employment Abroad", "خبرة خارج البلاد");
-                    right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                    {
-                        Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
-                        Row3(t, "Country", V(c.WorksIn), "البلد");
-                    });
-
-                    right.Item().PaddingTop(6).Border(0.5f).BorderColor(Border).Column(t =>
-                    {
-                        foreach (var (en, ar, val) in Skills(c)) Row3(t, en, val, ar, 88);
-                        Row3(t, "Remark", V(c.Remark), "ملاحظات", 88);
-                    });
-                });
-            });
+                    main.ConstantItem(8);
+                    main.RelativeItem();
+                }));
         }));
     }
 
@@ -298,50 +353,56 @@ internal static class CvLayouts
                         .AlignCenter().AlignMiddle().Element(e => PlaceImage(e, photo, "PHOTO"));
                 });
 
-                root.Item().PaddingTop(6).Row(body =>
-                {
-                    body.RelativeItem().Column(left =>
+                AlignedColumns(root.Item().PaddingTop(6),
+                    measured: body =>
                     {
-                        Bar(left, "Details of Applicant", "بيانات مقدم الطلب");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        body.RelativeItem().Column(left =>
                         {
-                            Row3(t, "Reference No.", Reference(c), "رقم المرجع");
-                            Row3(t, "Nationality", V(c.Nationality), "الجنسية");
-                            Row3(t, "Passport No.", V(c.PassportNumber), "رقم جواز السفر");
-                            Row3(t, "Religion", V(c.Religion), "الديانة");
-                            Row3(t, "Date of Birth", Dob(c), "تاريخ الولادة");
-                            Row3(t, "Place of Birth", V(c.PlaceOfBirth), "مكان الولادة");
-                            Row3(t, "Complete Address", V(Address(c)), "العنوان الكامل");
-                            Row3(t, "Marital Status", V(c.MaritalStatus), "الحالة الزوجية");
-                            Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
-                            Row3(t, "Height", V(c.Height), "ارتفاع");
-                            Row3(t, "Weight", V(c.Weight), "وزن");
-                        });
+                            Bar(left, "Details of Applicant", "بيانات مقدم الطلب");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Reference No.", Reference(c), "رقم المرجع");
+                                Row3(t, "Nationality", V(c.Nationality), "الجنسية");
+                                Row3(t, "Passport No.", V(c.PassportNumber), "رقم جواز السفر");
+                                Row3(t, "Religion", V(c.Religion), "الديانة");
+                                Row3(t, "Date of Birth", Dob(c), "تاريخ الولادة");
+                                Row3(t, "Place of Birth", V(c.PlaceOfBirth), "مكان الولادة");
+                                Row3(t, "Complete Address", V(Address(c)), "العنوان الكامل");
+                                Row3(t, "Marital Status", V(c.MaritalStatus), "الحالة الزوجية");
+                                Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
+                                Row3(t, "Height", V(c.Height), "ارتفاع");
+                                Row3(t, "Weight", V(c.Weight), "وزن");
+                            });
 
-                        left.Item().PaddingTop(5);
-                        Bar(left, "Languages & Education", "اللغة والتعليم");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
-                            Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
-                            Row3(t, "Education", V(c.Qualification), "المستوى التعليمي");
-                        });
+                            left.Item().PaddingTop(5);
+                            Bar(left, "Languages & Education", "اللغة والتعليم");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
+                                Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
+                                Row3(t, "Education", V(c.Qualification), "المستوى التعليمي");
+                            });
 
-                        left.Item().PaddingTop(5);
-                        Bar(left, "Previous Employment Abroad", "خبرة خارج البلاد");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
-                            Row3(t, "Country", V(c.WorksIn), "البلد");
+                            left.Item().PaddingTop(5);
+                            Bar(left, "Previous Employment Abroad", "خبرة خارج البلاد");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
+                                Row3(t, "Country", V(c.WorksIn), "البلد");
+                            });
                         });
+                        body.ConstantItem(6);
+                        body.ConstantItem(200);
+                    },
+                    stretched: body =>
+                    {
+                        body.RelativeItem();
+                        body.ConstantItem(6);
+                        body.ConstantItem(200).ExtendVertical().Border(0.6f).BorderColor(Border)
+                            .Background(Colors.Grey.Lighten4)
+                            .AlignCenter().AlignMiddle()
+                            .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
                     });
-
-                    body.ConstantItem(6);
-                    body.ConstantItem(200).Border(0.6f).BorderColor(Border)
-                        .Background(Colors.Grey.Lighten4)
-                        .AlignCenter().AlignMiddle()
-                        .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
-                });
 
                 root.Item().PaddingTop(6);
                 Bar(root, "Skills & Experience", "خبرة العمل");
@@ -368,7 +429,7 @@ internal static class CvLayouts
                 root.Item().Border(0.5f).BorderColor(Border).Column(t =>
                 {
                     Row3(t, "Other skills", "", "خبرات أخرى");
-                    Row3(t, "Remarks", V(c.Remark), "ملاحظات");
+                    Row3(t, "Remarks", Remark(c), "ملاحظات");
                 });
             });
         }));
@@ -395,85 +456,93 @@ internal static class CvLayouts
                         .AlignCenter().AlignMiddle().Element(e => PlaceImage(e, photo, "PHOTO"));
                 });
 
-                root.Item().PaddingTop(6).Row(main =>
-                {
-                    main.ConstantItem(248).Column(left =>
+                AlignedColumns(root.Item().PaddingTop(6),
+                    measured: main =>
                     {
-                        left.Item().Height(372).Border(0.7f).BorderColor(Border)
-                            .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
-                            .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
-
-                        left.Item().PaddingTop(5);
-                        Bar(left, "Work Experience", "خبرة في العمل");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        main.ConstantItem(248);
+                        main.ConstantItem(6);
+                        main.RelativeItem().Column(right =>
                         {
-                            Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة", 60);
-                            Row3(t, "Country", V(c.WorksIn), "البلد", 60);
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Ref No.", Reference(c), "رقم");
+                                Row3(t, "Job", V(c.Occupation), "الوظيفة");
+                                Row3(t, "Name", c.FullName.ToUpperInvariant(), "الاسم");
+                                Row3(t, "Salary", V(c.MonthlySalary), "الراتب");
+                            });
+
+                            right.Item().PaddingTop(5);
+                            Bar(right, "DETAILS OF PASSPORT", "تفاصيل جواز السفر");
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Passport No.", V(c.PassportNumber), "رقم الجواز");
+                                Row3(t, "Issue Date", c.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الإصدار");
+                                Row3(t, "Expiry Date", c.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الانتهاء");
+                                Row3(t, "Place of Issue", V(c.PassportPlaceOfIssue), "مكان الإصدار");
+                            });
+
+                            right.Item().PaddingTop(5);
+                            Bar(right, "LANGUAGES", "اللغات");
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
+                                Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
+                            });
+
+                            right.Item().PaddingTop(5);
+                            Bar(right, "EDUCATIONAL QUALIFICATION", "المؤهل العلمي");
+                            right.Item().Border(0.5f).BorderColor(Border)
+                                .PaddingVertical(5).AlignCenter()
+                                .Text(V(c.Qualification)).FontSize(9.5f).Bold();
+
+                            right.Item().PaddingTop(5);
+                            Bar(right, "DETAILS OF APPLICANT", "بيانات مقدم الطلب");
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Nationality", V(c.Nationality), "الجنسية");
+                                Row3(t, "Religion", V(c.Religion), "الديانة");
+                                Row3(t, "Date of Birth", Dob(c), "تاريخ الولادة");
+                                Row3(t, "Place of Birth", V(c.PlaceOfBirth), "مكان الولادة");
+                                Row3(t, "Leaving Town", V(c.City), "مغادرة المدينة");
+                                Row3(t, "Civil Status", V(c.MaritalStatus), "الحالة الزوجية");
+                                Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
+                                Row3(t, "Height", V(c.Height), "ارتفاع");
+                                Row3(t, "Weight", V(c.Weight), "الوزن");
+                                Row3(t, "Age", Age(c), "العمر");
+                                Row3(t, "Date", DateTime.UtcNow.ToString("dd/MM/yyyy"), "تاريخ");
+                            });
                         });
-
-                        left.Item().PaddingTop(5);
-                        Bar(left, "Skills & Experience", "خبرة العمل");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            foreach (var (en, ar, val) in Skills(c)) Row3(t, en, val, ar, 60);
-                            Row3(t, "Remarks", V(c.Remark), "ملاحظات", 60);
-                        });
-                    });
-
-                    main.ConstantItem(6);
-
-                    main.RelativeItem().Column(right =>
+                    },
+                    stretched: main =>
                     {
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        main.ConstantItem(248).Decoration(left =>
                         {
-                            Row3(t, "Ref No.", Reference(c), "رقم");
-                            Row3(t, "Job", V(c.Occupation), "الوظيفة");
-                            Row3(t, "Name", c.FullName.ToUpperInvariant(), "الاسم");
-                            Row3(t, "Salary", V(c.MonthlySalary), "الراتب");
-                        });
+                            left.Content().ExtendVertical().MinHeight(200).Border(0.7f).BorderColor(Border)
+                                .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
+                                .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
+                            left.After().Column(rest =>
+                            {
 
-                        right.Item().PaddingTop(5);
-                        Bar(right, "DETAILS OF PASSPORT", "تفاصيل جواز السفر");
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "Passport No.", V(c.PassportNumber), "رقم الجواز");
-                            Row3(t, "Issue Date", c.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الإصدار");
-                            Row3(t, "Expiry Date", c.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الانتهاء");
-                            Row3(t, "Place of Issue", V(c.PassportPlaceOfIssue), "مكان الإصدار");
-                        });
+                                rest.Item().PaddingTop(5);
+                                Bar(rest, "Work Experience", "خبرة في العمل");
+                                rest.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                                {
+                                    Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة", 60);
+                                    Row3(t, "Country", V(c.WorksIn), "البلد", 60);
+                                });
 
-                        right.Item().PaddingTop(5);
-                        Bar(right, "LANGUAGES", "اللغات");
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
-                            Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
+                                rest.Item().PaddingTop(5);
+                                Bar(rest, "Skills & Experience", "خبرة العمل");
+                                rest.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                                {
+                                    foreach (var (en, ar, val) in Skills(c)) Row3(t, en, val, ar, 60);
+                                    Row3(t, "Remarks", Remark(c), "ملاحظات", 60);
+                                });
+                            });
                         });
-
-                        right.Item().PaddingTop(5);
-                        Bar(right, "EDUCATIONAL QUALIFICATION", "المؤهل العلمي");
-                        right.Item().Border(0.5f).BorderColor(Border)
-                            .PaddingVertical(5).AlignCenter()
-                            .Text(V(c.Qualification)).FontSize(9.5f).Bold();
-
-                        right.Item().PaddingTop(5);
-                        Bar(right, "DETAILS OF APPLICANT", "بيانات مقدم الطلب");
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "Nationality", V(c.Nationality), "الجنسية");
-                            Row3(t, "Religion", V(c.Religion), "الديانة");
-                            Row3(t, "Date of Birth", Dob(c), "تاريخ الولادة");
-                            Row3(t, "Place of Birth", V(c.PlaceOfBirth), "مكان الولادة");
-                            Row3(t, "Leaving Town", V(c.City), "مغادرة المدينة");
-                            Row3(t, "Civil Status", V(c.MaritalStatus), "الحالة الزوجية");
-                            Row3(t, "No. of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
-                            Row3(t, "Height", V(c.Height), "ارتفاع");
-                            Row3(t, "Weight", V(c.Weight), "الوزن");
-                            Row3(t, "Age", Age(c), "العمر");
-                            Row3(t, "Date", DateTime.UtcNow.ToString("dd/MM/yyyy"), "تاريخ");
-                        });
+                        main.ConstantItem(6);
+                        main.RelativeItem();
                     });
-                });
             });
         }));
     }
@@ -515,85 +584,93 @@ internal static class CvLayouts
                 root.Item().PaddingTop(5).Border(0.5f).BorderColor(Border).Column(t =>
                     Row3(t, "Full Name", c.FullName.ToUpperInvariant(), "الاسم الكامل"));
 
-                root.Item().PaddingTop(5).Row(body =>
-                {
-                    body.RelativeItem().Column(left =>
+                AlignedColumns(root.Item().PaddingTop(5),
+                    measured: body =>
                     {
-                        Bar(left, "Personal Details", "البيانات الشخصية");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        body.RelativeItem().Column(left =>
                         {
-                            Row3(t, "Nationality", V(c.Nationality), "الجنسية");
-                            Row3(t, "Religion", V(c.Religion), "الديانة");
-                            Row3(t, "Date Of Birth", Dob(c), "تاريخ الميلاد");
-                            Row3(t, "Place Of Birth", V(c.PlaceOfBirth), "مكان الميلاد");
-                            Row3(t, "Age", Age(c), "العمر");
-                            Row3(t, "Marital Status", V(c.MaritalStatus), "الحالة الاجتماعية");
-                            Row3(t, "No. Of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
-                            Row3(t, "Weight", V(c.Weight), "الوزن");
-                            Row3(t, "Height", V(c.Height), "الطول");
-                            Row3(t, "Educational Qualification", V(c.Qualification), "المؤهل العلمي");
-                        });
-
-                        left.Item().PaddingTop(5);
-                        Bar(left, "Passport Details", "بيانات جواز السفر");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "Passport No.", V(c.PassportNumber), "رقم جواز السفر");
-                            Row3(t, "Place of Issue", V(c.PassportPlaceOfIssue), "مكان الاصدار");
-                            Row3(t, "Issue Date", c.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الاصدار");
-                            Row3(t, "Expiry Date", c.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الانتهاء");
-                        });
-
-                        left.Item().PaddingTop(5);
-                        Bar(left, "LANGUAGES", "اللغات");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
-                            Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
-                        });
-
-                        left.Item().PaddingTop(5);
-                        Bar(left, "Work Experience", "خبرة في العمل");
-                        left.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
-                            Row3(t, "Country", V(c.WorksIn), "البلد");
-                        });
-                    });
-
-                    body.ConstantItem(6);
-
-                    body.ConstantItem(222).Column(right =>
-                    {
-                        right.Item().Height(300).Border(0.6f).BorderColor(Border)
-                            .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
-                            .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
-
-                        right.Item().PaddingTop(5).AlignRight()
-                            .Text("المهارات").FontSize(8.5f).Bold();
-
-                        // A tick box per skill, the way this form shows them.
-                        right.Item().PaddingTop(3).Border(0.5f).BorderColor(Border).Row(r =>
-                        {
-                            foreach (var (en, ar, val) in Skills(c).Take(5))
+                            Bar(left, "Personal Details", "البيانات الشخصية");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
                             {
-                                r.RelativeItem().BorderRight(0.4f).BorderColor(Border)
-                                    .PaddingVertical(3).Column(cell =>
-                                {
-                                    cell.Item().AlignCenter().Text(ar).FontSize(FormType.Label);
-                                    cell.Item().PaddingVertical(2).AlignCenter()
-                                        .Element(e => TickBox(e, val != "NO"));
-                                    cell.Item().AlignCenter().Text(en).FontSize(FormType.Label);
-                                });
-                            }
-                        });
+                                Row3(t, "Nationality", V(c.Nationality), "الجنسية");
+                                Row3(t, "Religion", V(c.Religion), "الديانة");
+                                Row3(t, "Date Of Birth", Dob(c), "تاريخ الميلاد");
+                                Row3(t, "Place Of Birth", V(c.PlaceOfBirth), "مكان الميلاد");
+                                Row3(t, "Age", Age(c), "العمر");
+                                Row3(t, "Marital Status", V(c.MaritalStatus), "الحالة الاجتماعية");
+                                Row3(t, "No. Of Children", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
+                                Row3(t, "Weight", V(c.Weight), "الوزن");
+                                Row3(t, "Height", V(c.Height), "الطول");
+                                Row3(t, "Educational Qualification", V(c.Qualification), "المؤهل العلمي");
+                            });
 
-                        right.Item().PaddingTop(5);
-                        Bar(right, "Notes", "ملاحظات");
-                        right.Item().Border(0.5f).BorderColor(Border).MinHeight(38)
-                            .Padding(4).Text(V(c.Remark)).FontSize(8);
+                            left.Item().PaddingTop(5);
+                            Bar(left, "Passport Details", "بيانات جواز السفر");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Passport No.", V(c.PassportNumber), "رقم جواز السفر");
+                                Row3(t, "Place of Issue", V(c.PassportPlaceOfIssue), "مكان الاصدار");
+                                Row3(t, "Issue Date", c.PassportIssueDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الاصدار");
+                                Row3(t, "Expiry Date", c.PassportExpiryDate?.ToString("dd/MM/yyyy") ?? "", "تاريخ الانتهاء");
+                            });
+
+                            left.Item().PaddingTop(5);
+                            Bar(left, "LANGUAGES", "اللغات");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "English", V(c.EnglishLevel), "الإنجليزية");
+                                Row3(t, "Arabic", V(c.ArabicLevel), "العربية");
+                            });
+
+                            left.Item().PaddingTop(5);
+                            Bar(left, "Work Experience", "خبرة في العمل");
+                            left.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
+                                Row3(t, "Country", V(c.WorksIn), "البلد");
+                            });
+                        });
+                        body.ConstantItem(6);
+                        body.ConstantItem(222);
+                    },
+                    stretched: body =>
+                    {
+                        body.RelativeItem();
+                        body.ConstantItem(6);
+                        body.ConstantItem(222).Decoration(right =>
+                        {
+                            right.Content().ExtendVertical().MinHeight(160).Border(0.6f).BorderColor(Border)
+                                .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
+                                .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
+                            right.After().Column(rest =>
+                            {
+
+                                rest.Item().PaddingTop(5).AlignRight()
+                                    .Text("المهارات").FontSize(8.5f).Bold();
+
+                                // A tick box per skill, the way this form shows them.
+                                rest.Item().PaddingTop(3).Border(0.5f).BorderColor(Border).Row(r =>
+                                {
+                                    foreach (var (en, ar, val) in Skills(c).Take(5))
+                                    {
+                                        r.RelativeItem().BorderRight(0.4f).BorderColor(Border)
+                                            .PaddingVertical(3).Column(cell =>
+                                        {
+                                            cell.Item().AlignCenter().Text(ar).FontSize(FormType.Label);
+                                            cell.Item().PaddingVertical(2).AlignCenter()
+                                                .Element(e => TickBox(e, val != "NO"));
+                                            cell.Item().AlignCenter().Text(en).FontSize(FormType.Label);
+                                        });
+                                    }
+                                });
+
+                                rest.Item().PaddingTop(5);
+                                Bar(rest, "Notes", "ملاحظات");
+                                rest.Item().Border(0.5f).BorderColor(Border).MinHeight(38)
+                                    .Padding(4).Text(Remark(c)).FontSize(FormType.Value);
+                            });
+                        });
                     });
-                });
             });
         }));
     }
@@ -614,98 +691,103 @@ internal static class CvLayouts
             {
                 Letterhead(root, logo, c, 66);
 
-                root.Item().PaddingTop(7).Row(body =>
-                {
-                    body.ConstantItem(176).Column(left =>
+                AlignedColumns(root.Item().PaddingTop(7),
+                    measured: body =>
                     {
-                        left.Item().Height(150).Border(0.8f).BorderColor(AgencyBlue)
-                            .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
-                            .Element(e => PlaceImage(e, photo, "PHOTO"));
-                        left.Item().PaddingVertical(3).AlignCenter()
-                            .Text("الصورة كاملة").FontSize(FormType.Value);
-                        left.Item().Height(250).Border(0.8f).BorderColor(AgencyBlue)
-                            .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
-                            .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
-                    });
+                        body.ConstantItem(176);
+                        body.ConstantItem(8);
+                        body.RelativeItem().Column(right =>
+                        {
+                            right.Item().AlignCenter().Text("سيــرة ذاتية").FontSize(12).Bold().FontColor(Maroon);
+                            right.Item().AlignCenter().PaddingBottom(4)
+                                .Text("Candidate's Resume").FontSize(9.5f).FontColor(Maroon);
 
-                    body.ConstantItem(8);
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                t.Item().Background(PanelBlue).Row(r =>
+                                {
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text("DATE / التاريخ").FontSize(FormType.Label).Bold();
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text("REFERENCE NO. / رقم المرجع").FontSize(FormType.Label).Bold();
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text("CATEGORY / الفئة").FontSize(FormType.Label).Bold();
+                                });
+                                t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
+                                {
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text(DateTime.UtcNow.ToString("dd-MMM-yyyy")).FontSize(FormType.Value);
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text(Reference(c)).FontSize(FormType.Value).Bold();
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text(c.ExperienceAbroadYears is > 0 ? "Experienced" : "First-Time")
+                                        .FontSize(FormType.Value);
+                                });
+                                Row3(t, "POSITION", V(c.Occupation), "وظيفة");
+                                Row3(t, "SALARY", V(c.MonthlySalary), "راتب");
+                            });
 
-                    body.RelativeItem().Column(right =>
+                            right.Item().PaddingTop(5);
+                            Bar(right, "PERSONAL INFORMATION", "المعلومات الشخصية");
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                Row3(t, "NAME", c.FullName.ToUpperInvariant(), "الاسم");
+                                Row3(t, "CITY", V(c.City), "المدينة");
+                                Row3(t, "NATIONALITY", V(c.Nationality), "الجنسية");
+                                Row3(t, "GENDER", Gender(c).ToUpperInvariant(), "الجنس");
+                                Row3(t, "AGE", Age(c), "العمر");
+                                Row3(t, "DATE OF BIRTH", Dob(c), "تاريخ الميلاد");
+                                Row3(t, "EDUCATION", V(c.Qualification), "الحالة التعليمية");
+                                Row3(t, "RELIGION", V(c.Religion), "الديانة");
+                                Row3(t, "MARITAL STATUS", V(c.MaritalStatus), "الحالة الاجتماعية");
+                                Row3(t, "NO. OF KIDS", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
+                                Row3(t, "HEIGHT", V(c.Height), "الطول");
+                                Row3(t, "WEIGHT", V(c.Weight), "الوزن");
+                                Row3(t, "ARABIC LANGUAGE", V(c.ArabicLevel), "اللغة العربية");
+                                Row3(t, "ENGLISH LANGUAGE", V(c.EnglishLevel), "اللغة الإنجليزية");
+                            });
+
+                            right.Item().PaddingTop(5);
+                            Bar(right, "EMPLOYMENT BACKGROUND", "خلفية عن العمل");
+                            right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                            {
+                                t.Item().Background(PanelBlue).Row(r =>
+                                {
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text("COUNTRY / الدولة").FontSize(FormType.Label).Bold();
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text("POSITION / وظيفة").FontSize(FormType.Label).Bold();
+                                    r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
+                                        .Text("DURATION / مدة العمل").FontSize(FormType.Label).Bold();
+                                });
+                                t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
+                                {
+                                    r.RelativeItem().PaddingVertical(3).AlignCenter()
+                                        .Text(V(c.WorksIn)).FontSize(FormType.Value);
+                                    r.RelativeItem().PaddingVertical(3).AlignCenter()
+                                        .Text(V(c.Occupation)).FontSize(FormType.Value);
+                                    r.RelativeItem().PaddingVertical(3).AlignCenter()
+                                        .Text(c.ExperienceAbroadYears?.ToString() ?? "").FontSize(FormType.Value);
+                                });
+                            });
+                        });
+                    },
+                    stretched: body =>
                     {
-                        right.Item().AlignCenter().Text("سيــرة ذاتية").FontSize(12).Bold().FontColor(Maroon);
-                        right.Item().AlignCenter().PaddingBottom(4)
-                            .Text("Candidate's Resume").FontSize(9.5f).FontColor(Maroon);
-
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
+                        body.ConstantItem(176).Column(left =>
                         {
-                            t.Item().Background(PanelBlue).Row(r =>
-                            {
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("DATE / التاريخ").FontSize(FormType.Label).Bold();
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("REFERENCE NO. / رقم المرجع").FontSize(FormType.Label).Bold();
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("CATEGORY / الفئة").FontSize(FormType.Label).Bold();
-                            });
-                            t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
-                            {
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text(DateTime.UtcNow.ToString("dd-MMM-yyyy")).FontSize(FormType.Value);
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text(Reference(c)).FontSize(FormType.Value).Bold();
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text(c.ExperienceAbroadYears is > 0 ? "Experienced" : "First-Time")
-                                    .FontSize(FormType.Value);
-                            });
-                            Row3(t, "POSITION", V(c.Occupation), "وظيفة");
-                            Row3(t, "SALARY", V(c.MonthlySalary), "راتب");
+                            left.Item().Height(150).Border(0.8f).BorderColor(AgencyBlue)
+                                .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
+                                .Element(e => PlaceImage(e, photo, "PHOTO"));
+                            left.Item().PaddingVertical(3).AlignCenter()
+                                .Text("الصورة كاملة").FontSize(FormType.Value);
+                            left.Item().ExtendVertical().MinHeight(150).Border(0.8f).BorderColor(AgencyBlue)
+                                .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
+                                .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
                         });
-
-                        right.Item().PaddingTop(5);
-                        Bar(right, "PERSONAL INFORMATION", "المعلومات الشخصية");
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            Row3(t, "NAME", c.FullName.ToUpperInvariant(), "الاسم");
-                            Row3(t, "CITY", V(c.City), "المدينة");
-                            Row3(t, "NATIONALITY", V(c.Nationality), "الجنسية");
-                            Row3(t, "GENDER", Gender(c).ToUpperInvariant(), "الجنس");
-                            Row3(t, "AGE", Age(c), "العمر");
-                            Row3(t, "DATE OF BIRTH", Dob(c), "تاريخ الميلاد");
-                            Row3(t, "EDUCATION", V(c.Qualification), "الحالة التعليمية");
-                            Row3(t, "RELIGION", V(c.Religion), "الديانة");
-                            Row3(t, "MARITAL STATUS", V(c.MaritalStatus), "الحالة الاجتماعية");
-                            Row3(t, "NO. OF KIDS", c.NumberOfChildren?.ToString() ?? "", "عدد الأطفال");
-                            Row3(t, "HEIGHT", V(c.Height), "الطول");
-                            Row3(t, "WEIGHT", V(c.Weight), "الوزن");
-                            Row3(t, "ARABIC LANGUAGE", V(c.ArabicLevel), "اللغة العربية");
-                            Row3(t, "ENGLISH LANGUAGE", V(c.EnglishLevel), "اللغة الإنجليزية");
-                        });
-
-                        right.Item().PaddingTop(5);
-                        Bar(right, "EMPLOYMENT BACKGROUND", "خلفية عن العمل");
-                        right.Item().Border(0.5f).BorderColor(Border).Column(t =>
-                        {
-                            t.Item().Background(PanelBlue).Row(r =>
-                            {
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("COUNTRY / الدولة").FontSize(FormType.Label).Bold();
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("POSITION / وظيفة").FontSize(FormType.Label).Bold();
-                                r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("DURATION / مدة العمل").FontSize(FormType.Label).Bold();
-                            });
-                            t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
-                            {
-                                r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                    .Text(V(c.WorksIn)).FontSize(FormType.Value);
-                                r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                    .Text(V(c.Occupation)).FontSize(FormType.Value);
-                                r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                    .Text(c.ExperienceAbroadYears?.ToString() ?? "").FontSize(FormType.Value);
-                            });
-                        });
+                        body.ConstantItem(8);
+                        body.RelativeItem();
                     });
-                });
 
                 // Skills as a tick grid across the bottom — four to a row, English and Arabic.
                 root.Item().PaddingTop(8).Grid(grid =>
@@ -829,22 +911,11 @@ internal static class CvLayouts
                     // the skills. Split across two rows it left a dead gap the height of the
                     // applicant table.
                     //
-                    // Two layers rather than one row, because the photograph has to end exactly
-                    // where the skills table does and a Row will not stretch one child to match
-                    // its sibling — ExtendVertical inside a Row asks the *page* how much room is
-                    // left, and the page says "the rest of the sheet", which ran the frame down
-                    // to the bottom margin. Decoration and Table cells behave the same way.
-                    //
-                    // Layers do not: the primary layer is measured, and every other layer is then
-                    // given exactly that much space. So the left column is the primary and sets
-                    // the height, and the photograph is drawn over the gap the primary leaves for
-                    // it, where ExtendVertical now means "to the foot of the left column". That
-                    // matters beyond tidiness — the left column is not a fixed height. A candidate
-                    // who speaks a third language adds a row to it, and the constant this replaces
-                    // could not know that.
-                    root.Item().Layers(layers =>
-                    {
-                        layers.PrimaryLayer().Row(main =>
+                    // The photograph ends where the skills table does, and the left column is not
+                    // a fixed height — a candidate who speaks a third language adds a row to it,
+                    // which the constant this replaced could not know about.
+                    AlignedColumns(root.Item(),
+                        measured: main =>
                         {
                         main.RelativeItem().Column(left =>
                         {
@@ -924,9 +995,8 @@ internal static class CvLayouts
                         // The space the photograph is drawn into, left empty here so the left
                         // column alone decides how tall this block is.
                         main.ConstantItem(206);
-                        });
-
-                        layers.Layer().Row(main =>
+                        },
+                        stretched: main =>
                         {
                             main.RelativeItem();
                             main.ConstantItem(4);
@@ -951,7 +1021,6 @@ internal static class CvLayouts
                                         fullPhotoBytes is { Length: > 0 } ? fullPhotoBytes : photoBytes));
                             });
                         });
-                    });
 
                     // The foot of the sheet, and the reason the page is always full.
                     //
