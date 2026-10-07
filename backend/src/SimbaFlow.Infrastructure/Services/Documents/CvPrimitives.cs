@@ -67,17 +67,17 @@ internal static class CvPrimitives
     }
 
     internal static void BilingualRow(ColumnDescriptor col, string en, string ar, string value) =>
-        RowPair(col, en, ar, value, 78);
+        RowPair(col, en, ar, value, 96);
 
     internal static void CompactRow(ColumnDescriptor col, string en, string ar, string value) =>
-        RowPair(col, en, ar, value, 52);
+        RowPair(col, en, ar, value, 70);
 
     /** Label | value only — one content column (no Arabic side column). */
     internal static void SimpleRow(ColumnDescriptor col, string label, string value)
     {
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
-            r.ConstantItem(90).Background(LabelBg).BorderRight(0.4f).BorderColor(Border)
+            r.ConstantItem(112).Background(LabelBg).BorderRight(0.4f).BorderColor(Border)
                 .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
                 .Text(label).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
 

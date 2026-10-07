@@ -101,8 +101,17 @@ internal static class CvLayouts
         });
     }
 
-    /// <summary>Label | value | Arabic label — the row these forms are almost entirely made of.</summary>
-    private static void Row3(ColumnDescriptor col, string en, string value, string ar, float label = 72)
+    /// <summary>
+    /// Label | value | Arabic label — the row these forms are almost entirely made of.
+    ///
+    /// <paramref name="arLabel"/> sizes the Arabic column separately. The two are the same width
+    /// almost everywhere and look better for it, but in a narrow box the English heading is the
+    /// long one ("Application No" against "رقم الطلب") and matching its width leaves the value no
+    /// room — an application number broke across two lines in the middle of the number.
+    /// </summary>
+    private static void Row3(
+        ColumnDescriptor col, string en, string value, string ar,
+        float label = 94, float? arLabel = null)
     {
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
@@ -111,7 +120,7 @@ internal static class CvLayouts
                 .Text(en).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
             r.RelativeItem().PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
                 .AlignCenter().Text(value).FontSize(FormType.Value).Bold();
-            r.ConstantItem(label).BorderLeft(0.4f).BorderColor(Border)
+            r.ConstantItem(arLabel ?? label).BorderLeft(0.4f).BorderColor(Border)
                 .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
                 .AlignRight().Text(ar).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
         });
@@ -142,7 +151,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(14);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Row(main =>
             {
@@ -243,8 +252,8 @@ internal static class CvLayouts
 
                     right.Item().PaddingTop(6).Border(0.5f).BorderColor(Border).Column(t =>
                     {
-                        foreach (var (en, ar, val) in Skills(c)) Row3(t, en, val, ar, 66);
-                        Row3(t, "Remark", V(c.Remark), "ملاحظات", 66);
+                        foreach (var (en, ar, val) in Skills(c)) Row3(t, en, val, ar, 88);
+                        Row3(t, "Remark", V(c.Remark), "ملاحظات", 88);
                     });
                 });
             });
@@ -256,8 +265,8 @@ internal static class CvLayouts
     {
         col.Item().PaddingVertical(2).Row(r =>
         {
-            r.ConstantItem(72).Text(label).FontSize(8).FontColor(Navy);
-            r.RelativeItem().Text(value).FontSize(8.5f).Bold();
+            r.ConstantItem(94).Text(label).FontSize(FormType.Label).FontColor(Navy);
+            r.RelativeItem().Text(value).FontSize(FormType.Value).Bold();
         });
     }
 
@@ -270,7 +279,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(16);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -359,11 +368,11 @@ internal static class CvLayouts
 
                     cols.RelativeItem().Column(t =>
                     {
-                        foreach (var (en, ar, val) in all.Take(half)) Row3(t, en, val, ar, 62);
+                        foreach (var (en, ar, val) in all.Take(half)) Row3(t, en, val, ar, 90);
                     });
                     cols.RelativeItem().BorderLeft(0.5f).BorderColor(Border).Column(t =>
                     {
-                        foreach (var (en, ar, val) in all.Skip(half)) Row3(t, en, val, ar, 62);
+                        foreach (var (en, ar, val) in all.Skip(half)) Row3(t, en, val, ar, 90);
                     });
                 });
                 root.Item().Border(0.5f).BorderColor(Border).Column(t =>
@@ -384,7 +393,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(14);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -488,7 +497,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(16);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -502,12 +511,14 @@ internal static class CvLayouts
                     top.ConstantItem(5);
                     top.RelativeItem().Column(l => Letterhead(l, logo, c, 74));
                     top.ConstantItem(5);
-                    top.ConstantItem(196).Border(0.5f).BorderColor(Border).Column(t =>
+                    // Wide enough for an application number on one line. At 62 the value column
+                    // was 72pt against a reference like APP-20261007-0001, which broke mid-token.
+                    top.ConstantItem(252).Border(0.5f).BorderColor(Border).Column(t =>
                     {
-                        Row3(t, "Application No", V(c.ApplicationNo), "رقم الطلب", 62);
-                        Row3(t, "Post Applied For", V(c.Occupation), "الوظيفة", 62);
-                        Row3(t, "Monthly Salary", V(c.MonthlySalary), "الراتب الشهري", 62);
-                        Row3(t, "Contract Period", V(c.ContractPeriod), "مدة العقد", 62);
+                        Row3(t, "Application No", V(c.ApplicationNo), "رقم الطلب", 80, 58);
+                        Row3(t, "Post Applied For", V(c.Occupation), "الوظيفة", 80, 58);
+                        Row3(t, "Monthly Salary", V(c.MonthlySalary), "الراتب الشهري", 80, 64);
+                        Row3(t, "Contract Period", V(c.ContractPeriod), "مدة العقد", 80, 58);
                     });
                 });
 
@@ -579,10 +590,10 @@ internal static class CvLayouts
                                 r.RelativeItem().BorderRight(0.4f).BorderColor(Border)
                                     .PaddingVertical(3).Column(cell =>
                                 {
-                                    cell.Item().AlignCenter().Text(ar).FontSize(6);
+                                    cell.Item().AlignCenter().Text(ar).FontSize(FormType.Label);
                                     cell.Item().PaddingVertical(2).AlignCenter()
                                         .Element(e => TickBox(e, val != "NO"));
-                                    cell.Item().AlignCenter().Text(en).FontSize(6);
+                                    cell.Item().AlignCenter().Text(en).FontSize(FormType.Label);
                                 });
                             }
                         });
@@ -607,7 +618,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(16);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -621,7 +632,7 @@ internal static class CvLayouts
                             .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
                             .Element(e => PlaceImage(e, photo, "PHOTO"));
                         left.Item().PaddingVertical(3).AlignCenter()
-                            .Text("الصورة كاملة").FontSize(7.5f);
+                            .Text("الصورة كاملة").FontSize(FormType.Value);
                         left.Item().Height(250).Border(0.8f).BorderColor(AgencyBlue)
                             .Background(Colors.Grey.Lighten4).AlignCenter().AlignMiddle()
                             .Element(e => PlaceFullBodyImage(e, fullPhoto is { Length: > 0 } ? fullPhoto : photo));
@@ -640,21 +651,21 @@ internal static class CvLayouts
                             t.Item().Background(PanelBlue).Row(r =>
                             {
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("DATE / التاريخ").FontSize(6.5f).Bold();
+                                    .Text("DATE / التاريخ").FontSize(FormType.Label).Bold();
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("REFERENCE NO. / رقم المرجع").FontSize(6.5f).Bold();
+                                    .Text("REFERENCE NO. / رقم المرجع").FontSize(FormType.Label).Bold();
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("CATEGORY / الفئة").FontSize(6.5f).Bold();
+                                    .Text("CATEGORY / الفئة").FontSize(FormType.Label).Bold();
                             });
                             t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
                             {
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text(DateTime.UtcNow.ToString("dd-MMM-yyyy")).FontSize(7.5f);
+                                    .Text(DateTime.UtcNow.ToString("dd-MMM-yyyy")).FontSize(FormType.Value);
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text(Reference(c)).FontSize(7.5f).Bold();
+                                    .Text(Reference(c)).FontSize(FormType.Value).Bold();
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
                                     .Text(c.ExperienceAbroadYears is > 0 ? "Experienced" : "First-Time")
-                                    .FontSize(7.5f);
+                                    .FontSize(FormType.Value);
                             });
                             Row3(t, "POSITION", V(c.Occupation), "وظيفة");
                             Row3(t, "SALARY", V(c.MonthlySalary), "راتب");
@@ -687,20 +698,20 @@ internal static class CvLayouts
                             t.Item().Background(PanelBlue).Row(r =>
                             {
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("COUNTRY / الدولة").FontSize(6.5f).Bold();
+                                    .Text("COUNTRY / الدولة").FontSize(FormType.Label).Bold();
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("POSITION / وظيفة").FontSize(6.5f).Bold();
+                                    .Text("POSITION / وظيفة").FontSize(FormType.Label).Bold();
                                 r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                    .Text("DURATION / مدة العمل").FontSize(6.5f).Bold();
+                                    .Text("DURATION / مدة العمل").FontSize(FormType.Label).Bold();
                             });
                             t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
                             {
                                 r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                    .Text(V(c.WorksIn)).FontSize(7.5f);
+                                    .Text(V(c.WorksIn)).FontSize(FormType.Value);
                                 r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                    .Text(V(c.Occupation)).FontSize(7.5f);
+                                    .Text(V(c.Occupation)).FontSize(FormType.Value);
                                 r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                    .Text(c.ExperienceAbroadYears?.ToString() ?? "").FontSize(7.5f);
+                                    .Text(c.ExperienceAbroadYears?.ToString() ?? "").FontSize(FormType.Value);
                             });
                         });
                     });
@@ -717,11 +728,11 @@ internal static class CvLayouts
                         grid.Item().Border(0.5f).BorderColor(Border)
                             .Background(Colors.Grey.Lighten4).PaddingVertical(5).Column(cell =>
                         {
-                            cell.Item().AlignCenter().Text($"{en}  {ar}").FontSize(7);
+                            cell.Item().AlignCenter().Text($"{en}  {ar}").FontSize(FormType.Label);
                             cell.Item().AlignCenter().PaddingTop(3)
                                 .Element(e => TickBox(e, val != "NO"));
                             cell.Item().AlignCenter().PaddingTop(2)
-                                .Text(val).FontSize(6.5f).Bold()
+                                .Text(val).FontSize(FormType.Label).Bold()
                                 .FontColor(val == "NO" ? Colors.Grey.Darken1 : Navy);
                         });
                     }
@@ -763,7 +774,7 @@ internal static class CvLayouts
             {
                 page.Size(PageSizes.A4);
                 page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(8).FontColor(Colors.Black));
+                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
                 page.Content().Column(root =>
                 {
@@ -897,7 +908,7 @@ internal static class CvLayouts
 
                         main.ConstantItem(4);
 
-                        main.ConstantItem(190).Column(right =>
+                        main.ConstantItem(206).Column(right =>
                         {
                             right.Item().Border(0.75f).BorderColor(Border).Column(box =>
                             {
