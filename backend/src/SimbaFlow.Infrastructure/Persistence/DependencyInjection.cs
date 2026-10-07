@@ -164,6 +164,7 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<IErrorTracker, ErrorTracker>();
         services.AddScoped<IContractGenerationService, ContractGenerationService>();
+        services.AddScoped<IContractReaderService, ContractPdfReader>();
         services.Configure<TelegramOptions>(configuration.GetSection("Telegram"));
         services.Configure<MfaOptions>(configuration.GetSection("Mfa"));
         // Telegram puts the bot token in the URL path (api.telegram.org/bot<TOKEN>/method), and the

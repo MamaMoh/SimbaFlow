@@ -9,14 +9,18 @@ namespace SimbaFlow.API.Features.Candidates.Commands;
 /// The visa and sponsor details captured when a candidate is marked Ready.
 ///
 /// Deliberately narrow rather than reusing the full update command: that one takes the whole
-/// candidate, so sending it three fields would blank everything else on the record.
+/// candidate, so sending it these fields would blank everything else on the record.
 /// Empty values are ignored, so re-running this never clears what is already there.
 /// </summary>
 public record SetVisaDetailsCommand(
     Guid CandidateId,
     string? VisaNumber = null,
     string? SponsorName = null,
-    string? SponsorIdNumber = null) : IRequest<Result>, IRequirePermission
+    string? SponsorIdNumber = null,
+    string? SponsorPhone = null,
+    string? SponsorAddress = null,
+    string? ContractNo = null,
+    string? AgentName = null) : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "candidate.update";
 }
@@ -39,6 +43,10 @@ public class SetVisaDetailsHandler : IRequestHandler<SetVisaDetailsCommand, Resu
         candidate.VisaNumber = Keep(request.VisaNumber, candidate.VisaNumber);
         candidate.SponsorName = Keep(request.SponsorName, candidate.SponsorName);
         candidate.SponsorIdNumber = Keep(request.SponsorIdNumber, candidate.SponsorIdNumber);
+        candidate.SponsorPhone = Keep(request.SponsorPhone, candidate.SponsorPhone);
+        candidate.SponsorAddress = Keep(request.SponsorAddress, candidate.SponsorAddress);
+        candidate.ContractNo = Keep(request.ContractNo, candidate.ContractNo);
+        candidate.AgentName = Keep(request.AgentName, candidate.AgentName);
 
         await _context.SaveChangesAsync(ct);
         return Result.Success();

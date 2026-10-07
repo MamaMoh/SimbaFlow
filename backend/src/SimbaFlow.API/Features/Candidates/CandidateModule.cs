@@ -150,9 +150,26 @@ public class CandidateModule : ICarterModule
             Guid candidateId, VisaDetailsBody body, ISender sender) =>
         {
             var result = await sender.Send(new SetVisaDetailsCommand(
-                candidateId, body.VisaNumber, body.SponsorName, body.SponsorIdNumber));
+                candidateId, body.VisaNumber, body.SponsorName, body.SponsorIdNumber,
+                body.SponsorPhone, body.SponsorAddress, body.ContractNo, body.AgentName));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
+
+        // What a signed Saudi contract says, so the desk confirms the numbers instead of
+        // retyping them. Reads the file and saves nothing — it belongs to no candidate yet.
+        group.MapPost("/contract/read", async (HttpRequest httpRequest, ISender sender) =>
+        {
+            if (!httpRequest.HasFormContentType)
+                return Results.Json(Result.Failure("Expected multipart form data", 400), statusCode: 400);
+
+            var form = await httpRequest.ReadFormAsync();
+            var file = form.Files.GetFile("file") ?? form.Files.FirstOrDefault();
+            if (file is null)
+                return Results.Json(Result.Failure("File is required", 400), statusCode: 400);
+
+            var result = await sender.Send(new ReadContractCommand(file));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        }).DisableAntiforgery();
 
         // Every selected candidate's enjaze in one document, for printing the embassy run
         group.MapPost("/visa-forms/bulk", async (GenerateBulkVisaFormsCommand command, ISender sender) =>
@@ -192,4 +209,11 @@ public class CandidateModule : ICarterModule
 
 public record WithdrawBody(string? Reason);
 
-public record VisaDetailsBody(string? VisaNumber, string? SponsorName, string? SponsorIdNumber);
+public record VisaDetailsBody(
+    string? VisaNumber,
+    string? SponsorName,
+    string? SponsorIdNumber,
+    string? SponsorPhone = null,
+    string? SponsorAddress = null,
+    string? ContractNo = null,
+    string? AgentName = null);

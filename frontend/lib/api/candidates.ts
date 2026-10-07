@@ -229,9 +229,19 @@ export async function generateCandidateContract(candidateId: string): Promise<Fi
   );
 }
 
+export type VisaDetails = {
+  visaNumber?: string;
+  sponsorName?: string;
+  sponsorIdNumber?: string;
+  sponsorPhone?: string;
+  sponsorAddress?: string;
+  contractNo?: string;
+  agentName?: string;
+};
+
 export async function setVisaDetails(
   candidateId: string,
-  body: { visaNumber?: string; sponsorName?: string; sponsorIdNumber?: string },
+  body: VisaDetails,
 ): Promise<void> {
   const res = await fetch(`/api/proxy/candidates/${candidateId}/visa-details`, {
     method: "POST",
@@ -242,6 +252,30 @@ export async function setVisaDetails(
     const j = await res.json().catch(() => ({}));
     throw new Error(j?.error || "Could not save the visa details");
   }
+}
+
+/** What a signed Saudi contract says. Every field is optional — a scan says nothing at all. */
+export type ContractDetails = {
+  contractNumber?: string | null;
+  visaNumber?: string | null;
+  sponsorName?: string | null;
+  sponsorIdNumber?: string | null;
+  sponsorPhone?: string | null;
+  sponsorAddress?: string | null;
+  sponsorIsCompany: boolean;
+};
+
+/**
+ * Reads the contract the operator is about to file, so its numbers can be offered rather than
+ * copied by eye. Saves nothing; the upload is still a separate step.
+ */
+export async function readContractDetails(file: File): Promise<ContractDetails> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`/api/proxy/candidates/contract/read`, { method: "POST", body: form });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || "Could not read the contract");
+  return body?.data as ContractDetails;
 }
 
 export async function withdrawFromPipeline(candidateId: string, reason?: string): Promise<void> {

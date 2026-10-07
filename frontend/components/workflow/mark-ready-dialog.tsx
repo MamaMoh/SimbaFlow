@@ -17,6 +17,7 @@ import { FileText, Loader2, Upload } from "lucide-react";
 import {
   generateCandidateContract,
   generateCandidateVisaForm,
+  readContractDetails,
   setVisaDetails,
   uploadCandidateDocument,
 } from "@/lib/api/candidates";
@@ -36,6 +37,19 @@ type Props = {
   onDone: () => void;
 };
 
+/** What the sponsor's identifier is called depends on who the sponsor is. */
+type SponsorKind = "unknown" | "individual" | "company";
+
+const blank = {
+  contractNo: "",
+  visaNumber: "",
+  sponsorName: "",
+  sponsorIdNumber: "",
+  sponsorPhone: "",
+  sponsorAddress: "",
+  agentName: "",
+};
+
 /**
  * Marking a candidate Ready is the point the visa file starts, so it collects what the embassy
  * desk needs rather than flipping a status and leaving them to find the gaps later:
@@ -43,8 +57,13 @@ type Props = {
  *  - Saudi Arabia: the signed contract is uploaded, because one already exists between the parties.
  *  - Anywhere else: the contract is generated here from the candidate, partner and agency details.
  *
- * Either way the visa number and sponsor are captured, the visa track opens at Ready, and the
- * enjaze form is produced — the same document the bot sends out.
+ * Either way the contract, visa and sponsor details are captured, the visa track opens at Ready,
+ * and the enjaze form is produced — the same document the bot sends out.
+ *
+ * The Saudi contract is read as soon as it is chosen and the fields it yields are filled in. That
+ * is six long digit strings and an Arabic address that were previously copied by eye out of the
+ * very PDF being attached. What is read is only ever offered: every field stays editable, nothing
+ * already typed is overwritten, and a scan the reader cannot see into simply fills nothing.
  */
 export function MarkReadyDialog({
   open,
@@ -55,24 +74,70 @@ export function MarkReadyDialog({
   onDone,
 }: Props) {
   const saudi = isSaudi(countryOfTravel);
-  const [visaNumber, setVisaNumber] = useState("");
-  const [sponsorName, setSponsorName] = useState("");
-  const [sponsorIdNumber, setSponsorIdNumber] = useState("");
+  const [form, setForm] = useState(blank);
   const [contractFile, setContractFile] = useState<File | null>(null);
+  const [sponsorKind, setSponsorKind] = useState<SponsorKind>("unknown");
+  const [reading, setReading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<string | null>(null);
 
+  const set = (field: keyof typeof blank) => (value: string) =>
+    setForm((f) => ({ ...f, [field]: value }));
+
   const reset = () => {
-    setVisaNumber("");
-    setSponsorName("");
-    setSponsorIdNumber("");
+    setForm(blank);
     setContractFile(null);
+    setSponsorKind("unknown");
     setStep(null);
   };
 
   const close = (next: boolean) => {
     if (!next) reset();
     onOpenChange(next);
+  };
+
+  /** Fills the fields the document knows, leaving anything already typed alone. */
+  const readContract = async (file: File) => {
+    setReading(true);
+    try {
+      const d = await readContractDetails(file);
+      const found = [
+        ["contractNo", d.contractNumber],
+        ["visaNumber", d.visaNumber],
+        ["sponsorName", d.sponsorName],
+        ["sponsorIdNumber", d.sponsorIdNumber],
+        ["sponsorPhone", d.sponsorPhone],
+        ["sponsorAddress", d.sponsorAddress],
+      ] as const;
+
+      setForm((f) => {
+        const next = { ...f };
+        for (const [field, value] of found) {
+          if (value && !next[field]) next[field] = value;
+        }
+        return next;
+      });
+
+      const count = found.filter(([, v]) => v).length;
+      if (count === 0) {
+        toast.info("Nothing could be read from that file — fill the details in below");
+        return;
+      }
+      setSponsorKind(d.sponsorIsCompany ? "company" : "individual");
+      toast.success(`Read ${count} ${count === 1 ? "detail" : "details"} from the contract`);
+    } catch (err) {
+      // The contract still gets filed and the details still get typed; this only ever saved
+      // keystrokes, so a reader that fails is not a reason to stop.
+      toast.warning(err instanceof Error ? err.message : "Could not read the contract");
+    } finally {
+      setReading(false);
+    }
+  };
+
+  const choose = (file: File | null) => {
+    setContractFile(file);
+    setSponsorKind("unknown");
+    if (file) void readContract(file);
   };
 
   const submit = async () => {
@@ -91,7 +156,7 @@ export function MarkReadyDialog({
       }
 
       setStep("Saving visa details…");
-      await setVisaDetails(candidateId, { visaNumber, sponsorName, sponsorIdNumber });
+      await setVisaDetails(candidateId, form);
 
       setStep("Marking Ready…");
       await updateWorkflowStatus(candidateId, "status", "Ready");
@@ -113,14 +178,19 @@ export function MarkReadyDialog({
     }
   };
 
+  const sponsorIdLabel =
+    sponsorKind === "company" ? "Licence no" : sponsorKind === "individual" ? "National ID" : "Sponsor ID";
+
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="sm:max-w-md">
+      {/* Not dismissible: this is a long form, and a click on the page behind it used to throw
+          away everything typed into it. Cancel and the X still close it. */}
+      <DialogContent dismissible={false} className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Mark Ready</DialogTitle>
           <DialogDescription>
             {saudi
-              ? "Saudi placement — attach the signed contract and the visa details."
+              ? "Saudi placement — attach the signed contract and the details are read from it."
               : `${countryOfTravel || "This destination"} — the contract is generated here.`}
           </DialogDescription>
         </DialogHeader>
@@ -136,12 +206,21 @@ export function MarkReadyDialog({
                   size="sm"
                   onClick={() => document.getElementById("contract-file")?.click()}
                   className="gap-1.5"
+                  disabled={reading}
                 >
-                  <Upload className="h-3.5 w-3.5" />
+                  {reading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="h-3.5 w-3.5" />
+                  )}
                   Choose file
                 </Button>
                 <span className="truncate text-xs text-muted-foreground">
-                  {contractFile ? contractFile.name : "PDF, JPG or PNG"}
+                  {reading
+                    ? "Reading the contract…"
+                    : contractFile
+                      ? contractFile.name
+                      : "PDF, JPG or PNG"}
                 </span>
               </div>
               <input
@@ -149,39 +228,51 @@ export function MarkReadyDialog({
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
-                onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => choose(e.target.files?.[0] ?? null)}
               />
             </div>
           ) : (
             <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
               <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               The employment contract is built from this candidate, their partner agency and your
-              agency's licence details, and filed against them.
+              agency&apos;s licence details, and filed against them.
             </p>
           )}
 
-          <div className="space-y-1.5">
-            <Label htmlFor="visa-no">Visa number</Label>
-            <Input id="visa-no" value={visaNumber} onChange={(e) => setVisaNumber(e.target.value)} />
-          </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="sponsor-name">Sponsor name</Label>
-              <Input
-                id="sponsor-name"
-                value={sponsorName}
-                onChange={(e) => setSponsorName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sponsor-id">Sponsor ID</Label>
-              <Input
-                id="sponsor-id"
-                value={sponsorIdNumber}
-                onChange={(e) => setSponsorIdNumber(e.target.value)}
-              />
-            </div>
+            <Field id="contract-no" label="Contract no" value={form.contractNo} onChange={set("contractNo")} />
+            <Field id="visa-no" label="Visa number" value={form.visaNumber} onChange={set("visaNumber")} />
           </div>
+
+          <Field
+            id="sponsor-name"
+            label="Sponsor name"
+            value={form.sponsorName}
+            onChange={set("sponsorName")}
+          />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field
+              id="sponsor-id"
+              label={sponsorIdLabel}
+              value={form.sponsorIdNumber}
+              onChange={set("sponsorIdNumber")}
+            />
+            <Field
+              id="sponsor-phone"
+              label="Sponsor phone"
+              value={form.sponsorPhone}
+              onChange={set("sponsorPhone")}
+            />
+          </div>
+
+          <Field
+            id="sponsor-address"
+            label="Sponsor address"
+            value={form.sponsorAddress}
+            onChange={set("sponsorAddress")}
+          />
+          <Field id="agent-name" label="Agent" value={form.agentName} onChange={set("agentName")} />
         </div>
 
         <DialogFooter>
@@ -200,5 +291,24 @@ export function MarkReadyDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Field({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
   );
 }

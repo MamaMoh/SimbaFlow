@@ -76,15 +76,24 @@ export function usePopperInteractionGuard() {
   return () => Date.now() - lastPopperDown.current < 500;
 }
 
+/**
+ * @param dismissible Whether clicking away or pressing Escape closes it. A dialog someone is
+ *   typing into should set this false: there is nothing to undo a dismissal with, so a stray
+ *   click on the page behind it throws away everything they have entered. Cancel and the X still
+ *   close it, which is the point — closing becomes something they chose.
+ */
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  dismissible = true,
   onPointerDownOutside,
   onInteractOutside,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  dismissible?: boolean;
 }) {
   const cameFromPopper = usePopperInteractionGuard();
 
@@ -94,12 +103,16 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         onPointerDownOutside={(event) => {
-          if (cameFromPopper()) event.preventDefault();
+          if (!dismissible || cameFromPopper()) event.preventDefault();
           onPointerDownOutside?.(event);
         }}
         onInteractOutside={(event) => {
-          if (cameFromPopper()) event.preventDefault();
+          if (!dismissible || cameFromPopper()) event.preventDefault();
           onInteractOutside?.(event);
+        }}
+        onEscapeKeyDown={(event) => {
+          if (!dismissible) event.preventDefault();
+          onEscapeKeyDown?.(event);
         }}
         // A modal dialog has no business closing because focus moved — which is what a Select
         // does when it opens its list and again when it hands focus back.
