@@ -73,24 +73,72 @@ public class CvRenderTests
     };
 
     /// <summary>
-    /// Driven by the catalogue rather than a list written here, so a layout added later is covered
-    /// without anyone remembering to add it.
+    /// The same candidate with every field that can grow, grown.
+    ///
+    /// The forms are set to fill the sheet, which makes the fullest record the one that decides
+    /// whether they fit. These are the three fields that add height rather than just text: an
+    /// address long enough to wrap, a third and fourth language, each of which adds a row to the
+    /// left column, and a remark. A form tuned against the record above and never against this one
+    /// looks right until the first candidate who has all three.
     /// </summary>
-    public static TheoryData<string, string> Layouts()
+    private static Candidate CrowdedCandidate()
     {
-        var data = new TheoryData<string, string>();
-        foreach (var (value, name, _) in CvTemplates.All) data.Add(value, name);
+        var c = SampleCandidate();
+        c.FirstName = "WOYNISHET";
+        c.MiddleName = "GEBREMARIAM";
+        c.LastName = "HAILESELASSIE";
+        c.HouseNo = "House No. 0442/17";
+        c.Woreda = "Woreda 09";
+        c.Subcity = "Bole Sub City";
+        c.Address = "Behind the Millennium Hall";
+        c.City = "Addis Ababa";
+        c.Region = "Addis Ababa City Administration";
+        c.Country = "Ethiopia";
+        // More languages and more remark than the form will print, so the caps that keep it on one
+        // sheet are exercised rather than assumed.
+        c.OtherLanguages =
+            "Amharic: Fluent; Tigrinya: Good; Oromiffa: Fair; Somali: Fair; Italian: Basic";
+        c.Qualification = "TECHNICAL AND VOCATIONAL LEVEL IV";
+        c.Religion = "Ethiopian Orthodox Tewahedo";
+        c.MaritalStatus = "Married";
+        c.Height = "162 cm";
+        c.Weight = "57 kg";
+        c.EnglishLevel = "Good";
+        c.ArabicLevel = "Fair";
+        c.ExperienceAbroadYears = 3;
+        c.WorksIn = "United Arab Emirates";
+        c.Remark =
+            "Has worked three years in Dubai for a family of six and is returning to the Gulf at " +
+            "her own request. Reference letter from the previous employer is on file, and the " +
+            "medical was renewed in September. Available to travel at two weeks' notice.";
+        return c;
+    }
+
+    /// <summary>
+    /// Driven by the catalogue rather than a list written here, so a layout added later is covered
+    /// without anyone remembering to add it, and by both records, because a form that fills the
+    /// page for an empty one is not the case that breaks.
+    /// </summary>
+    public static TheoryData<string, string, bool> Layouts()
+    {
+        var data = new TheoryData<string, string, bool>();
+        foreach (var (value, name, _) in CvTemplates.All)
+        {
+            data.Add(value, name, false);
+            data.Add(value, name, true);
+        }
+
         return data;
     }
 
     [Theory]
     [MemberData(nameof(Layouts))]
-    public async Task EveryLayoutRendersOneSheet(string template, string name)
+    public async Task EveryLayoutRendersOneSheet(string template, string name, bool crowded)
     {
         var service = new CvGenerationService(new StubBranding(template));
 
         var pdf = await service.GenerateAsync(
-            SampleCandidate(),
+            crowded ? CrowdedCandidate() : SampleCandidate(),
             SolidPng(300, 400),   // passport photograph
             SolidPng(400, 840));  // full length
 
@@ -102,10 +150,12 @@ public class CvRenderTests
         if (!string.IsNullOrWhiteSpace(outDir))
         {
             Directory.CreateDirectory(outDir);
-            await File.WriteAllBytesAsync(Path.Combine(outDir, $"{template}.pdf"), pdf);
+            var suffix = crowded ? "-crowded" : "";
+            await File.WriteAllBytesAsync(Path.Combine(outDir, $"{template}{suffix}.pdf"), pdf);
         }
 
-        PageCount(pdf).Should().Be(1, $"the {name} CV is a single-sheet form");
+        PageCount(pdf).Should().Be(1,
+            $"the {name} CV is a single-sheet form, for a {(crowded ? "full" : "sparse")} record");
     }
 
     /// <summary>Counts page objects in the PDF — /Type /Pages is the tree root, not a page.</summary>

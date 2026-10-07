@@ -78,10 +78,10 @@ internal static class CvPrimitives
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
             r.ConstantItem(112).Background(LabelBg).BorderRight(0.4f).BorderColor(Border)
-                .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+                .PaddingVertical(FormType.RoomyRowPadding).PaddingHorizontal(3)
                 .Text(label).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
 
-            r.RelativeItem().PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+            r.RelativeItem().PaddingVertical(FormType.RoomyRowPadding).PaddingHorizontal(3)
                 .AlignCenter().Text(string.IsNullOrWhiteSpace(value) ? "—" : value)
                 .FontSize(FormType.Value).Bold();
         });
@@ -92,15 +92,15 @@ internal static class CvPrimitives
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
             r.ConstantItem(labelWidth).Background(LabelBg).BorderRight(0.4f).BorderColor(Border)
-                .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+                .PaddingVertical(FormType.RoomyRowPadding).PaddingHorizontal(3)
                 .Text(en).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
 
-            r.RelativeItem().PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+            r.RelativeItem().PaddingVertical(FormType.RoomyRowPadding).PaddingHorizontal(3)
                 .AlignCenter().Text(string.IsNullOrWhiteSpace(value) ? "—" : value)
                 .FontSize(FormType.Value).Bold();
 
             r.ConstantItem(labelWidth).Background(LabelBg).BorderLeft(0.4f).BorderColor(Border)
-                .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+                .PaddingVertical(FormType.RoomyRowPadding).PaddingHorizontal(3)
                 .AlignRight().Text(ar).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
         });
     }

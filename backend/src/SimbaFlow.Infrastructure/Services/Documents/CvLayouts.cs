@@ -872,7 +872,14 @@ internal static class CvLayouts
                                 BilingualRow(box, "Arabic", "العربية", candidate.ArabicLevel ?? "—");
                                 if (!string.IsNullOrWhiteSpace(candidate.OtherLanguages))
                                 {
-                                    foreach (var part in candidate.OtherLanguages.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                    // At most three. This layout fills the sheet, so anything that
+                                    // can add rows without limit can push it onto a second one —
+                                    // and a fourth language is worth less to a partner reading the
+                                    // form than the form staying one page. The address above is
+                                    // cut for the same reason.
+                                    foreach (var part in candidate.OtherLanguages
+                                        .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                        .Take(3))
                                     {
                                         var pair = part.Split(':', 2, StringSplitOptions.TrimEntries);
                                         if (pair.Length == 2)
@@ -944,6 +951,25 @@ internal static class CvLayouts
                                         fullPhotoBytes is { Length: > 0 } ? fullPhotoBytes : photoBytes));
                             });
                         });
+                    });
+
+                    // The foot of the sheet, and the reason the page is always full.
+                    //
+                    // Roomier rows take most of the slack but cannot take all of it: the amount
+                    // left over depends on the candidate — a long address wraps a row, a third
+                    // language adds one — so a form tuned to end exactly on the bottom margin only
+                    // ends there for the candidate it was tuned against. This panel is given
+                    // whatever remains, so a short record gets a generous notes area and a long
+                    // one gets a thin strip, and neither runs onto a second sheet.
+                    //
+                    // It also prints something the 3rd layout never did. Every other layout here
+                    // shows the candidate's remark; this one collected it and dropped it.
+                    root.Item().PaddingTop(4).ExtendVertical()
+                        .Border(0.75f).BorderColor(Border).Column(box =>
+                    {
+                        SectionBar(box, "Remarks", "ملاحظات");
+                        box.Item().ExtendVertical().Padding(5)
+                            .Text(Truncate(V(candidate.Remark), 300)).FontSize(FormType.Value);
                     });
                 });
             });

@@ -59,5 +59,19 @@ internal static class FormType
     internal const float RowPadding = 2.4f;
     internal const float BarPadding = 3.5f;
 
+    /// <summary>
+    /// Row padding for the 3rd layout, which has room the others do not.
+    ///
+    /// Its form is shorter than the sheet — the rows ran out around four fifths of the way down
+    /// and left the rest of the page blank, which on a printed form reads as though something
+    /// failed to render. The other layouts have no such slack, so this is theirs alone; the
+    /// primitives in CvPrimitives are its row set and nothing else uses them.
+    ///
+    /// Deliberately less than the amount that would fill the page exactly. A form tuned to end on
+    /// the bottom margin for one candidate spills onto a second sheet for the next one with a
+    /// longer address or a third language, and the remarks panel at the foot takes up the rest.
+    /// </summary>
+    internal const float RoomyRowPadding = 3.2f;
+
     internal static readonly string LabelColor = Colors.Grey.Darken4;
 }
