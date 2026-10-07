@@ -26,32 +26,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, User, Key, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { PhoneInputField } from "@/components/ui/phone-input";
+import { AGENCY_LEVELS, DESTINATION_OPTIONS } from "@/lib/tenant/agency-levels";
 
-/**
- * MoLS Directive 1126/2018 Arts. 18–22.
- *
- * The caps only. These labels used to describe each level's occupation scope — "Domestic only",
- * "Domestic + labour" — which nothing in the system enforces, and which levels 3 and 4 shared,
- * so the dropdown could not tell those two apart. What it shows now is what the level does.
- */
-const AGENCY_LEVELS = [
-  { level: 1, maxPartnersPerCountry: 20, maxCountries: null as number | null },
-  { level: 2, maxPartnersPerCountry: 20, maxCountries: 8 },
-  { level: 3, maxPartnersPerCountry: 16, maxCountries: 8 },
-  { level: 4, maxPartnersPerCountry: 8, maxCountries: 4 },
-  { level: 5, maxPartnersPerCountry: 4, maxCountries: 2 },
-] as const;
-
-const DESTINATION_OPTIONS = [
-  "Saudi Arabia",
-  "United Arab Emirates",
-  "Kuwait",
-  "Qatar",
-  "Bahrain",
-  "Oman",
-  "Jordan",
-  "Lebanon",
-] as const;
 
 const createAgencySchema = z
   .object({
@@ -379,7 +355,7 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label>
-                      First Name <span className="text-red-500">*</span>
+                      First name <span className="text-red-500">*</span>
                     </Label>
                     <Input placeholder="First name" {...register("adminFirstName")} />
                     {errors.adminFirstName && (
@@ -390,7 +366,7 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                   </div>
                   <div className="space-y-1.5">
                     <Label>
-                      Last Name <span className="text-red-500">*</span>
+                      Last name <span className="text-red-500">*</span>
                     </Label>
                     <Input placeholder="Last name" {...register("adminLastName")} />
                     {errors.adminLastName && (

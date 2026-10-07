@@ -1,6 +1,8 @@
 using Carter;
 using MediatR;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.API.Features.Tenants.Commands;
 using SimbaFlow.API.Features.Tenants.Queries;
 using SimbaFlow.Application.Common.Interfaces;
@@ -101,7 +103,11 @@ public class TenantModule : ICarterModule
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateTenantRequest request, IPlatformDbContext context) =>
+        group.MapPut("/{id:guid}", async (
+            Guid id,
+            UpdateTenantRequest request,
+            IPlatformDbContext context,
+            UserManager<ApplicationUser> userManager) =>
         {
             var tenant = await context.Tenants
                 .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
@@ -185,6 +191,43 @@ public class TenantModule : ICarterModule
             if (request.City is not null) tenant.City = request.City;
             if (request.Country is not null) tenant.Country = request.Country;
 
+            // The owner account, from the same screen that edits the agency. The alternative was
+            // sending someone to Staff to change a name they are already looking at.
+            if (request.OwnerFirstName is not null
+                || request.OwnerLastName is not null
+                || request.OwnerEmail is not null)
+            {
+                // The same owner the GET reports: the agency's first user.
+                var owner = await context.ApplicationUsers
+                    .Where(u => u.TenantId == id && !u.IsDeleted)
+                    .OrderBy(u => u.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (owner is null)
+                    return Results.Json(new { isSuccess = false, error = "This agency has no owner account to update." },
+                        statusCode: 404);
+
+                if (!string.IsNullOrWhiteSpace(request.OwnerFirstName)) owner.FirstName = request.OwnerFirstName.Trim();
+                if (!string.IsNullOrWhiteSpace(request.OwnerLastName)) owner.LastName = request.OwnerLastName.Trim();
+
+                var newEmail = request.OwnerEmail?.Trim();
+                if (!string.IsNullOrWhiteSpace(newEmail)
+                    && !string.Equals(newEmail, owner.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    var clash = await userManager.FindByEmailAsync(newEmail);
+                    if (clash is not null && clash.Id != owner.Id)
+                        return Results.Json(new { isSuccess = false, error = "Another user already has that email." },
+                            statusCode: 409);
+
+                    // Provisioning sets UserName from the admin email, so the two have to move
+                    // together or the owner keeps signing in with an address that is no longer theirs.
+                    owner.Email = newEmail;
+                    owner.UserName = newEmail;
+                    owner.NormalizedEmail = userManager.NormalizeEmail(newEmail);
+                    owner.NormalizedUserName = userManager.NormalizeName(newEmail);
+                }
+            }
+
             await context.SaveChangesAsync();
             return Results.Ok(new { isSuccess = true });
         });
@@ -228,4 +271,7 @@ public record UpdateTenantRequest(
     string? LicenseIssuedAt = null,
     string? LicenseExpiresAt = null,
     int? LicenseStatus = null,
-    string? LicenseStatusName = null);
+    string? LicenseStatusName = null,
+    string? OwnerFirstName = null,
+    string? OwnerLastName = null,
+    string? OwnerEmail = null);
