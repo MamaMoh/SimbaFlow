@@ -41,10 +41,13 @@ public static class ServiceExtensions
 
         // Authorization
         var authBuilder = services.AddAuthorizationBuilder()
+            // Named for the role it began with; it now admits either platform role, which carry
+            // the same authority. See PlatformRoles.
             .AddPolicy("SuperAdmin", policy => policy.RequireAssertion(ctx =>
-                ctx.User.HasClaim("role", "SuperAdmin") ||
-                ctx.User.HasClaim(System.Security.Claims.ClaimTypes.Role, "SuperAdmin") ||
-                ctx.User.IsInRole("SuperAdmin")))
+                SimbaFlow.Domain.Services.PlatformRoles.All.Any(role =>
+                    ctx.User.HasClaim("role", role) ||
+                    ctx.User.HasClaim(System.Security.Claims.ClaimTypes.Role, role) ||
+                    ctx.User.IsInRole(role))))
 
             // The token issued to someone who has passed only the first factor and still has to
             // enrol in MFA. It is signed with the same key and carries the same issuer and audience

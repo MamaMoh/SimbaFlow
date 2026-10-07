@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Staff;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.Infrastructure.Persistence.Seeds;
 
@@ -13,6 +14,14 @@ namespace SimbaFlow.Infrastructure.Persistence.Seeds;
 /// </summary>
 public static class RolePermissionSeeder
 {
+    /// <summary>
+    /// Stands in for "every permission in the catalogue", resolved when seeding.
+    ///
+    /// Declared before the map that uses it: static field initialisers run in declaration order,
+    /// and the other way round the platform roles were built holding null.
+    /// </summary>
+    private static readonly string[] GrantEverything = [];
+
     private static readonly Dictionary<string, string[]> RolePermissionMap = new()
     {
         ["AgencyOwner"] = [
@@ -105,20 +114,15 @@ public static class RolePermissionSeeder
             "settings.read",
         ],
         // Platform administration without agency access: user accounts, roles, tenants and
-        // system settings. Deliberately holds no candidate.read — this role exists so someone
-        // can run the platform without being able to read any agency's people.
-        ["PlatformAdmin"] = [
-            "users.read", "users.write",
-            "role.read", "role.write",
-            "staff.read",
-            // Deliberately not tenant.manage/provision: creating and suspending agencies is
-            // reserved for SuperAdmin, and the tenants endpoint is gated on that role anyway —
-            // granting them here would only produce a link that fails.
-            "settings.read", "settings.write",
-            "audit.read",
-            "notification.configure",
-            "bot.configure",
-        ],
+        // Both platform roles hold every permission there is. PlatformAdmin used to be the
+        // lesser of the two — accounts and configuration, deliberately no candidate.read, so
+        // support staff could run the platform without reading any agency's people. That
+        // separation was removed on request; the two are now one authority under two names.
+        //
+        // The list is filled from the permission catalogue at seed time rather than written out
+        // here, so a permission added later is not quietly missing from it.
+        [PlatformRoles.SuperAdmin] = GrantEverything,
+        [PlatformRoles.PlatformAdmin] = GrantEverything,
     };
 
     public static async Task SeedRolePermissionsAsync(IServiceProvider serviceProvider)
@@ -131,10 +135,15 @@ public static class RolePermissionSeeder
             .Where(p => p.IsActive && !p.IsDeleted)
             .ToDictionaryAsync(p => p.Code, p => p.Id);
 
-        foreach (var (roleName, permissionCodes) in RolePermissionMap)
+        foreach (var (roleName, mappedCodes) in RolePermissionMap)
         {
             var role = await roleManager.FindByNameAsync(roleName);
             if (role is null) continue;
+
+            // A platform role takes whatever the catalogue holds today.
+            var permissionCodes = ReferenceEquals(mappedCodes, GrantEverything)
+                ? allPermissions.Keys.ToArray()
+                : mappedCodes;
 
             var existingMappings = await context.RolePermissions
                 .Where(rp => rp.RoleId == role.Id)

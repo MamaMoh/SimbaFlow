@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentAssertions;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Persistence.Seeds;
 
 namespace SimbaFlow.API.Tests.Services;
@@ -63,8 +64,6 @@ public class RolePermissionMapTests
     // Accounts are administered from one desk, not by everyone who can list staff.
     [InlineData("OfficeManager", "users.write")]
     [InlineData("Auditor", "users.write")]
-    // The platform administrator deliberately cannot read any agency's people.
-    [InlineData("PlatformAdmin", "candidate.read")]
     public void RoleDoesNotHold(string role, string permission)
     {
         Roles[role].Should().NotContain(permission);
@@ -79,10 +78,40 @@ public class RolePermissionMapTests
     [InlineData("DataEntryClerk", "candidate.create")]
     [InlineData("AgencyOwner", "candidate.delete")]
     [InlineData("AgencyOwner", "users.write")]
-    [InlineData("PlatformAdmin", "users.write")]
     public void RoleHolds(string role, string permission)
     {
         Roles[role].Should().Contain(permission);
+    }
+
+    /// <summary>
+    /// The platform roles take the whole catalogue at seed time rather than a list written here,
+    /// so a permission added later is not quietly missing from them. The map holds a sentinel for
+    /// that, and an empty array is the one way the sentinel could silently mean "nothing".
+    /// </summary>
+    [Theory]
+    [InlineData("SuperAdmin")]
+    [InlineData("PlatformAdmin")]
+    public void APlatformRoleIsSeededFromTheCatalogueRatherThanAList(string role)
+    {
+        Roles.Should().ContainKey(role);
+
+        // Non-null is the assertion that matters: declaring the sentinel after the map left these
+        // entries null, which the seeder would have read as "grant nothing at all".
+        Roles[role].Should().NotBeNull().And.BeEmpty();
+    }
+
+    [Fact]
+    public void BothPlatformRolesShareOneAuthority()
+    {
+        // They were different once: PlatformAdmin ran accounts and configuration and deliberately
+        // held no candidate.read. That separation was removed, and these two are what the policy
+        // and the IsSuperAdmin flag both read.
+        PlatformRoles.All.Should().BeEquivalentTo(["SuperAdmin", "PlatformAdmin"]);
+        PlatformRoles.Includes("PlatformAdmin").Should().BeTrue();
+        PlatformRoles.Includes("AgencyOwner").Should().BeFalse();
+        PlatformRoles.Includes(null).Should().BeFalse();
+
+        Roles["SuperAdmin"].Should().BeEquivalentTo(Roles["PlatformAdmin"]);
     }
 
     [Fact]

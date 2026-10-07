@@ -89,10 +89,14 @@ public class CurrentUserService : ICurrentUserService
             .Select(c => c.Value)
             .ToList() ?? [];
 
+    /// <summary>
+    /// Full platform authority: waives permission checks and allows working inside any agency.
+    /// Either platform role carries it — see PlatformRoles for why they are the same.
+    /// </summary>
     public bool IsSuperAdmin =>
         User?.Claims.Any(c =>
             (c.Type == "role" || c.Type == System.Security.Claims.ClaimTypes.Role) &&
-            c.Value == "SuperAdmin") ?? false;
+            Domain.Services.PlatformRoles.Includes(c.Value)) ?? false;
 
     public bool HasPermission(string permission) =>
         IsSuperAdmin || Permissions.Contains(permission);
