@@ -57,12 +57,25 @@ internal static class CvPrimitives
     /// whether to take someone. Large portrait, plain English headings, and only the facts that
     /// bear on that decision, so it can be read at a glance rather than searched.
     /// </summary>
+    /// <summary>
+    /// How a form row is set, in one place because every layout here is made of them.
+    ///
+    /// The labels were 6.5pt grey against 7.5pt bold black values: two sizes and two weights
+    /// apart, which is what made the sheet look faint and cramped next to the printed form it is
+    /// meant to match. Closing that gap and giving the rows another point of air is most of the
+    /// difference between the two.
+    /// </summary>
+    private const float LabelSize = 7.2f;
+    private const float ValueSize = 8f;
+    private const float RowPadding = 3f;
+    private static readonly string LabelColor = Colors.Grey.Darken4;
+
     internal static void SectionBar(ColumnDescriptor col, string en, string ar)
     {
-        col.Item().Background(Maroon).PaddingVertical(3).PaddingHorizontal(5).Row(r =>
+        col.Item().Background(Maroon).PaddingVertical(3.5f).PaddingHorizontal(5).Row(r =>
         {
-            r.RelativeItem().Text(en).FontSize(8).Bold().FontColor(Colors.White);
-            r.RelativeItem().AlignRight().Text(ar).FontSize(8).Bold().FontColor(Colors.White);
+            r.RelativeItem().Text(en).FontSize(8.5f).Bold().FontColor(Colors.White);
+            r.RelativeItem().AlignRight().Text(ar).FontSize(8.5f).Bold().FontColor(Colors.White);
         });
     }
 
@@ -78,12 +91,12 @@ internal static class CvPrimitives
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
             r.ConstantItem(90).Background(LabelBg).BorderRight(0.4f).BorderColor(Border)
-                .PaddingVertical(2).PaddingHorizontal(3)
-                .Text(label).FontSize(6.5f).FontColor(Colors.Grey.Darken3);
+                .PaddingVertical(RowPadding).PaddingHorizontal(3)
+                .Text(label).FontSize(LabelSize).FontColor(LabelColor);
 
-            r.RelativeItem().PaddingVertical(2).PaddingHorizontal(3)
+            r.RelativeItem().PaddingVertical(RowPadding).PaddingHorizontal(3)
                 .AlignCenter().Text(string.IsNullOrWhiteSpace(value) ? "—" : value)
-                .FontSize(7.5f).Bold();
+                .FontSize(ValueSize).Bold();
         });
     }
 
@@ -92,16 +105,16 @@ internal static class CvPrimitives
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
             r.ConstantItem(labelWidth).Background(LabelBg).BorderRight(0.4f).BorderColor(Border)
-                .PaddingVertical(2).PaddingHorizontal(3)
-                .Text(en).FontSize(6.5f).FontColor(Colors.Grey.Darken3);
+                .PaddingVertical(RowPadding).PaddingHorizontal(3)
+                .Text(en).FontSize(LabelSize).FontColor(LabelColor);
 
-            r.RelativeItem().PaddingVertical(2).PaddingHorizontal(3)
+            r.RelativeItem().PaddingVertical(RowPadding).PaddingHorizontal(3)
                 .AlignCenter().Text(string.IsNullOrWhiteSpace(value) ? "—" : value)
-                .FontSize(7.5f).Bold();
+                .FontSize(ValueSize).Bold();
 
             r.ConstantItem(labelWidth).Background(LabelBg).BorderLeft(0.4f).BorderColor(Border)
-                .PaddingVertical(2).PaddingHorizontal(3)
-                .AlignRight().Text(ar).FontSize(6.5f).FontColor(Colors.Grey.Darken3);
+                .PaddingVertical(RowPadding).PaddingHorizontal(3)
+                .AlignRight().Text(ar).FontSize(LabelSize).FontColor(LabelColor);
         });
     }
 

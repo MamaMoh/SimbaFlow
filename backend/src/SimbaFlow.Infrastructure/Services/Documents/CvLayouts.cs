@@ -788,10 +788,14 @@ internal static class CvLayouts
                         });
                     }
 
-                    root.Item().PaddingTop(4).Background(Maroon).PaddingVertical(4).PaddingHorizontal(6).Row(r =>
+                    // The title centred and in capitals, as it is on the printed form. It sat
+                    // left with the Arabic opposite, which read as another section heading rather
+                    // than the name of the document.
+                    root.Item().PaddingTop(4).Background(Maroon).PaddingVertical(5).PaddingHorizontal(6).Row(r =>
                     {
-                        r.RelativeItem().Text("Application for Employment")
-                            .FontSize(10).Bold().FontColor(Colors.White);
+                        r.RelativeItem().Text("");
+                        r.RelativeItem(3).AlignCenter().Text("APPLICATION FOR EMPLOYMENT")
+                            .FontSize(11).Bold().FontColor(Colors.White);
                         r.RelativeItem().AlignRight().Text("استمارة توظيف")
                             .FontSize(10).Bold().FontColor(Colors.White);
                     });
