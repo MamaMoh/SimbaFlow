@@ -3,6 +3,12 @@ using SimbaFlow.Domain.Entities.Candidates;
 namespace SimbaFlow.Application.Common.Interfaces;
 
 /// <summary>
+/// Who an agency says it is on a printed document: the name a reader sees and how to reach them.
+/// </summary>
+/// <param name="Name">Already upper-cased — the embassy form prints it that way.</param>
+public sealed record AgencyIdentity(string Name, string? Email, string? Phone, string? LicenseNumber);
+
+/// <summary>
 /// Decides whose letterhead a candidate's documents are printed on.
 /// </summary>
 public interface IDocumentBrandingService
@@ -15,6 +21,15 @@ public interface IDocumentBrandingService
     /// agency name it has always used.
     /// </summary>
     Task<byte[]?> GetHeaderLogoAsync(Candidate candidate, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The agency's own name and contact details.
+    ///
+    /// The agency's own, not the partner's, even where the letterhead is the partner's. On the
+    /// embassy form this names the party presenting the applicant, which is the licensed Ethiopian
+    /// agency — the Saudi recruiter is the sponsor's representative and appears elsewhere.
+    /// </summary>
+    Task<AgencyIdentity> GetAgencyIdentityAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Which CV layout this agency prints. Falls back to the default when the agency has not

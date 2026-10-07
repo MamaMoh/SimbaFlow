@@ -64,6 +64,26 @@ public sealed class DocumentBrandingService : IDocumentBrandingService
         return null;
     }
 
+    public async Task<AgencyIdentity> GetAgencyIdentityAsync(CancellationToken cancellationToken = default)
+    {
+        var fallback = new AgencyIdentity("FOREIGN EMPLOYMENT AGENCY", null, null, null);
+        if (_currentUser.TenantId is not Guid tenantId) return fallback;
+
+        var agency = await _platform.Tenants
+            .AsNoTracking()
+            .Where(t => t.Id == tenantId && !t.IsDeleted)
+            .Select(t => new { t.Name, t.ContactEmail, t.ContactPhone, t.LicenseNumber })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (agency is null) return fallback;
+
+        return new AgencyIdentity(
+            agency.Name.ToUpperInvariant(),
+            agency.ContactEmail,
+            agency.ContactPhone,
+            agency.LicenseNumber);
+    }
+
     public async Task<string> GetCvTemplateAsync(CancellationToken cancellationToken = default)
     {
         if (_currentUser.TenantId is not Guid tenantId)

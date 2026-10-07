@@ -42,6 +42,10 @@ public class CvRenderTests
 
         public Task<string> GetCvTemplateAsync(CancellationToken ct = default) =>
             Task.FromResult(template);
+
+        public Task<AgencyIdentity> GetAgencyIdentityAsync(CancellationToken ct = default) =>
+            Task.FromResult(new AgencyIdentity(
+                "SAMPLE FOREIGN EMPLOYMENT AGENCY PLC", "office@example.com", "+251 11 000 0000", "LB/0001"));
     }
 
     private static Candidate SampleCandidate() => new()

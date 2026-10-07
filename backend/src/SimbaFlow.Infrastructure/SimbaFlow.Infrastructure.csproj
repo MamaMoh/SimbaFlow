@@ -36,4 +36,8 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\*" />
+  </ItemGroup>
+
 </Project>
