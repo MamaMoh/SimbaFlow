@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
+import { saveFile } from "@/lib/files/download";
 
 const GENDER_LABELS = ["Male", "Female", "Other"];
 
@@ -114,31 +115,15 @@ export default function CandidateDetailPage() {
     mutateState();
   };
 
-  const openPdfInNewTab = (blob: Blob) => {
-    const pdfBlob = blob.type === "application/pdf"
-      ? blob
-      : new Blob([blob], { type: "application/pdf" });
-    const url = URL.createObjectURL(pdfBlob);
-
-    // Open via temporary anchor — more reliable than window.open(blob) for Chrome PDF viewer
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 120_000);
-  };
-
   const handleGenerateCv = async () => {
     setGeneratingCv(true);
     try {
-      const blob = await generateCandidateCv(candidate.id);
-      openPdfInNewTab(blob);
+      const file = await generateCandidateCv(candidate.id);
+      saveFile(file);
       mutateDocs();
-      toast.success("CV generated");
+      // The filename, because the point of naming these after the candidate is that the person
+      // can find the one they just made.
+      toast.success(`Saved ${file.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "CV generation failed");
     } finally {
@@ -149,10 +134,12 @@ export default function CandidateDetailPage() {
   const handleGenerateVisa = async () => {
     setGeneratingVisa(true);
     try {
-      const blob = await generateCandidateVisaForm(candidate.id);
-      openPdfInNewTab(blob);
+      const file = await generateCandidateVisaForm(candidate.id);
+      saveFile(file);
       mutateDocs();
-      toast.success("Visa / Enjaz form generated");
+      // The filename, because the point of naming these after the candidate is that the person
+      // can find the one they just made.
+      toast.success(`Saved ${file.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Visa form failed");
     } finally {
@@ -163,10 +150,12 @@ export default function CandidateDetailPage() {
   const handleGenerateContract = async () => {
     setGeneratingContract(true);
     try {
-      const blob = await generateCandidateContract(candidate.id);
-      openPdfInNewTab(blob);
+      const file = await generateCandidateContract(candidate.id);
+      saveFile(file);
       mutateDocs();
-      toast.success("Employment contract generated");
+      // The filename, because the point of naming these after the candidate is that the person
+      // can find the one they just made.
+      toast.success(`Saved ${file.name}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Contract generation failed");
     } finally {

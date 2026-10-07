@@ -27,31 +27,7 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
-
-function openPdfInNewTab(blob: Blob) {
-  const pdfBlob =
-    blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
-  const url = URL.createObjectURL(pdfBlob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 120_000);
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+import { saveFile } from "@/lib/files/download";
 
 interface CandidateRow {
   id: string;
@@ -143,8 +119,7 @@ export default function CandidatesPage() {
   const handleGenerateCv = useCallback(async (id: string) => {
     setGeneratingCvId(id);
     try {
-      const blob = await generateCandidateCv(id);
-      openPdfInNewTab(blob);
+      saveFile(await generateCandidateCv(id));
       toast.success("CV generated");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "CV generation failed");
@@ -164,8 +139,7 @@ export default function CandidatesPage() {
     }
     setBulkGenerating(true);
     try {
-      const blob = await generateBulkCandidateCvs(selectedIds);
-      downloadBlob(blob, `cvs_${new Date().toISOString().slice(0, 10)}.zip`);
+      saveFile(await generateBulkCandidateCvs(selectedIds));
       toast.success(`Generated ${selectedIds.length} CV${selectedIds.length === 1 ? "" : "s"}`);
       setRowSelection({});
     } catch (err) {

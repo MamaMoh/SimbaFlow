@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { saveFile } from "@/lib/files/download";
 import { downloadCandidateDocuments } from "@/lib/api/candidates";
 
 /**
@@ -66,15 +67,7 @@ export function DownloadDocumentsDialog({
     if (selected.length === 0 || count === 0) return;
     setDownloading(true);
     try {
-      const blob = await downloadCandidateDocuments(candidateIds, selected);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `documents_${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      saveFile(await downloadCandidateDocuments(candidateIds, selected));
 
       toast.success(
         `Downloaded documents for ${count} candidate${count === 1 ? "" : "s"}`

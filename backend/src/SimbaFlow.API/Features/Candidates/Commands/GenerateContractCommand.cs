@@ -4,16 +4,17 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
 public record GenerateContractCommand(Guid CandidateId)
-    : IRequest<Result<byte[]>>, IRequirePermission
+    : IRequest<Result<GeneratedPdf>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
 
-public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, Result<byte[]>>
+public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, Result<GeneratedPdf>>
 {
     private readonly ITenantDbContext _tenant;
     private readonly IPlatformDbContext _platform;
@@ -38,12 +39,14 @@ public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, 
         _tenantContext = tenantContext;
     }
 
-    public async Task<Result<byte[]>> Handle(GenerateContractCommand request, CancellationToken ct)
+    public async Task<Result<GeneratedPdf>> Handle(GenerateContractCommand request, CancellationToken ct)
     {
         var candidate = await _tenant.Candidates
             .FirstOrDefaultAsync(c => c.Id == request.CandidateId && !c.IsDeleted, ct);
         if (candidate is null)
-            return Result<byte[]>.Failure("Candidate not found", 404);
+            return Result<GeneratedPdf>.Failure("Candidate not found", 404);
+
+        var downloadName = DocumentFileName.For(candidate.FullName, "Contract");
 
         // The Saudi side comes from the linked partner; the Ethiopian side from the agency itself.
         var partner = candidate.PartnerAgencyId is Guid pid
@@ -57,7 +60,7 @@ public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, 
             : null;
 
         if (partner is null && string.IsNullOrWhiteSpace(candidate.PartnerName))
-            return Result<byte[]>.Failure(
+            return Result<GeneratedPdf>.Failure(
                 "Select the foreign partner on the candidate before generating the contract.", 400);
 
         var parties = new ContractParties(
@@ -82,11 +85,11 @@ public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, 
             _tenant, _fileStorage, _currentUser, _tenantContext.SchemaName ?? "default", candidate,
             DocumentType.Contract,
             $"contract_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            $"Contract_{candidate.FullName.Replace(' ', '_')}.pdf",
+            downloadName,
             pdf,
             ct);
         await _tenant.SaveChangesAsync(ct);
 
-        return Result<byte[]>.Success(pdf);
+        return Result<GeneratedPdf>.Success(new GeneratedPdf(pdf, downloadName));
     }
 }

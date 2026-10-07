@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { openFile, saveFile } from "@/lib/files/download";
 import {
   useReactTable,
   getCoreRowModel,
@@ -160,22 +161,13 @@ export default function EmbassyBoardPage() {
 
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
-  const download = (blob: Blob, name: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   // Tasheer appointments are booked for a group, so the batch leaves as one sheet.
   const exportTasheer = async () => {
     if (selectedIds.length === 0) return toast.error("Select the candidates for this Tasheer batch");
     setBusy("tasheer");
     try {
       const blob = await embassyApi.exportTasheerList(selectedIds);
-      download(blob, `tasheer-list-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      saveFile(blob, `Tasheer list ${new Date().toISOString().slice(0, 10)}.xlsx`);
       toast.success(`${selectedIds.length} candidate${selectedIds.length === 1 ? "" : "s"} exported`);
       setRowSelection({});
     } catch (e) {
@@ -190,9 +182,8 @@ export default function EmbassyBoardPage() {
     if (selectedIds.length === 0) return toast.error("Select the candidates to print enjaze for");
     setBusy("enjaze");
     try {
-      const blob = await generateBulkVisaForms(selectedIds);
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Opened rather than saved: this batch exists to be printed in one pass, and nobody files it.
+      openFile(await generateBulkVisaForms(selectedIds));
       toast.success(`${selectedIds.length} enjaze form${selectedIds.length === 1 ? "" : "s"} ready to print`);
       setRowSelection({});
     } catch (e) {

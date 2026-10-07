@@ -94,10 +94,10 @@ internal static class CvLayouts
     /// <summary>A heading bar: English left, Arabic right, reversed out of the panel colour.</summary>
     private static void Bar(ColumnDescriptor col, string en, string ar)
     {
-        col.Item().Background(Navy).PaddingVertical(3.5f).PaddingHorizontal(6).Row(r =>
+        col.Item().Background(Navy).PaddingVertical(FormType.BarPadding).PaddingHorizontal(6).Row(r =>
         {
-            r.RelativeItem().Text(en).FontSize(8.5f).Bold().FontColor(Colors.White);
-            r.RelativeItem().AlignRight().Text(ar).FontSize(8.5f).Bold().FontColor(Colors.White);
+            r.RelativeItem().Text(en).FontSize(FormType.Heading).Bold().FontColor(Colors.White);
+            r.RelativeItem().AlignRight().Text(ar).FontSize(FormType.Heading).Bold().FontColor(Colors.White);
         });
     }
 
@@ -107,13 +107,13 @@ internal static class CvLayouts
         col.Item().BorderBottom(0.4f).BorderColor(Border).Row(r =>
         {
             r.ConstantItem(label).BorderRight(0.4f).BorderColor(Border)
-                .PaddingVertical(2.2f).PaddingHorizontal(3)
-                .Text(en).FontSize(6.8f).FontColor(Colors.Grey.Darken3);
-            r.RelativeItem().PaddingVertical(2.2f).PaddingHorizontal(3)
-                .AlignCenter().Text(value).FontSize(7.8f).Bold();
+                .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+                .Text(en).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
+            r.RelativeItem().PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+                .AlignCenter().Text(value).FontSize(FormType.Value).Bold();
             r.ConstantItem(label).BorderLeft(0.4f).BorderColor(Border)
-                .PaddingVertical(2.2f).PaddingHorizontal(3)
-                .AlignRight().Text(ar).FontSize(6.8f).FontColor(Colors.Grey.Darken3);
+                .PaddingVertical(FormType.RowPadding).PaddingHorizontal(3)
+                .AlignRight().Text(ar).FontSize(FormType.Label).SemiBold().FontColor(FormType.LabelColor);
         });
     }
 

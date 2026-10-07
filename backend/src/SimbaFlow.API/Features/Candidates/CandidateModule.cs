@@ -122,7 +122,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new GenerateCVCommand(candidateId));
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/pdf", $"cv_{candidateId}.pdf")
+                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -131,7 +131,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(command);
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/zip", $"cvs_{DateTime.UtcNow:yyyyMMddHHmmss}.zip")
+                ? Results.File(result.Data!, "application/zip", $"CVs {DateTime.UtcNow:yyyy-MM-dd}.zip")
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -140,7 +140,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(command);
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/pdf", $"documents_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf")
+                ? Results.File(result.Data!, "application/pdf", $"Documents {DateTime.UtcNow:yyyy-MM-dd}.pdf")
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -159,7 +159,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(command);
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/pdf", "enjaze-forms.pdf")
+                ? Results.File(result.Data!, "application/pdf", $"Enjaz forms {DateTime.UtcNow:yyyy-MM-dd}.pdf")
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -176,7 +176,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new GenerateContractCommand(candidateId));
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/pdf", $"contract_{candidateId}.pdf")
+                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -184,7 +184,7 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new GenerateVisaFormCommand(candidateId));
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/pdf", $"visa_{candidateId}.pdf")
+                ? Results.File(result.Data!.Bytes, "application/pdf", result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
     }

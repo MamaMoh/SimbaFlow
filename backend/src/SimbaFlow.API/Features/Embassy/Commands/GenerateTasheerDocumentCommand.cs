@@ -7,6 +7,7 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Services.Documents;
 
 namespace SimbaFlow.API.Features.Embassy.Commands;
@@ -18,13 +19,13 @@ namespace SimbaFlow.API.Features.Embassy.Commands;
 /// same details into a Word template for every appointment.
 /// </summary>
 public record GenerateTasheerDocumentCommand(Guid CandidateId, DateOnly? AppointmentDate = null)
-    : IRequest<Result<byte[]>>, IRequirePermission
+    : IRequest<Result<GeneratedPdf>>, IRequirePermission
 {
     public string RequiredPermission => "embassy.update";
 }
 
 public class GenerateTasheerDocumentHandler
-    : IRequestHandler<GenerateTasheerDocumentCommand, Result<byte[]>>
+    : IRequestHandler<GenerateTasheerDocumentCommand, Result<GeneratedPdf>>
 {
     private readonly ITenantDbContext _context;
     private readonly IFileStorageService _fileStorage;
@@ -43,11 +44,13 @@ public class GenerateTasheerDocumentHandler
         _currentUser = currentUser;
     }
 
-    public async Task<Result<byte[]>> Handle(GenerateTasheerDocumentCommand request, CancellationToken ct)
+    public async Task<Result<GeneratedPdf>> Handle(GenerateTasheerDocumentCommand request, CancellationToken ct)
     {
         var candidate = await _context.Candidates
             .FirstOrDefaultAsync(c => c.Id == request.CandidateId && !c.IsDeleted, ct);
-        if (candidate is null) return Result<byte[]>.Failure("Candidate not found", 404);
+        if (candidate is null) return Result<GeneratedPdf>.Failure("Candidate not found", 404);
+
+        var downloadName = DocumentFileName.For(candidate.FullName, "Tasheer slip");
 
         var pdf = Compose(candidate, request.AppointmentDate);
 
@@ -55,12 +58,12 @@ public class GenerateTasheerDocumentHandler
             _context, _fileStorage, _currentUser, _tenantContext.SchemaName ?? "default", candidate,
             DocumentType.TasheerDocument,
             $"tasheer_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            $"Tasheer_{candidate.FullName.Replace(' ', '_')}.pdf",
+            downloadName,
             pdf,
             ct);
         await _context.SaveChangesAsync(ct);
 
-        return Result<byte[]>.Success(pdf);
+        return Result<GeneratedPdf>.Success(new GeneratedPdf(pdf, downloadName));
     }
 
     private static byte[] Compose(Candidate c, DateOnly? appointment)

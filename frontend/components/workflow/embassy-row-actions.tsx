@@ -12,6 +12,7 @@ import {
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
+import { saveFile } from "@/lib/files/download";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -278,8 +279,7 @@ function StatusSheets({
             // Default to producing it: the slip is what the candidate carries, and the desk was
             // otherwise retyping these details into a Word template for every appointment.
             if (v.slip !== "no") {
-              const blob = await embassyApi.generateTasheerDocument(candidateId, v.appointmentDate);
-              window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
+              saveFile(await embassyApi.generateTasheerDocument(candidateId, v.appointmentDate));
             }
           }, "Tasheer booked")
         }

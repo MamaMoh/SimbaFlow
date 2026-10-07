@@ -4,15 +4,16 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
-public record GenerateCVCommand(Guid CandidateId) : IRequest<Result<byte[]>>, IRequirePermission
+public record GenerateCVCommand(Guid CandidateId) : IRequest<Result<GeneratedPdf>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
 
-public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<byte[]>>
+public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<GeneratedPdf>>
 {
     private readonly ITenantDbContext _context;
     private readonly ICvGenerationService _cvGeneration;
@@ -34,13 +35,15 @@ public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<byte[
         _currentUser = currentUser;
     }
 
-    public async Task<Result<byte[]>> Handle(GenerateCVCommand request, CancellationToken cancellationToken)
+    public async Task<Result<GeneratedPdf>> Handle(GenerateCVCommand request, CancellationToken cancellationToken)
     {
         var candidate = await _context.Candidates
             .FirstOrDefaultAsync(c => c.Id == request.CandidateId && !c.IsDeleted, cancellationToken);
 
         if (candidate is null)
-            return Result<byte[]>.Failure("Candidate not found", 404);
+            return Result<GeneratedPdf>.Failure("Candidate not found", 404);
+
+        var downloadName = DocumentFileName.For(candidate.FullName, "CV");
 
         byte[]? photoBytes = null;
         if (!string.IsNullOrWhiteSpace(candidate.PhotoPath))
@@ -73,12 +76,12 @@ public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<byte[
             _context, _fileStorage, _currentUser, tenantSlug, candidate,
             DocumentType.CV,
             $"cv_{candidate.PassportNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf",
-            $"CV_{candidate.FullName.Replace(' ', '_')}.pdf",
+            downloadName,
             pdfBytes,
             cancellationToken);
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return Result<byte[]>.Success(pdfBytes);
+        return Result<GeneratedPdf>.Success(new GeneratedPdf(pdfBytes, downloadName));
     }
 }

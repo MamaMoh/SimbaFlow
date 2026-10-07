@@ -1,6 +1,7 @@
 import useSWR, { useSWRConfig } from "swr";
 import { useEffect } from "react";
 import { useSignalR } from "@/lib/signalr/signalr-provider";
+import { filenameFromResponse } from "@/lib/files/download";
 
 type ApiResult<T> = {
   isSuccess?: boolean;
@@ -125,7 +126,7 @@ export function useBoardRealtime(mutate: () => void) {
 }
 
 export const embassyApi = {
-  generateTasheerDocument: async (id: string, appointmentDate?: string): Promise<Blob> => {
+  generateTasheerDocument: async (id: string, appointmentDate?: string): Promise<File> => {
     const res = await fetch(`/api/proxy/embassy/candidates/${id}/tasheer/document`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,7 +136,9 @@ export const embassyApi = {
       const j = await res.json().catch(() => ({}));
       throw new Error(j?.error || "Could not build the Tasheer slip");
     }
-    return res.blob();
+    return new File([await res.blob()], filenameFromResponse(res, "Tasheer slip.pdf"), {
+      type: "application/pdf",
+    });
   },
   exportTasheerList: async (candidateIds: string[]): Promise<Blob> => {
     const res = await fetch("/api/proxy/embassy/tasheer/export", {

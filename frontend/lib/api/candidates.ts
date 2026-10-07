@@ -1,5 +1,6 @@
 import useSWR from "swr";
 import type { Candidate, CandidateDocument, CandidateListDto, TimelineEntry } from "@/types/candidate";
+import { filenameFromResponse } from "@/lib/files/download";
 
 type ApiResult<T> = {
   isSuccess?: boolean;
@@ -119,7 +120,17 @@ export async function uploadCandidateDocument(
   return body?.data as string;
 }
 
-async function readPdfBlob(res: Response, fallbackError: string): Promise<Blob> {
+/**
+ * The PDF, carrying the name the API asked for it to be saved under.
+ *
+ * A File is a Blob, so callers that only want the bytes are unaffected; the ones that save it read
+ * `.name` through `saveFile` and stop having to invent one from the candidate's id.
+ */
+async function readPdfBlob(
+  res: Response,
+  fallbackError: string,
+  fallbackName: string,
+): Promise<File> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body?.error || fallbackError);
@@ -130,15 +141,17 @@ async function readPdfBlob(res: Response, fallbackError: string): Promise<Blob> 
   if (!header.startsWith("%PDF")) {
     throw new Error(`${fallbackError}: invalid PDF response`);
   }
-  return new Blob([blob], { type: "application/pdf" });
+  return new File([blob], filenameFromResponse(res, fallbackName), {
+    type: "application/pdf",
+  });
 }
 
-export async function generateCandidateCv(candidateId: string): Promise<Blob> {
+export async function generateCandidateCv(candidateId: string): Promise<File> {
   const res = await fetch(`/api/proxy/candidates/${candidateId}/cv`, { method: "POST" });
-  return readPdfBlob(res, "CV generation failed");
+  return readPdfBlob(res, "CV generation failed", "CV.pdf");
 }
 
-export async function generateBulkCandidateCvs(candidateIds: string[]): Promise<Blob> {
+export async function generateBulkCandidateCvs(candidateIds: string[]): Promise<File> {
   const res = await fetch("/api/proxy/candidates/cv/bulk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -160,7 +173,7 @@ export async function generateBulkCandidateCvs(candidateIds: string[]): Promise<
       throw new Error("Bulk CV generation failed");
     }
   }
-  return blob;
+  return new File([blob], filenameFromResponse(res, "CVs.zip"), { type: blob.type });
 }
 
 /**
@@ -172,7 +185,7 @@ export async function generateBulkCandidateCvs(candidateIds: string[]): Promise<
 export async function downloadCandidateDocuments(
   candidateIds: string[],
   documentTypes: number[],
-): Promise<Blob> {
+): Promise<File> {
   const res = await fetch("/api/proxy/candidates/documents/bulk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -191,27 +204,28 @@ export async function downloadCandidateDocuments(
     const parsed = JSON.parse(await blob.text());
     throw new Error(parsed?.error || "Download failed");
   }
-  return blob;
+  return new File([blob], filenameFromResponse(res, "Documents.pdf"), { type: blob.type });
 }
 
-export async function generateCandidateVisaForm(candidateId: string): Promise<Blob> {
+export async function generateCandidateVisaForm(candidateId: string): Promise<File> {
   const res = await fetch(`/api/proxy/candidates/${candidateId}/visa-form`, { method: "POST" });
-  return readPdfBlob(res, "Visa form generation failed");
+  return readPdfBlob(res, "Visa form generation failed", "Visa form.pdf");
 }
 
-export async function generateBulkVisaForms(candidateIds: string[]): Promise<Blob> {
+export async function generateBulkVisaForms(candidateIds: string[]): Promise<File> {
   const res = await fetch("/api/proxy/candidates/visa-forms/bulk", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ candidateIds }),
   });
-  return readPdfBlob(res, "Could not build the enjaze forms");
+  return readPdfBlob(res, "Could not build the enjaze forms", "Enjaz forms.pdf");
 }
 
-export async function generateCandidateContract(candidateId: string): Promise<Blob> {
+export async function generateCandidateContract(candidateId: string): Promise<File> {
   return readPdfBlob(
     await fetch(`/api/proxy/candidates/${candidateId}/contract`, { method: "POST" }),
     "Contract generation failed",
+    "Contract.pdf",
   );
 }
 

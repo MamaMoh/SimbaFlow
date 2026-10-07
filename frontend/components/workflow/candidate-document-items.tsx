@@ -10,19 +10,7 @@ import {
   generateCandidateVisaForm,
 } from "@/lib/api/candidates";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
-
-/**
- * Opens a generated PDF in a new tab rather than saving it.
- *
- * These are printed far more often than they are filed, and a tab goes straight to the print
- * dialog; a download makes the desk find the file first. The object URL is released on a timer
- * because revoking it immediately races the tab that is still loading it.
- */
-function openPdf(blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank", "noopener,noreferrer");
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+import { saveFile } from "@/lib/files/download";
 
 type Doc = "cv" | "visa" | "contract";
 
@@ -30,7 +18,7 @@ const DOCS: {
   key: Doc;
   label: string;
   icon: typeof FileText;
-  generate: (id: string) => Promise<Blob>;
+  generate: (id: string) => Promise<File>;
 }[] = [
   { key: "cv", label: "Download CV", icon: FileText, generate: generateCandidateCv },
   { key: "visa", label: "Download visa form", icon: StickyNote, generate: generateCandidateVisaForm },
@@ -71,7 +59,12 @@ export function CandidateDocumentItems({
     if (pending) return;
     setPending(doc.key);
     try {
-      openPdf(await doc.generate(candidateId));
+      // Saved rather than opened in a tab. A tab goes straight to the print dialog, which is how
+      // these are used most of the time — but a blob URL has no filename, so the one document the
+      // desk does keep arrives in Downloads named after the URL's identifier and is indistinguishable
+      // from every other one. A saved file is named after the candidate and is still one double-click
+      // from the same print dialog.
+      saveFile(await doc.generate(candidateId));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `${doc.label} failed`);
     } finally {
