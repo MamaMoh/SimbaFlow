@@ -297,9 +297,21 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                       <SelectValue placeholder="Select level" />
                     </SelectTrigger>
                     <SelectContent position="popper" className="z-[200]">
+                      {/* The caps, not just the occupations: levels 3 and 4 carry the same
+                          occupation scope, so on their labels alone the two were impossible to
+                          tell apart — while the numbers that actually differ, and that the
+                          system actually enforces, only appeared after choosing. */}
                       {AGENCY_LEVELS.map((l) => (
                         <SelectItem key={l.level} value={String(l.level)}>
-                          {l.label}
+                          <span className="flex flex-col items-start">
+                            <span>{l.label}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ≤{l.maxPartnersPerCountry} partners per country ·{" "}
+                              {l.maxCountries == null
+                                ? "any number of countries"
+                                : `up to ${l.maxCountries} ${l.maxCountries === 1 ? "country" : "countries"}`}
+                            </span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
