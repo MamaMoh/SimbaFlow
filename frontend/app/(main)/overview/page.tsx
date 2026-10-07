@@ -15,12 +15,23 @@ import { StatTiles } from "@/components/dashboard/stat-tiles";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { AlertsStrip } from "@/components/dashboard/alerts-strip";
 import { PageHeader } from "@/components/ui/page-header";
+import { PlatformDashboard } from "@/components/dashboard/platform-dashboard";
+import { useActingTenantId } from "@/lib/tenant/acting-tenant";
 
 export default function OverviewPage() {
-  const { hasPermission, isLoading: permsLoading } = usePermissions();
+  const { hasPermission, isSuperAdmin, isLoading: permsLoading } = usePermissions();
   const canRead =
     hasPermission("candidate.read") || hasPermission("system.admin");
-  const enabled = !permsLoading && canRead;
+
+  // Same route, two dashboards. A platform administrator with no agency selected is running the
+  // platform; counting candidates and pipeline stages at them is counting somebody else's work,
+  // and until they pick an agency those numbers are empty anyway.
+  const actingTenantId = useActingTenantId();
+  const showPlatform = isSuperAdmin && actingTenantId === null;
+
+  // Hold the agency's queries back while that is still unknown, so switching to the platform
+  // dashboard does not fire a round of requests nobody will read.
+  const enabled = !permsLoading && canRead && actingTenantId !== undefined && !showPlatform;
 
   const funnel = usePipelineFunnel(enabled);
   const metrics = useDashboardMetrics(enabled);
@@ -40,6 +51,8 @@ export default function OverviewPage() {
   if (!canRead) {
     return <AccessDenied resource="the dashboard" />;
   }
+
+  if (showPlatform) return <PlatformDashboard />;
 
   return (
     <div className="flex flex-col gap-6">

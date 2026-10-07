@@ -1,8 +1,24 @@
+/**
+ * Which of the two jobs a link belongs to.
+ *
+ * SimbaFlow is sold to agencies, so there are two quite different people in it: the operator of
+ * the platform, who deals in agencies, subscriptions and the shared catalogue, and the agency
+ * staff, who deal in candidates. A platform administrator was shown both at once — Embassy, LMIS
+ * and Tickets sitting in the sidebar above an empty Agencies page, meaning nothing until they
+ * picked an agency to work inside.
+ *
+ * "both" is for the handful that genuinely serve either: the dashboard (whose content differs),
+ * user accounts, the bot, and settings.
+ */
+export type NavScope = "platform" | "agency" | "both";
+
 export interface NavItem {
   name: string;
   href?: string;
   icon: any;
   claims?: string[];
+  /** Defaults to "agency": most of this application is the agency's. */
+  scope?: NavScope;
   children?: NavItem[];
   isSeparator?: boolean;
   isActive?: (pathname: string) => boolean;
@@ -14,6 +30,7 @@ export const navigation: NavItem[] = [
   {
     name: "Dashboard",
     href: "/overview",
+    scope: "both",
     icon: require("lucide-react").LayoutDashboard,
     claims: ["candidate.read", "system.admin"],
   },
@@ -124,6 +141,7 @@ export const navigation: NavItem[] = [
 
   {
     name: "Staff & access",
+    scope: "both",
     icon: require("lucide-react").UserCog,
     claims: ["users.read", "role.read", "system.admin"],
     children: [
@@ -133,12 +151,14 @@ export const navigation: NavItem[] = [
         // empty page: they can read staff profiles, and user accounts are somebody else's desk.
         name: "Staff",
         href: "/staff",
+        scope: "both",
         icon: require("lucide-react").IdCard,
         claims: ["users.read", "system.admin"],
       },
       {
         name: "Roles & permissions",
         href: "/roles",
+        scope: "both",
         icon: require("lucide-react").Shield,
         claims: ["role.read", "system.admin"],
       },
@@ -153,6 +173,7 @@ export const navigation: NavItem[] = [
   {
     name: "Partner catalog",
     href: "/admin/partners",
+    scope: "platform",
     icon: require("lucide-react").Library,
     claims: ["system.admin"],
   },
@@ -165,18 +186,21 @@ export const navigation: NavItem[] = [
   {
     name: "Bot & notifications",
     href: "/admin/bot",
+    scope: "both",
     icon: require("lucide-react").BellRing,
     claims: ["bot.configure", "system.admin"],
   },
   {
     name: "Errors",
     href: "/admin/errors",
+    scope: "platform",
     icon: require("lucide-react").AlertOctagon,
     claims: ["system.admin"],
   },
   {
     name: "Subscriptions",
     href: "/subscriptions",
+    scope: "platform",
     icon: require("lucide-react").Receipt,
     claims: ["system.admin"],
   },
@@ -185,12 +209,14 @@ export const navigation: NavItem[] = [
     // produced a link whose every request failed.
     name: "Agencies",
     href: "/tenants",
+    scope: "platform",
     icon: require("lucide-react").Server,
     claims: ["system.admin"],
   },
   {
     name: "Settings",
     href: "/settings",
+    scope: "both",
     icon: require("lucide-react").Settings,
     // Anyone who can link their own Telegram account needs to reach Settings; the page
     // itself still gates the admin-only sections on system.admin. settings.read belongs here
@@ -223,16 +249,29 @@ export function filterNavigationByClaims(
   items: NavItem[],
   claims: string[],
   isSuperAdmin: boolean,
+  /**
+   * "platform" when a platform administrator has no agency selected. Everyone else is working
+   * inside one agency — their own, or the one a platform administrator switched into — and sees
+   * the agency's navigation.
+   */
+  mode: NavScope = "agency",
 ): NavItem[] {
-  if (isSuperAdmin) return items;
   const hasAnyClaim = (required?: string[]) =>
-    !required?.length || required.some((c) => claims.includes(c));
+    isSuperAdmin || !required?.length || required.some((c) => claims.includes(c));
+  const inScope = (item: NavItem) => {
+    const scope = item.scope ?? "agency";
+    return scope === "both" || scope === mode;
+  };
+
   const recur = (list: NavItem[]): NavItem[] =>
     dropEmptySections(
       list
         .map((item) => {
           if (item.isSeparator) return item;
+          if (!inScope(item)) return null;
           const children = item.children ? recur(item.children) : undefined;
+          // A parent with no href earns its place only through its children.
+          if (item.children && (!children || children.length === 0)) return null;
           const allowed =
             hasAnyClaim(item.claims) || (children && children.length > 0);
           return allowed ? { ...item, children } : null;

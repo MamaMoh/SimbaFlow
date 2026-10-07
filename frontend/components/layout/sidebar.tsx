@@ -7,6 +7,7 @@ import { useSidebarStore } from "@/lib/stores/sidebar-store";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useActingTenantId } from "@/lib/tenant/acting-tenant";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ import {
   navigation as baseNavigation,
   type NavItem,
   filterNavigationByClaims,
+  type NavScope,
 } from "@/components/layout/nav-items";
 import { useState, useRef, useEffect, useMemo } from "react";
 
@@ -373,10 +375,23 @@ export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
 
   const userClaims = getPermissions();
+
+  // A platform administrator with no agency selected is running the platform, not an agency, so
+  // they get the platform's navigation. Picking an agency in the switcher puts them inside it and
+  // the agency's navigation appears. Everyone else is always inside their own agency.
+  //
+  // `undefined` means the stored choice has not been read yet — it lives in localStorage, which
+  // cannot be touched while rendering on the server. Agency is the right guess to render first:
+  // it is what every non-platform user gets, so they never see it change.
+  const actingTenantId = useActingTenantId();
+  const navMode: NavScope =
+    isSuperAdmin() && actingTenantId === null ? "platform" : "agency";
+
   const navItems = filterNavigationByClaims(
     baseNavigation,
     userClaims as any,
     isSuperAdmin(),
+    navMode,
   );
 
   // Accordion state: track which top-level parent is open
