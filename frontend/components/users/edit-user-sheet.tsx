@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { AGENCY_ROLES, PLATFORM_ROLES, isPlatformRole } from "@/lib/users/roles";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -49,24 +50,6 @@ export interface EditableUser {
   roles: string[];
 }
 
-/**
- * Roles an agency's own administrator may assign.
- *
- * SuperAdmin and PlatformAdmin are deliberately absent: they reach across every agency on the
- * platform, and the API refuses to grant them to anyone who does not already hold the platform.
- * Offering them here would only produce a request that comes back 403.
- */
-const ASSIGNABLE_ROLES = [
-  "AgencyOwner",
-  "OfficeManager",
-  "EmbassyOfficer",
-  "CaseExecutive",
-  "FinanceOfficer",
-  "FieldAgent",
-  "DataEntryClerk",
-  "Auditor",
-  "NotificationManager",
-];
 
 interface EditUserSheetProps {
   user: EditableUser | null;
@@ -98,6 +81,16 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
   }, [user, reset]);
 
   const selectedRole = watch("role");
+
+  // Platform people and agency people hold different roles, and nobody holds both. Which set this
+  // person belongs to is settled by the role they already have, falling back to whether they have
+  // an agency at all — a platform user has none.
+  const roleOptions = useMemo<readonly string[]>(() => {
+    const current = user?.roles?.[0];
+    if (isPlatformRole(current)) return PLATFORM_ROLES;
+    if (!current && !user?.tenantName) return PLATFORM_ROLES;
+    return AGENCY_ROLES;
+  }, [user]);
 
   const onSubmit = async (data: EditUserForm) => {
     if (!user) return;
@@ -222,17 +215,22 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
               </h3>
               {user?.isSuperAdmin ? (
                 <p className="text-sm text-muted-foreground">
-                  Platform administrator roles are managed at platform level.
+                  <strong>SuperAdmin.</strong> It bypasses permission checks rather than holding
+                  permissions, so it is not granted or removed from this form.
                 </p>
               ) : (
                 <div className="space-y-1.5">
                   <Label>Role</Label>
+                  {/* The roles for the side of the system this person is on. Offering the agency
+                      roles to a platform user left their actual role out of the list, and a
+                      Select whose value matches no item shows its placeholder — so a
+                      PlatformAdmin's role read as blank, as though they had none. */}
                   <Select value={selectedRole || ""} onValueChange={(val) => setValue("role", val)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ASSIGNABLE_ROLES.map((role) => (
+                      {roleOptions.map((role) => (
                         <SelectItem key={role} value={role}>{role}</SelectItem>
                       ))}
                     </SelectContent>

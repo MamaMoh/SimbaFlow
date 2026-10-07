@@ -28,6 +28,7 @@ import { User, Shield, Key, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { getActingTenantId } from "@/lib/tenant/acting-tenant";
+import { AGENCY_ROLES, PLATFORM_ROLES } from "@/lib/users/roles";
 
 const PLATFORM_ONLY = "__platform__";
 
@@ -51,20 +52,6 @@ interface CreateUserSheetProps {
   onCreated: () => void;
 }
 
-/** Roles that run the platform and so have no agency of their own. */
-const PLATFORM_ROLES = ["PlatformAdmin"];
-
-const ROLES = [
-  "AgencyOwner",
-  "OfficeManager",
-  "EmbassyOfficer",
-  "CaseExecutive",
-  "FinanceOfficer",
-  "FieldAgent",
-  "DataEntryClerk",
-  "Auditor",
-  "NotificationManager",
-];
 
 type Agency = { id: string; name: string };
 
@@ -270,7 +257,7 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(selectedTenant === PLATFORM_ONLY ? PLATFORM_ROLES : ROLES).map(role => (
+                  {(selectedTenant === PLATFORM_ONLY ? PLATFORM_ROLES : AGENCY_ROLES).map(role => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
                 </SelectContent>
