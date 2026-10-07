@@ -50,10 +50,26 @@ public class TenantConnectionInterceptor : DbConnectionInterceptor
         }
         else if (_currentUser.IsSuperAdmin)
         {
-            // Platform admins have no JWT tenant_id — default to the seeded agency schema
-            // so tenant DbSets (workflow, candidates) resolve instead of public.
-            schemaName = await _schemaResolver.ResolveDefaultSchemaAsync(cancellationToken)
-                ?? "tenant_default_agency";
+            // Platform admins have no JWT tenant_id — a tenant-scoped query from one means "the
+            // agency I am working inside", which is whichever the switcher picked, or the default
+            // when it picked none.
+            schemaName = await _schemaResolver.ResolveDefaultSchemaAsync(cancellationToken);
+
+            // This used to fall back to the literal "tenant_default_agency". Postgres accepts a
+            // search_path naming a schema that does not exist, so the SET succeeded and nothing
+            // failed until the first query — which came back as `relation "candidates" does not
+            // exist`, once per dashboard panel, filling the error log with a database fault that
+            // said nothing about the cause. It is also why the seeded "Default Agency", whose row
+            // was created without ever building its schema, broke every page it touched.
+            //
+            // When no agency resolves there is no schema to point at, and saying so is the only
+            // honest answer. The handler turns this into a 403 and a warning rather than a 500.
+            if (string.IsNullOrWhiteSpace(schemaName))
+            {
+                throw new Application.Common.Exceptions.TenantUnavailableException(
+                    "No agency is selected. Choose one in the agency switcher, or create an agency "
+                    + "first.");
+            }
         }
         else
         {
