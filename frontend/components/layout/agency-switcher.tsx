@@ -53,6 +53,24 @@ export function AgencySwitcher() {
         ? data.data
         : [];
 
+  // The choice lives in this browser, so it outlives the agency it names. After an agency was
+  // deleted the switcher still read its name back out of localStorage and showed it, while every
+  // request carried its id in X-Tenant-Id — the admin was working inside an agency that no longer
+  // existed, and the only clue was a list that had nothing in it.
+  //
+  // Waits for a loaded list: `data` is undefined while the request is in flight, and treating
+  // that as "not found" would drop a valid choice on every page load.
+  useEffect(() => {
+    if (!data || !activeId) return;
+    if (agencies.some((a) => a.id === activeId)) return;
+
+    setActingTenant(null);
+    setActiveId(null);
+    setActiveName(null);
+    mutate(() => true, undefined, { revalidate: true });
+    toast.info("That agency no longer exists — showing all agencies.");
+  }, [data, agencies, activeId]);
+
   const choose = (agency: Agency | null) => {
     setActingTenant(agency?.id ?? null, agency?.name ?? null);
     setActiveId(agency?.id ?? null);
