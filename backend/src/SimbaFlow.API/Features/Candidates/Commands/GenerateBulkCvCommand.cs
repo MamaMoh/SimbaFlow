@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
@@ -48,6 +49,11 @@ public class GenerateBulkCvHandler : IRequestHandler<GenerateBulkCvCommand, Resu
             return Result<byte[]>.Failure("No candidates found", 404);
 
         await using var zipMs = new MemoryStream();
+        // Two candidates can share a name, and a zip with two entries called the same thing
+        // extracts to one file. The passport number settles it, but only for the second one —
+        // putting it on every entry would make the common case harder to read for a problem the
+        // common case does not have.
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var archive = new ZipArchive(zipMs, ZipArchiveMode.Create, leaveOpen: true))
         {
             foreach (var candidate in candidates)
@@ -79,12 +85,15 @@ public class GenerateBulkCvHandler : IRequestHandler<GenerateBulkCvCommand, Resu
                 }
 
                 var pdf = await _cvGeneration.GenerateAsync(candidate, photoBytes, fullPhotoBytes, cancellationToken);
-                var safeName = $"{candidate.PassportNumber}_{candidate.LastName}_{candidate.FirstName}"
-                    .Replace(" ", "_");
-                foreach (var c in Path.GetInvalidFileNameChars())
-                    safeName = safeName.Replace(c, '_');
+                var name = DocumentFileName.For(candidate.FullName, "CV");
+                if (!taken.Add(name))
+                {
+                    name = DocumentFileName.For(
+                        $"{candidate.FullName} {candidate.PassportNumber}", "CV");
+                    taken.Add(name);
+                }
 
-                var entry = archive.CreateEntry($"cv_{safeName}.pdf", CompressionLevel.Fastest);
+                var entry = archive.CreateEntry(name, CompressionLevel.Fastest);
                 await using var entryStream = entry.Open();
                 await entryStream.WriteAsync(pdf, cancellationToken);
             }
