@@ -411,7 +411,7 @@ export default function CandidateDetailPage() {
                 .filter(Boolean)
                 .join(", ") || undefined}
             />
-            <Field label="Reference No." value={candidate.referenceNo} />
+            <Field label="E number" value={candidate.referenceNo} />
             <Field label="Remark" value={candidate.remark} />
           </ProfileSection>
 

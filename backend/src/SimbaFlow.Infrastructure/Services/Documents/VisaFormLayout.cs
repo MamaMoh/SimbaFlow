@@ -16,8 +16,8 @@ namespace SimbaFlow.Infrastructure.Services.Documents;
 /// specific order, and a page that carries the same facts in a different shape gets read line by
 /// line instead of at a glance, or handed back.
 ///
-/// So this is the sheet. Two barcodes at the head — visa number left, passport number right,
-/// which are the two numbers on the page a human transcribes wrong and a scanner does not. The
+/// So this is the sheet. Two barcodes at the head — visa number left, E number right, which are
+/// the two numbers on the page a human transcribes wrong and a scanner does not. The
 /// ministry's emblem between the applicant's photograph and the consular heading. Then the grid:
 /// every row an English label on the left, the value in the middle and the Arabic label on the
 /// right, laid out the way the form lays them out, down to the boxes that stay empty because the
@@ -111,9 +111,12 @@ internal static class VisaFormLayout
 
             bar.RelativeItem().Column(c =>
             {
-                c.Item().AlignCenter().Element(e => Barcode(e, candidate.PassportNumber));
+                // The E number, not the passport number. They sit side by side on the form and
+                // look alike — E000111222 against EP0000001 — and the first copy of this read the
+                // wrong one off the original. The passport number has its own row in the grid.
+                c.Item().AlignCenter().Element(e => Barcode(e, candidate.ReferenceNo));
                 c.Item().PaddingTop(1).AlignCenter()
-                    .Text(V(candidate.PassportNumber)).FontSize(11).Bold();
+                    .Text(V(candidate.ReferenceNo)).FontSize(11).Bold();
                 c.Item().PaddingTop(1).AlignCenter().Text("EMBASSY OF SAUDI ARABIA").FontSize(Value);
                 c.Item().AlignCenter().Text("CONSULAR SECTION").FontSize(Value);
             });

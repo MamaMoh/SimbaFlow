@@ -19,6 +19,14 @@ public record ReportColumn(string Key, string Label, ReportColumnType Type = Rep
 /// a simple chart (when ChartLabelKey/ChartValueKey are set), and Excel/PDF exports.
 /// Rows are keyed by <see cref="ReportColumn.Key"/>.
 /// </summary>
+/// <param name="ForImport">
+/// Whether the workbook is going into another system rather than in front of a person.
+///
+/// A report for a person opens with its title and what it covers, and the headings follow on the
+/// third row. An importer reads the first row as the headings, so those two rows make every
+/// column unrecognised and the upload is rejected — or worse, accepted with the title as a
+/// column name. Set this and the sheet is headings on row one, data under them, nothing else.
+/// </param>
 public record ReportTable(
     string Key,
     string Title,
@@ -27,7 +35,8 @@ public record ReportTable(
     List<Dictionary<string, object?>> Rows,
     string? ChartLabelKey = null,
     string? ChartValueKey = null,
-    DateTime? GeneratedAtUtc = null);
+    DateTime? GeneratedAtUtc = null,
+    bool ForImport = false);
 
 /// <summary>One entry in the report catalog (the picker on the Reports page).</summary>
 public record ReportCatalogItem(string Key, string Name, string Category, string Description);

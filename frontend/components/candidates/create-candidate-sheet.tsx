@@ -1830,8 +1830,10 @@ export function CandidateApplicationForm({
                   <Input {...register("medicalPlace")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Reference No.</Label>
-                  <Input {...register("referenceNo")} />
+                  {/* The E number. It barcodes onto the enjaze form and fills the E.No column of
+                      the Tasheer sheet, so the label says which number it wants. */}
+                  <Label>E number / Reference No.</Label>
+                  <Input {...register("referenceNo")} placeholder="E000111222" />
                 </div>
               </div>
             </FormSection>

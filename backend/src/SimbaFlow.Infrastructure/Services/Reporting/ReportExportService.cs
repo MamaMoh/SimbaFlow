@@ -26,21 +26,26 @@ public class ReportExportService : IReportExportService
         using var workbook = new XLWorkbook();
         var sheet = workbook.Worksheets.Add(SafeSheetName(report.Title));
 
-        // Title + subtitle
         var lastCol = Math.Max(report.Columns.Count, 1);
-        sheet.Cell(1, 1).Value = report.Title;
-        sheet.Range(1, 1, 1, lastCol).Merge();
-        sheet.Cell(1, 1).Style.Font.Bold = true;
-        sheet.Cell(1, 1).Style.Font.FontSize = 15;
+        var headerRow = 1;
 
-        var headerRow = 2;
-        if (!string.IsNullOrWhiteSpace(report.Subtitle))
+        // A sheet bound for another system's importer starts at its headings — see ForImport.
+        if (!report.ForImport)
         {
-            sheet.Cell(2, 1).Value = report.Subtitle;
-            sheet.Range(2, 1, 2, lastCol).Merge();
-            sheet.Cell(2, 1).Style.Font.Italic = true;
-            sheet.Cell(2, 1).Style.Font.FontColor = XLColor.Gray;
-            headerRow = 3;
+            sheet.Cell(1, 1).Value = report.Title;
+            sheet.Range(1, 1, 1, lastCol).Merge();
+            sheet.Cell(1, 1).Style.Font.Bold = true;
+            sheet.Cell(1, 1).Style.Font.FontSize = 15;
+            headerRow = 2;
+
+            if (!string.IsNullOrWhiteSpace(report.Subtitle))
+            {
+                sheet.Cell(2, 1).Value = report.Subtitle;
+                sheet.Range(2, 1, 2, lastCol).Merge();
+                sheet.Cell(2, 1).Style.Font.Italic = true;
+                sheet.Cell(2, 1).Style.Font.FontColor = XLColor.Gray;
+                headerRow = 3;
+            }
         }
 
         // Column headers
@@ -49,6 +54,8 @@ public class ReportExportService : IReportExportService
             var cell = sheet.Cell(headerRow, c + 1);
             cell.Value = report.Columns[c].Label;
             cell.Style.Font.Bold = true;
+            if (report.ForImport) continue;
+
             cell.Style.Font.FontColor = XLColor.White;
             cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1B4F9C");
             cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -69,7 +76,10 @@ public class ReportExportService : IReportExportService
         }
 
         sheet.Columns().AdjustToContents();
-        if (report.Rows.Count > 0)
+
+        // No filter dropdowns on an import sheet: they are a reading aid, and some importers
+        // read the filter range rather than the used range and stop at whatever it covers.
+        if (report.Rows.Count > 0 && !report.ForImport)
             sheet.Range(headerRow, 1, r - 1, lastCol).SetAutoFilter();
 
         using var ms = new MemoryStream();
