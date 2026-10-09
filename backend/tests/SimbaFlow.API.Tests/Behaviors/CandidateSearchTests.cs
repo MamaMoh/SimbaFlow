@@ -149,5 +149,20 @@ public class CandidateSearchTests : IDisposable
         row.Age.Should().Be(25);
     }
 
+    [Fact]
+    public async Task TheFilterOptionsAreCountedOverEveryCandidateNotOverOnePage()
+    {
+        // The stage chips used to be built from the rows the browser was holding, so an agency
+        // with more candidates than one page saw counts that were a sample of themselves.
+        for (var i = 0; i < 30; i++) Given("Almaz", "Debela", $"Kebede{i}", $"EP000{i:D4}");
+
+        var options = await new GetCandidateFilterOptionsHandler(_context)
+            .Handle(new GetCandidateFilterOptionsQuery(), default);
+
+        options.IsSuccess.Should().BeTrue();
+        options.Data!.Total.Should().Be(30);
+        options.Data.Stages.Sum(x => x.Count).Should().Be(30);
+    }
+
     public void Dispose() => _context.Dispose();
 }

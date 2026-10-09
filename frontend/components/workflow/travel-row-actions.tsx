@@ -108,6 +108,7 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
             <MoveBackStageItem
               candidateId={candidate.id}
               candidateName={candidate.fullName}
+              stageId={stageId}
               onDone={refresh}
             />
             {canUpdate && ticketStatus !== "Booking Complete" && (
@@ -202,6 +203,7 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
             <MoveBackStageItem
               candidateId={candidate.id}
               candidateName={candidate.fullName}
+              stageId={stageId}
               onDone={refresh}
             />
             {canRead && <DropdownMenuSeparator />}

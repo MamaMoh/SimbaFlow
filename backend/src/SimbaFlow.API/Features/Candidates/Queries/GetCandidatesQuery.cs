@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
+using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.Domain.Services;
 
@@ -13,7 +14,9 @@ public record GetCandidatesQuery(
     // null → active only (default). "all" → every status. Otherwise a specific status name.
     string? Status = null,
     int? MinAge = null,
-    int? MaxAge = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
+    int? MaxAge = null,
+    Guid? PartnerAgencyId = null,
+    string? Occupation = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
@@ -56,6 +59,34 @@ public record CandidateListDto(
     /// </summary>
     bool CanDelete);
 
+/// <summary>
+/// Active, inactive or all — the one rule, shared by the list and by the filter counts.
+///
+/// A deleted candidate is not gone, it is inactive. It used to vanish from every list, which on
+/// a desk where several people work the same pipeline means the person who goes looking cannot
+/// tell a record somebody removed from one that was never registered.
+/// </summary>
+internal static class CandidateBuckets
+{
+    internal static IQueryable<Candidate> InStatus(IQueryable<Candidate> query, string? status)
+    {
+        var bucket = status?.Trim() ?? "";
+
+        if (bucket.Equals("inactive", StringComparison.OrdinalIgnoreCase))
+            return query.Where(c => c.IsDeleted || c.Status != CandidateStatus.Active);
+
+        if (bucket.Equals("all", StringComparison.OrdinalIgnoreCase))
+            return query;
+
+        if (bucket.Length == 0)
+            return query.Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
+
+        return Enum.TryParse<CandidateStatus>(bucket, true, out var wanted)
+            ? query.Where(c => !c.IsDeleted && c.Status == wanted)
+            : query.Where(c => !c.IsDeleted);
+    }
+}
+
 public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<PaginatedCandidateResult>>
 {
     private readonly ITenantDbContext _context;
@@ -67,27 +98,7 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
 
     public async Task<Result<PaginatedCandidateResult>> Handle(GetCandidatesQuery request, CancellationToken cancellationToken)
     {
-        var query = _context.Candidates.AsNoTracking();
-
-        // A deleted candidate is not gone, it is inactive.
-        //
-        // It used to vanish from every list, which on a desk where several people work the same
-        // pipeline means the person who goes looking cannot tell a record somebody removed from
-        // one that was never registered. Deleted records are now exactly what the Inactive tab
-        // shows, with the name of whoever removed them, and the default list hides them the same
-        // way it always did.
-        var bucket = request.Status?.Trim() ?? "";
-
-        if (bucket.Equals("inactive", StringComparison.OrdinalIgnoreCase))
-            query = query.Where(c => c.IsDeleted || c.Status != CandidateStatus.Active);
-        else if (bucket.Equals("all", StringComparison.OrdinalIgnoreCase))
-        { }
-        else if (bucket.Length == 0)
-            query = query.Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
-        else if (Enum.TryParse<CandidateStatus>(bucket, true, out var wanted))
-            query = query.Where(c => !c.IsDeleted && c.Status == wanted);
-        else
-            query = query.Where(c => !c.IsDeleted);
+        var query = CandidateBuckets.InStatus(_context.Candidates.AsNoTracking(), request.Status);
 
         // Searched in the database over every candidate, not in the browser over the page it
         // happens to be holding — a desk with two thousand people on the books was searching the
@@ -120,6 +131,12 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
 
         if (!string.IsNullOrWhiteSpace(request.CountryOfTravel))
             query = query.Where(c => c.CountryOfTravel == request.CountryOfTravel);
+
+        if (request.PartnerAgencyId.HasValue)
+            query = query.Where(c => c.PartnerAgencyId == request.PartnerAgencyId);
+
+        if (!string.IsNullOrWhiteSpace(request.Occupation))
+            query = query.Where(c => c.Occupation == request.Occupation);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -189,6 +206,88 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
 
         return Result<PaginatedCandidateResult>.Success(
             new PaginatedCandidateResult(items, totalCount, request.Page, request.PageSize, totalPages));
+    }
+}
+
+/// <summary>
+/// What there is to filter the candidate list by, counted over the whole database.
+///
+/// The stage chips above the list used to be built from the rows the page happened to be
+/// holding, so an agency with more candidates than one page saw counts that were a sample and a
+/// list of stages with the quiet ones missing. Everything here is counted by the database over
+/// every candidate in the chosen bucket, and choosing one narrows the list in the database too.
+///
+/// <paramref name="Status"/> is the active/inactive/all bucket the list is showing, so the
+/// counts describe what the person is actually looking at rather than the whole file.
+/// </summary>
+public record GetCandidateFilterOptionsQuery(string? Status = null)
+    : IRequest<Result<CandidateFilterOptions>>, IRequirePermission
+{
+    public string RequiredPermission => "candidate.read";
+}
+
+public record StageFilterOption(Guid? Id, string Name, int Count);
+public record ValueFilterOption(string Value, int Count);
+public record PartnerFilterOption(Guid Id, string Name, int Count);
+
+public record CandidateFilterOptions(
+    IReadOnlyList<StageFilterOption> Stages,
+    IReadOnlyList<ValueFilterOption> Countries,
+    IReadOnlyList<PartnerFilterOption> Partners,
+    IReadOnlyList<ValueFilterOption> Occupations,
+    int Total);
+
+public class GetCandidateFilterOptionsHandler
+    : IRequestHandler<GetCandidateFilterOptionsQuery, Result<CandidateFilterOptions>>
+{
+    private readonly ITenantDbContext _context;
+
+    public GetCandidateFilterOptionsHandler(ITenantDbContext context) => _context = context;
+
+    public async Task<Result<CandidateFilterOptions>> Handle(
+        GetCandidateFilterOptionsQuery request, CancellationToken ct)
+    {
+        // The same bucket rule as the list itself, so the counts and the rows agree.
+        var query = CandidateBuckets.InStatus(_context.Candidates.AsNoTracking(), request.Status);
+
+        var stages = await query
+            .GroupBy(c => new { c.CurrentStageId, c.CurrentStageName })
+            .Select(g => new StageFilterOption(
+                g.Key.CurrentStageId, g.Key.CurrentStageName ?? "Intake", g.Count()))
+            .ToListAsync(ct);
+
+        var countries = await query
+            .Where(c => c.CountryOfTravel != null && c.CountryOfTravel != "")
+            .GroupBy(c => c.CountryOfTravel!)
+            .Select(g => new ValueFilterOption(g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        var partners = await query
+            .Where(c => c.PartnerAgencyId != null)
+            .GroupBy(c => new { c.PartnerAgencyId, c.PartnerName })
+            .Select(g => new PartnerFilterOption(
+                g.Key.PartnerAgencyId!.Value, g.Key.PartnerName ?? "Partner", g.Count()))
+            .ToListAsync(ct);
+
+        var occupations = await query
+            .Where(c => c.Occupation != null && c.Occupation != "")
+            .GroupBy(c => c.Occupation!)
+            .Select(g => new ValueFilterOption(g.Key, g.Count()))
+            .ToListAsync(ct);
+
+        var total = await query.CountAsync(ct);
+
+        return Result<CandidateFilterOptions>.Success(new CandidateFilterOptions(
+            [.. stages.OrderByDescending(x => x.Count)],
+            [.. countries.OrderByDescending(x => x.Count)],
+            // Merged by id: the partner's name is snapshotted on each candidate, so a partner
+            // renamed halfway through grouped as two partners with the same id.
+            [.. partners
+                .GroupBy(p => p.Id)
+                .Select(g => new PartnerFilterOption(g.Key, g.First().Name, g.Sum(x => x.Count)))
+                .OrderByDescending(x => x.Count)],
+            [.. occupations.OrderByDescending(x => x.Count)],
+            total));
     }
 }
 

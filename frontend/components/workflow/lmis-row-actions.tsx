@@ -113,6 +113,8 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
             <MoveBackStageItem
               candidateId={candidate.id}
               candidateName={candidate.fullName}
+              stageId={stageId}
+              isMirror={candidate.isMirror}
               onDone={refresh}
             />
             {canUpdate && (

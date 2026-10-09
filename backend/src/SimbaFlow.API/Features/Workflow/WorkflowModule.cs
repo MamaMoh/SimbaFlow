@@ -40,16 +40,20 @@ public class WorkflowModule : ICarterModule
 
         // Get workflow state for a candidate
         // Undoing the last move between stages: what it would do, then doing it.
-        group.MapGet("/{candidateId:guid}/move-back", async (Guid candidateId, ISender sender) =>
+        // stageId is the board being asked from, so a mirror row cannot walk a candidate out of
+        // a stage the person pressing the button is not looking at. Omitted by the candidates
+        // list and the candidate's own page, which are not boards.
+        group.MapGet("/{candidateId:guid}/move-back", async (
+            Guid candidateId, Guid? stageId, ISender sender) =>
         {
-            var result = await sender.Send(new GetMoveBackPreviewQuery(candidateId));
+            var result = await sender.Send(new GetMoveBackPreviewQuery(candidateId, stageId));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
         group.MapPost("/{candidateId:guid}/move-back", async (
-            Guid candidateId, MoveBackRequest? body, ISender sender) =>
+            Guid candidateId, Guid? stageId, MoveBackRequest? body, ISender sender) =>
         {
-            var result = await sender.Send(new MoveBackStageCommand(candidateId, body?.Reason));
+            var result = await sender.Send(new MoveBackStageCommand(candidateId, body?.Reason, stageId));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

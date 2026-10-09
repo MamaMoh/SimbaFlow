@@ -8,8 +8,12 @@ namespace SimbaFlow.API.Features.Workflow.Commands;
 
 /// <summary>
 /// What undoing this candidate's last move would do, so it can be confirmed before it is done.
+///
+/// <c>StageId</c> is the board the question is being asked from. Boards mirror, so a candidate
+/// can be listed on one and standing in another; the move belongs to the board they are standing
+/// in. Null for the candidates list and the candidate's own page, which are not boards.
 /// </summary>
-public record GetMoveBackPreviewQuery(Guid CandidateId)
+public record GetMoveBackPreviewQuery(Guid CandidateId, Guid? StageId = null)
     : IRequest<Result<MoveBackPreviewDto>>, IRequirePermission
 {
     public string RequiredPermission => "workflow.execute";
@@ -36,7 +40,7 @@ public class GetMoveBackPreviewHandler
         GetMoveBackPreviewQuery request, CancellationToken ct)
     {
         var (plan, error, status) = await StageRewind.PlanAsync(
-            _context, _engine, request.CandidateId, ct);
+            _context, _engine, request.CandidateId, ct, request.StageId);
 
         return plan is null
             ? Result<MoveBackPreviewDto>.Failure(error!, status)
@@ -57,7 +61,7 @@ public class GetMoveBackPreviewHandler
 /// colleague may have moved the candidate on. Recomputing means what is written is what is true
 /// now, and a candidate who has since moved gets the new answer rather than the stale one.
 /// </summary>
-public record MoveBackStageCommand(Guid CandidateId, string? Reason = null)
+public record MoveBackStageCommand(Guid CandidateId, string? Reason = null, Guid? StageId = null)
     : IRequest<Result<MoveBackPreviewDto>>, IRequirePermission
 {
     public string RequiredPermission => "workflow.execute";
@@ -84,7 +88,7 @@ public class MoveBackStageHandler : IRequestHandler<MoveBackStageCommand, Result
             return Result<MoveBackPreviewDto>.Failure("Sign in again — no user context.", 401);
 
         var (plan, error, status) = await StageRewind.PlanAsync(
-            _context, _engine, request.CandidateId, ct);
+            _context, _engine, request.CandidateId, ct, request.StageId);
         if (plan is null) return Result<MoveBackPreviewDto>.Failure(error!, status);
 
         var candidate = await _context.Candidates

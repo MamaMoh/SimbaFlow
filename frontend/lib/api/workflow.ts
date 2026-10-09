@@ -209,8 +209,22 @@ export type MoveBackPreview = {
  * Asks what moving back would do, without doing it. Throws with the reason when there is no
  * earlier stage to go to, which is what the dialog shows instead of a confirm button.
  */
-export async function previewMoveBack(candidateId: string): Promise<MoveBackPreview> {
-  const res = await fetch(`/api/proxy/workflow/${candidateId}/move-back`);
+/**
+ * `stageId` is the board the question is being asked from.
+ *
+ * Boards mirror, so the same candidate appears on more than one of them while standing in only
+ * one. Naming the board lets the server refuse a move asked for from a board the candidate is
+ * merely shown on. The candidates list and the candidate's own page are not boards and name none.
+ */
+const moveBackUrl = (candidateId: string, stageId?: string) =>
+  `/api/proxy/workflow/${candidateId}/move-back` +
+  (stageId ? `?stageId=${encodeURIComponent(stageId)}` : "");
+
+export async function previewMoveBack(
+  candidateId: string,
+  stageId?: string,
+): Promise<MoveBackPreview> {
+  const res = await fetch(moveBackUrl(candidateId, stageId));
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.error || "Could not work out where they would go back to");
   return body?.data as MoveBackPreview;
@@ -219,8 +233,9 @@ export async function previewMoveBack(candidateId: string): Promise<MoveBackPrev
 export async function moveBackStage(
   candidateId: string,
   reason?: string,
+  stageId?: string,
 ): Promise<MoveBackPreview> {
-  const res = await fetch(`/api/proxy/workflow/${candidateId}/move-back`, {
+  const res = await fetch(moveBackUrl(candidateId, stageId), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason }),

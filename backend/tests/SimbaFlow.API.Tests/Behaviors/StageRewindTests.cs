@@ -116,13 +116,59 @@ public class StageRewindTests : IDisposable
         _context.SaveChanges();
     }
 
-    private Task<SimbaFlow.Application.Common.Models.Result<MoveBackPreviewDto>> Preview() =>
+    private Task<SimbaFlow.Application.Common.Models.Result<MoveBackPreviewDto>> Preview(
+        Guid? fromBoard = null) =>
         new GetMoveBackPreviewHandler(_context, _engine)
-            .Handle(new GetMoveBackPreviewQuery(_candidate.Id), default);
+            .Handle(new GetMoveBackPreviewQuery(_candidate.Id, fromBoard), default);
 
-    private Task<SimbaFlow.Application.Common.Models.Result<MoveBackPreviewDto>> MoveBack(string? reason = null) =>
+    private Task<SimbaFlow.Application.Common.Models.Result<MoveBackPreviewDto>> MoveBack(
+        string? reason = null, Guid? fromBoard = null) =>
         new MoveBackStageHandler(_context, _engine, _user)
-            .Handle(new MoveBackStageCommand(_candidate.Id, reason), default);
+            .Handle(new MoveBackStageCommand(_candidate.Id, reason, fromBoard), default);
+
+    [Fact]
+    public async Task AMirrorBoardCannotMoveThemOutOfTheStageTheyAreActuallyIn()
+    {
+        // The candidate is in Embassy and mirrored onto New Contracts. Pressing Move back on the
+        // New Contracts row used to walk them out of Embassy — a stage the person pressing it was
+        // not looking at, and may not even work.
+        GivenPipeline();
+        GivenStatus("medical", "Fit");
+
+        var preview = await Preview(fromBoard: _intake.Id);
+
+        preview.IsSuccess.Should().BeFalse();
+        preview.StatusCode.Should().Be(409);
+        preview.Error.Should().Contain("Embassy", "the refusal says who actually holds them");
+
+        var move = await MoveBack(fromBoard: _intake.Id);
+
+        move.IsSuccess.Should().BeFalse();
+        _candidate.CurrentStageId.Should().Be(_embassy.Id, "and nothing moved");
+        (await _engine.GetCurrentStateAsync(_candidate.Id)).StatusValues["medical"].Should().Be("Fit");
+    }
+
+    [Fact]
+    public async Task TheBoardTheyAreStandingInCanMoveThemBack()
+    {
+        GivenPipeline();
+
+        (await MoveBack(fromBoard: _embassy.Id)).IsSuccess.Should().BeTrue();
+
+        _candidate.CurrentStageId.Should().Be(_intake.Id);
+    }
+
+    [Fact]
+    public async Task APageThatIsNotABoardNamesNoStageAndStillWorks()
+    {
+        // The candidates list and the candidate's own page are about the record rather than
+        // about a stage, so they ask without naming one.
+        GivenPipeline();
+
+        (await MoveBack(fromBoard: null)).IsSuccess.Should().BeTrue();
+
+        _candidate.CurrentStageId.Should().Be(_intake.Id);
+    }
 
     [Fact]
     public async Task ThePreviewNamesWhereTheyWouldGoAndWhatItCosts()

@@ -131,6 +131,8 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
           <MoveBackStageItem
             candidateId={candidate.id}
             candidateName={candidate.fullName}
+            stageId={stageId}
+            isMirror={candidate.isMirror}
             onDone={refresh}
           />
 

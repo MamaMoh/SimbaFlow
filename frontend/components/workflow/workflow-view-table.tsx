@@ -117,6 +117,8 @@ function RowActions({
               <MoveBackStageItem
                 candidateId={candidate.id}
                 candidateName={candidate.fullName}
+                stageId={candidate.currentStageId ?? undefined}
+                isMirror={candidate.isMirror}
                 onDone={refresh}
               />
               <DropdownMenuItem

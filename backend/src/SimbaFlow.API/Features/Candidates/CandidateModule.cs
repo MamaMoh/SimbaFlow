@@ -21,12 +21,21 @@ public class CandidateModule : ICarterModule
             int? page, int? pageSize, string? search,
             Guid? stageId, string? countryOfTravel, string? status,
             int? minAge, int? maxAge,
+            Guid? partnerAgencyId, string? occupation,
             ISender sender) =>
         {
             var query = new GetCandidatesQuery(
                 page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel, status,
-                minAge, maxAge);
+                minAge, maxAge, partnerAgencyId, occupation);
             var result = await sender.Send(query);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // What there is to filter by, counted over every candidate rather than over the page the
+        // browser happens to be holding.
+        group.MapGet("/filters", async (string? status, ISender sender) =>
+        {
+            var result = await sender.Send(new GetCandidateFilterOptionsQuery(status));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

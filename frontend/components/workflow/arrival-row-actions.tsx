@@ -95,6 +95,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
             <MoveBackStageItem
               candidateId={candidate.id}
               candidateName={candidate.fullName}
+              stageId={stageId}
               onDone={refresh}
             />
             {canUpdate && (

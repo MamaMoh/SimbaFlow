@@ -32,10 +32,20 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 export function MoveBackStageItem({
   candidateId,
   candidateName,
+  stageId,
+  isMirror = false,
   onDone,
 }: {
   candidateId: string;
   candidateName?: string;
+  /**
+   * The board this menu belongs to. Sent with the request so the server can refuse a move asked
+   * for from a board the candidate is only mirrored onto. Omitted by the candidates list and the
+   * candidate's own page, which are about the record rather than about a stage.
+   */
+  stageId?: string;
+  /** This row is a mirror — the candidate is standing somewhere else, so this board cannot move them. */
+  isMirror?: boolean;
   onDone?: () => void;
 }) {
   const { hasPermission } = usePermissions();
@@ -47,6 +57,9 @@ export function MoveBackStageItem({
   const [busy, setBusy] = useState(false);
 
   if (!hasPermission("workflow.execute")) return null;
+  // Offered only where the candidate actually is. A mirror row shows them without holding them,
+  // and moving them from there walks them out of a stage this board is not looking at.
+  if (isMirror) return null;
 
   const openDialog = async () => {
     setOpen(true);
@@ -55,7 +68,7 @@ export function MoveBackStageItem({
     setReason("");
     setLoading(true);
     try {
-      setPreview(await previewMoveBack(candidateId));
+      setPreview(await previewMoveBack(candidateId, stageId));
     } catch (err) {
       setBlocked(err instanceof Error ? err.message : "Could not work out where they would go back to");
     } finally {
@@ -66,7 +79,7 @@ export function MoveBackStageItem({
   const confirm = async () => {
     setBusy(true);
     try {
-      const done = await moveBackStage(candidateId, reason.trim() || undefined);
+      const done = await moveBackStage(candidateId, reason.trim() || undefined, stageId);
       toast.success(`Back in ${done.toStageName}`);
       setOpen(false);
       onDone?.();

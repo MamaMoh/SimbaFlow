@@ -22,6 +22,13 @@ import { CandidateListActions } from "@/components/candidates/candidate-list-act
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Files, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -59,6 +66,53 @@ interface CandidateRow {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+/**
+ * One dropdown that narrows the list in the database.
+ *
+ * Hidden entirely when there is nothing to choose between — a Partner filter offering one
+ * partner, or none, is a control that cannot change the answer. The counts come from the
+ * database, so "Saudi Arabia 412" is the number of candidates there are, not the number on
+ * this page.
+ */
+function DbFilter({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  options: { value: string; label: string; count: number }[];
+}) {
+  if (options.length < 2) return null;
+
+  const chosen = options.find((o) => o.value === value);
+
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger
+        size="sm"
+        aria-label={`Filter by ${label.toLowerCase()}`}
+        className={
+          "h-8 w-[150px] text-xs " + (value !== "all" ? "border-green-800 bg-green-50" : "")
+        }
+      >
+        <SelectValue placeholder={label}>{chosen ? chosen.label : label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent className="max-h-[320px]">
+        <SelectItem value="all">All {label.toLowerCase()}s</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+            <span className="ml-1.5 text-muted-foreground">{o.count}</span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export default function CandidatesPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canRead =
@@ -75,7 +129,12 @@ export default function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [ageRange, setAgeRange] = useState<{ min: string; max: string }>({ min: "", max: "" });
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
+  // Stage, destination, partner and occupation all narrow the query rather than the rows the
+  // browser is holding. "all" means the filter is off, and is never sent.
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [partnerFilter, setPartnerFilter] = useState<string>("all");
+  const [occupationFilter, setOccupationFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -105,45 +164,62 @@ export default function CandidatesPage() {
         (search ? `&search=${encodeURIComponent(search)}` : "") +
         (statusFilter !== "active" ? `&status=${statusFilter}` : "") +
         (ageRange.min ? `&minAge=${encodeURIComponent(ageRange.min)}` : "") +
-        (ageRange.max ? `&maxAge=${encodeURIComponent(ageRange.max)}` : "")
+        (ageRange.max ? `&maxAge=${encodeURIComponent(ageRange.max)}` : "") +
+        (stageFilter !== "all" ? `&stageId=${encodeURIComponent(stageFilter)}` : "") +
+        (countryFilter !== "all"
+          ? `&countryOfTravel=${encodeURIComponent(countryFilter)}`
+          : "") +
+        (partnerFilter !== "all"
+          ? `&partnerAgencyId=${encodeURIComponent(partnerFilter)}`
+          : "") +
+        (occupationFilter !== "all"
+          ? `&occupation=${encodeURIComponent(occupationFilter)}`
+          : "")
       : null,
     fetcher,
     { revalidateOnFocus: false, keepPreviousData: true }
   );
 
-  const allCandidates: CandidateRow[] = data?.data?.items || [];
-
-  // Stage is filtered here rather than in the query: the page already holds the whole list, and a
-  // round trip to narrow rows it is currently rendering would be slower than the filter it replaces.
-  const candidates = useMemo(
-    () =>
-      stageFilter === "all"
-        ? allCandidates
-        : allCandidates.filter(
-            (c) => (c.currentStageName?.trim() || "Intake") === stageFilter
-          ),
-    [allCandidates, stageFilter]
+  /**
+   * What there is to filter by, counted by the database over every candidate in the current
+   * bucket — not over the two hundred rows this page happens to be holding.
+   *
+   * The stage chips used to be built from the loaded rows, so an agency with more candidates
+   * than one page saw counts that were a sample of themselves, and a stage whose people all
+   * happened to fall past the page offered no chip at all.
+   */
+  const { data: filterData } = useSWR(
+    !permsLoading && canRead
+      ? `/api/proxy/candidates/filters` +
+        (statusFilter !== "active" ? `?status=${statusFilter}` : "")
+      : null,
+    fetcher,
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
+
+  const filters: {
+    stages: { id: string | null; name: string; count: number }[];
+    countries: { value: string; count: number }[];
+    partners: { id: string; name: string; count: number }[];
+    occupations: { value: string; count: number }[];
+    total: number;
+  } = filterData?.data ?? {
+    stages: [],
+    countries: [],
+    partners: [],
+    occupations: [],
+    total: 0,
+  };
+
+  const candidates: CandidateRow[] = data?.data?.items || [];
+  const totalCount: number = data?.data?.totalCount ?? candidates.length;
   const loadFailed = !!error || (data && data.isSuccess === false);
   const selectedIds = useMemo(
     () => Object.keys(rowSelection).filter((id) => rowSelection[id]),
     [rowSelection]
   );
 
-  /**
-   * The stages actually present, with how many people are standing in each.
-   *
-   * Built from the rows rather than from the workflow definition, so a stage nobody is in does not
-   * offer itself as a filter that returns nothing.
-   */
-  const stageCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const c of allCandidates) {
-      const stage = c.currentStageName?.trim() || "Intake";
-      counts.set(stage, (counts.get(stage) ?? 0) + 1);
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [allCandidates]);
+
 
   const handleDelete = useCallback(async (id: string, name: string, stage: string) => {
     setDeleteTarget({ id, name, stage });
@@ -438,7 +514,7 @@ export default function CandidatesPage() {
         Who is where, without opening six boards to find out. Each board shows one stage; this is
         the whole pipeline in one row, and clicking a stage narrows the table below to it.
       */}
-      {stageCounts.length > 0 && (
+      {filters.stages.length > 0 && (
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
           <button
             type="button"
@@ -451,26 +527,42 @@ export default function CandidatesPage() {
             }
           >
             All stages
-            <span className="ml-1.5 opacity-70">{allCandidates.length}</span>
+            <span className="ml-1.5 opacity-70">{filters.total}</span>
           </button>
-          {stageCounts.map(([stage, count]) => (
-            <button
-              key={stage}
-              type="button"
-              onClick={() => setStageFilter(stage === stageFilter ? "all" : stage)}
-              className={
-                "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition " +
-                (stageFilter === stage
-                  ? "border-green-800 bg-green-800 text-white"
-                  : "bg-background text-muted-foreground hover:text-foreground")
-              }
-            >
-              {stage}
-              <span className="ml-1.5 opacity-70">{count}</span>
-            </button>
-          ))}
+          {filters.stages.map((stage) => {
+            // A candidate on no stage at all has no id to filter by; the chip is still worth
+            // showing so the count adds up, it simply cannot be clicked.
+            const id = stage.id;
+            return (
+              <button
+                key={id ?? stage.name}
+                type="button"
+                disabled={!id}
+                onClick={() => id && setStageFilter(id === stageFilter ? "all" : id)}
+                className={
+                  "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition " +
+                  (stageFilter === id
+                    ? "border-green-800 bg-green-800 text-white"
+                    : "bg-background text-muted-foreground hover:text-foreground") +
+                  (id ? "" : " cursor-default opacity-70")
+                }
+              >
+                {stage.name}
+                <span className="ml-1.5 opacity-70">{stage.count}</span>
+              </button>
+            );
+          })}
         </div>
       )}
+
+      {/* The table holds the first two hundred matches. Saying so is better than a list that
+          quietly stops: the number below is what the filters actually matched. */}
+      {totalCount > candidates.length ? (
+        <p className="text-xs text-muted-foreground">
+          Showing {candidates.length} of {totalCount} matches — narrow the filters or search to
+          see the rest.
+        </p>
+      ) : null}
 
       {loadFailed && (
         <LoadError
@@ -492,6 +584,39 @@ export default function CandidatesPage() {
           paginated={true}
           toolbarEndActions={
             <div className="flex items-center gap-2">
+              {/* Each of these narrows the query, not the rows already fetched, and each option
+                  carries the count the database gives it — so an empty result is visible as a
+                  zero before it is chosen rather than as a blank table afterwards. */}
+              <DbFilter
+                label="Destination"
+                value={countryFilter}
+                onChange={setCountryFilter}
+                options={filters.countries.map((c) => ({
+                  value: c.value,
+                  label: c.value,
+                  count: c.count,
+                }))}
+              />
+              <DbFilter
+                label="Partner"
+                value={partnerFilter}
+                onChange={setPartnerFilter}
+                options={filters.partners.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  count: p.count,
+                }))}
+              />
+              <DbFilter
+                label="Occupation"
+                value={occupationFilter}
+                onChange={setOccupationFilter}
+                options={filters.occupations.map((o) => ({
+                  value: o.value,
+                  label: o.value,
+                  count: o.count,
+                }))}
+              />
               <div className="flex items-center gap-1 rounded-md border px-2 py-0.5">
                 <span className="text-xs text-muted-foreground">Age</span>
                 <Input

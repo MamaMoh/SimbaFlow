@@ -42,11 +42,25 @@ public record RewindPlan(
 /// </summary>
 internal static class StageRewind
 {
+    /// <summary>
+    /// <paramref name="fromStageId"/> is the stage the person asking is looking at — the board
+    /// they pressed the button on. It is checked against where the candidate actually is, and a
+    /// mismatch is refused.
+    ///
+    /// Boards mirror: a candidate whose stage is LMIS can still be listed on Embassy, and the
+    /// Embassy row offered the same Move back, which walked them out of LMIS — a stage the
+    /// person pressing it was not looking at and may not work. The move belongs to whoever is
+    /// holding the candidate, so it is only offered where they are actually standing.
+    ///
+    /// Null means the caller is not a stage board — the candidates list and the candidate's own
+    /// page are about the record rather than about a stage, and there is only one of each.
+    /// </summary>
     internal static async Task<(RewindPlan? Plan, string? Error, int Status)> PlanAsync(
         ITenantDbContext context,
         IWorkflowEngineService engine,
         Guid candidateId,
-        CancellationToken ct)
+        CancellationToken ct,
+        Guid? fromStageId = null)
     {
         var candidate = await context.Candidates
             .AsNoTracking()
@@ -55,6 +69,20 @@ internal static class StageRewind
 
         if (candidate.CurrentStageId is not Guid currentStageId)
             return (null, "This candidate is not on the pipeline yet.", 400);
+
+        if (fromStageId is Guid asked && asked != currentStageId)
+        {
+            var here = await context.WorkflowStages
+                .AsNoTracking()
+                .Where(st => st.Id == asked)
+                .Select(st => st.Name)
+                .FirstOrDefaultAsync(ct) ?? "this board";
+
+            return (null,
+                $"{candidate.CurrentStageName ?? "Another stage"} has this candidate, not {here} — " +
+                $"they are only shown here. Move them back from {candidate.CurrentStageName ?? "that board"}.",
+                409);
+        }
 
         // The move that put them here. Not the stage before this one in the configured order:
         // those differ as soon as anyone reorders the pipeline or skips a stage.
