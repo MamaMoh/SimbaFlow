@@ -22,6 +22,8 @@ export type EmbassyBoardRow = {
   daysSinceRegistered: number;
   isMirror: boolean;
   registeredAt: string;
+  /** What the enjaze form is still waiting for; empty means it can be printed. */
+  visaFormMissing: string[];
 };
 
 type PaginatedBoard = {

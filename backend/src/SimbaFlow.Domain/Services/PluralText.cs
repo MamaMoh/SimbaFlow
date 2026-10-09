@@ -16,4 +16,17 @@ public static class PluralText
     /// <summary>The noun alone, agreeing with <paramref name="count"/>.</summary>
     public static string Word(int count, string singular, string? plural = null) =>
         count == 1 ? singular : plural ?? singular + "s";
+
+    /// <summary>
+    /// "a", "a and b", "a, b and c" — a list inside a sentence.
+    ///
+    /// Joining with commas throughout reads as a machine reciting fields; the last "and" is what
+    /// makes it a sentence someone can act on.
+    /// </summary>
+    public static string List(IReadOnlyList<string> items) => items.Count switch
+    {
+        0 => "",
+        1 => items[0],
+        _ => $"{string.Join(", ", items.Take(items.Count - 1))} and {items[^1]}",
+    };
 }

@@ -41,10 +41,17 @@ const DOCS: {
 export function CandidateDocumentItems({
   candidateId,
   only,
+  visaFormMissing,
 }: {
   candidateId: string;
   /** Limit to certain documents; defaults to all three. */
   only?: Doc[];
+  /**
+   * What the enjaze form is still waiting for, where the caller knows. Given, the visa item is
+   * disabled and says so; omitted, it stays live and the API's refusal names the gaps instead —
+   * boards that do not carry visa details on their rows are not made to fetch them.
+   */
+  visaFormMissing?: string[];
 }) {
   const { hasPermission } = usePermissions();
   const [pending, setPending] = useState<Doc | null>(null);
@@ -54,6 +61,8 @@ export function CandidateDocumentItems({
   if (!hasPermission("candidate.read") && !hasPermission("system.admin")) return null;
 
   const items = only ? DOCS.filter((d) => only.includes(d.key)) : DOCS;
+  const missing = visaFormMissing ?? [];
+  const blocked = (doc: Doc) => doc === "visa" && missing.length > 0;
 
   const run = async (doc: (typeof DOCS)[number]) => {
     if (pending) return;
@@ -77,7 +86,8 @@ export function CandidateDocumentItems({
       {items.map((doc) => (
         <DropdownMenuItem
           key={doc.key}
-          disabled={pending !== null}
+          disabled={pending !== null || blocked(doc.key)}
+          title={blocked(doc.key) ? `Still needed: ${missing.join(", ")}` : undefined}
           onSelect={(e) => {
             // The menu would close on select and unmount the row before the PDF arrives, taking
             // the spinner and the error toast's context with it.
@@ -90,7 +100,7 @@ export function CandidateDocumentItems({
           ) : (
             <doc.icon className="mr-2 h-4 w-4 shrink-0" />
           )}
-          {doc.label}
+          {blocked(doc.key) ? "Visa form — details missing" : doc.label}
         </DropdownMenuItem>
       ))}
     </>

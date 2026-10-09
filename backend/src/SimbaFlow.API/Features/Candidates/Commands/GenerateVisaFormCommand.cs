@@ -43,6 +43,14 @@ public class GenerateVisaFormHandler : IRequestHandler<GenerateVisaFormCommand, 
         if (candidate is null)
             return Result<GeneratedPdf>.Failure("Candidate not found", 404);
 
+        // An enjaze with holes in it is handed back at the counter, and the desk finds out there
+        // rather than here. The buttons are disabled on the screens that know, but the check
+        // belongs where the document is made — a form reachable from four boards and a bulk run
+        // cannot rely on every one of them having asked first.
+        var missing = VisaFormReadiness.Missing(candidate);
+        if (missing.Count > 0)
+            return Result<GeneratedPdf>.Failure(VisaFormReadiness.Explain(missing), 400);
+
         var downloadName = DocumentFileName.For(candidate.FullName, "Visa form");
 
         byte[]? photoBytes = null;

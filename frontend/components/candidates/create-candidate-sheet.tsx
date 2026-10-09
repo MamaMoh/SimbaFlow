@@ -329,6 +329,7 @@ const registerCandidateSchema = z.object({
   skillChildCare: z.boolean().optional(),
   extraSkills: z.array(z.object({ name: z.string(), selected: z.boolean() })).optional(),
   visaNumber: opt,
+  eNumber: opt,
   visaType: opt,
   sponsorName: opt,
   sponsorIdNumber: opt,
@@ -911,6 +912,7 @@ export function CandidateApplicationForm({
         .filter(Boolean)
         .map((name: string) => ({ name, selected: true })),
       visaNumber: d.visaNumber || "",
+      eNumber: d.eNumber || "",
       visaType: matchOption(VISA_TYPES, d.visaType) || "Work",
       sponsorName: d.sponsorName || "",
       sponsorIdNumber: d.sponsorIdNumber || "",
@@ -1144,6 +1146,7 @@ export function CandidateApplicationForm({
     skillChildCare: !!data.skillChildCare,
     extraSkills: (data.extraSkills ?? []).filter((s) => s.selected).map((s) => ({ name: s.name, selected: true })),
     visaNumber: data.visaNumber || null,
+    eNumber: data.eNumber || null,
     visaType: data.visaType || "Work",
     sponsorName: data.sponsorName || null,
     sponsorIdNumber: data.sponsorIdNumber || null,
@@ -1432,11 +1435,12 @@ export function CandidateApplicationForm({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Application No.</Label>
+                  {/* Assigned on registration, but editable: agencies carry numbers over from
+                      whatever they used before, and a wrong one used to need a database. Left
+                      blank on a save it keeps the number already on the record. */}
                   <Input
                     {...register("applicationNo")}
-                    readOnly
                     placeholder={isEdit ? "" : "Assigned automatically on save"}
-                    className="bg-muted/40"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -1830,10 +1834,8 @@ export function CandidateApplicationForm({
                   <Input {...register("medicalPlace")} />
                 </div>
                 <div className="space-y-1.5">
-                  {/* The E number. It barcodes onto the enjaze form and fills the E.No column of
-                      the Tasheer sheet, so the label says which number it wants. */}
-                  <Label>E number / Reference No.</Label>
-                  <Input {...register("referenceNo")} placeholder="E000111222" />
+                  <Label>Reference No.</Label>
+                  <Input {...register("referenceNo")} />
                 </div>
               </div>
             </FormSection>
@@ -1893,6 +1895,12 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Visa No.</Label>
                   <Input {...register("visaNumber")} />
+                </div>
+                <div className="space-y-1.5">
+                  {/* Normally captured at Mark Ready, alongside the signed contract. Here too, so
+                      a wrong one can be corrected without running that whole step again. */}
+                  <Label>E number</Label>
+                  <Input {...register("eNumber")} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Sponsor name</Label>

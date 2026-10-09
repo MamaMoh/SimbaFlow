@@ -36,4 +36,16 @@ public class PluralTextTests
     [Fact]
     public void ANegativeCountIsPlural() =>
         PluralText.Count(-3, "day").Should().Be("-3 days");
+
+    [Theory]
+    [InlineData(new string[0], "")]
+    [InlineData(new[] { "Visa number" }, "Visa number")]
+    [InlineData(new[] { "Visa number", "E number" }, "Visa number and E number")]
+    [InlineData(new[] { "a", "b", "c" }, "a, b and c")]
+    public void AListReadsAsASentence(string[] items, string expected)
+    {
+        // Commas all the way through reads as a machine reciting fields; the last "and" is what
+        // makes it something a person can act on.
+        PluralText.List(items).Should().Be(expected);
+    }
 }

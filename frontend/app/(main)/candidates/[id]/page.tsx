@@ -93,6 +93,10 @@ export default function CandidateDetailPage() {
     );
   }
 
+  // What the enjaze form is still waiting for, worked out by the API so that this screen and the
+  // endpoint that refuses to print it cannot disagree.
+  const visaMissing = candidate.visaFormMissing ?? [];
+
   const fullName =
     candidate.fullName ||
     [candidate.firstName, candidate.middleName, candidate.lastName]
@@ -251,7 +255,12 @@ export default function CandidateDetailPage() {
                   Generate CV
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={generatingVisa}
+                  disabled={generatingVisa || visaMissing.length > 0}
+                  title={
+                    visaMissing.length > 0
+                      ? `Still needed: ${visaMissing.join(", ")}`
+                      : undefined
+                  }
                   onSelect={(e) => {
                     e.preventDefault();
                     void handleGenerateVisa();
@@ -262,7 +271,7 @@ export default function CandidateDetailPage() {
                   ) : (
                     <Stamp className="mr-2 h-4 w-4" />
                   )}
-                  Generate visa form
+                  {visaMissing.length > 0 ? "Visa form — details missing" : "Generate visa form"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={generatingContract}
@@ -411,7 +420,7 @@ export default function CandidateDetailPage() {
                 .filter(Boolean)
                 .join(", ") || undefined}
             />
-            <Field label="E number" value={candidate.referenceNo} />
+            <Field label="Reference No." value={candidate.referenceNo} />
             <Field label="Remark" value={candidate.remark} />
           </ProfileSection>
 
@@ -431,6 +440,7 @@ export default function CandidateDetailPage() {
 
           <ProfileSection icon={Stamp} title="Sponsor & visa">
             <Field label="Visa number" value={candidate.visaNumber} />
+            <Field label="E number" value={candidate.eNumber} />
             <Field label="Visa type" value={candidate.visaType} />
             <Field label="Sponsor name" value={candidate.sponsorName} />
             <Field label="Sponsor ID" value={candidate.sponsorIdNumber} />

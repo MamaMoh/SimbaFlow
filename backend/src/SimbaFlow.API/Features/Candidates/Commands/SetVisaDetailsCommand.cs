@@ -20,7 +20,8 @@ public record SetVisaDetailsCommand(
     string? SponsorPhone = null,
     string? SponsorAddress = null,
     string? ContractNo = null,
-    string? AgentName = null) : IRequest<Result>, IRequirePermission
+    string? AgentName = null,
+    string? ENumber = null) : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "candidate.update";
 }
@@ -47,6 +48,7 @@ public class SetVisaDetailsHandler : IRequestHandler<SetVisaDetailsCommand, Resu
         candidate.SponsorAddress = Keep(request.SponsorAddress, candidate.SponsorAddress);
         candidate.ContractNo = Keep(request.ContractNo, candidate.ContractNo);
         candidate.AgentName = Keep(request.AgentName, candidate.AgentName);
+        candidate.ENumber = Keep(request.ENumber, candidate.ENumber);
 
         await _context.SaveChangesAsync(ct);
         return Result.Success();

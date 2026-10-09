@@ -69,6 +69,8 @@ export interface Candidate {
   sponsorArabicName?: string;
   agentName?: string;
   applicationNo?: string;
+  /** The E number from the Saudi consular application — barcodes onto the enjaze form. */
+  eNumber?: string;
   fileNo?: string;
   wakalaNo?: string;
   contractNo?: string;
@@ -94,6 +96,8 @@ export interface Candidate {
   currentStageId?: string;
   currentStageName?: string;
   currentStatusValues?: Record<string, string>;
+  /** What the enjaze form is still waiting for. Empty or absent means it can be printed. */
+  visaFormMissing?: string[];
   visibleInStages?: string[];
   registeredAt: string;
   registeredBy?: string;

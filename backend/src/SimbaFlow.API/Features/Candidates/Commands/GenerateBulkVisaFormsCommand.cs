@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
@@ -43,6 +44,19 @@ public class GenerateBulkVisaFormsHandler
             .ToListAsync(ct);
 
         if (candidates.Count == 0) return Result<byte[]>.Failure("No candidates found", 404);
+
+        // Named, not counted. Twenty forms with two blanks among them is a stack the desk has to
+        // leaf through to find which two; the answer is already here.
+        var incomplete = candidates
+            .Where(c => !VisaFormReadiness.IsReady(c))
+            .Select(c => c.FullName)
+            .ToList();
+
+        if (incomplete.Count > 0)
+            return Result<byte[]>.Failure(
+                $"{PluralText.List(incomplete)} {(incomplete.Count == 1 ? "has" : "have")} "
+                + "visa details still missing. Fill those in, or take them out of the selection.",
+                400);
 
         var entries = new List<(Candidate, byte[]?)>(candidates.Count);
         foreach (var candidate in candidates)

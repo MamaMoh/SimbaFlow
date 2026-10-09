@@ -237,6 +237,7 @@ export type VisaDetails = {
   sponsorAddress?: string;
   contractNo?: string;
   agentName?: string;
+  eNumber?: string;
 };
 
 export async function setVisaDetails(

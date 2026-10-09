@@ -61,7 +61,7 @@ public class VisaFormRenderTests
         SponsorAddress = "4120, Alnakheel, 11564, الرياض",
         ContractNo = "2000111222",
         AgentName = "SAMPLE RECRUITING EST.",
-        ReferenceNo = "E00111222",
+        ENumber = "E00111222",
     };
 
     /// <summary>A record with nothing optional filled in — the state a candidate is in before the
@@ -112,8 +112,8 @@ public class VisaFormRenderTests
         // reading the passport number where the E number belongs is a silent wrong answer.
         var candidate = Placed();
 
-        Code128.Modules(candidate.ReferenceNo).Should().NotBeEmpty();
-        Code128.Modules(candidate.ReferenceNo)
+        Code128.Modules(candidate.ENumber).Should().NotBeEmpty();
+        Code128.Modules(candidate.ENumber)
             .Should().NotEqual(Code128.Modules(candidate.PassportNumber));
 
         (await Render(candidate)).Should().NotBeNullOrEmpty();

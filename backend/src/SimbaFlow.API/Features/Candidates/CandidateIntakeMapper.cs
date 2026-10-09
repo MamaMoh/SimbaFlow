@@ -56,6 +56,7 @@ public record CandidateIntakePayload(
     string? SponsorArabicName = null,
     string? AgentName = null,
     string? ApplicationNo = null,
+    string? ENumber = null,
     string? FileNo = null,
     string? WakalaNo = null,
     string? ContractNo = null,
@@ -141,7 +142,11 @@ public static class CandidateIntakeMapper
         candidate.SponsorAddress = NullIfEmpty(p.SponsorAddress);
         candidate.SponsorArabicName = NullIfEmpty(p.SponsorArabicName);
         candidate.AgentName = NullIfEmpty(p.AgentName);
-        candidate.ApplicationNo = NullIfEmpty(p.ApplicationNo);
+        // Blank means "leave it alone", not "clear it". The field is assigned on registration
+        // and shown on the form so it can be corrected; a save from a screen that happens not to
+        // carry it must not take the number off the record.
+        candidate.ApplicationNo = NullIfEmpty(p.ApplicationNo) ?? candidate.ApplicationNo;
+        candidate.ENumber = NullIfEmpty(p.ENumber);
         candidate.FileNo = NullIfEmpty(p.FileNo);
         candidate.WakalaNo = NullIfEmpty(p.WakalaNo);
         candidate.ContractNo = NullIfEmpty(p.ContractNo);

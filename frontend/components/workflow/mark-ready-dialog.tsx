@@ -43,6 +43,7 @@ type SponsorKind = "unknown" | "individual" | "company";
 const blank = {
   contractNo: "",
   visaNumber: "",
+  eNumber: "",
   sponsorName: "",
   sponsorIdNumber: "",
   sponsorPhone: "",
@@ -64,6 +65,10 @@ const blank = {
  * is six long digit strings and an Arabic address that were previously copied by eye out of the
  * very PDF being attached. What is read is only ever offered: every field stays editable, nothing
  * already typed is overwritten, and a scan the reader cannot see into simply fills nothing.
+ *
+ * The E number is the one thing here no document gives us. It comes off the consular application
+ * rather than the contract, and the enjaze form barcodes it — so it is asked for in the same
+ * breath as the rest rather than discovered missing when someone tries to print.
  */
 export function MarkReadyDialog({
   open,
@@ -145,6 +150,22 @@ export function MarkReadyDialog({
       toast.error("Attach the signed contract before marking Ready");
       return;
     }
+
+    // Checked here rather than left to the enjaze step at the end: by then the candidate is
+    // already Ready and the visa track is open, so a refusal reads as a failure of the whole
+    // thing when in fact everything but the last document went through.
+    const required: [string, string][] = [
+      ["Visa number", form.visaNumber],
+      ["E number", form.eNumber],
+      ["Sponsor name", form.sponsorName],
+      ["Sponsor ID", form.sponsorIdNumber],
+    ];
+    const blankFields = required.filter(([, v]) => !v.trim()).map(([label]) => label);
+    if (blankFields.length > 0) {
+      toast.error(`Still needed: ${blankFields.join(", ")}`);
+      return;
+    }
+
     setBusy(true);
     try {
       if (saudi && contractFile) {
@@ -165,9 +186,19 @@ export function MarkReadyDialog({
       await updateWorkflowStatus(candidateId, "visa", "Ready");
 
       setStep("Producing the enjaze form…");
-      await generateCandidateVisaForm(candidateId);
+      // The candidate is Ready from the step above whatever happens here. A passport date missing
+      // from intake stops the enjaze and nothing else, so it is reported as the one thing left
+      // rather than as the whole step having failed.
+      try {
+        await generateCandidateVisaForm(candidateId);
+        toast.success(`${candidateName} is Ready — contract and enjaze are on file`);
+      } catch (err) {
+        toast.warning(
+          `${candidateName} is Ready, but the enjaze form could not be made: ` +
+            (err instanceof Error ? err.message : "unknown error"),
+        );
+      }
 
-      toast.success(`${candidateName} is Ready — contract and enjaze are on file`);
       close(false);
       onDone();
     } catch (err) {
@@ -245,6 +276,14 @@ export function MarkReadyDialog({
           </div>
 
           <Field
+            id="e-number"
+            label="E number"
+            value={form.eNumber}
+            onChange={set("eNumber")}
+            hint="From the consular application — not the passport number. It barcodes onto the enjaze form."
+          />
+
+          <Field
             id="sponsor-name"
             label="Sponsor name"
             value={form.sponsorName}
@@ -299,16 +338,19 @@ function Field({
   label,
   value,
   onChange,
+  hint,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
+  hint?: string;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

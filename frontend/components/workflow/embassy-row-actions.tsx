@@ -111,7 +111,10 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
               <DropdownMenuSeparator />
             </>
           )}
-          <CandidateDocumentItems candidateId={candidate.id} />
+          <CandidateDocumentItems
+            candidateId={candidate.id}
+            visaFormMissing={candidate.visaFormMissing}
+          />
 
           {isCaseExec ? (
             canCaseSubmit && visa === "Ready" ? (

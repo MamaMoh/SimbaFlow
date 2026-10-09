@@ -61,7 +61,7 @@ public class TasheerSheetTests : IDisposable
             Nationality = "Ethiopia",
             Gender = Gender.Female,
             PhoneNumber = "+251911000000",
-            ReferenceNo = "E00111222",
+            ENumber = "E00111222",
         };
         tweak?.Invoke(candidate);
         _context.Candidates.Add(candidate);

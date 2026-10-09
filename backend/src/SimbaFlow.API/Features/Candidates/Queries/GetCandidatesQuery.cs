@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Queries;
 
@@ -193,6 +194,7 @@ public record CandidateDetailDto(
     string? SponsorArabicName,
     string? AgentName,
     string? ApplicationNo,
+    string? ENumber,
     string? FileNo,
     string? WakalaNo,
     string? ContractNo,
@@ -218,7 +220,12 @@ public record CandidateDetailDto(
     Guid? CurrentStageId,
     DateTime RegisteredAt,
     string? RegisteredBy,
-    IReadOnlyList<string> ExtraSkills);
+    IReadOnlyList<string> ExtraSkills,
+    /// <summary>
+    /// What the enjaze form is still waiting for, named the way the desk's own screens name it.
+    /// Empty means it can be printed. Filled in by the handler, not by the projection.
+    /// </summary>
+    IReadOnlyList<string>? VisaFormMissing = null);
 
 public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Result<CandidateDetailDto>>
 {
@@ -256,7 +263,7 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                 c.PhotoPath, c.FullPhotoPath,
                 c.VisaNumber, c.VisaType, c.SponsorName, c.SponsorIdNumber,
                 c.SponsorPhone, c.SponsorAddress, c.SponsorArabicName, c.AgentName,
-                c.ApplicationNo, c.FileNo, c.WakalaNo, c.ContractNo, c.StickerVisaNo,
+                c.ApplicationNo, c.ENumber, c.FileNo, c.WakalaNo, c.ContractNo, c.StickerVisaNo,
                 c.SignedOn.HasValue ? c.SignedOn.Value.ToString("yyyy-MM-dd") : null,
                 c.RelativeName, c.RelativePhone, c.RelativeKinship, c.RelativeGender,
                 c.RelativeBirthDate.HasValue ? c.RelativeBirthDate.Value.ToString("yyyy-MM-dd") : null,
@@ -272,9 +279,17 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                     .ToArray()))
             .FirstOrDefaultAsync(cancellationToken);
 
-        return candidate is not null
-            ? Result<CandidateDetailDto>.Success(candidate)
-            : Result<CandidateDetailDto>.Failure("Candidate not found", 404);
+        if (candidate is null) return Result<CandidateDetailDto>.Failure("Candidate not found", 404);
+
+        // Worked out here rather than on the page, so the screen and the endpoint that refuses to
+        // print cannot disagree about what is missing.
+        return Result<CandidateDetailDto>.Success(candidate with
+        {
+            VisaFormMissing = [.. VisaFormReadiness.Missing(
+                candidate.VisaNumber, candidate.ENumber, candidate.SponsorName,
+                candidate.SponsorIdNumber, candidate.PassportNumber,
+                candidate.PassportIssueDate, candidate.PassportExpiryDate)],
+        });
     }
 }
 

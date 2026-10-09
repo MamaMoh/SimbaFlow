@@ -102,6 +102,17 @@ public class Candidate : BaseEntity
 
     // ──── Admin references ────
     public string? ApplicationNo { get; set; }
+
+    /// <summary>
+    /// The E number from the Saudi consular application — a letter followed by nine digits.
+    ///
+    /// Its own field and not one of the references above, because it is none of them: it is not
+    /// the passport number it sits beside on the form and looks like, not the visa number, and
+    /// not the agency's own reference. It barcodes onto the enjaze form and fills the E.No column
+    /// of the Tasheer sheet, so a wrong one is scanned rather than read.
+    /// </summary>
+    public string? ENumber { get; set; }
+
     public string? FileNo { get; set; }
     public string? WakalaNo { get; set; }
     public string? ContractNo { get; set; }

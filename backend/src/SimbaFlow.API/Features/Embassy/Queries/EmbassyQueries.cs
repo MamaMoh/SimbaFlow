@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Embassy.Queries;
 
@@ -17,7 +18,9 @@ public record EmbassyBoardRowDto(
     int DaysInStage,
     int DaysSinceRegistered,
     bool IsMirror,
-    DateTime RegisteredAt);
+    DateTime RegisteredAt,
+    /// <summary>What the enjaze form is still waiting for; empty means it can be printed.</summary>
+    IReadOnlyList<string> VisaFormMissing);
 
 public record EmbassyBoardResult(
     List<EmbassyBoardRowDto> Items,
@@ -109,7 +112,8 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
                 EmbassyLmisHelpers.DaysInStage(c),
                 EmbassyLmisHelpers.DaysSinceRegistered(c),
                 isMirror,
-                c.RegisteredAt);
+                c.RegisteredAt,
+                VisaFormReadiness.Missing(c));
         }).ToList();
 
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);

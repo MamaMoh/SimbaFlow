@@ -151,7 +151,8 @@ public class CandidateModule : ICarterModule
         {
             var result = await sender.Send(new SetVisaDetailsCommand(
                 candidateId, body.VisaNumber, body.SponsorName, body.SponsorIdNumber,
-                body.SponsorPhone, body.SponsorAddress, body.ContractNo, body.AgentName));
+                body.SponsorPhone, body.SponsorAddress, body.ContractNo, body.AgentName,
+                body.ENumber));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -216,4 +217,5 @@ public record VisaDetailsBody(
     string? SponsorPhone = null,
     string? SponsorAddress = null,
     string? ContractNo = null,
-    string? AgentName = null);
+    string? AgentName = null,
+    string? ENumber = null);

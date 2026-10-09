@@ -114,9 +114,9 @@ internal static class VisaFormLayout
                 // The E number, not the passport number. They sit side by side on the form and
                 // look alike — E000111222 against EP0000001 — and the first copy of this read the
                 // wrong one off the original. The passport number has its own row in the grid.
-                c.Item().AlignCenter().Element(e => Barcode(e, candidate.ReferenceNo));
+                c.Item().AlignCenter().Element(e => Barcode(e, candidate.ENumber));
                 c.Item().PaddingTop(1).AlignCenter()
-                    .Text(V(candidate.ReferenceNo)).FontSize(11).Bold();
+                    .Text(V(candidate.ENumber)).FontSize(11).Bold();
                 c.Item().PaddingTop(1).AlignCenter().Text("EMBASSY OF SAUDI ARABIA").FontSize(Value);
                 c.Item().AlignCenter().Text("CONSULAR SECTION").FontSize(Value);
             });
