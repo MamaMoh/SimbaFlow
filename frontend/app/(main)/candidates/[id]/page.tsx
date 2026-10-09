@@ -11,7 +11,10 @@ import {
   generateCandidateCv,
   generateCandidateVisaForm,
   generateCandidateContract,
+  visaFormGaps,
+  type VisaFormGap,
 } from "@/lib/api/candidates";
+import { VisaDetailsDialog } from "@/components/workflow/visa-details-dialog";
 import { useAvailableActions, useWorkflowState } from "@/lib/api/workflow";
 import { FormSection } from "@/components/candidates/form-section";
 import { StageProgress } from "@/components/candidates/stage-progress";
@@ -58,6 +61,7 @@ export default function CandidateDetailPage() {
   const { hasPermission } = usePermissions();
   const [generatingCv, setGeneratingCv] = useState(false);
   const [generatingVisa, setGeneratingVisa] = useState(false);
+  const [visaGaps, setVisaGaps] = useState<VisaFormGap[]>([]);
   const [generatingContract, setGeneratingContract] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
 
@@ -137,8 +141,7 @@ export default function CandidateDetailPage() {
     }
   };
 
-  const handleGenerateVisa = async () => {
-    setGeneratingVisa(true);
+  const buildVisa = async () => {
     try {
       const file = await generateCandidateVisaForm(candidate.id);
       saveFile(file);
@@ -151,6 +154,27 @@ export default function CandidateDetailPage() {
     } finally {
       setGeneratingVisa(false);
     }
+  };
+
+  /**
+   * The form asks for what it is missing rather than refusing because of it.
+   *
+   * The item used to grey itself out with the gaps in a tooltip, which meant opening the edit
+   * form, finding four fields among fifty, saving, and coming back here to print.
+   */
+  const handleGenerateVisa = async () => {
+    setGeneratingVisa(true);
+    try {
+      const found = (await visaFormGaps([candidate.id])).filter((g) => g.fields.length > 0);
+      if (found.length > 0) {
+        setVisaGaps(found);
+        return;
+      }
+    } catch (err) {
+      // Only a shortcut to the boxes; the generate call refuses with the same list anyway.
+      toast.warning(err instanceof Error ? err.message : "Could not check the visa details");
+    }
+    await buildVisa();
   };
 
   const handleGenerateContract = async () => {
@@ -271,7 +295,7 @@ export default function CandidateDetailPage() {
                   Generate CV
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={generatingVisa || visaMissing.length > 0}
+                  disabled={generatingVisa}
                   title={
                     visaMissing.length > 0
                       ? `Still needed: ${visaMissing.join(", ")}`
@@ -287,7 +311,7 @@ export default function CandidateDetailPage() {
                   ) : (
                     <Stamp className="mr-2 h-4 w-4" />
                   )}
-                  {visaMissing.length > 0 ? "Visa form — details missing" : "Generate visa form"}
+                  {visaMissing.length > 0 ? "Visa form — fill in details" : "Generate visa form"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={generatingContract}
@@ -314,6 +338,22 @@ export default function CandidateDetailPage() {
           </div>
         </div>
       </div>
+
+      <VisaDetailsDialog
+        open={visaGaps.length > 0}
+        gaps={visaGaps}
+        onOpenChange={(next) => {
+          if (!next) {
+            setVisaGaps([]);
+            setGeneratingVisa(false);
+          }
+        }}
+        onFilled={() => {
+          setVisaGaps([]);
+          mutateCandidate();
+          void buildVisa();
+        }}
+      />
 
       <StageProgress
         currentStageId={state?.stageId}

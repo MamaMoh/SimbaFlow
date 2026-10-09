@@ -15,8 +15,8 @@ public class DocumentFileNameTests
     [Fact]
     public void ADocumentIsNamedAfterTheCandidateAndWhatItIs()
     {
-        DocumentFileName.For("Zinet Yibre Abebaw", "CV")
-            .Should().Be("Zinet Yibre Abebaw - CV.pdf");
+        DocumentFileName.For("Almaz Debela Kebede", "CV")
+            .Should().Be("Almaz Debela Kebede - CV.pdf");
     }
 
     [Fact]
@@ -45,20 +45,20 @@ public class DocumentFileNameTests
     [Fact]
     public void ANewlineInTheNameCannotSplitTheHeader()
     {
-        DocumentFileName.For("Zinet\r\nAbebaw", "CV").Should().Be("Zinet Abebaw - CV.pdf");
+        DocumentFileName.For("Almaz\r\nKebede", "CV").Should().Be("Almaz Kebede - CV.pdf");
     }
 
     [Fact]
     public void StrayWhitespaceDoesNotChangeTheName()
     {
-        DocumentFileName.For("  Zinet   Yibre  Abebaw  ", "CV")
-            .Should().Be("Zinet Yibre Abebaw - CV.pdf");
+        DocumentFileName.For("  Almaz   Debela  Kebede  ", "CV")
+            .Should().Be("Almaz Debela Kebede - CV.pdf");
     }
 
     [Fact]
     public void ATrailingDotIsRemovedBecauseWindowsRefusesIt()
     {
-        DocumentFileName.For("Zinet Abebaw Jr.", "CV").Should().Be("Zinet Abebaw Jr - CV.pdf");
+        DocumentFileName.For("Almaz Kebede Jr.", "CV").Should().Be("Almaz Kebede Jr - CV.pdf");
     }
 
     [Theory]

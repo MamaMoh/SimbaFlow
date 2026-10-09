@@ -13,7 +13,7 @@ namespace SimbaFlow.Domain.Services;
 /// a morning ends up with twenty of those in one folder and no way to tell them apart short of
 /// opening each one.
 ///
-/// So a document is named after the person it is about and the thing it is: "Zinet Yibre Abebaw -
+/// So a document is named after the person it is about and the thing it is: "Almaz Debela Kebede -
 /// CV.pdf". That sorts by candidate, which is how the folder is actually read.
 ///
 /// The name is a person's name, so it may be Amharic, and it is passed through rather than

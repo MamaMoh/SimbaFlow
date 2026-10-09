@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInputField } from "@/components/ui/phone-input";
 import { FileText, Loader2, Upload } from "lucide-react";
 import {
   generateCandidateContract,
@@ -43,12 +44,10 @@ type SponsorKind = "unknown" | "individual" | "company";
 const blank = {
   contractNo: "",
   visaNumber: "",
-  eNumber: "",
   sponsorName: "",
   sponsorIdNumber: "",
   sponsorPhone: "",
   sponsorAddress: "",
-  agentName: "",
 };
 
 /**
@@ -66,9 +65,10 @@ const blank = {
  * very PDF being attached. What is read is only ever offered: every field stays editable, nothing
  * already typed is overwritten, and a scan the reader cannot see into simply fills nothing.
  *
- * The E number is the one thing here no document gives us. It comes off the consular application
- * rather than the contract, and the enjaze form barcodes it — so it is asked for in the same
- * breath as the rest rather than discovered missing when someone tries to print.
+ * The E number is not asked for here, and nor is the agent. The E number comes off the consular
+ * application rather than the contract, which is usually days later than this — asking at this
+ * moment got a blank from someone who did not have it yet. The enjaze form asks for it when
+ * somebody tries to print one, which is the moment it is both needed and known.
  */
 export function MarkReadyDialog({
   open,
@@ -156,7 +156,6 @@ export function MarkReadyDialog({
     // thing when in fact everything but the last document went through.
     const required: [string, string][] = [
       ["Visa number", form.visaNumber],
-      ["E number", form.eNumber],
       ["Sponsor name", form.sponsorName],
       ["Sponsor ID", form.sponsorIdNumber],
     ];
@@ -186,17 +185,15 @@ export function MarkReadyDialog({
       await updateWorkflowStatus(candidateId, "visa", "Ready");
 
       setStep("Producing the enjaze form…");
-      // The candidate is Ready from the step above whatever happens here. A passport date missing
-      // from intake stops the enjaze and nothing else, so it is reported as the one thing left
-      // rather than as the whole step having failed.
+      // The candidate is Ready from the step above whatever happens here. The E number is not
+      // asked for on this form and usually arrives later, so the enjaze failing is the ordinary
+      // case rather than an error — it is reported as the one thing still outstanding, and the
+      // Print enjaze button asks for what it needs when somebody gets there.
       try {
         await generateCandidateVisaForm(candidateId);
         toast.success(`${candidateName} is Ready — contract and enjaze are on file`);
-      } catch (err) {
-        toast.warning(
-          `${candidateName} is Ready, but the enjaze form could not be made: ` +
-            (err instanceof Error ? err.message : "unknown error"),
-        );
+      } catch {
+        toast.success(`${candidateName} is Ready — the enjaze prints once the E number is in`);
       }
 
       close(false);
@@ -274,8 +271,6 @@ export function MarkReadyDialog({
             <Field id="visa-no" label="Visa number" value={form.visaNumber} onChange={set("visaNumber")} />
           </div>
 
-          <Field id="e-number" label="E number" value={form.eNumber} onChange={set("eNumber")} />
-
           <Field
             id="sponsor-name"
             label="Sponsor name"
@@ -290,12 +285,16 @@ export function MarkReadyDialog({
               value={form.sponsorIdNumber}
               onChange={set("sponsorIdNumber")}
             />
-            <Field
-              id="sponsor-phone"
-              label="Sponsor phone"
-              value={form.sponsorPhone}
-              onChange={set("sponsorPhone")}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="sponsor-phone">Sponsor phone</Label>
+              {/* The sponsor is in the destination country, so the box starts there rather than
+                  on Ethiopia — a Saudi number typed after a +251 prefix cannot be called back. */}
+              <PhoneInputField
+                country="sa"
+                value={form.sponsorPhone}
+                onChange={set("sponsorPhone")}
+              />
+            </div>
           </div>
 
           <Field
@@ -304,7 +303,6 @@ export function MarkReadyDialog({
             value={form.sponsorAddress}
             onChange={set("sponsorAddress")}
           />
-          <Field id="agent-name" label="Agent" value={form.agentName} onChange={set("agentName")} />
         </div>
 
         <DialogFooter>

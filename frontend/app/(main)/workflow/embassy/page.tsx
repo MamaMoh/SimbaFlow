@@ -20,7 +20,8 @@ import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { EmbassyRowActions } from "@/components/workflow/embassy-row-actions";
 import { embassyApi, useEmbassyBoard, type EmbassyBoardRow } from "@/lib/api/embassy";
-import { generateBulkVisaForms } from "@/lib/api/candidates";
+import { generateBulkVisaForms, visaFormGaps, type VisaFormGap } from "@/lib/api/candidates";
+import { VisaDetailsDialog } from "@/components/workflow/visa-details-dialog";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -39,6 +40,9 @@ export default function EmbassyBoardPage() {
   const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<"tasheer" | "enjaze" | null>(null);
+  // What the selected candidates are still missing. Non-empty means the dialog is open asking
+  // for it; printing resumes on its own once it is saved.
+  const [gaps, setGaps] = useState<VisaFormGap[]>([]);
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useEmbassyBoard({
     search: search || undefined,
@@ -178,19 +182,44 @@ export default function EmbassyBoardPage() {
   };
 
   // One document, one enjaze per page — the run is printed as a batch.
-  const printEnjaze = async () => {
-    if (selectedIds.length === 0) return toast.error("Select the candidates to print enjaze for");
+  const buildEnjaze = async (ids: string[]) => {
     setBusy("enjaze");
     try {
       // Opened rather than saved: this batch exists to be printed in one pass, and nobody files it.
-      openFile(await generateBulkVisaForms(selectedIds));
-      toast.success(`${selectedIds.length} enjaze form${selectedIds.length === 1 ? "" : "s"} ready to print`);
+      openFile(await generateBulkVisaForms(ids));
+      toast.success(`${ids.length} enjaze form${ids.length === 1 ? "" : "s"} ready to print`);
       setRowSelection({});
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not build the enjaze forms");
     } finally {
       setBusy(null);
     }
+  };
+
+  /**
+   * Printing asks for what is missing instead of refusing because of it.
+   *
+   * It used to come back "Almaz Kebede and Hanan Ahmed have visa details still
+   * missing" — which meant opening each candidate, finding the field, typing it, returning to
+   * the board and re-ticking twenty rows. The refusal already knew what was wanted, so now it
+   * is asked for here and the print carries on by itself.
+   */
+  const printEnjaze = async () => {
+    if (selectedIds.length === 0) return toast.error("Select the candidates to print enjaze for");
+    setBusy("enjaze");
+    try {
+      const found = (await visaFormGaps(selectedIds)).filter((g) => g.fields.length > 0);
+      if (found.length > 0) {
+        setBusy(null);
+        setGaps(found);
+        return;
+      }
+    } catch (e) {
+      // The check is a convenience; if it cannot be made the print itself still refuses with the
+      // same list, so there is no reason to stop here.
+      toast.warning(e instanceof Error ? e.message : "Could not check the visa details");
+    }
+    await buildEnjaze(selectedIds);
   };
 
   if (permsLoading) {
@@ -217,6 +246,17 @@ export default function EmbassyBoardPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         }
+      />
+
+      <VisaDetailsDialog
+        open={gaps.length > 0}
+        gaps={gaps}
+        onOpenChange={(next) => !next && setGaps([])}
+        onFilled={() => {
+          setGaps([]);
+          mutate();
+          void buildEnjaze(selectedIds);
+        }}
       />
 
       {error && (

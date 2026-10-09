@@ -31,6 +31,14 @@ public class CandidateModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // What stands between a selection and a printed enjaze, asked before the print rather
+        // than refused after it.
+        group.MapPost("/visa-forms/gaps", async (GetVisaFormGapsQuery query, ISender sender) =>
+        {
+            var result = await sender.Send(query);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // What there is to filter by, counted over every candidate rather than over the page the
         // browser happens to be holding.
         group.MapGet("/filters", async (string? status, ISender sender) =>

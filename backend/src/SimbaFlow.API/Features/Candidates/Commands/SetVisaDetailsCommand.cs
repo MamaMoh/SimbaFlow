@@ -21,7 +21,14 @@ public record SetVisaDetailsCommand(
     string? SponsorAddress = null,
     string? ContractNo = null,
     string? AgentName = null,
-    string? ENumber = null) : IRequest<Result>, IRequirePermission
+    string? ENumber = null,
+    // The passport block, because it is on the enjaze form's list of things that stop it
+    // printing. A candidate registered in a hurry reaches the embassy desk with a passport
+    // number and no dates, and the desk filling the gaps should not have to open the whole
+    // registration form to type two of them.
+    string? PassportNumber = null,
+    string? PassportIssueDate = null,
+    string? PassportExpiryDate = null) : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "candidate.update";
 }
@@ -41,6 +48,13 @@ public class SetVisaDetailsHandler : IRequestHandler<SetVisaDetailsCommand, Resu
         static string? Keep(string? incoming, string? current) =>
             string.IsNullOrWhiteSpace(incoming) ? current : incoming.Trim();
 
+        // A date that cannot be parsed keeps what is on file rather than clearing it: this
+        // command exists to fill gaps, so it must never be able to open one.
+        static DateOnly? KeepDate(string? incoming, DateOnly? current) =>
+            !string.IsNullOrWhiteSpace(incoming) && DateOnly.TryParse(incoming, out var parsed)
+                ? parsed
+                : current;
+
         candidate.VisaNumber = Keep(request.VisaNumber, candidate.VisaNumber);
         candidate.SponsorName = Keep(request.SponsorName, candidate.SponsorName);
         candidate.SponsorIdNumber = Keep(request.SponsorIdNumber, candidate.SponsorIdNumber);
@@ -49,6 +63,9 @@ public class SetVisaDetailsHandler : IRequestHandler<SetVisaDetailsCommand, Resu
         candidate.ContractNo = Keep(request.ContractNo, candidate.ContractNo);
         candidate.AgentName = Keep(request.AgentName, candidate.AgentName);
         candidate.ENumber = Keep(request.ENumber, candidate.ENumber);
+        candidate.PassportNumber = Keep(request.PassportNumber, candidate.PassportNumber) ?? "";
+        candidate.PassportIssueDate = KeepDate(request.PassportIssueDate, candidate.PassportIssueDate);
+        candidate.PassportExpiryDate = KeepDate(request.PassportExpiryDate, candidate.PassportExpiryDate);
 
         await _context.SaveChangesAsync(ct);
         return Result.Success();

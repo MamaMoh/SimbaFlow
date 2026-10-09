@@ -238,7 +238,37 @@ export type VisaDetails = {
   contractNo?: string;
   agentName?: string;
   eNumber?: string;
+  passportNumber?: string;
+  passportIssueDate?: string;
+  passportExpiryDate?: string;
 };
+
+/** One thing the enjaze form is waiting for: what to call it, and what to send it as. */
+export type VisaFormGapField = { key: string; label: string };
+
+export type VisaFormGap = {
+  id: string;
+  fullName: string;
+  fields: VisaFormGapField[];
+};
+
+/**
+ * What stands between these candidates and a printed enjaze form.
+ *
+ * Asked before the print rather than after it. The bulk print refused a batch of twenty because
+ * two of them had a blank visa number, which left the desk to go and find each one, edit them,
+ * come back and reselect the batch.
+ */
+export async function visaFormGaps(candidateIds: string[]): Promise<VisaFormGap[]> {
+  const res = await fetch("/api/proxy/candidates/visa-forms/gaps", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ candidateIds }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || "Could not check the visa details");
+  return (body?.data ?? []) as VisaFormGap[];
+}
 
 export async function setVisaDetails(
   candidateId: string,

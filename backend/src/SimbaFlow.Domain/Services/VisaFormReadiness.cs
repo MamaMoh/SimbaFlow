@@ -21,7 +21,31 @@ namespace SimbaFlow.Domain.Services;
 /// </summary>
 public static class VisaFormReadiness
 {
-    public static IReadOnlyList<string> Missing(Candidate candidate) => Missing(
+    /// <summary>
+    /// One thing the form needs: what to call it on screen, and what to call it in a payload.
+    ///
+    /// Both come from the same place because the two uses are the same question asked twice —
+    /// the desk is told "Visa number is missing" and then handed a box to type it into, and a
+    /// label and a field name that drift apart produce a box that saves nothing.
+    /// </summary>
+    public readonly record struct VisaFormField(string Key, string Label);
+
+    /// <summary>What the form asks for, in the order it is worth filling them in.</summary>
+    private static readonly (string Key, string Label)[] Required =
+    [
+        ("visaNumber", "Visa number"),
+        ("eNumber", "E number"),
+        ("sponsorName", "Sponsor name"),
+        ("sponsorIdNumber", "Sponsor ID"),
+        ("passportNumber", "Passport number"),
+        ("passportIssueDate", "Passport date of issue"),
+        ("passportExpiryDate", "Passport expiry date"),
+    ];
+
+    public static IReadOnlyList<string> Missing(Candidate candidate) =>
+        [.. Gaps(candidate).Select(g => g.Label)];
+
+    public static IReadOnlyList<VisaFormField> Gaps(Candidate candidate) => Gaps(
         candidate.VisaNumber,
         candidate.ENumber,
         candidate.SponsorName,
@@ -42,24 +66,28 @@ public static class VisaFormReadiness
         string? sponsorIdNumber,
         string? passportNumber,
         string? passportIssueDate,
+        string? passportExpiryDate) =>
+        [.. Gaps(visaNumber, eNumber, sponsorName, sponsorIdNumber,
+                 passportNumber, passportIssueDate, passportExpiryDate).Select(g => g.Label)];
+
+    public static IReadOnlyList<VisaFormField> Gaps(
+        string? visaNumber,
+        string? eNumber,
+        string? sponsorName,
+        string? sponsorIdNumber,
+        string? passportNumber,
+        string? passportIssueDate,
         string? passportExpiryDate)
     {
-        var missing = new List<string>();
+        string?[] values =
+        [
+            visaNumber, eNumber, sponsorName, sponsorIdNumber,
+            passportNumber, passportIssueDate, passportExpiryDate,
+        ];
 
-        void Need(string label, string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value)) missing.Add(label);
-        }
-
-        Need("Visa number", visaNumber);
-        Need("E number", eNumber);
-        Need("Sponsor name", sponsorName);
-        Need("Sponsor ID", sponsorIdNumber);
-        Need("Passport number", passportNumber);
-        Need("Passport date of issue", passportIssueDate);
-        Need("Passport expiry date", passportExpiryDate);
-
-        return missing;
+        return [.. Required
+            .Where((_, i) => string.IsNullOrWhiteSpace(values[i]))
+            .Select(r => new VisaFormField(r.Key, r.Label))];
     }
 
     public static bool IsReady(Candidate candidate) => Missing(candidate).Count == 0;
