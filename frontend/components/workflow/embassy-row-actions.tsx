@@ -12,6 +12,7 @@ import {
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
+import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { saveFile } from "@/lib/files/download";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
 import { useAvailableActions } from "@/lib/api/workflow";
@@ -114,6 +115,12 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
           <CandidateDocumentItems
             candidateId={candidate.id}
             visaFormMissing={candidate.visaFormMissing}
+          />
+          <DropdownMenuSeparator />
+          <MoveBackStageItem
+            candidateId={candidate.id}
+            candidateName={candidate.fullName}
+            onDone={refresh}
           />
 
           {isCaseExec ? (

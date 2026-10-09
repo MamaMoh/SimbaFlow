@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuSeparator,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -48,6 +49,7 @@ import {
 import { toast } from "sonner";
 import { useState } from "react";
 import { saveFile } from "@/lib/files/download";
+import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 
 const GENDER_LABELS = ["Male", "Female", "Other"];
 
@@ -287,6 +289,12 @@ export default function CandidateDetailPage() {
                   )}
                   Download contract
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <MoveBackStageItem
+                  candidateId={candidate.id}
+                  candidateName={fullName}
+                  onDone={refreshAll}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

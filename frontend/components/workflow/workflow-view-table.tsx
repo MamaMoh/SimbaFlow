@@ -11,6 +11,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { withdrawFromPipeline } from "@/lib/api/candidates";
+import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { MarkReadyDialog } from "@/components/workflow/mark-ready-dialog";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -113,6 +114,11 @@ function RowActions({
           {canExecute && (
             <>
               <DropdownMenuSeparator />
+              <MoveBackStageItem
+                candidateId={candidate.id}
+                candidateName={candidate.fullName}
+                onDone={refresh}
+              />
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();

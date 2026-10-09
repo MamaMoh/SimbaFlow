@@ -39,6 +39,20 @@ public class WorkflowModule : ICarterModule
         });
 
         // Get workflow state for a candidate
+        // Undoing the last move between stages: what it would do, then doing it.
+        group.MapGet("/{candidateId:guid}/move-back", async (Guid candidateId, ISender sender) =>
+        {
+            var result = await sender.Send(new GetMoveBackPreviewQuery(candidateId));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapPost("/{candidateId:guid}/move-back", async (
+            Guid candidateId, MoveBackRequest? body, ISender sender) =>
+        {
+            var result = await sender.Send(new MoveBackStageCommand(candidateId, body?.Reason));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapGet("/{candidateId:guid}/state", async (Guid candidateId, ISender sender) =>
         {
             var result = await sender.Send(new GetWorkflowStateQuery(candidateId));
@@ -160,6 +174,7 @@ public record UpsertMirrorViewRuleRequest(
     bool IsActive);
 public record ExecuteTransitionRequest(Guid TransitionRuleId, string? Notes);
 public record UpdateStatusRequest(string TrackName, string NewValue, string? Notes);
+public record MoveBackRequest(string? Reason);
 public record UpdateStageRequest(string Name, string? Description, int SortOrder, int StageType);
 public record UpdateTransitionRequest(
     string ButtonLabel, string? ButtonIcon, string[]? RequiredFields,

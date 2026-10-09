@@ -12,6 +12,7 @@ import {
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
+import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { travelApi, type TravelBoardRow } from "@/lib/api/travel";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { citiesFor, todayIso } from "@/lib/data/destination-cities";
@@ -92,6 +93,12 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
               </>
             )}
             <CandidateDocumentItems candidateId={candidate.id} />
+            <DropdownMenuSeparator />
+            <MoveBackStageItem
+              candidateId={candidate.id}
+              candidateName={candidate.fullName}
+              onDone={refresh}
+            />
             {canUpdate && ticketStatus !== "Booking Complete" && (
               <>
                 <DropdownMenuSeparator />
@@ -171,6 +178,12 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
               </>
             )}
             <CandidateDocumentItems candidateId={candidate.id} />
+            <DropdownMenuSeparator />
+            <MoveBackStageItem
+              candidateId={candidate.id}
+              candidateName={candidate.fullName}
+              onDone={refresh}
+            />
             {canRead && <DropdownMenuSeparator />}
             {notification !== "Notified" && (
               <DropdownMenuItem

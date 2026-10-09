@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
+import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { arrivalApi, type ArrivalBoardRow } from "@/lib/api/arrival";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -79,6 +80,12 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
               </>
             )}
             <CandidateDocumentItems candidateId={candidate.id} />
+            <DropdownMenuSeparator />
+            <MoveBackStageItem
+              candidateId={candidate.id}
+              candidateName={candidate.fullName}
+              onDone={refresh}
+            />
             {canUpdate && (
               <>
                 <DropdownMenuSeparator />

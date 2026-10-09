@@ -168,6 +168,10 @@ public class PartnerModule : ICarterModule
             if (string.IsNullOrWhiteSpace(body.Name) || string.IsNullOrWhiteSpace(body.CountryCode))
                 return Results.Json(new { isSuccess = false, error = "Name and country code are required" }, statusCode: 400);
 
+            var clash = await PartnerDuplicates.FindDuplicateAsync(context, body.Name, body.Address, null);
+            if (clash is not null)
+                return Results.Json(new { isSuccess = false, error = PartnerDuplicates.DuplicateMessage(clash) }, statusCode: 409);
+
             var partner = new PartnerAgency
             {
                 Name = body.Name.Trim(),
@@ -198,6 +202,17 @@ public class PartnerModule : ICarterModule
             var partner = await context.PartnerAgencies.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
             if (partner is null)
                 return Results.Json(new { isSuccess = false, error = "Partner not found" }, statusCode: 404);
+
+            // Checked against what the row would become, not what was sent: an edit that only
+            // touches the address can still collide with an existing partner under the name this
+            // one already has.
+            var clash = await PartnerDuplicates.FindDuplicateAsync(
+                context,
+                string.IsNullOrWhiteSpace(body.Name) ? partner.Name : body.Name,
+                body.Address ?? partner.Address,
+                partner.Id);
+            if (clash is not null)
+                return Results.Json(new { isSuccess = false, error = PartnerDuplicates.DuplicateMessage(clash) }, statusCode: 409);
 
             if (!string.IsNullOrWhiteSpace(body.Name)) partner.Name = body.Name.Trim();
             if (!string.IsNullOrWhiteSpace(body.CountryCode)) partner.CountryCode = body.CountryCode.Trim().ToUpperInvariant();
@@ -687,6 +702,41 @@ public class PartnerModule : ICarterModule
             return Results.Ok(new { isSuccess = true });
         });
     }
+}
+
+/// <summary>
+/// The partner this one would duplicate, if any.
+///
+/// The catalog is shared across every agency on the platform, so the same foreign recruiter was
+/// being entered once per agency and candidates ended up linked to whichever copy the person in
+/// front of them happened to pick — each with its own letterhead and its own agreement.
+///
+/// Compared in memory over the whole catalog. The normalisation that decides sameness (see
+/// PartnerIdentity) would have to be reimplemented in SQL and kept in step with it otherwise, and
+/// the catalog is the platform's list of foreign recruiters — hundreds of rows, read once when
+/// somebody adds one.
+/// </summary>
+internal static class PartnerDuplicates
+{
+    internal static async Task<PartnerAgency?> FindDuplicateAsync(
+        IPlatformDbContext context, string? name, string? address, Guid? excluding)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+
+        var candidates = await context.PartnerAgencies
+            .AsNoTracking()
+            .Where(p => !p.IsDeleted && (excluding == null || p.Id != excluding))
+            .ToListAsync();
+
+        return candidates.FirstOrDefault(p => PartnerIdentity.SameAs(name, address, p.Name, p.Address));
+    }
+
+    internal static string DuplicateMessage(PartnerAgency existing) =>
+        string.IsNullOrWhiteSpace(existing.Address)
+            ? $"\u201c{existing.Name}\u201d is already in the partner catalog. "
+              + "Use that one, or give this entry an address to tell them apart."
+            : $"\u201c{existing.Name}\u201d at {existing.Address} is already in the partner catalog. "
+              + "Use that one, or change the name or address if this is a different office.";
 }
 
 public record CreatePartnerRequest(

@@ -198,6 +198,38 @@ export async function executeTransition(
   if (!res.ok) throw new Error(body?.error || "Transition failed");
 }
 
+/** What undoing a candidate's last move between stages would do. */
+export type MoveBackPreview = {
+  fromStageName: string;
+  toStageName: string;
+  clears: { track: string; value: string }[];
+};
+
+/**
+ * Asks what moving back would do, without doing it. Throws with the reason when there is no
+ * earlier stage to go to, which is what the dialog shows instead of a confirm button.
+ */
+export async function previewMoveBack(candidateId: string): Promise<MoveBackPreview> {
+  const res = await fetch(`/api/proxy/workflow/${candidateId}/move-back`);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || "Could not work out where they would go back to");
+  return body?.data as MoveBackPreview;
+}
+
+export async function moveBackStage(
+  candidateId: string,
+  reason?: string,
+): Promise<MoveBackPreview> {
+  const res = await fetch(`/api/proxy/workflow/${candidateId}/move-back`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body?.error || "Could not move the candidate back");
+  return body?.data as MoveBackPreview;
+}
+
 export async function updateWorkflowStatus(
   candidateId: string,
   trackName: string,
