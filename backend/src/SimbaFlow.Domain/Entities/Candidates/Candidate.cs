@@ -56,7 +56,16 @@ public class Candidate : BaseEntity
     public string? ArabicLevel { get; set; }
     /// <summary>Other languages as "Amharic: Good; French: Fair".</summary>
     public string? OtherLanguages { get; set; }
+    /// <summary>
+    /// Total years worked abroad, summed from <see cref="WorkExperiences"/> when that list is
+    /// saved. Kept as a column because the list page sorts and filters on it.
+    /// </summary>
     public int? ExperienceAbroadYears { get; set; }
+
+    /// <summary>
+    /// Every country worked in, comma-separated, from <see cref="WorkExperiences"/>. Same reason:
+    /// the list page shows and searches it, and a column does that where a join does not.
+    /// </summary>
     public string? WorksIn { get; set; }
     public string? ReferenceNo { get; set; }
     public string? Remark { get; set; }
@@ -101,8 +110,6 @@ public class Candidate : BaseEntity
     public string? AgentName { get; set; }
 
     // ──── Admin references ────
-    public string? ApplicationNo { get; set; }
-
     /// <summary>
     /// The E number from the Saudi consular application — a letter followed by nine digits.
     ///
@@ -171,9 +178,22 @@ public class Candidate : BaseEntity
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
     public string? RegisteredBy { get; set; }
 
+    // ──── Removal ────
+    /// <summary>
+    /// When the record was removed, and by whom.
+    ///
+    /// A deleted candidate used to vanish, which is the wrong answer for a desk where several
+    /// people work the same pipeline: the person who went looking for them could not tell a
+    /// record that had been removed from one that was never registered. They now stay on the
+    /// Inactive list with a name against them.
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+    public string? DeletedBy { get; set; }
+
     // ──── Navigation ────
     public ICollection<CandidateDocument> Documents { get; set; } = [];
     public ICollection<CandidateSkill> ExtraSkills { get; set; } = [];
+    public ICollection<CandidateWorkExperience> WorkExperiences { get; set; } = [];
 
     // ──── Computed ────
     public string FullName => string.IsNullOrEmpty(MiddleName)

@@ -241,7 +241,21 @@ export default function CandidateDetailPage() {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
+              {/* Edit at the top even though it is also the button beside this menu: every row
+                  menu in the app opens with the same group, and someone who learned the shape
+                  on the candidates list looks here first. */}
               <DropdownMenuContent align="end" className="w-52">
+                {hasPermission("candidate.update") || hasPermission("system.admin") ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/candidates/${id}/edit`}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
                 <DropdownMenuItem
                   disabled={generatingCv}
                   onSelect={(e) => {
@@ -394,15 +408,30 @@ export default function CandidateDetailPage() {
           </ProfileSection>
 
           <ProfileSection icon={MapPin} title="Work experience">
+            {/* One line per posting. A candidate who worked two years in Lebanon and three in
+                Kuwait had one country and one figure here, and the other was simply not on the
+                record — so the CV undersold a five-year career as a two-year one. */}
+            {(candidate.workExperiences ?? []).map((w, i) => (
+              <Field
+                key={i}
+                label={i === 0 ? "Worked in" : ""}
+                value={[
+                  w.country,
+                  w.occupation,
+                  w.years != null ? `${w.years} year${w.years === 1 ? "" : "s"}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              />
+            ))}
             <Field
-              label="Period"
+              label="Total abroad"
               value={
                 candidate.experienceAbroadYears != null
                   ? `${candidate.experienceAbroadYears} year${candidate.experienceAbroadYears === 1 ? "" : "s"}`
                   : undefined
               }
             />
-            <Field label="Country" value={candidate.worksIn} />
             <Field label="Occupation" value={candidate.occupation} />
             <Field label="Salary" value={candidate.monthlySalary} />
             <Field label="Contract period" value={candidate.contractPeriod} />

@@ -37,8 +37,11 @@ export interface Candidate {
   englishLevel?: string;
   arabicLevel?: string;
   otherLanguages?: string;
+  /** Summed from workExperiences when the form saves. */
   experienceAbroadYears?: number;
+  /** Every country in workExperiences, comma-separated. */
   worksIn?: string;
+  workExperiences?: CandidateWorkExperience[];
   referenceNo?: string;
   remark?: string;
   cookingLevel?: string;
@@ -68,7 +71,6 @@ export interface Candidate {
   sponsorAddress?: string;
   sponsorArabicName?: string;
   agentName?: string;
-  applicationNo?: string;
   /** The E number from the Saudi consular application — barcodes onto the enjaze form. */
   eNumber?: string;
   fileNo?: string;
@@ -104,6 +106,13 @@ export interface Candidate {
   fullName: string;
 }
 
+/** One posting abroad. A candidate can have several. */
+export interface CandidateWorkExperience {
+  country: string;
+  occupation?: string | null;
+  years?: number | null;
+}
+
 export interface CandidateListDto {
   id: string;
   fullName: string;
@@ -123,6 +132,15 @@ export interface CandidateListDto {
   visaNumber?: string;
   agentName?: string;
   worksIn?: string;
+  phoneNumber?: string;
+  contactPerson2?: string;
+  contactPhone2?: string;
+  experienceAbroadYears?: number;
+  /** Set when the record was removed; the Inactive list shows both. */
+  deletedBy?: string;
+  deletedAt?: string;
+  /** False once the candidate has moved past the first stage — another desk holds them. */
+  canDelete?: boolean;
 }
 
 export interface CandidateDocument {

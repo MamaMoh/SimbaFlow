@@ -55,7 +55,6 @@ public record CandidateIntakePayload(
     string? SponsorAddress = null,
     string? SponsorArabicName = null,
     string? AgentName = null,
-    string? ApplicationNo = null,
     string? ENumber = null,
     string? FileNo = null,
     string? WakalaNo = null,
@@ -78,7 +77,16 @@ public record CandidateIntakePayload(
     string? CertificateNo = null,
     string? CertifiedDate = null,
     string? MedicalPlace = null,
-    IReadOnlyList<CandidateExtraSkill>? ExtraSkills = null);
+    IReadOnlyList<CandidateExtraSkill>? ExtraSkills = null,
+    /// <summary>
+    /// Every posting abroad. Null means "not sent" and leaves the list alone; an empty list
+    /// means the desk cleared it. The distinction matters because screens that save a candidate
+    /// without touching their history would otherwise wipe it.
+    /// </summary>
+    IReadOnlyList<CandidateWorkExperienceEntry>? WorkExperiences = null);
+
+/// <summary>One row of the work-experience table as the form sends it.</summary>
+public record CandidateWorkExperienceEntry(string Country, string? Occupation = null, int? Years = null);
 
 public record CandidateExtraSkill(string Name, bool Selected = true);
 
@@ -110,8 +118,13 @@ public static class CandidateIntakeMapper
         candidate.EnglishLevel = NullIfEmpty(p.EnglishLevel);
         candidate.ArabicLevel = NullIfEmpty(p.ArabicLevel);
         candidate.OtherLanguages = NullIfEmpty(p.OtherLanguages);
-        candidate.ExperienceAbroadYears = p.ExperienceAbroadYears;
-        candidate.WorksIn = NullIfEmpty(p.WorksIn);
+        // Derived from WorkExperiences below whenever the caller sends that list, which the
+        // registration form always does. A caller that sends neither the list nor these two is
+        // saving a screen that never showed a work history, and must not erase one: assigning
+        // the payload's nulls through here wiped the summary off every candidate anyone edited
+        // from the visa or embassy screens.
+        if (p.ExperienceAbroadYears is not null) candidate.ExperienceAbroadYears = p.ExperienceAbroadYears;
+        if (NullIfEmpty(p.WorksIn) is string worksIn) candidate.WorksIn = worksIn;
         candidate.ReferenceNo = NullIfEmpty(p.ReferenceNo);
         candidate.Remark = NullIfEmpty(p.Remark);
         candidate.CookingLevel = NullIfEmpty(p.CookingLevel);
@@ -142,10 +155,6 @@ public static class CandidateIntakeMapper
         candidate.SponsorAddress = NullIfEmpty(p.SponsorAddress);
         candidate.SponsorArabicName = NullIfEmpty(p.SponsorArabicName);
         candidate.AgentName = NullIfEmpty(p.AgentName);
-        // Blank means "leave it alone", not "clear it". The field is assigned on registration
-        // and shown on the form so it can be corrected; a save from a screen that happens not to
-        // carry it must not take the number off the record.
-        candidate.ApplicationNo = NullIfEmpty(p.ApplicationNo) ?? candidate.ApplicationNo;
         candidate.ENumber = NullIfEmpty(p.ENumber);
         candidate.FileNo = NullIfEmpty(p.FileNo);
         candidate.WakalaNo = NullIfEmpty(p.WakalaNo);
@@ -168,6 +177,70 @@ public static class CandidateIntakeMapper
         candidate.CertificateNo = NullIfEmpty(p.CertificateNo);
         candidate.CertifiedDate = ParseDate(p.CertifiedDate);
         candidate.MedicalPlace = NullIfEmpty(p.MedicalPlace);
+
+        // Last, because it writes back over WorksIn and ExperienceAbroadYears, which were
+        // assigned above from the payload's own single-country fields. A caller that sends the
+        // list is describing the whole history and wins; one that does not keeps what is there.
+        if (p.WorkExperiences is not null)
+            SyncWorkExperiences(candidate, p.WorkExperiences);
+    }
+
+    /// <summary>
+    /// Replaces the candidate's postings with the ones sent, and re-derives the two summary
+    /// columns from them.
+    ///
+    /// Rows are matched by position rather than by id: the form has no stable key for a line
+    /// someone has just typed, and a country edited from Kuwait to Lebanon is the same row being
+    /// corrected, not one row deleted and another added. Surplus rows are soft-deleted so a
+    /// history that shrinks does not leave orphans on the board.
+    /// </summary>
+    public static void SyncWorkExperiences(
+        Candidate candidate, IReadOnlyList<CandidateWorkExperienceEntry> entries)
+    {
+        var wanted = entries
+            .Where(e => !string.IsNullOrWhiteSpace(e.Country))
+            .Select(e => new CandidateWorkExperienceEntry(
+                e.Country.Trim(), NullIfEmpty(e.Occupation), e.Years))
+            .ToList();
+
+        var rows = candidate.WorkExperiences
+            .Where(w => !w.IsDeleted)
+            .OrderBy(w => w.SortOrder)
+            .ToList();
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            if (i < rows.Count)
+            {
+                rows[i].Country = wanted[i].Country;
+                rows[i].Occupation = wanted[i].Occupation;
+                rows[i].Years = wanted[i].Years;
+                rows[i].SortOrder = i;
+            }
+            else
+            {
+                candidate.WorkExperiences.Add(new CandidateWorkExperience
+                {
+                    Country = wanted[i].Country,
+                    Occupation = wanted[i].Occupation,
+                    Years = wanted[i].Years,
+                    SortOrder = i,
+                });
+            }
+        }
+
+        foreach (var surplus in rows.Skip(wanted.Count))
+            surplus.IsDeleted = true;
+
+        candidate.WorksIn = wanted.Count == 0
+            ? null
+            : string.Join(", ", wanted.Select(w => w.Country).Distinct(StringComparer.OrdinalIgnoreCase));
+
+        // Summed, not maxed: two years in one country and three in another is five years of
+        // experience, which is the number the salary is argued from.
+        candidate.ExperienceAbroadYears = wanted.Any(w => w.Years is not null)
+            ? wanted.Sum(w => w.Years ?? 0)
+            : null;
     }
 
     public static void SyncExtraSkills(Candidate candidate, IReadOnlyList<CandidateExtraSkill> extras)

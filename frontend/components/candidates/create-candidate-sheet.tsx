@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import useSWR, { useSWRConfig } from "swr";
@@ -260,6 +260,26 @@ function syncLanguagesToForm(
   setValue("otherLanguages", other);
 }
 
+/**
+ * Education, as the partner forms and the CV print it.
+ *
+ * A free-text box produced "secondary", "Secondary level", "10th grade", "Grade 10" and
+ * "SECONDARY LEVEL" for the same schooling, which a partner reading fifty CVs cannot compare and
+ * no filter can group. withValue keeps whatever is already on a record if it is none of these.
+ */
+const EDUCATION_LEVELS = [
+  "NONE",
+  "PRIMARY LEVEL",
+  "SECONDARY LEVEL",
+  "PREPARATORY LEVEL",
+  "CERTIFICATE",
+  "DIPLOMA",
+  "DEGREE",
+] as const;
+
+/** Who the second contact is to the candidate, and who the relative is. */
+const GENDERS = ["Female", "Male"] as const;
+
 const PASSPORT_TYPES = ["Normal", "Diplomatic", "Service"] as const;
 
 const VISA_TYPES = ["Work", "Visit", "Transit", "Other"] as const;
@@ -322,8 +342,6 @@ const registerCandidateSchema = z.object({
   englishLevel: opt,
   arabicLevel: opt,
   otherLanguages: opt,
-  experienceAbroadYears: optionalNonNegInt,
-  worksIn: opt,
   referenceNo: opt,
   remark: opt,
   cookingLevel: opt,
@@ -347,7 +365,6 @@ const registerCandidateSchema = z.object({
   sponsorAddress: opt,
   sponsorArabicName: opt,
   agentName: opt,
-  applicationNo: opt,
   fileNo: opt,
   wakalaNo: opt,
   contractNo: opt,
@@ -369,6 +386,17 @@ const registerCandidateSchema = z.object({
   certificateNo: opt,
   certifiedDate: opt,
   medicalPlace: opt,
+  // A list, because one country and one number of years fits a first traveller and nobody else.
+  // Blank rows are dropped on save, so the empty line the table keeps to type into costs nothing.
+  workExperiences: z
+    .array(
+      z.object({
+        country: z.string().optional().or(z.literal("")),
+        occupation: z.string().optional().or(z.literal("")),
+        years: optionalNonNegInt,
+      }),
+    )
+    .optional(),
 });
 
 type RegisterCandidateForm = z.infer<typeof registerCandidateSchema>;
@@ -428,6 +456,7 @@ const defaults: Partial<RegisterCandidateForm> = {
   skillBabysitting: false,
   skillChildCare: false,
   extraSkills: [],
+  workExperiences: [],
 };
 
 function formatApiError(result: {
@@ -784,7 +813,7 @@ export function CandidateApplicationForm({
   // a visa number and an E number that do not exist on the day someone is registered, so it is
   // offered rather than assumed — ticked by default it would warn on every new candidate.
   const [generateVisaAfterSave, setGenerateVisaAfterSave] = useState(false);
-  const [generateCvAfterSave, setGenerateCvAfterSave] = useState(!isEdit);
+  const [generateCvAfterSave, setGenerateCvAfterSave] = useState(true);
   const [existingMedia, setExistingMedia] = useState<{
     photo: boolean;
     fullPhoto: boolean;
@@ -793,6 +822,7 @@ export function CandidateApplicationForm({
   const [nameText, setNameText] = useState("");
 
   const {
+    control,
     register,
     handleSubmit,
     setValue,
@@ -805,6 +835,17 @@ export function CandidateApplicationForm({
     resolver: zodResolver(registerCandidateSchema),
     defaultValues: defaults,
   });
+  /**
+   * The work-experience rows.
+   *
+   * useFieldArray rather than setValue on an array, because two of the three boxes in a row are
+   * uncontrolled inputs: removing the first of two postings would leave the browser showing the
+   * removed row's text over the surviving row's data, since React reuses the DOM node and an
+   * uncontrolled input never re-reads its value. The field id as the key is what makes a removal
+   * remove the right line on screen as well as in the form.
+   */
+  const workExperience = useFieldArray({ control, name: "workExperiences" });
+
   const skillsTouched = useRef(false);
 
   /**
@@ -896,7 +937,11 @@ export function CandidateApplicationForm({
     setFullPhotoFile(null);
     setPassportFile(null);
     setLanguageRows([newLanguageRow("English", ""), newLanguageRow("Arabic", "")]);
-    setGenerateVisaAfterSave(true);
+    // Left unticked, contradicting the line above it that used to set it: the enjaze needs a
+    // visa number and an E number that do not exist on the day someone is registered, so
+    // ticked by default it warned on every single new candidate.
+    setGenerateVisaAfterSave(false);
+    setGenerateCvAfterSave(true);
     setExistingMedia({ photo: false, fullPhoto: false, passport: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, reset]);
@@ -952,9 +997,6 @@ export function CandidateApplicationForm({
       englishLevel: matchOption(LANGUAGE_LEVELS, d.englishLevel),
       arabicLevel: matchOption(LANGUAGE_LEVELS, d.arabicLevel),
       otherLanguages: d.otherLanguages || "",
-      experienceAbroadYears:
-        d.experienceAbroadYears != null ? String(d.experienceAbroadYears) : "",
-      worksIn: d.worksIn || "",
       referenceNo: d.referenceNo || "",
       remark: d.remark || "",
       cookingLevel: matchOption(LANGUAGE_LEVELS, d.cookingLevel),
@@ -981,7 +1023,6 @@ export function CandidateApplicationForm({
       sponsorAddress: d.sponsorAddress || "",
       sponsorArabicName: d.sponsorArabicName || "",
       agentName: d.agentName || "",
-      applicationNo: d.applicationNo || "",
       fileNo: d.fileNo || "",
       wakalaNo: d.wakalaNo || "",
       contractNo: d.contractNo || "",
@@ -1003,12 +1044,20 @@ export function CandidateApplicationForm({
       certificateNo: d.certificateNo || "",
       certifiedDate: d.certifiedDate || "",
       medicalPlace: d.medicalPlace || "",
+      workExperiences: (Array.isArray(d.workExperiences) ? d.workExperiences : []).map(
+        (w: { country?: string; occupation?: string; years?: number | null }) => ({
+          country: w.country || "",
+          occupation: w.occupation || "",
+          years: w.years != null ? String(w.years) : "",
+        }),
+      ),
     });
     setPhotoFile(null);
     setFullPhotoFile(null);
     setPassportFile(null);
     setLanguageRows(rowsFromCandidate(d));
     setGenerateVisaAfterSave(false);
+    setGenerateCvAfterSave(false);
     setExistingMedia({
       photo: !!d.photoPath,
       fullPhoto: !!d.fullPhotoPath,
@@ -1188,10 +1237,6 @@ export function CandidateApplicationForm({
     englishLevel: data.englishLevel || null,
     arabicLevel: data.arabicLevel || null,
     otherLanguages: data.otherLanguages || null,
-    experienceAbroadYears: data.experienceAbroadYears
-      ? Number(data.experienceAbroadYears)
-      : null,
-    worksIn: data.worksIn || null,
     referenceNo: data.referenceNo || null,
     remark: data.remark || null,
     cookingLevel: data.cookingLevel || null,
@@ -1215,7 +1260,6 @@ export function CandidateApplicationForm({
     sponsorAddress: data.sponsorAddress || null,
     sponsorArabicName: data.sponsorArabicName || null,
     agentName: data.agentName || null,
-    applicationNo: data.applicationNo || null,
     fileNo: data.fileNo || null,
     wakalaNo: data.wakalaNo || null,
     contractNo: data.contractNo || null,
@@ -1237,6 +1281,16 @@ export function CandidateApplicationForm({
     certificateNo: data.certificateNo || null,
     certifiedDate: data.certifiedDate || null,
     medicalPlace: data.medicalPlace || null,
+    // Always sent, even empty: the API reads a missing list as "this screen never showed the
+    // work history" and leaves it alone, which is right for the other screens and wrong here.
+    // Years and the countries list are derived from these rows on the server.
+    workExperiences: (data.workExperiences ?? [])
+      .filter((w) => (w.country ?? "").trim().length > 0)
+      .map((w) => ({
+        country: (w.country ?? "").trim(),
+        occupation: (w.occupation ?? "").trim() || null,
+        years: w.years ? Number(w.years) : null,
+      })),
   });
 
   const uploadPhotos = async (id: string) => {
@@ -1251,6 +1305,39 @@ export function CandidateApplicationForm({
           : "Saved, but photo upload failed"
       );
     }
+  };
+
+  /**
+   * The documents asked for by the two checkboxes beside the title, made from the record that
+   * has just been saved.
+   *
+   * The save has already succeeded by the time this runs. A document that cannot be made — the
+   * enjaze needs a visa number and an E number that may not be on the record yet — is reported
+   * as the one thing outstanding, never as a failed save.
+   */
+  const makeRequestedDocuments = async (id: string) => {
+    const made: string[] = [];
+    const notMade: string[] = [];
+
+    if (generateCvAfterSave) {
+      try {
+        saveFile(await generateCandidateCv(id));
+        made.push("CV");
+      } catch (err) {
+        notMade.push(`CV — ${err instanceof Error ? err.message : "could not be made"}`);
+      }
+    }
+
+    if (generateVisaAfterSave) {
+      try {
+        saveFile(await generateCandidateVisaForm(id));
+        made.push("visa form");
+      } catch (err) {
+        notMade.push(`visa form — ${err instanceof Error ? err.message : "could not be made"}`);
+      }
+    }
+
+    return { made, notMade };
   };
 
   const onSubmit = async (data: RegisterCandidateForm) => {
@@ -1289,7 +1376,15 @@ export function CandidateApplicationForm({
         }
 
         await uploadPhotos(candidateId);
-        toast.success("Candidate updated");
+
+        const { made, notMade } = await makeRequestedDocuments(candidateId);
+        toast.success(
+          made.length > 0
+            ? `Candidate updated · ${made.join(" and ")} downloaded`
+            : "Candidate updated",
+        );
+        for (const problem of notMade) toast.warning(problem);
+
         onSaved?.();
         mutate((key: unknown) => typeof key === "string" && key.includes("/candidates"));
         router.push("/candidates");
@@ -1330,33 +1425,10 @@ export function CandidateApplicationForm({
       const newId = result.data as string;
       await uploadPhotos(newId);
 
-      // The registration has already succeeded by this point. A document that cannot be made —
-      // the enjaze needs a visa number and an E number that do not exist on the day someone is
-      // registered — is reported as the one thing outstanding, not as a failed registration.
-      const madeDocuments: string[] = [];
-      const notMade: string[] = [];
-
-      if (generateCvAfterSave) {
-        try {
-          saveFile(await generateCandidateCv(newId));
-          madeDocuments.push("CV");
-        } catch (err) {
-          notMade.push(`CV — ${err instanceof Error ? err.message : "could not be made"}`);
-        }
-      }
-
-      if (generateVisaAfterSave) {
-        try {
-          saveFile(await generateCandidateVisaForm(newId));
-          madeDocuments.push("visa form");
-        } catch (err) {
-          notMade.push(`visa form — ${err instanceof Error ? err.message : "could not be made"}`);
-        }
-      }
-
+      const { made, notMade } = await makeRequestedDocuments(newId);
       toast.success(
-        madeDocuments.length > 0
-          ? `Candidate registered · ${madeDocuments.join(" and ")} downloaded`
+        made.length > 0
+          ? `Candidate registered · ${made.join(" and ")} downloaded`
           : "Candidate registered successfully",
       );
       for (const problem of notMade) toast.warning(problem);
@@ -1401,24 +1473,25 @@ export function CandidateApplicationForm({
         {/* Opposite the title, where it is read before the form is filled rather than found at
             the bottom of it after. Both documents are made from this record, so deciding to
             print them belongs with the record, not with the sponsor section it used to sit in. */}
-        {!isEdit && (
-          <div className="flex flex-col gap-1.5 sm:items-end">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={generateVisaAfterSave}
-                onCheckedChange={(v) => setGenerateVisaAfterSave(v === true)}
-              />
-              Generate visa form after save
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={generateCvAfterSave}
-                onCheckedChange={(v) => setGenerateCvAfterSave(v === true)}
-              />
-              Generate CV after save
-            </label>
-          </div>
-        )}
+        {/* On the edit page too, which is the point: an edit is usually a correction to
+            something that is already printed, and reprinting it is the next thing done. Both
+            start unticked there, because not every edit needs a new document. */}
+        <div className="flex flex-col gap-1.5 sm:items-end">
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={generateVisaAfterSave}
+              onCheckedChange={(v) => setGenerateVisaAfterSave(v === true)}
+            />
+            Generate visa form after save
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
+              checked={generateCvAfterSave}
+              onCheckedChange={(v) => setGenerateCvAfterSave(v === true)}
+            />
+            Generate CV after save
+          </label>
+        </div>
       </div>
 
       <form
@@ -1457,7 +1530,9 @@ export function CandidateApplicationForm({
             <SectionHeading title="Documents" />
             {/* One card, three uploads. Splitting the passport scan from the two photos left
                 each card half empty across a full-width page, and all three are the same job. */}
-            <FormSection icon={BookOpen} title="Passport & photos" defaultOpen={false}>
+            {/* Open, unlike the other folded sections: it holds the passport scan, and a
+                registration that starts with the scan button hidden gets typed by hand. */}
+            <FormSection icon={BookOpen} title="Passport & photos">
               {/* Portrait, full body, passport — the order they are taken in, and the order
                   they are asked for on the forms these feed. */}
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -1532,17 +1607,9 @@ export function CandidateApplicationForm({
             <FormSection icon={FileText} title="Basic information">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Application No.</Label>
-                  {/* Assigned on registration, but editable: agencies carry numbers over from
-                      whatever they used before, and a wrong one used to need a database. Left
-                      blank on a save it keeps the number already on the record. */}
-                  <Input {...register("applicationNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  {/* Beside the application number because that is what it is — the consulate's
-                      own number for this application. Unlike that one it is never assigned here:
-                      it comes off the consular system, and the enjaze form will not print
-                      without it. */}
+                  {/* The only number an application carries now. There used to be a second one
+                      the system assigned itself, which nobody outside this system ever quoted —
+                      the consulate, the partner and the Tasheer sheet all go by this one. */}
                   <Label>E number</Label>
                   <Input {...register("eNumber")} />
                 </div>
@@ -1925,7 +1992,9 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Sponsor phone</Label>
+                  {/* The sponsor is in the destination country, not in Addis. */}
                   <PhoneInputField
+                    country="sa"
                     value={watch("sponsorPhone") || ""}
                     onChange={(v) => setValue("sponsorPhone", v)}
                   />
@@ -1985,11 +2054,30 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Relative phone</Label>
-                  <Input {...register("relativePhone")} />
+                  <PhoneInputField
+                    value={watch("relativePhone") || ""}
+                    onChange={(v) => setValue("relativePhone", v)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Relative gender</Label>
-                  <Input {...register("relativeGender")} />
+                  <Select
+                    value={watch("relativeGender") || undefined}
+                    onValueChange={(v) => v && setValue("relativeGender", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select">
+                        {watch("relativeGender") || undefined}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[200]">
+                      {withValue(GENDERS, watch("relativeGender")).map((g) => (
+                        <SelectItem key={g} value={g}>
+                          {g}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>City</Label>
@@ -2026,7 +2114,10 @@ export function CandidateApplicationForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label>Contact phone (2nd)</Label>
-                  <Input {...register("contactPhone2")} />
+                  <PhoneInputField
+                    value={watch("contactPhone2") || ""}
+                    onChange={(v) => setValue("contactPhone2", v)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>COC center</Label>
@@ -2150,38 +2241,87 @@ export function CandidateApplicationForm({
               </div>
               <div className="space-y-1.5">
                 <Label>Education</Label>
-                <Input
-                  {...register("qualification")}
-                  placeholder="e.g. SECONDARY LEVEL"
-                />
+                <Select
+                  value={watch("qualification") || undefined}
+                  onValueChange={(v) => v && setValue("qualification", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select education">
+                      {watch("qualification") || undefined}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="z-[200]">
+                    {withValue(EDUCATION_LEVELS, watch("qualification")).map((q) => (
+                      <SelectItem key={q} value={q}>
+                        {q}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </FormSection>
             <FormSection icon={MapPin} title="Work experience" defaultOpen={false}>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Period (years abroad)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    inputMode="numeric"
-                    {...register("experienceAbroadYears")}
-                    placeholder="e.g. 2"
-                  />
-                  {errors.experienceAbroadYears && (
-                    <p className="text-xs text-destructive">
-                      {errors.experienceAbroadYears.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Country worked in</Label>
-                  {/* The name, for the same reason as Nationality above. */}
-                  <CountrySelect
-                    value={watch("worksIn") || ""}
-                    onChange={(_code, name) => setValue("worksIn", name)}
-                  />
-                </div>
+              {/* One row per posting. Two years in Lebanon and three in Kuwait is a five-year
+                  career, and the single country-and-years pair this replaced recorded one of
+                  them — the partner read a shorter history than the candidate had, which is
+                  the number the salary is argued from. */}
+              <div className="space-y-2">
+                {workExperience.fields.map((field, index) => (
+                  <div key={field.id} className="flex items-end gap-2">
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {index === 0 ? <Label>Country</Label> : null}
+                      {/* The name, for the same reason as Nationality above. */}
+                      <CountrySelect
+                        value={watch(`workExperiences.${index}.country`) || ""}
+                        onChange={(_code, name) =>
+                          setValue(`workExperiences.${index}.country`, name)
+                        }
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      {index === 0 ? <Label>Occupation</Label> : null}
+                      <Input
+                        {...register(`workExperiences.${index}.occupation`)}
+                        placeholder="e.g. House maid"
+                      />
+                    </div>
+                    <div className="w-24 shrink-0 space-y-1.5">
+                      {index === 0 ? <Label>Years</Label> : null}
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="numeric"
+                        {...register(`workExperiences.${index}.years`)}
+                        placeholder="2"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label="Remove work experience"
+                      onClick={() => workExperience.remove(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() =>
+                    workExperience.append({ country: "", occupation: "", years: "" })
+                  }
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add country
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
                 <div className="space-y-1.5">
                   <Label>Salary (ETB / SAR)</Label>
                   <Input
@@ -2286,11 +2426,6 @@ export function CandidateApplicationForm({
                 Cancel
               </Button>
               <div className="flex items-center gap-3">
-                {!essentialsComplete ? (
-                  <span className="hidden text-xs text-muted-foreground sm:inline">
-                    Name, passport, date of birth and gender are required
-                  </span>
-                ) : null}
                 <Button
                   type="button"
                   onClick={() => void saveWithValidation()}

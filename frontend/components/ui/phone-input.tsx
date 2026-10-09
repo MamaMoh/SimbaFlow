@@ -7,13 +7,26 @@ interface PhoneInputFieldProps {
   value?: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /**
+   * Which country the box starts on, as an ISO-2 code.
+   *
+   * Ethiopia for everyone standing in the office — the candidate, her relative, the second
+   * contact. The sponsor is in the destination country, and typing a Saudi number into a box
+   * that had pre-selected +251 produced numbers the agency could not call back.
+   */
+  country?: string;
 }
 
-export function PhoneInputField({ value, onChange, placeholder = "Enter phone number" }: PhoneInputFieldProps) {
+export function PhoneInputField({
+  value,
+  onChange,
+  placeholder = "Enter phone number",
+  country = "et",
+}: PhoneInputFieldProps) {
   return (
     <div className="phone-input-wrapper">
       <PhoneInput
-        country="et"
+        country={country}
         value={value}
         onChange={(phone) => onChange(`+${phone}`)}
         placeholder={placeholder}

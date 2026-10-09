@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
   Eye,
   MoreHorizontal,
+  Pencil,
   RotateCcw,
   Send,
   Stamp,
@@ -62,6 +63,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
   // this board is a different permission, and holding one does not imply the other, so the link has
   // to ask for what the page it points at requires.
   const canRead = hasPermission("candidate.read");
+  const canEditCandidate = hasPermission("candidate.update");
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const [mode, setMode] = useState<Mode>(null);
@@ -101,17 +103,26 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="z-[200] w-56">
+          {/* View details and Edit first, together, then a rule — the same opening group
+              every row menu in the app has, so the two items people reach for without
+              reading are always in the same two places. */}
           {canRead && (
-            <>
-              <DropdownMenuItem asChild>
-                <Link href={`/candidates/${candidate.id}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  View details
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
+            <DropdownMenuItem asChild>
+              <Link href={`/candidates/${candidate.id}`}>
+                <Eye className="mr-2 h-4 w-4" />
+                View details
+              </Link>
+            </DropdownMenuItem>
           )}
+          {canEditCandidate && (
+            <DropdownMenuItem asChild>
+              <Link href={`/candidates/${candidate.id}/edit`}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {canRead || canEditCandidate ? <DropdownMenuSeparator /> : null}
           <CandidateDocumentItems
             candidateId={candidate.id}
             visaFormMissing={candidate.visaFormMissing}

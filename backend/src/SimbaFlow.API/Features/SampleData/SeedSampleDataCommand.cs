@@ -73,8 +73,8 @@ public class SeedSampleDataHandler : IRequestHandler<SeedSampleDataCommand, Resu
         var partnerId = await FindUsablePartnerAsync(ct);
 
         var existing = await _context.Candidates.AsNoTracking()
-            .Where(c => c.ApplicationNo != null && c.ApplicationNo.StartsWith(SampleDataSpec.Prefix))
-            .Select(c => c.ApplicationNo!)
+            .Where(c => c.ReferenceNo != null && c.ReferenceNo.StartsWith(SampleDataSpec.Prefix))
+            .Select(c => c.ReferenceNo!)
             .ToListAsync(ct);
 
         var created = 0;
@@ -84,7 +84,7 @@ public class SeedSampleDataHandler : IRequestHandler<SeedSampleDataCommand, Resu
         for (var i = 0; i < SampleDataSpec.People.Length; i++)
         {
             var p = SampleDataSpec.People[i];
-            if (existing.Contains(p.ApplicationNo)) { skipped++; continue; }
+            if (existing.Contains(p.Reference)) { skipped++; continue; }
 
             var register = new RegisterCandidateCommand(
                 FirstName: p.FirstName,
@@ -109,14 +109,14 @@ public class SeedSampleDataHandler : IRequestHandler<SeedSampleDataCommand, Resu
             var result = await _sender.Send(register, ct);
             if (!result.IsSuccess)
             {
-                placements.Add($"{p.ApplicationNo} {p.FirstName}: not created — {result.Error}");
+                placements.Add($"{p.Reference} {p.FirstName}: not created — {result.Error}");
                 continue;
             }
 
             var id = result.Data;
             await WalkAsync(id, p, stages, RuleTo, userId, userName, ct);
             created++;
-            placements.Add($"{p.ApplicationNo} {p.FirstName} {p.LastName} → {p.Note}");
+            placements.Add($"{p.Reference} {p.FirstName} {p.LastName} → {p.Note}");
         }
 
         return Result<SampleDataSummary>.Success(new SampleDataSummary(created, skipped, placements));

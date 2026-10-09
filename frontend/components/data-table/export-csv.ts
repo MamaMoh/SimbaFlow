@@ -1,11 +1,5 @@
 import type { Table } from "@tanstack/react-table";
 
-/**
- * CSV of what the user is currently looking at.
- *
- * Uses the table's filtered+sorted row model and only the visible columns, so the file matches the
- * screen — exporting the raw dataset instead would quietly hand back rows the user had filtered out.
- */
 function escapeCell(value: unknown): string {
   if (value == null) return "";
   const s = typeof value === "object" ? JSON.stringify(value) : String(value);
@@ -17,6 +11,16 @@ function escapeCell(value: unknown): string {
 /** Columns that carry no data (selection checkbox, row actions, the # index). */
 const SKIP_COLUMN_IDS = new Set(["select", "actions", "index", "badges", "flags"]);
 
+/**
+ * CSV of what the user has picked out, or of what they are looking at.
+ *
+ * Ticking rows and pressing Export used to produce the whole page anyway, so the selection did
+ * nothing and the file had to be pruned by hand in Excel. A selection is the narrowest statement
+ * of intent on the screen, so it wins: tick nothing and the export is the current filtered,
+ * sorted view, which is still never the raw dataset — rows the user filtered out stay out.
+ *
+ * Only the visible columns, so the file matches the screen.
+ */
 export function exportTableToCsv<TData>(table: Table<TData>, fileName: string) {
   const columns = table
     .getVisibleLeafColumns()
@@ -27,7 +31,10 @@ export function exportTableToCsv<TData>(table: Table<TData>, fileName: string) {
     return escapeCell(typeof h === "string" ? h : c.id);
   });
 
-  const rows = table.getFilteredRowModel().rows.map((row) =>
+  const selected = table.getSelectedRowModel().rows;
+  const source = selected.length > 0 ? selected : table.getFilteredRowModel().rows;
+
+  const rows = source.map((row) =>
     columns.map((c) => escapeCell(row.getValue(c.id))).join(",")
   );
 

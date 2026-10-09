@@ -71,7 +71,7 @@ internal static class CvLayouts
     private static string Reference(Candidate c) =>
         V(c.ReferenceNo) is { Length: > 0 } r ? r
         : V(c.LabourId) is { Length: > 0 } l ? l
-        : V(c.ApplicationNo) is { Length: > 0 } a ? a
+        : V(c.ENumber) is { Length: > 0 } e ? e
         : V(c.PassportNumber);
 
     /// <summary>The letterhead band every one of these forms opens with.</summary>
@@ -570,11 +570,11 @@ internal static class CvLayouts
                     top.ConstantItem(5);
                     top.RelativeItem().Column(l => Letterhead(l, logo, c, 74));
                     top.ConstantItem(5);
-                    // Wide enough for an application number on one line. At 62 the value column
-                    // was 72pt against a reference like APP-20261007-0001, which broke mid-token.
+                    // Wide enough for the reference on one line. At 62 the value column was
+                    // 72pt against a reference like EF7710001, which broke mid-token.
                     top.ConstantItem(252).Border(0.5f).BorderColor(Border).Column(t =>
                     {
-                        Row3(t, "Application No", V(c.ApplicationNo), "رقم الطلب", 80, 58);
+                        Row3(t, "E Number", V(c.ENumber), "رقم الطلب", 80, 58);
                         Row3(t, "Post Applied For", V(c.Occupation), "الوظيفة", 80, 58);
                         Row3(t, "Monthly Salary", V(c.MonthlySalary), "الراتب الشهري", 80, 64);
                         Row3(t, "Contract Period", V(c.ContractPeriod), "مدة العقد", 80, 58);
@@ -825,7 +825,7 @@ internal static class CvLayouts
         var age = AgeYears(candidate.DateOfBirth);
         var dob = candidate.DateOfBirth.ToString("dd/MM/yyyy");
         var address = FormatAddress(candidate) ?? "";
-        var refNo = candidate.ReferenceNo ?? candidate.LabourId ?? candidate.ApplicationNo ?? candidate.PassportNumber;
+        var refNo = candidate.ReferenceNo ?? candidate.LabourId ?? candidate.ENumber ?? candidate.PassportNumber;
         // NO, not a dash: the sample form says NO, and a dash reads as "not asked" where the
         // rest of the column reads as an answer. Shadowed the shared helper before this.
         string YesNo(bool v) => v ? "YES" : "NO";

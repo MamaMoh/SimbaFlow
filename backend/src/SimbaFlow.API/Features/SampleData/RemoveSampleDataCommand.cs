@@ -26,7 +26,7 @@ public class RemoveSampleDataHandler : IRequestHandler<RemoveSampleDataCommand, 
     public async Task<Result<int>> Handle(RemoveSampleDataCommand request, CancellationToken ct)
     {
         var ids = await _context.Candidates
-            .Where(c => c.ApplicationNo != null && c.ApplicationNo.StartsWith(SampleDataSpec.Prefix))
+            .Where(c => c.ReferenceNo != null && c.ReferenceNo.StartsWith(SampleDataSpec.Prefix))
             .Select(c => c.Id)
             .ToListAsync(ct);
 

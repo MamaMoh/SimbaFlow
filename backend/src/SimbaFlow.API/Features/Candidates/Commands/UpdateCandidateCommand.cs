@@ -116,11 +116,26 @@ public record DeleteCandidateCommand(Guid Id) : IRequest<Result>, IRequirePermis
     public string RequiredPermission => "candidate.delete";
 }
 
+/// <summary>
+/// Removes a candidate — but only from the stage they start in.
+///
+/// See <see cref="SimbaFlow.Domain.Services.CandidateRemoval"/> for why. Enforced here and not
+/// only on the page: the list's ⋯ menu is one of several ways to reach this endpoint, and a rule
+/// that protects another desk's work has to hold wherever the call comes from.
+///
+/// The record is kept rather than erased, with the name of whoever removed it, and shows up on
+/// the Inactive list.
+/// </summary>
 public class DeleteCandidateHandler : IRequestHandler<DeleteCandidateCommand, Result>
 {
     private readonly ITenantDbContext _context;
+    private readonly ICurrentUserService _currentUser;
 
-    public DeleteCandidateHandler(ITenantDbContext context) => _context = context;
+    public DeleteCandidateHandler(ITenantDbContext context, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _currentUser = currentUser;
+    }
 
     public async Task<Result> Handle(DeleteCandidateCommand request, CancellationToken cancellationToken)
     {
@@ -131,8 +146,19 @@ public class DeleteCandidateHandler : IRequestHandler<DeleteCandidateCommand, Re
         if (candidate is null)
             return Result.Failure("Candidate not found", 404);
 
+        var onInitialStage = candidate.CurrentStageId is not Guid stageId
+            || await _context.WorkflowStages
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == stageId && s.IsInitialStage && !s.IsDeleted, cancellationToken);
+
+        if (SimbaFlow.Domain.Services.CandidateRemoval.Refusal(
+                candidate.CurrentStageName, onInitialStage) is string refusal)
+            return Result.Failure(refusal, 409);
+
         candidate.IsDeleted = true;
         candidate.Status = CandidateStatus.Archived;
+        candidate.DeletedAt = DateTime.UtcNow;
+        candidate.DeletedBy = _currentUser.UserName;
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

@@ -44,7 +44,17 @@ public record CandidateListDto(
     string? AgentName,
     string? WorksIn,
     string? PhoneNumber,
-    int? ExperienceAbroadYears);
+    string? ContactPerson2,
+    string? ContactPhone2,
+    int? ExperienceAbroadYears,
+    /// <summary>Who removed the record, for the rows the Inactive list now keeps.</summary>
+    string? DeletedBy,
+    DateTime? DeletedAt,
+    /// <summary>
+    /// Whether this row's ⋯ menu may offer Delete. Decided here rather than on the page,
+    /// because the page has no way to know which stage an agency made its first one.
+    /// </summary>
+    bool CanDelete);
 
 public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<PaginatedCandidateResult>>
 {
@@ -57,15 +67,27 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
 
     public async Task<Result<PaginatedCandidateResult>> Handle(GetCandidatesQuery request, CancellationToken cancellationToken)
     {
-        var query = _context.Candidates
-            .AsNoTracking()
-            .Where(c => !c.IsDeleted);
+        var query = _context.Candidates.AsNoTracking();
 
-        if (string.IsNullOrWhiteSpace(request.Status))
-            query = query.Where(c => c.Status == CandidateStatus.Active);
-        else if (!request.Status.Equals("all", StringComparison.OrdinalIgnoreCase)
-                 && Enum.TryParse<CandidateStatus>(request.Status, true, out var wanted))
-            query = query.Where(c => c.Status == wanted);
+        // A deleted candidate is not gone, it is inactive.
+        //
+        // It used to vanish from every list, which on a desk where several people work the same
+        // pipeline means the person who goes looking cannot tell a record somebody removed from
+        // one that was never registered. Deleted records are now exactly what the Inactive tab
+        // shows, with the name of whoever removed them, and the default list hides them the same
+        // way it always did.
+        var bucket = request.Status?.Trim() ?? "";
+
+        if (bucket.Equals("inactive", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(c => c.IsDeleted || c.Status != CandidateStatus.Active);
+        else if (bucket.Equals("all", StringComparison.OrdinalIgnoreCase))
+        { }
+        else if (bucket.Length == 0)
+            query = query.Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
+        else if (Enum.TryParse<CandidateStatus>(bucket, true, out var wanted))
+            query = query.Where(c => !c.IsDeleted && c.Status == wanted);
+        else
+            query = query.Where(c => !c.IsDeleted);
 
         // Searched in the database over every candidate, not in the browser over the page it
         // happens to be holding — a desk with two thousand people on the books was searching the
@@ -88,7 +110,6 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 (c.LocalFullName != null && c.LocalFullName.ToLower().Contains(search)) ||
                 (c.PhoneNumber != null && c.PhoneNumber.ToLower().Contains(search)) ||
                 (c.LabourId != null && c.LabourId.ToLower().Contains(search)) ||
-                (c.ApplicationNo != null && c.ApplicationNo.ToLower().Contains(search)) ||
                 (c.ENumber != null && c.ENumber.ToLower().Contains(search)) ||
                 (c.SponsorName != null && c.SponsorName.ToLower().Contains(search)) ||
                 (c.VisaNumber != null && c.VisaNumber.ToLower().Contains(search)));
@@ -121,6 +142,14 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
 
         var totalCount = await query.CountAsync(cancellationToken);
 
+        // One lookup for the whole page: deletion belongs to the stage a candidate starts in,
+        // and every row is measured against the same stage.
+        var initialStageId = await _context.WorkflowStages
+            .AsNoTracking()
+            .Where(s => s.IsInitialStage && !s.IsDeleted)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
         var items = await query
             .OrderByDescending(c => c.RegisteredAt)
             .Skip((request.Page - 1) * request.PageSize)
@@ -146,9 +175,14 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 c.SponsorIdNumber,
                 c.VisaNumber,
                 c.AgentName,
-                c.WorksIn ?? c.CountryOfTravel,
+                c.WorksIn,
                 c.PhoneNumber,
-                c.ExperienceAbroadYears))
+                c.ContactPerson2,
+                c.ContactPhone2,
+                c.ExperienceAbroadYears,
+                c.DeletedBy,
+                c.DeletedAt,
+                c.CurrentStageId == null || c.CurrentStageId == initialStageId))
             .ToListAsync(cancellationToken);
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
@@ -157,6 +191,9 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
             new PaginatedCandidateResult(items, totalCount, request.Page, request.PageSize, totalPages));
     }
 }
+
+/// <summary>One posting abroad as the candidate page and the form read it.</summary>
+public record CandidateWorkExperienceDto(string Country, string? Occupation, int? Years);
 
 public record GetCandidateByIdQuery(Guid Id) : IRequest<Result<CandidateDetailDto>>, IRequirePermission
 {
@@ -232,7 +269,6 @@ public record CandidateDetailDto(
     string? SponsorAddress,
     string? SponsorArabicName,
     string? AgentName,
-    string? ApplicationNo,
     string? ENumber,
     string? FileNo,
     string? WakalaNo,
@@ -260,6 +296,7 @@ public record CandidateDetailDto(
     DateTime RegisteredAt,
     string? RegisteredBy,
     IReadOnlyList<string> ExtraSkills,
+    IReadOnlyList<CandidateWorkExperienceDto> WorkExperiences,
     /// <summary>
     /// What the enjaze form is still waiting for, named the way the desk's own screens name it.
     /// Empty means it can be printed. Filled in by the handler, not by the projection.
@@ -302,7 +339,7 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                 c.PhotoPath, c.FullPhotoPath,
                 c.VisaNumber, c.VisaType, c.SponsorName, c.SponsorIdNumber,
                 c.SponsorPhone, c.SponsorAddress, c.SponsorArabicName, c.AgentName,
-                c.ApplicationNo, c.ENumber, c.FileNo, c.WakalaNo, c.ContractNo, c.StickerVisaNo,
+                c.ENumber, c.FileNo, c.WakalaNo, c.ContractNo, c.StickerVisaNo,
                 c.SignedOn.HasValue ? c.SignedOn.Value.ToString("yyyy-MM-dd") : null,
                 c.RelativeName, c.RelativePhone, c.RelativeKinship, c.RelativeGender,
                 c.RelativeBirthDate.HasValue ? c.RelativeBirthDate.Value.ToString("yyyy-MM-dd") : null,
@@ -315,6 +352,11 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                 c.ExtraSkills
                     .Where(s => !s.IsDeleted && s.IsSelected)
                     .Select(s => s.Name)
+                    .ToArray(),
+                c.WorkExperiences
+                    .Where(w => !w.IsDeleted)
+                    .OrderBy(w => w.SortOrder)
+                    .Select(w => new CandidateWorkExperienceDto(w.Country, w.Occupation, w.Years))
                     .ToArray()))
             .FirstOrDefaultAsync(cancellationToken);
 

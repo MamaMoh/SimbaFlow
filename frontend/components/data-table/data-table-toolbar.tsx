@@ -585,7 +585,11 @@ export function DataTableToolbar<TData>({
               }}
             >
               <Download className="mr-2 h-4 w-4" />
-              Export
+              {/* Says what it will do before it does it: with rows ticked this exports those
+                  and not the page, which is the opposite of what it used to do. */}
+              {table.getSelectedRowModel().rows.length > 0
+                ? `Export (${table.getSelectedRowModel().rows.length})`
+                : "Export"}
             </Button>
           ) : null}
           {toolbarEndActions}

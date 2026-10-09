@@ -69,7 +69,7 @@ public class CvRenderTests
         ContractPeriod = "2 Years",
         CountryOfTravel = "Saudi Arabia",
         Qualification = "SECONDARY LEVEL",
-        ApplicationNo = "APP-20261007-0001",
+        ENumber = "E826000111",
         SkillCleaning = true,
         SkillWashing = true,
         SkillBabysitting = true,

@@ -165,14 +165,19 @@ export default function TenantsPage() {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
+          {/* Edit and Delete together at the top, then a rule, then the rest — the shape every
+              row menu in the app uses, so the destructive item is always in the same place. */}
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setEditAgencyId(row.original.id)}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}>
+              <Trash2 className="h-4 w-4 mr-2" /> Delete
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => window.location.href = `/staff?tenant=${row.original.id}`}>
               <Users className="h-4 w-4 mr-2" /> Manage Users
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             {row.original.status === 0 ? (
               <DropdownMenuItem onClick={() => handleStatusChange(row.original.id, 1)}>
                 <Power className="h-4 w-4 mr-2" /> Suspend
@@ -182,10 +187,6 @@ export default function TenantsPage() {
                 <Power className="h-4 w-4 mr-2" /> Activate
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}>
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ),

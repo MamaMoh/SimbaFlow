@@ -49,7 +49,12 @@ interface CandidateRow {
   agentName?: string | null;
   worksIn?: string | null;
   phoneNumber?: string | null;
+  contactPerson2?: string | null;
+  contactPhone2?: string | null;
   experienceAbroadYears?: number | null;
+  deletedBy?: string | null;
+  deletedAt?: string | null;
+  canDelete?: boolean;
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -72,7 +77,11 @@ export default function CandidatesPage() {
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+    stage: string;
+  } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [generatingCvId, setGeneratingCvId] = useState<string | null>(null);
   const [bulkGenerating, setBulkGenerating] = useState(false);
@@ -136,8 +145,8 @@ export default function CandidatesPage() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]);
   }, [allCandidates]);
 
-  const handleDelete = useCallback(async (id: string, name: string) => {
-    setDeleteTarget({ id, name });
+  const handleDelete = useCallback(async (id: string, name: string, stage: string) => {
+    setDeleteTarget({ id, name, stage });
   }, []);
 
   const handleGenerateCv = useCallback(async (id: string) => {
@@ -243,8 +252,31 @@ export default function CandidatesPage() {
       },
       {
         accessorKey: "phoneNumber",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Contact" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
+      },
+      {
+        // The person to ring when the candidate herself cannot be reached, which is what the
+        // desk means by "contact" — the column that used to carry that name was her own number.
+        id: "contactPerson2",
+        accessorFn: (row) =>
+          [row.contactPerson2, row.contactPhone2].filter(Boolean).join(" · "),
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Contact person (2nd)" />
+        ),
+        cell: ({ row }) =>
+          row.original.contactPerson2 || row.original.contactPhone2 ? (
+            <div className="leading-tight">
+              <div>{row.original.contactPerson2 || "—"}</div>
+              {row.original.contactPhone2 ? (
+                <div className="text-xs text-muted-foreground">
+                  {row.original.contactPhone2}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            "—"
+          ),
       },
       {
         accessorKey: "occupation",
@@ -308,12 +340,35 @@ export default function CandidatesPage() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       },
       {
+        // Only worth a column where there are removed records to account for, which is the
+        // point of keeping them: a colleague who finds a candidate gone can see who took them
+        // out and when, instead of wondering whether they were ever registered.
+        id: "deletedBy",
+        accessorFn: (row) => row.deletedBy ?? "",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Deleted by" />,
+        cell: ({ row }) =>
+          row.original.deletedBy || row.original.deletedAt ? (
+            <div className="leading-tight">
+              <div>{row.original.deletedBy || "—"}</div>
+              {row.original.deletedAt ? (
+                <div className="text-xs text-muted-foreground">
+                  {new Date(row.original.deletedAt).toLocaleDateString()}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            "—"
+          ),
+      },
+      {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
           <CandidateListActions
             candidateId={row.original.id}
             candidateName={row.original.fullName}
+            stageName={row.original.currentStageName?.trim() || "Intake"}
+            canDelete={row.original.canDelete !== false}
             isGeneratingCv={generatingCvId === row.original.id}
             onGenerateCv={handleGenerateCv}
             onDelete={handleDelete}
@@ -354,9 +409,18 @@ export default function CandidatesPage() {
         agentName: false,
         labourId: false,
         experienceAbroadYears: false,
+        // Shown only where there is something to show — switching to Inactive turns it on.
+        deletedBy: false,
       },
     },
   });
+
+  // Who removed a record only means anything on the list that holds removed records. Switching
+  // to Inactive brings the column in; switching back takes it out again, so the active list is
+  // not carrying a column of dashes.
+  useEffect(() => {
+    table.getColumn("deletedBy")?.toggleVisibility(statusFilter !== "active");
+  }, [statusFilter, table]);
 
   if (permsLoading) {
     return null;
@@ -513,13 +577,23 @@ export default function CandidatesPage() {
         />
       </div>
 
+      {/*
+        The warning says what the desk actually needs to hear, which is not "this cannot be
+        undone" — it is that the candidate is standing in someone else's pipeline. Deleting from
+        here used to pull a record out from under whoever was working it, with nothing asked and
+        nobody told. The server now refuses past the first stage; this says so before the click.
+      */}
       <DeleteDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {
           if (!open) setDeleteTarget(null);
         }}
         title="Delete candidate"
-        description={`Are you sure you want to delete '${deleteTarget?.name}'? This action cannot be undone.`}
+        description={
+          `${deleteTarget?.name} is in ${deleteTarget?.stage}. Take them off the pipeline there ` +
+          `before deleting — a colleague may be working this record, and removing it takes their ` +
+          `work with it. Deleted candidates stay on the Inactive list under your name.`
+        }
         onConfirm={confirmDelete}
         isDeleting={isDeleting}
       />

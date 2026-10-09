@@ -197,16 +197,23 @@ export default function StaffPage() {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
+          {/* Edit and Delete at the top, then a rule, then what is particular to a staff
+              account. Same shape as every other row menu in the app, so the destructive item
+              is always in the same place rather than wherever this menu happens to end. */}
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setEditTarget(row.original)}>
+              <Pencil className="h-4 w-4 mr-2" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDelete(row.original.id, row.original.username)} className="text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" /> Delete user
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleToggleStatus(row.original.id)}>
               {row.original.isActive ? (
                 <><ShieldOff className="h-4 w-4 mr-2" /> Deactivate</>
               ) : (
                 <><Shield className="h-4 w-4 mr-2" /> Activate</>
               )}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setEditTarget(row.original)}>
-              <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -218,10 +225,6 @@ export default function StaffPage() {
               }
             >
               <KeyRound className="h-4 w-4 mr-2" /> Reset password
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleDelete(row.original.id, row.original.username)} className="text-destructive">
-              <Trash2 className="h-4 w-4 mr-2" /> Delete user
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

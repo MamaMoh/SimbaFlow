@@ -108,9 +108,6 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
 
         CandidateIntakeMapper.Apply(candidate, request.Intake ?? new CandidateIntakePayload(), setVisaDefault: true);
 
-        if (string.IsNullOrWhiteSpace(candidate.ApplicationNo))
-            candidate.ApplicationNo = await GenerateApplicationNoAsync(cancellationToken);
-
         candidate.AddDomainEvent(new CandidateRegisteredEvent(
             candidate.Id, candidate.FullName, initialStage?.Id ?? Guid.Empty));
 
@@ -134,14 +131,5 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<Guid>.Success(candidate.Id, 201);
-    }
-
-    private async Task<string> GenerateApplicationNoAsync(CancellationToken cancellationToken)
-    {
-        var today = DateTime.UtcNow;
-        var prefix = $"APP-{today:yyyyMMdd}-";
-        var countToday = await _context.Candidates
-            .CountAsync(c => c.ApplicationNo != null && c.ApplicationNo.StartsWith(prefix), cancellationToken);
-        return $"{prefix}{(countToday + 1):D4}";
     }
 }

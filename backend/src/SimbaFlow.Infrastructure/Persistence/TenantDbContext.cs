@@ -37,6 +37,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
     public DbSet<Candidate> Candidates => Set<Candidate>();
     public DbSet<CandidateDocument> CandidateDocuments => Set<CandidateDocument>();
     public DbSet<CandidateSkill> CandidateSkills => Set<CandidateSkill>();
+    public DbSet<CandidateWorkExperience> CandidateWorkExperiences => Set<CandidateWorkExperience>();
 
     // Agency intake defaults (one row per tenant schema)
     public DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults => Set<AgencyIntakeDefaults>();
@@ -126,6 +127,17 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.HasOne(s => s.Candidate)
                 .WithMany(c => c.ExtraSkills)
                 .HasForeignKey(s => s.CandidateId);
+        });
+
+        modelBuilder.Entity<CandidateWorkExperience>(entity =>
+        {
+            entity.ToTable("candidate_work_experiences");
+            entity.HasIndex(w => w.CandidateId);
+            entity.Property(w => w.Country).HasMaxLength(128);
+            entity.Property(w => w.Occupation).HasMaxLength(128);
+            entity.HasOne(w => w.Candidate)
+                .WithMany(c => c.WorkExperiences)
+                .HasForeignKey(w => w.CandidateId);
         });
 
         modelBuilder.Entity<AgencyIntakeDefaults>(entity =>
