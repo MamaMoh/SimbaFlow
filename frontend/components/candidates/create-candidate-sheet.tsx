@@ -41,7 +41,12 @@ import { useIntakeDefaults, type AgencySkill } from "@/lib/api/intake-defaults";
 import { CountrySelect, countryName } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import { Progress } from "@/components/ui/progress";
-import { generateCandidateVisaForm, uploadCandidateDocument } from "@/lib/api/candidates";
+import {
+  generateCandidateCv,
+  generateCandidateVisaForm,
+  uploadCandidateDocument,
+} from "@/lib/api/candidates";
+import { saveFile } from "@/lib/files/download";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -279,14 +284,19 @@ const registerCandidateSchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   nationality: z.string().min(1, "Nationality is required"),
   phoneNumber: opt,
-  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
+  // No longer asked for, so no longer validated: a malformed address already on a record would
+  // fail a save with no box to correct it in, which is a dead end rather than a validation.
+  email: opt,
   address: opt,
   city: opt,
   country: opt,
   labourId: opt,
   countryOfTravel: opt,
   partnerName: opt,
-  partnerAgencyId: opt,
+  // Required: the partner decides the destination country, whose letterhead the paperwork is
+  // printed on and which agreement the placement runs under. A candidate registered without one
+  // reached the embassy desk as a record nobody could act on.
+  partnerAgencyId: z.string().min(1, "Choose the partner agency this candidate is sent to"),
   contractDate: opt,
   // intake
   placeOfBirth: opt,
@@ -439,15 +449,69 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * What each photo is meant to look like, drawn rather than described.
+ *
+ * The three slots took three different photographs and said so in a line of small print under
+ * each, which people filling the form at speed do not read — so full-body photos arrived cropped
+ * to the head and passport pages arrived as portraits. A silhouette of the framing says it at a
+ * glance and in any language, which matters on a form used by desks that work in Amharic.
+ *
+ * Inline SVG, so there is no asset to ship, nothing to load before the form is usable, and it
+ * stays sharp at any size.
+ */
+function PhotoSample({ kind }: { kind: PhotoKind }) {
+  const common = {
+    className: "h-20 w-20 text-slate-300",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+
+  if (kind === "portrait") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden {...common}>
+        <rect x="9" y="4" width="30" height="40" rx="2" />
+        <circle cx="24" cy="20" r="7" />
+        <path d="M12 42c2.5-7 7-10.5 12-10.5S33.5 35 36 42" />
+      </svg>
+    );
+  }
+
+  if (kind === "full") {
+    return (
+      <svg viewBox="0 0 48 48" aria-hidden {...common}>
+        <rect x="13" y="3" width="22" height="42" rx="2" />
+        <circle cx="24" cy="12" r="3.6" />
+        <path d="M24 16v13M24 20l-5 4M24 20l5 4M24 29l-3.5 11M24 29l3.5 11" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden {...common}>
+      <rect x="4" y="9" width="40" height="30" rx="2" />
+      <circle cx="15" cy="20" r="4" />
+      <path d="M10 29c1.4-3 3-4.5 5-4.5S18.6 26 20 29" />
+      <path d="M26 16h14M26 21h14M26 26h10" />
+      <path d="M8 34h32" strokeDasharray="3 2" />
+    </svg>
+  );
+}
+
+type PhotoKind = "portrait" | "full" | "passport";
+
 function PhotoPicker({
   label,
-  hint,
+  kind,
   file,
   onChange,
   existingUrl,
 }: {
   label: string;
-  hint?: string;
+  kind: PhotoKind;
   file: File | null;
   onChange: (file: File | null) => void;
   existingUrl?: string | null;
@@ -605,11 +669,8 @@ function PhotoPicker({
           />
         ) : (
           <div className="flex flex-col items-center gap-2 px-4 text-center text-sm text-muted-foreground">
-            <ImageIcon className="h-8 w-8 text-slate-400" />
+            <PhotoSample kind={kind} />
             <p className="font-medium text-slate-600">{label}</p>
-            <p className="text-xs text-slate-500">
-              {hint || "JPEG, PNG, or WebP · max 8 MB"}
-            </p>
             {broken ? (
               <p className="text-xs text-destructive">Could not load preview</p>
             ) : null}
@@ -657,11 +718,7 @@ function PhotoPicker({
           <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
             {file.name} · {formatFileSize(file.size)}
           </p>
-        ) : existingUrl && previewUrl ? (
-          <p className="text-xs text-muted-foreground">Saved image on file</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">Drag & drop or browse</p>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -723,7 +780,11 @@ export function CandidateApplicationForm({
     newLanguageRow("English", ""),
     newLanguageRow("Arabic", ""),
   ]);
-  const [generateVisaAfterSave, setGenerateVisaAfterSave] = useState(!isEdit);
+  // The CV can be drawn from a registration the moment it is saved. The enjaze cannot: it needs
+  // a visa number and an E number that do not exist on the day someone is registered, so it is
+  // offered rather than assumed — ticked by default it would warn on every new candidate.
+  const [generateVisaAfterSave, setGenerateVisaAfterSave] = useState(false);
+  const [generateCvAfterSave, setGenerateCvAfterSave] = useState(!isEdit);
   const [existingMedia, setExistingMedia] = useState<{
     photo: boolean;
     fullPhoto: boolean;
@@ -1269,18 +1330,36 @@ export function CandidateApplicationForm({
       const newId = result.data as string;
       await uploadPhotos(newId);
 
+      // The registration has already succeeded by this point. A document that cannot be made —
+      // the enjaze needs a visa number and an E number that do not exist on the day someone is
+      // registered — is reported as the one thing outstanding, not as a failed registration.
+      const madeDocuments: string[] = [];
+      const notMade: string[] = [];
+
+      if (generateCvAfterSave) {
+        try {
+          saveFile(await generateCandidateCv(newId));
+          madeDocuments.push("CV");
+        } catch (err) {
+          notMade.push(`CV — ${err instanceof Error ? err.message : "could not be made"}`);
+        }
+      }
+
       if (generateVisaAfterSave) {
         try {
-          const blob = await generateCandidateVisaForm(newId);
-          const url = URL.createObjectURL(blob);
-          window.open(url, "_blank");
-          toast.success("Candidate registered · visa form generated");
-        } catch {
-          toast.success("Candidate registered (visa form could not be generated)");
+          saveFile(await generateCandidateVisaForm(newId));
+          madeDocuments.push("visa form");
+        } catch (err) {
+          notMade.push(`visa form — ${err instanceof Error ? err.message : "could not be made"}`);
         }
-      } else {
-        toast.success("Candidate registered successfully");
       }
+
+      toast.success(
+        madeDocuments.length > 0
+          ? `Candidate registered · ${madeDocuments.join(" and ")} downloaded`
+          : "Candidate registered successfully",
+      );
+      for (const problem of notMade) toast.warning(problem);
 
       onSaved?.();
       mutate((key: unknown) => typeof key === "string" && key.includes("/candidates"));
@@ -1319,6 +1398,27 @@ export function CandidateApplicationForm({
             {isEdit ? "Edit application" : "New application"}
           </h1>
         </div>
+        {/* Opposite the title, where it is read before the form is filled rather than found at
+            the bottom of it after. Both documents are made from this record, so deciding to
+            print them belongs with the record, not with the sponsor section it used to sit in. */}
+        {!isEdit && (
+          <div className="flex flex-col gap-1.5 sm:items-end">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={generateVisaAfterSave}
+                onCheckedChange={(v) => setGenerateVisaAfterSave(v === true)}
+              />
+              Generate visa form after save
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={generateCvAfterSave}
+                onCheckedChange={(v) => setGenerateCvAfterSave(v === true)}
+              />
+              Generate CV after save
+            </label>
+          </div>
+        )}
       </div>
 
       <form
@@ -1357,25 +1457,16 @@ export function CandidateApplicationForm({
             <SectionHeading title="Documents" />
             {/* One card, three uploads. Splitting the passport scan from the two photos left
                 each card half empty across a full-width page, and all three are the same job. */}
-            <FormSection icon={BookOpen} title="Passport & photos">
+            <FormSection icon={BookOpen} title="Passport & photos" defaultOpen={false}>
+              {/* Portrait, full body, passport — the order they are taken in, and the order
+                  they are asked for on the forms these feed. */}
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-slate-700">Passport biodata page</Label>
-                  <PhotoPicker
-                    key="picker-passport"
-                    label="Passport biodata page"
-                    hint="MRZ lines visible · 8 MB"
-                    file={passportFile}
-                    onChange={onPassportFileChange}
-                    existingUrl={passportUrl}
-                  />
-                </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-medium text-slate-700">Portrait</Label>
                   <PhotoPicker
                     key="picker-portrait"
-                    label="Portrait photo"
-                    hint="Head and shoulders · CV"
+                    label="Portrait"
+                    kind="portrait"
                     file={photoFile}
                     onChange={setPhotoFile}
                     existingUrl={photoUrl}
@@ -1385,11 +1476,22 @@ export function CandidateApplicationForm({
                   <Label className="text-xs font-medium text-slate-700">Full body</Label>
                   <PhotoPicker
                     key="picker-full"
-                    label="Full-body photo"
-                    hint="Standing · agency forms"
+                    label="Full body"
+                    kind="full"
                     file={fullPhotoFile}
                     onChange={setFullPhotoFile}
                     existingUrl={fullPhotoUrl}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-slate-700">Passport biodata page</Label>
+                  <PhotoPicker
+                    key="picker-passport"
+                    label="Passport biodata page"
+                    kind="passport"
+                    file={passportFile}
+                    onChange={onPassportFileChange}
+                    existingUrl={passportUrl}
                   />
                 </div>
               </div>
@@ -1416,11 +1518,7 @@ export function CandidateApplicationForm({
                       {ocrPercent}%
                     </span>
                   </div>
-                ) : (
-                  <span className="text-xs text-muted-foreground">
-                    Reads the passport to fill name, number, dates and gender
-                  </span>
-                )}
+                ) : null}
               </div>
             </FormSection>
           </div>
@@ -1428,20 +1526,25 @@ export function CandidateApplicationForm({
           {/* Step 2 — Identity */}
           <div id="identity" className="scroll-mt-24 space-y-4">
             <SectionHeading title="Identity" />
-            <FormSection
-              icon={FileText}
-              title="Basic information"
-            >
+            {/* These four stay open: name, passport, the applicant themselves and who they
+                are being sent to are what a registration is. The rest is filled in later and
+                folds away until it is. */}
+            <FormSection icon={FileText} title="Basic information">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Application No.</Label>
                   {/* Assigned on registration, but editable: agencies carry numbers over from
                       whatever they used before, and a wrong one used to need a database. Left
                       blank on a save it keeps the number already on the record. */}
-                  <Input
-                    {...register("applicationNo")}
-                    placeholder={isEdit ? "" : "Assigned automatically on save"}
-                  />
+                  <Input {...register("applicationNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  {/* Beside the application number because that is what it is — the consulate's
+                      own number for this application. Unlike that one it is never assigned here:
+                      it comes off the consular system, and the enjaze form will not print
+                      without it. */}
+                  <Label>E number</Label>
+                  <Input {...register("eNumber")} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Signed on</Label>
@@ -1456,7 +1559,6 @@ export function CandidateApplicationForm({
                   name="fullName"
                   value={nameText}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="First, father's and grandfather's name"
                 />
                 {/* The split parts still travel with the form; the single box is only the
                     way they are entered. */}
@@ -1475,10 +1577,7 @@ export function CandidateApplicationForm({
               </div>
             </FormSection>
 
-            <FormSection
-              icon={Stamp}
-              title="Passport details"
-            >
+            <FormSection icon={Stamp} title="Passport details">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>
@@ -1557,9 +1656,6 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Date of issue</Label>
                   <Input type="date" {...register("passportIssueDate")} />
-                  <p className="text-[11px] text-muted-foreground">
-                    Expiry less {passportValidityYears} years — override if the booklet differs.
-                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label>
@@ -1580,10 +1676,7 @@ export function CandidateApplicationForm({
               </div>
             </FormSection>
 
-            <FormSection
-              icon={User}
-              title="Applicant details"
-            >
+            <FormSection icon={User} title="Applicant details">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>
@@ -1752,6 +1845,127 @@ export function CandidateApplicationForm({
                   <Label>Address</Label>
                   <Input {...register("address")} />
                 </div>
+                <div className="space-y-1.5">
+                  <Label>Labour ID</Label>
+                  <Input {...register("labourId")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>National ID</Label>
+                  <Input {...register("nationalId")} />
+                </div>
+              </div>
+            </FormSection>
+          </div>
+
+          {/* Placement — right after the applicant, because who they are being sent to is
+              the next thing asked at the desk and it decides the destination country. */}
+          <div id="placement" className="scroll-mt-24 space-y-4">
+            <SectionHeading title="Placement" />
+            <FormSection icon={Stamp} title="Sponsor & visa">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>
+                    Send-to partner agency <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={watch("partnerAgencyId") || undefined}
+                    onValueChange={(id) => {
+                      if (!id) return;
+                      setValue("partnerAgencyId", id, { shouldValidate: true });
+                      const p = linkedPartners.find((x) => x.id === id);
+                      if (p) {
+                        // The partner decides the destination, so it is set here rather than
+                        // asked for twice.
+                        setValue("partnerName", p.name);
+                        if (p.country) {
+                          setValue("countryOfTravel", p.country);
+                          setValue("country", p.country);
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select linked partner">
+                        {partnerOptions.find((p) => p.id === savedPartnerId)?.label || undefined}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[200]">
+                      {partnerOptions.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.partnerAgencyId && (
+                    <p className="text-xs text-destructive">{errors.partnerAgencyId.message}</p>
+                  )}
+                  {partnerOptions.length === 0 ? (
+                    <p className="text-xs text-amber-800">
+                      No partners linked. An agency owner should link partners under Partners first.
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contract date</Label>
+                  <Input type="date" {...register("contractDate")} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label>Visa No.</Label>
+                  <Input {...register("visaNumber")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor name</Label>
+                  <Input {...register("sponsorName")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor ID</Label>
+                  <Input {...register("sponsorIdNumber")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor phone</Label>
+                  <PhoneInputField
+                    value={watch("sponsorPhone") || ""}
+                    onChange={(v) => setValue("sponsorPhone", v)}
+                  />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label>Sponsor address</Label>
+                  <Input {...register("sponsorAddress")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sponsor name (Arabic)</Label>
+                  <Input {...register("sponsorArabicName")} />
+                </div>
+                {/* Biometric ID, agent name, file no., wakala no., sticker visa no. and email
+                    are no longer asked for here. They are still registered, still sent back by
+                    the API and still written on save, so anything already on a record survives
+                    an edit — they simply have no box, because nobody was filling them. */}
+                <div className="space-y-1.5">
+                  <Label>Contract No.</Label>
+                  <Input {...register("contractNo")} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Visa type</Label>
+                  <Select
+                    value={watch("visaType") || undefined}
+                    onValueChange={(v) => v && setValue("visaType", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type">
+                        {watch("visaType") || undefined}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent position="popper" className="z-[200]">
+                      {withValue(VISA_TYPES, watch("visaType")).map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </FormSection>
           </div>
@@ -1759,10 +1973,7 @@ export function CandidateApplicationForm({
           {/* Step 3 — Family */}
           <div id="family" className="scroll-mt-24 space-y-4">
             <SectionHeading title="Family" />
-            <FormSection
-              icon={Users}
-              title="Relative information"
-            >
+            <FormSection icon={Users} title="Relative information" defaultOpen={false}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Relative name</Label>
@@ -1807,7 +2018,7 @@ export function CandidateApplicationForm({
               </div>
             </FormSection>
 
-            <FormSection icon={Mail} title="Other information">
+            <FormSection icon={Mail} title="Other information" defaultOpen={false}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Contact person (2nd)</Label>
@@ -1841,167 +2052,10 @@ export function CandidateApplicationForm({
             </FormSection>
           </div>
 
-          {/* Step 4 — Experience */}
-          <div id="placement" className="scroll-mt-24 space-y-4">
-            <SectionHeading title="Placement" />
-            <FormSection
-              icon={Stamp}
-              title="Sponsor & visa"
-            >
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Send-to partner agency</Label>
-                  <Select
-                    value={watch("partnerAgencyId") || undefined}
-                    onValueChange={(id) => {
-                      if (!id) return;
-                      setValue("partnerAgencyId", id, { shouldValidate: true });
-                      const p = linkedPartners.find((x) => x.id === id);
-                      if (p) {
-                        // The partner decides the destination, so it is set here rather than
-                        // asked for twice.
-                        setValue("partnerName", p.name);
-                        if (p.country) {
-                          setValue("countryOfTravel", p.country);
-                          setValue("country", p.country);
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select linked partner">
-                        {partnerOptions.find((p) => p.id === savedPartnerId)?.label || undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[200]">
-                      {partnerOptions.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {partnerOptions.length === 0 ? (
-                    <p className="text-xs text-amber-800">
-                      No partners linked. An agency owner should link partners under Partners first.
-                    </p>
-                  ) : null}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Contract date</Label>
-                  <Input type="date" {...register("contractDate")} />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label>Visa No.</Label>
-                  <Input {...register("visaNumber")} />
-                </div>
-                <div className="space-y-1.5">
-                  {/* Normally captured at Mark Ready, alongside the signed contract. Here too, so
-                      a wrong one can be corrected without running that whole step again. */}
-                  <Label>E number</Label>
-                  <Input {...register("eNumber")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor name</Label>
-                  <Input {...register("sponsorName")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor ID</Label>
-                  <Input {...register("sponsorIdNumber")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor phone</Label>
-                  <Input {...register("sponsorPhone")} />
-                </div>
-                <div className="space-y-1.5 col-span-2">
-                  <Label>Sponsor address</Label>
-                  <Input {...register("sponsorAddress")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sponsor name (Arabic)</Label>
-                  <Input {...register("sponsorArabicName")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>National ID</Label>
-                  <Input {...register("nationalId")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Biometric ID</Label>
-                  <Input {...register("biometricId")} />
-                </div>
-                {/* These seven were saved, sent back by the API and carried in the form's state,
-                    but had nowhere to appear — so an edit looked as though the paperwork numbers
-                    had been lost, and the only way to correct one was a database. */}
-                <div className="space-y-1.5">
-                  <Label>Agent name</Label>
-                  <Input {...register("agentName")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>File No.</Label>
-                  <Input {...register("fileNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Wakala No.</Label>
-                  <Input {...register("wakalaNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Contract No.</Label>
-                  <Input {...register("contractNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sticker Visa No.</Label>
-                  <Input {...register("stickerVisaNo")} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Visa type</Label>
-                  <Select
-                    value={watch("visaType") || undefined}
-                    onValueChange={(v) => v && setValue("visaType", v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type">
-                        {watch("visaType") || undefined}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[200]">
-                      {withValue(VISA_TYPES, watch("visaType")).map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Email</Label>
-                  <Input type="email" {...register("email")} />
-                  {errors.email && (
-                    <p className="text-xs text-destructive">{errors.email.message}</p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Labour ID</Label>
-                  <Input {...register("labourId")} />
-                </div>
-              </div>
-            </FormSection>
-            {!isEdit && (
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={generateVisaAfterSave}
-                  onCheckedChange={(v) => setGenerateVisaAfterSave(v === true)}
-                />
-                Generate visa form after save
-              </label>
-            )}
-          </div>
-
           <div id="experience" className="scroll-mt-24 space-y-4">
             <SectionHeading title="Experience" />
-            <FormSection icon={FileText} title="Languages & education">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">Add spoken languages and education level.</p>
+            <FormSection icon={FileText} title="Languages & education" defaultOpen={false}>
+              <div className="flex items-center justify-end gap-3">
                 <Button
                   type="button"
                   variant="outline"
@@ -2102,7 +2156,7 @@ export function CandidateApplicationForm({
                 />
               </div>
             </FormSection>
-            <FormSection icon={MapPin} title="Work experience">
+            <FormSection icon={MapPin} title="Work experience" defaultOpen={false}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Period (years abroad)</Label>
@@ -2146,7 +2200,7 @@ export function CandidateApplicationForm({
                 </div>
               </div>
             </FormSection>
-            <FormSection icon={Stamp} title="Skills & experience">
+            <FormSection icon={Stamp} title="Skills & experience" defaultOpen={false}>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Cooking level</Label>

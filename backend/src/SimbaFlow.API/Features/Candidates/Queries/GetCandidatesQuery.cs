@@ -11,7 +11,9 @@ public record GetCandidatesQuery(
     int Page, int PageSize, string? Search,
     Guid? StageId, string? CountryOfTravel,
     // null → active only (default). "all" → every status. Otherwise a specific status name.
-    string? Status = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
+    string? Status = null,
+    int? MinAge = null,
+    int? MaxAge = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
@@ -40,7 +42,9 @@ public record CandidateListDto(
     string? SponsorIdNumber,
     string? VisaNumber,
     string? AgentName,
-    string? WorksIn);
+    string? WorksIn,
+    string? PhoneNumber,
+    int? ExperienceAbroadYears);
 
 public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<PaginatedCandidateResult>>
 {
@@ -63,16 +67,31 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                  && Enum.TryParse<CandidateStatus>(request.Status, true, out var wanted))
             query = query.Where(c => c.Status == wanted);
 
+        // Searched in the database over every candidate, not in the browser over the page it
+        // happens to be holding — a desk with two thousand people on the books was searching the
+        // hundred rows the table had loaded and concluding the candidate was not there.
+        //
+        // Lowered and compared with Contains rather than with ILike. Both become the same scan
+        // in Postgres, and this one is also what the in-memory provider the tests run on can
+        // execute — a search that silently matches nothing is exactly the failure worth having
+        // tests for, and ILike leaves it untestable.
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            var search = request.Search.ToLower();
+            var search = request.Search.Trim().ToLower();
+
+            // The whole name as well as its parts. Names are stored in three columns and typed
+            // as one, so "Almaz Kebede" matched nothing: it is in neither FirstName nor LastName.
             query = query.Where(c =>
-                EF.Functions.ILike(c.FirstName, $"%{search}%") ||
-                EF.Functions.ILike(c.LastName, $"%{search}%") ||
-                EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
-                (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")) ||
-                (c.SponsorName != null && EF.Functions.ILike(c.SponsorName, $"%{search}%")) ||
-                (c.VisaNumber != null && EF.Functions.ILike(c.VisaNumber, $"%{search}%")));
+                (c.FirstName + " " + (c.MiddleName ?? "") + " " + c.LastName).ToLower().Contains(search) ||
+                (c.FirstName + " " + c.LastName).ToLower().Contains(search) ||
+                c.PassportNumber.ToLower().Contains(search) ||
+                (c.LocalFullName != null && c.LocalFullName.ToLower().Contains(search)) ||
+                (c.PhoneNumber != null && c.PhoneNumber.ToLower().Contains(search)) ||
+                (c.LabourId != null && c.LabourId.ToLower().Contains(search)) ||
+                (c.ApplicationNo != null && c.ApplicationNo.ToLower().Contains(search)) ||
+                (c.ENumber != null && c.ENumber.ToLower().Contains(search)) ||
+                (c.SponsorName != null && c.SponsorName.ToLower().Contains(search)) ||
+                (c.VisaNumber != null && c.VisaNumber.ToLower().Contains(search)));
         }
 
         if (request.StageId.HasValue)
@@ -81,8 +100,26 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
         if (!string.IsNullOrWhiteSpace(request.CountryOfTravel))
             query = query.Where(c => c.CountryOfTravel == request.CountryOfTravel);
 
-        var totalCount = await query.CountAsync(cancellationToken);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // Age is asked for as a range of years and held as a date of birth, so the range is
+        // turned into dates rather than the date of birth into an age: an age computed per row
+        // cannot use the index, and recomputing it for every candidate to filter a handful is
+        // the slow way round. Someone is 25 from their 25th birthday until the day before their
+        // 26th, which is what the two bounds say.
+        if (request.MinAge is int minAge && minAge >= 0)
+        {
+            var newestBirthday = today.AddYears(-minAge);
+            query = query.Where(c => c.DateOfBirth <= newestBirthday);
+        }
+
+        if (request.MaxAge is int maxAge && maxAge >= 0)
+        {
+            var oldestBirthday = today.AddYears(-(maxAge + 1));
+            query = query.Where(c => c.DateOfBirth > oldestBirthday);
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
             .OrderByDescending(c => c.RegisteredAt)
@@ -109,7 +146,9 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 c.SponsorIdNumber,
                 c.VisaNumber,
                 c.AgentName,
-                c.WorksIn ?? c.CountryOfTravel))
+                c.WorksIn ?? c.CountryOfTravel,
+                c.PhoneNumber,
+                c.ExperienceAbroadYears))
             .ToListAsync(cancellationToken);
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);

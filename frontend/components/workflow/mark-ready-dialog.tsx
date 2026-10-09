@@ -263,10 +263,9 @@ export function MarkReadyDialog({
               />
             </div>
           ) : (
-            <p className="flex items-start gap-2 rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
-              <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              The employment contract is built from this candidate, their partner agency and your
-              agency&apos;s licence details, and filed against them.
+            <p className="flex items-center gap-2 text-sm">
+              <FileText className="h-3.5 w-3.5 shrink-0" />
+              The contract is generated here.
             </p>
           )}
 
@@ -275,13 +274,7 @@ export function MarkReadyDialog({
             <Field id="visa-no" label="Visa number" value={form.visaNumber} onChange={set("visaNumber")} />
           </div>
 
-          <Field
-            id="e-number"
-            label="E number"
-            value={form.eNumber}
-            onChange={set("eNumber")}
-            hint="From the consular application — not the passport number. It barcodes onto the enjaze form."
-          />
+          <Field id="e-number" label="E number" value={form.eNumber} onChange={set("eNumber")} />
 
           <Field
             id="sponsor-name"
@@ -338,19 +331,16 @@ function Field({
   label,
   value,
   onChange,
-  hint,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  hint?: string;
 }) {
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} value={value} onChange={(e) => onChange(e.target.value)} />
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

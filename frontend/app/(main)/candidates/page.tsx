@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import useSWR from "swr";
 import {
   useReactTable,
@@ -21,6 +21,7 @@ import { generateBulkCandidateCvs, generateCandidateCv } from "@/lib/api/candida
 import { CandidateListActions } from "@/components/candidates/candidate-list-actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Files, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -47,6 +48,8 @@ interface CandidateRow {
   visaNumber?: string | null;
   agentName?: string | null;
   worksIn?: string | null;
+  phoneNumber?: string | null;
+  experienceAbroadYears?: number | null;
 }
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -62,6 +65,10 @@ export default function CandidatesPage() {
   const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  // What the API was last asked for. The box updates on every keystroke; this follows a beat
+  // later, so typing a name is one request rather than one per letter.
+  const [search, setSearch] = useState("");
+  const [ageRange, setAgeRange] = useState<{ min: string; max: string }>({ min: "", max: "" });
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -70,12 +77,29 @@ export default function CandidatesPage() {
   const [generatingCvId, setGeneratingCvId] = useState<string | null>(null);
   const [bulkGenerating, setBulkGenerating] = useState(false);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(globalFilter.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [globalFilter]);
+
+  /**
+   * The list, narrowed by the database rather than by the browser.
+   *
+   * The search box used to filter the rows the table happened to be holding, which is the first
+   * page of them — so a desk with two thousand people on the books searched a hundred and
+   * concluded the candidate was not registered. Everything that narrows the list now goes to the
+   * API, and the table shows what comes back.
+   */
   const { data, error, isLoading, mutate } = useSWR(
     !permsLoading && canRead
-      ? `/api/proxy/candidates?page=1&pageSize=100${globalFilter ? `&search=${encodeURIComponent(globalFilter)}` : ""}${statusFilter !== "active" ? `&status=${statusFilter}` : ""}`
+      ? `/api/proxy/candidates?page=1&pageSize=200` +
+        (search ? `&search=${encodeURIComponent(search)}` : "") +
+        (statusFilter !== "active" ? `&status=${statusFilter}` : "") +
+        (ageRange.min ? `&minAge=${encodeURIComponent(ageRange.min)}` : "") +
+        (ageRange.max ? `&maxAge=${encodeURIComponent(ageRange.max)}` : "")
       : null,
     fetcher,
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, keepPreviousData: true }
   );
 
   const allCandidates: CandidateRow[] = data?.data?.items || [];
@@ -218,13 +242,28 @@ export default function CandidatesPage() {
         size: 50,
       },
       {
+        accessorKey: "phoneNumber",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Contact" />,
+        cell: ({ getValue }) => (getValue() as string) || "—",
+      },
+      {
         accessorKey: "occupation",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Occupation" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
+        accessorKey: "experienceAbroadYears",
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Experience" />,
+        cell: ({ getValue }) => {
+          const years = getValue() as number | null | undefined;
+          if (years === null || years === undefined) return "—";
+          return `${years} ${years === 1 ? "year" : "years"}`;
+        },
+        size: 90,
+      },
+      {
         accessorKey: "worksIn",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Works in" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Worked in" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
@@ -292,6 +331,9 @@ export default function CandidatesPage() {
     data: candidates,
     columns,
     state: { sorting, globalFilter, rowSelection },
+    // The API has already done the narrowing; filtering again here would hide rows it chose to
+    // return — a candidate matched on their phone number has that number in no visible column.
+    manualFiltering: true,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
@@ -311,6 +353,7 @@ export default function CandidatesPage() {
         visaNumber: false,
         agentName: false,
         labourId: false,
+        experienceAbroadYears: false,
       },
     },
   });
@@ -385,6 +428,40 @@ export default function CandidatesPage() {
           paginated={true}
           toolbarEndActions={
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-md border px-2 py-0.5">
+                <span className="text-xs text-muted-foreground">Age</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={99}
+                  inputMode="numeric"
+                  aria-label="Minimum age"
+                  value={ageRange.min}
+                  onChange={(e) => setAgeRange((r) => ({ ...r, min: e.target.value }))}
+                  className="h-6 w-12 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
+                />
+                <span className="text-xs text-muted-foreground">–</span>
+                <Input
+                  type="number"
+                  min={0}
+                  max={99}
+                  inputMode="numeric"
+                  aria-label="Maximum age"
+                  value={ageRange.max}
+                  onChange={(e) => setAgeRange((r) => ({ ...r, max: e.target.value }))}
+                  className="h-6 w-12 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
+                />
+                {(ageRange.min || ageRange.max) && (
+                  <button
+                    type="button"
+                    aria-label="Clear age filter"
+                    onClick={() => setAgeRange({ min: "", max: "" })}
+                    className="rounded px-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               <div className="flex rounded-md border p-0.5" role="group" aria-label="Filter by status">
                 {(["active", "inactive", "all"] as const).map((s) => (
                   <button

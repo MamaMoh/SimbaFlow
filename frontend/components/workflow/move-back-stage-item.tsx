@@ -126,10 +126,6 @@ export function MoveBackStageItem({
                       </li>
                     ))}
                   </ul>
-                  <p className="ml-6 text-xs text-muted-foreground">
-                    Nothing restores these. The candidate&apos;s own details — visa, sponsor,
-                    documents — are kept.
-                  </p>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -145,9 +141,6 @@ export function MoveBackStageItem({
                   onChange={(e) => setReason(e.target.value)}
                   placeholder="Moved by mistake"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Goes on the candidate&apos;s timeline with the move.
-                </p>
               </div>
             </div>
           ) : null}

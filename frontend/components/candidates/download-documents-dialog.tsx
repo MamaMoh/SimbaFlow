@@ -25,8 +25,8 @@ import { downloadCandidateDocuments } from "@/lib/api/candidates";
  * order the merged download comes out in: keep it in step with PageOrder in
  * backend/src/SimbaFlow.API/Features/Candidates/Commands/DownloadCandidateDocumentsCommand.cs.
  */
-export const DOCUMENT_KINDS: { type: number; label: string; hint?: string }[] = [
-  { type: 3, label: "CV", hint: "Drawn fresh, in the agency's chosen layout" },
+export const DOCUMENT_KINDS: { type: number; label: string }[] = [
+  { type: 3, label: "CV" },
   { type: 0, label: "Passport" },
   { type: 1, label: "Photo" },
   { type: 8, label: "Full size photo" },
@@ -109,12 +109,7 @@ export function DownloadDocumentsDialog({
                 onCheckedChange={() => toggle(kind.type)}
                 aria-label={kind.label}
               />
-              <span className="flex-1">
-                <span className="text-sm">{kind.label}</span>
-                {kind.hint && (
-                  <span className="block text-xs text-muted-foreground">{kind.hint}</span>
-                )}
-              </span>
+              <span className="flex-1 text-sm">{kind.label}</span>
             </label>
           ))}
         </div>

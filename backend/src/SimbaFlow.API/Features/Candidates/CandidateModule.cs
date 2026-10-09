@@ -20,10 +20,12 @@ public class CandidateModule : ICarterModule
         group.MapGet("/", async (
             int? page, int? pageSize, string? search,
             Guid? stageId, string? countryOfTravel, string? status,
+            int? minAge, int? maxAge,
             ISender sender) =>
         {
             var query = new GetCandidatesQuery(
-                page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel, status);
+                page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel, status,
+                minAge, maxAge);
             var result = await sender.Send(query);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
