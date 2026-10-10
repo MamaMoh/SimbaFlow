@@ -69,8 +69,7 @@ internal static class CvLayouts
     private static string Remark(Candidate c) => Truncate(V(c.Remark), 300);
 
     private static string Reference(Candidate c) =>
-        V(c.ReferenceNo) is { Length: > 0 } r ? r
-        : V(c.LabourId) is { Length: > 0 } l ? l
+        V(c.LabourId) is { Length: > 0 } l ? l
         : V(c.ENumber) is { Length: > 0 } e ? e
         : V(c.PassportNumber);
 
@@ -825,7 +824,7 @@ internal static class CvLayouts
         var age = AgeYears(candidate.DateOfBirth);
         var dob = candidate.DateOfBirth.ToString("dd/MM/yyyy");
         var address = FormatAddress(candidate) ?? "";
-        var refNo = candidate.ReferenceNo ?? candidate.LabourId ?? candidate.ENumber ?? candidate.PassportNumber;
+        var refNo = candidate.LabourId ?? candidate.ENumber ?? candidate.PassportNumber;
         // NO, not a dash: the sample form says NO, and a dash reads as "not asked" where the
         // rest of the column reads as an answer. Shadowed the shared helper before this.
         string YesNo(bool v) => v ? "YES" : "NO";

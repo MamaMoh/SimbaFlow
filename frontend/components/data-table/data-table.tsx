@@ -12,7 +12,65 @@ import {
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { cn } from "@/lib/utils";
-import { Inbox } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Inbox, X } from "lucide-react";
+
+/**
+ * The actions column, pinned to the right edge.
+ *
+ * These tables are wider than the screen — the candidates list alone has fifteen columns — and
+ * the one thing every row is for, its ⋯ menu, sat at the far right where it could only be
+ * reached by scrolling sideways past everything else. Pinned, it is always under the cursor.
+ *
+ * An opaque background is not optional on a pinned cell: without it the columns underneath show
+ * through as they scroll past.
+ */
+const PINNED =
+  "sticky right-0 z-20 w-[60px] bg-background shadow-[-6px_0_6px_-6px_rgba(15,23,42,0.18)]";
+
+/**
+ * Opens an already-open menu where the pointer is, rather than over its trigger.
+ *
+ * Radix anchors a dropdown to the element that opened it, which for a row-body click is the ⋯
+ * button pinned at the right edge — so clicking a name on the left threw the menu to the other
+ * side of the screen, and on a wide table that is most of a metre away. There is no anchor
+ * override on DropdownMenu, so the popper's own wrapper is moved instead, and kept there: Radix
+ * recomputes the position on scroll and resize, which would otherwise snap it back to the
+ * button mid-use.
+ *
+ * Clamped to the viewport, because a click near the right or bottom edge would otherwise open a
+ * menu half off the screen.
+ */
+function openMenuAt(x: number, y: number): void {
+  // The last one: a tooltip or an earlier menu may still be in the DOM, and the newest wrapper
+  // is appended last.
+  const wrappers = document.querySelectorAll<HTMLElement>("[data-radix-popper-content-wrapper]");
+  const wrapper = wrappers[wrappers.length - 1];
+  if (!wrapper) return;
+
+  const place = () => {
+    const { offsetWidth: w, offsetHeight: h } = wrapper;
+    const left = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+    const top = Math.max(8, Math.min(y, window.innerHeight - h - 8));
+    const wanted = `translate(${left}px, ${top}px)`;
+    // Compared before writing, or the observer below would see its own write and loop forever.
+    if (wrapper.style.transform === wanted) return;
+    wrapper.style.setProperty("transform", wanted, "important");
+  };
+
+  place();
+
+  const watcher = new MutationObserver(place);
+  watcher.observe(wrapper, { attributeFilter: ["style"] });
+  // Stops when the menu goes: Radix removes the wrapper from the DOM on close.
+  const gone = new MutationObserver(() => {
+    if (!wrapper.isConnected) {
+      watcher.disconnect();
+      gone.disconnect();
+    }
+  });
+  gone.observe(document.body, { childList: true, subtree: true });
+}
 
 type PaginationProps = Omit<
   React.ComponentProps<typeof DataTablePagination>,
@@ -45,6 +103,11 @@ export interface DataTableProps<TData, TValue> {
   onPrint?: (allData: any[], selectedRows: any[]) => void;
   searchPlaceholder?: string;
   useFilterPopover?: boolean;
+  /**
+   * A filter box under each column heading. On by default — every table in the app has one.
+   * Set false where the rows are already narrowed by something else.
+   */
+  columnFilters?: boolean;
   /** Message shown inside the table body when there are no rows. */
   emptyMessage?: string;
   /** Full custom empty-state node (overrides emptyMessage). */
@@ -73,6 +136,7 @@ export function DataTable<TData, TValue>(
     onPrint,
     searchPlaceholder,
     useFilterPopover = false,
+    columnFilters = true,
     emptyMessage = "No records to display yet.",
     emptyState,
   } = props;
@@ -113,7 +177,13 @@ export function DataTable<TData, TValue>(
             {table.getHeaderGroups().map((headerGroup: any) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header: any) => (
-                  <TableHead key={header.id} className="whitespace-nowrap">
+                  <TableHead
+                    key={header.id}
+                    className={cn(
+                      "whitespace-nowrap",
+                      header.column.id === "actions" && PINNED
+                    )}
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -124,6 +194,47 @@ export function DataTable<TData, TValue>(
                 ))}
               </TableRow>
             ))}
+
+            {/* A box under each heading, filtering that column alone.
+                One search box over the whole table answers "is this person here"; narrowing a
+                list down to one partner, one stage and one occupation at once is a different
+                question, and it was being answered by exporting to Excel. */}
+            {columnFilters ? (
+              <TableRow className="hover:bg-transparent">
+                {table.getVisibleLeafColumns().map((column: any) => (
+                  <th
+                    key={column.id}
+                    className={cn(
+                      "bg-muted/30 p-1 align-middle",
+                      column.id === "actions" && PINNED
+                    )}
+                  >
+                    {column.getCanFilter() ? (
+                      <div className="relative">
+                        <Input
+                          value={(column.getFilterValue() as string) ?? ""}
+                          onChange={(e) =>
+                            column.setFilterValue(e.target.value || undefined)
+                          }
+                          aria-label={`Filter ${column.id}`}
+                          className="h-7 w-full min-w-[80px] bg-background px-2 pr-6 text-xs shadow-none"
+                        />
+                        {column.getFilterValue() ? (
+                          <button
+                            type="button"
+                            aria-label={`Clear ${column.id} filter`}
+                            onClick={() => column.setFilterValue(undefined)}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </th>
+                ))}
+              </TableRow>
+            ) : null}
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
@@ -146,7 +257,8 @@ export function DataTable<TData, TValue>(
                       const trigger = e.currentTarget.querySelector<HTMLElement>(
                         '[aria-label="Row actions"]',
                       );
-                      trigger?.dispatchEvent(
+                      if (!trigger) return;
+                      trigger.dispatchEvent(
                         new PointerEvent("pointerdown", {
                           bubbles: true,
                           cancelable: true,
@@ -154,13 +266,20 @@ export function DataTable<TData, TValue>(
                           pointerType: "mouse",
                         }),
                       );
+                      // Then move it to the pointer. Radix has mounted the content by the next
+                      // frame; before that there is nothing to move.
+                      const { clientX, clientY } = e;
+                      requestAnimationFrame(() => openMenuAt(clientX, clientY));
                       return;
                     }
                     onRowClick?.(row.original as TData);
                   }}
                 >
                   {row.getVisibleCells().map((cell: any) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(cell.column.id === "actions" && PINNED)}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

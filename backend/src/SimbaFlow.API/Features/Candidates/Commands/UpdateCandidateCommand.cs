@@ -106,6 +106,11 @@ public class UpdateCandidateHandler : IRequestHandler<UpdateCandidateCommand, Re
         if (request.Intake is not null)
             CandidateIntakeMapper.Apply(candidate, request.Intake);
 
+        // Kept in step with the contract date, which is the only place a signing date is now
+        // entered: correcting one on an edit must not leave the other saying something else.
+        candidate.SignedOn = SimbaFlow.Domain.Services.ContractSigning.Date(
+            candidate.ContractDate, candidate.RegisteredAt);
+
         await _context.SaveChangesAsync(cancellationToken);
         return Result.Success();
     }

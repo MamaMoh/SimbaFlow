@@ -6,6 +6,7 @@ import { openFile, saveFile } from "@/lib/files/download";
 import {
   useReactTable,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
@@ -159,6 +160,7 @@ export default function EmbassyBoardPage() {
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
   });

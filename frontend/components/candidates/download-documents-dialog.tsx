@@ -18,25 +18,36 @@ import { saveFile } from "@/lib/files/download";
 import { downloadCandidateDocuments } from "@/lib/api/candidates";
 
 /**
- * The document kinds, with the numbers the API's DocumentType enum uses.
+ * The four documents a candidate's file is made of, with the numbers the API's DocumentType
+ * enum uses.
  *
- * Named the way the desk names them rather than the way the enum does — "Passport", not
- * "Passport = 0". The order is the order the paperwork is usually assembled in, and so also the
- * order the merged download comes out in: keep it in step with PageOrder in
+ * Eleven kinds were offered, which is the enum rather than the job: medical certificates, LMIS
+ * documents, ticket bookings and "Other" were on the list because they exist, not because
+ * anybody prints them together. These four are what gets sent.
+ *
+ * The order is the order the merged download comes out in: keep it in step with PageOrder in
  * backend/src/SimbaFlow.API/Features/Candidates/Commands/DownloadCandidateDocumentsCommand.cs.
  */
 export const DOCUMENT_KINDS: { type: number; label: string }[] = [
   { type: 3, label: "CV" },
+  { type: 2, label: "Contract" },
+  { type: 6, label: "Tasheer document" },
+  { type: 9, label: "Visa form" },
+];
+
+/**
+ * What travels with the CV.
+ *
+ * A CV goes out with the passport page and a photograph behind it — that is what a partner
+ * agency is sent, and picking the three separately every time meant someone eventually sent a
+ * CV with no passport. They are part of the CV here: tick it and they come, untick one if this
+ * particular partner does not want it.
+ */
+const CV_TYPE = 3;
+const CV_ATTACHMENTS: { type: number; label: string }[] = [
   { type: 0, label: "Passport" },
   { type: 1, label: "Photo" },
   { type: 8, label: "Full size photo" },
-  { type: 2, label: "Contract" },
-  { type: 9, label: "Visa form" },
-  { type: 5, label: "Medical certificate" },
-  { type: 4, label: "LMIS document" },
-  { type: 6, label: "Tasheer document" },
-  { type: 7, label: "Ticket booking" },
-  { type: 99, label: "Other" },
 ];
 
 /** What an embassy run needs, and so what the dialog opens on. */
@@ -56,10 +67,20 @@ export function DownloadDocumentsDialog({
   const [selected, setSelected] = useState<number[]>(DEFAULT_SELECTION);
   const [downloading, setDownloading] = useState(false);
 
+  const cvChosen = selected.includes(CV_TYPE);
+
   const toggle = (type: number) =>
-    setSelected((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
+    setSelected((prev) => {
+      if (prev.includes(type)) {
+        // Dropping the CV drops what rides with it: a passport scan and a photograph on their
+        // own are not a document anybody sends, and leaving them ticked produced a "CV bundle"
+        // that was two images and no CV.
+        return type === CV_TYPE
+          ? prev.filter((t) => t !== type && !CV_ATTACHMENTS.some((a) => a.type === t))
+          : prev.filter((t) => t !== type);
+      }
+      return [...prev, type];
+    });
 
   const count = candidateIds.length;
 
@@ -100,23 +121,48 @@ export function DownloadDocumentsDialog({
 
         <div className="max-h-[52vh] space-y-1 overflow-y-auto pr-1">
           {DOCUMENT_KINDS.map((kind) => (
-            <label
-              key={kind.type}
-              className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60"
-            >
-              <Checkbox
-                checked={selected.includes(kind.type)}
-                onCheckedChange={() => toggle(kind.type)}
-                aria-label={kind.label}
-              />
-              <span className="flex-1 text-sm">{kind.label}</span>
-            </label>
+            <div key={kind.type}>
+              <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/60">
+                <Checkbox
+                  checked={selected.includes(kind.type)}
+                  onCheckedChange={() => toggle(kind.type)}
+                  aria-label={kind.label}
+                />
+                <span className="flex-1 text-sm">{kind.label}</span>
+              </label>
+
+              {/* Indented under the CV, and only reachable while it is ticked — on their own
+                  they are not a document anybody sends. */}
+              {kind.type === CV_TYPE ? (
+                <div className="ml-7 border-l pl-3">
+                  {CV_ATTACHMENTS.map((attachment) => (
+                    <label
+                      key={attachment.type}
+                      className={
+                        "flex items-center gap-3 rounded-md px-2 py-1.5 " +
+                        (cvChosen
+                          ? "cursor-pointer hover:bg-muted/60"
+                          : "cursor-not-allowed opacity-50")
+                      }
+                    >
+                      <Checkbox
+                        disabled={!cvChosen}
+                        checked={cvChosen && selected.includes(attachment.type)}
+                        onCheckedChange={() => toggle(attachment.type)}
+                        aria-label={attachment.label}
+                      />
+                      <span className="flex-1 text-sm">{attachment.label}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           ))}
         </div>
 
         <div className="flex items-center justify-between border-t pt-3">
           <Label className="text-xs text-muted-foreground">
-            {selected.length} of {DOCUMENT_KINDS.length} selected
+            {selected.length} of {DOCUMENT_KINDS.length + CV_ATTACHMENTS.length} selected
           </Label>
           <div className="flex gap-2">
             <Button
@@ -124,7 +170,12 @@ export function DownloadDocumentsDialog({
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => setSelected(DOCUMENT_KINDS.map((k) => k.type))}
+              onClick={() =>
+                setSelected([
+                  ...DOCUMENT_KINDS.map((k) => k.type),
+                  ...CV_ATTACHMENTS.map((a) => a.type),
+                ])
+              }
             >
               Select all
             </Button>

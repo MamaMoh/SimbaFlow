@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   type ColumnDef,
@@ -79,6 +80,7 @@ export default function ExchangeRatesPage() {
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 20 } },

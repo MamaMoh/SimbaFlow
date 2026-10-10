@@ -72,9 +72,12 @@ public class SeedSampleDataHandler : IRequestHandler<SeedSampleDataCommand, Resu
         // Attach a real partner where the agency has one, so the generated contract names a party.
         var partnerId = await FindUsablePartnerAsync(ct);
 
+        // Which of the sixteen are already here, by passport: the flag says a row is sample
+        // data, and the passport says which sample person it is. Both are needed — running the
+        // seeder twice must add nobody, not sixteen duplicates.
         var existing = await _context.Candidates.AsNoTracking()
-            .Where(c => c.ReferenceNo != null && c.ReferenceNo.StartsWith(SampleDataSpec.Prefix))
-            .Select(c => c.ReferenceNo!)
+            .Where(c => c.IsSampleData)
+            .Select(c => c.PassportNumber)
             .ToListAsync(ct);
 
         var created = 0;
@@ -84,7 +87,7 @@ public class SeedSampleDataHandler : IRequestHandler<SeedSampleDataCommand, Resu
         for (var i = 0; i < SampleDataSpec.People.Length; i++)
         {
             var p = SampleDataSpec.People[i];
-            if (existing.Contains(p.Reference)) { skipped++; continue; }
+            if (existing.Contains(p.Passport)) { skipped++; continue; }
 
             var register = new RegisterCandidateCommand(
                 FirstName: p.FirstName,
@@ -114,6 +117,16 @@ public class SeedSampleDataHandler : IRequestHandler<SeedSampleDataCommand, Resu
             }
 
             var id = result.Data;
+
+            // Marked straight after registration, before the walk: if the walk throws, the row
+            // is still identifiable as sample data and "Remove sample data" can take it away.
+            var row = await _context.Candidates.FirstOrDefaultAsync(c => c.Id == id, ct);
+            if (row is not null)
+            {
+                row.IsSampleData = true;
+                await _context.SaveChangesAsync(ct);
+            }
+
             await WalkAsync(id, p, stages, RuleTo, userId, userName, ct);
             created++;
             placements.Add($"{p.Reference} {p.FirstName} {p.LastName} → {p.Note}");

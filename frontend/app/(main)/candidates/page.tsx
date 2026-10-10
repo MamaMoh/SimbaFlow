@@ -462,9 +462,14 @@ export default function CandidatesPage() {
     data: candidates,
     columns,
     state: { sorting, globalFilter, rowSelection },
-    // The API has already done the narrowing; filtering again here would hide rows it chose to
-    // return — a candidate matched on their phone number has that number in no visible column.
-    manualFiltering: true,
+    // The search box is the API's, and the per-column boxes are the browser's.
+    //
+    // manualFiltering used to turn both off together, because re-running the search over the
+    // rows the API chose would hide ones it matched on a column nobody can see — somebody found
+    // by E number has no E number column to match again. But it also silenced the column
+    // filters. So client filtering is back on and the global filter is neutered instead: the
+    // search string still travels to the API, and the column boxes narrow what comes back.
+    globalFilterFn: () => true,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,

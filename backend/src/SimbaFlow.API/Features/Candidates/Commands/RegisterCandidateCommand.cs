@@ -108,6 +108,10 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
 
         CandidateIntakeMapper.Apply(candidate, request.Intake ?? new CandidateIntakePayload(), setVisaDefault: true);
 
+        // Not asked for on any form: the contract's own date when there is one, otherwise today.
+        candidate.SignedOn = SimbaFlow.Domain.Services.ContractSigning.Date(
+            candidate.ContractDate, candidate.RegisteredAt);
+
         candidate.AddDomainEvent(new CandidateRegisteredEvent(
             candidate.Id, candidate.FullName, initialStage?.Id ?? Guid.Empty));
 

@@ -342,7 +342,6 @@ const registerCandidateSchema = z.object({
   englishLevel: opt,
   arabicLevel: opt,
   otherLanguages: opt,
-  referenceNo: opt,
   remark: opt,
   cookingLevel: opt,
   skillCleaning: z.boolean().optional(),
@@ -369,7 +368,6 @@ const registerCandidateSchema = z.object({
   wakalaNo: opt,
   contractNo: opt,
   stickerVisaNo: opt,
-  signedOn: opt,
   relativeName: opt,
   relativePhone: opt,
   relativeKinship: opt,
@@ -997,7 +995,6 @@ export function CandidateApplicationForm({
       englishLevel: matchOption(LANGUAGE_LEVELS, d.englishLevel),
       arabicLevel: matchOption(LANGUAGE_LEVELS, d.arabicLevel),
       otherLanguages: d.otherLanguages || "",
-      referenceNo: d.referenceNo || "",
       remark: d.remark || "",
       cookingLevel: matchOption(LANGUAGE_LEVELS, d.cookingLevel),
       skillCleaning: !!d.skillCleaning,
@@ -1027,7 +1024,6 @@ export function CandidateApplicationForm({
       wakalaNo: d.wakalaNo || "",
       contractNo: d.contractNo || "",
       stickerVisaNo: d.stickerVisaNo || "",
-      signedOn: d.signedOn || "",
       relativeName: d.relativeName || "",
       relativePhone: d.relativePhone || "",
       relativeKinship: d.relativeKinship || "",
@@ -1237,7 +1233,6 @@ export function CandidateApplicationForm({
     englishLevel: data.englishLevel || null,
     arabicLevel: data.arabicLevel || null,
     otherLanguages: data.otherLanguages || null,
-    referenceNo: data.referenceNo || null,
     remark: data.remark || null,
     cookingLevel: data.cookingLevel || null,
     skillCleaning: !!data.skillCleaning,
@@ -1264,7 +1259,6 @@ export function CandidateApplicationForm({
     wakalaNo: data.wakalaNo || null,
     contractNo: data.contractNo || null,
     stickerVisaNo: data.stickerVisaNo || null,
-    signedOn: data.signedOn || null,
     relativeName: data.relativeName || null,
     relativePhone: data.relativePhone || null,
     relativeKinship: data.relativeKinship || null,
@@ -1613,10 +1607,7 @@ export function CandidateApplicationForm({
                   <Label>E number</Label>
                   <Input {...register("eNumber")} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Signed on</Label>
-                  <Input type="date" {...register("signedOn")} />
-                </div>
+
               </div>
               <div className="space-y-1.5">
                 <Label>
@@ -1732,13 +1723,6 @@ export function CandidateApplicationForm({
                   {errors.dateOfBirth && (
                     <p className="text-xs text-destructive">{errors.dateOfBirth.message}</p>
                   )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Phone No.</Label>
-                  <PhoneInputField
-                    value={watch("phoneNumber") || ""}
-                    onChange={(v) => setValue("phoneNumber", v)}
-                  />
                 </div>
               </div>
             </FormSection>
@@ -1911,6 +1895,15 @@ export function CandidateApplicationForm({
                 <div className="space-y-1.5">
                   <Label>Address</Label>
                   <Input {...register("address")} />
+                </div>
+                <div className="space-y-1.5">
+                  {/* With the applicant rather than with the passport: it is how to reach the
+                      person, not something printed in the booklet. */}
+                  <Label>Phone No.</Label>
+                  <PhoneInputField
+                    value={watch("phoneNumber") || ""}
+                    onChange={(v) => setValue("phoneNumber", v)}
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Labour ID</Label>
@@ -2135,10 +2128,7 @@ export function CandidateApplicationForm({
                   <Label>Medical place</Label>
                   <Input {...register("medicalPlace")} />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Reference No.</Label>
-                  <Input {...register("referenceNo")} />
-                </div>
+
               </div>
             </FormSection>
           </div>

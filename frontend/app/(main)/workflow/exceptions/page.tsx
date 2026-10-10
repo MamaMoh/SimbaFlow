@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   type ColumnDef,
 } from "@tanstack/react-table";
@@ -91,6 +92,7 @@ export default function ExceptionsListPage() {
     data: cases,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
   });

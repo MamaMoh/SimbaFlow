@@ -8,7 +8,7 @@ namespace SimbaFlow.API.Features.SampleData;
 /// The seeder does not write stages or statuses directly — it registers each candidate and then
 /// drives them forward through the real workflow engine, so the event log, the mirror views and the
 /// board visibility are all produced the same way a member of staff would produce them. A sample
-/// candidate is therefore indistinguishable from a real one except for the SMP- reference number,
+/// candidate is therefore indistinguishable from a real one except for the IsSampleData flag,
 /// which is what makes them removable again.
 /// </summary>
 public sealed record SamplePerson(
@@ -61,7 +61,14 @@ public enum SampleTarget
 
 public static class SampleDataSpec
 {
-    /// <summary>Reference numbers all start with this, which is how removal finds them again.</summary>
+    /// <summary>
+    /// A label for each sample person, used in the summary the seeder reports back.
+    ///
+    /// It no longer marks anything in the database. It used to be an SMP- prefix on a number the
+    /// desk could also type — first the application number, then the reference number — and each
+    /// time one of those fields was dropped the sixteen demonstration records became permanent.
+    /// Candidate.IsSampleData carries that now.
+    /// </summary>
     public const string Prefix = "SMP-";
 
     /// <summary>
@@ -177,7 +184,6 @@ public static class SampleDataSpec
         SponsorIdNumber: $"10{45678900 + index}",
         SponsorPhone: "+96650{0}0000".Replace("{0}", (100000 + index).ToString()[..6]),
         SponsorAddress: "Riyadh, Al Olaya",
-        ReferenceNo: p.Reference,
         ContractNo: $"C-{9100 + index}",
         RelativeName: "Meron Tesfaye",
         RelativePhone: "+251911999888",

@@ -62,7 +62,6 @@ internal static class CvPreviewSample
         SkillTutoring = false,
         SkillComputer = false,
 
-        ReferenceNo = "SAMPLE-001",
         LabourId = "LAB-0000",
         Remark = "This is a sample used to preview the layout.",
         // Deliberately no PartnerName: a preview shows the agency its own paperwork, and the

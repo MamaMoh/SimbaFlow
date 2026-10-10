@@ -25,7 +25,6 @@ import {
   useAvailableActions,
 } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
-import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 
 type CandidateListActionsProps = {
   candidateId: string;
@@ -71,7 +70,6 @@ export function CandidateListActions({
   // this candidate is still theirs to delete. Past the first stage the way back is Move back,
   // one stage at a time, which asks for confirmation and says what it clears.
   const canDelete = hasPermission("candidate.delete") && stageAllowsDelete;
-  const canMoveBack = hasPermission("workflow.execute");
   const { actions, mutate } = useAvailableActions(candidateId);
   const [pendingRuleId, setPendingRuleId] = useState<string | null>(null);
 
@@ -94,10 +92,8 @@ export function CandidateListActions({
   const busy = !!isGeneratingCv || !!pendingRuleId;
 
   // Nothing to offer: no trigger. A ⋯ that opens onto an empty panel reads as a broken row rather
-  // than as a row this person is only meant to look at. Move back is included by way of
-  // workflow.execute, which is what that item asks for and hides itself without.
-  if (!canRead && !canUpdate && !canDelete && !canMoveBack && workflowMoves.length === 0)
-    return null;
+  // than as a row this person is only meant to look at.
+  if (!canRead && !canUpdate && !canDelete && workflowMoves.length === 0) return null;
 
   return (
     <DropdownMenu modal={false}>
@@ -162,17 +158,6 @@ export function CandidateListActions({
             {action.buttonLabel}
           </DropdownMenuItem>
         ))}
-        {/* The way back for a candidate who is past the first stage and therefore cannot be
-            deleted from here. Without it the menu refuses an action and offers nothing in its
-            place, which leaves the person holding a record they cannot do anything about. */}
-        <MoveBackStageItem
-          candidateId={candidateId}
-          candidateName={candidateName}
-          onDone={() => {
-            mutate();
-            onWorkflowChanged?.();
-          }}
-        />
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -67,7 +67,6 @@ public class Candidate : BaseEntity
     /// the list page shows and searches it, and a column does that where a join does not.
     /// </summary>
     public string? WorksIn { get; set; }
-    public string? ReferenceNo { get; set; }
     public string? Remark { get; set; }
     public string? CookingLevel { get; set; }
     public bool SkillCleaning { get; set; }
@@ -124,6 +123,13 @@ public class Candidate : BaseEntity
     public string? WakalaNo { get; set; }
     public string? ContractNo { get; set; }
     public string? StickerVisaNo { get; set; }
+
+    /// <summary>
+    /// The day the contract was signed, worked out rather than typed.
+    ///
+    /// It was a date box on the registration form that nobody filled in, beside a Contract date
+    /// box that says the same thing. See <see cref="SimbaFlow.Domain.Services.ContractSigning"/>.
+    /// </summary>
     public DateOnly? SignedOn { get; set; }
 
     // ──── Relative / emergency contact ────
@@ -177,6 +183,16 @@ public class Candidate : BaseEntity
     // ──── Registration ────
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
     public string? RegisteredBy { get; set; }
+
+    /// <summary>
+    /// A demonstration record, put here by "Load sample data" and removed again by its pair.
+    ///
+    /// Its own column because it used to be a SMP- prefix on a number the desk could also type:
+    /// first the application number, then the reference number, and each time that field was
+    /// removed the sixteen demonstration candidates became permanent. A flag cannot be typed
+    /// over by accident and cannot be removed by dropping a field.
+    /// </summary>
+    public bool IsSampleData { get; set; }
 
     // ──── Removal ────
     /// <summary>

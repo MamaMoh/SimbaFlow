@@ -33,7 +33,6 @@ public record CandidateIntakePayload(
     string? OtherLanguages = null,
     int? ExperienceAbroadYears = null,
     string? WorksIn = null,
-    string? ReferenceNo = null,
     string? Remark = null,
     string? CookingLevel = null,
     bool SkillCleaning = false,
@@ -60,7 +59,6 @@ public record CandidateIntakePayload(
     string? WakalaNo = null,
     string? ContractNo = null,
     string? StickerVisaNo = null,
-    string? SignedOn = null,
     string? RelativeName = null,
     string? RelativePhone = null,
     string? RelativeKinship = null,
@@ -125,7 +123,6 @@ public static class CandidateIntakeMapper
         // from the visa or embassy screens.
         if (p.ExperienceAbroadYears is not null) candidate.ExperienceAbroadYears = p.ExperienceAbroadYears;
         if (NullIfEmpty(p.WorksIn) is string worksIn) candidate.WorksIn = worksIn;
-        candidate.ReferenceNo = NullIfEmpty(p.ReferenceNo);
         candidate.Remark = NullIfEmpty(p.Remark);
         candidate.CookingLevel = NullIfEmpty(p.CookingLevel);
         candidate.SkillCleaning = p.SkillCleaning;
@@ -160,7 +157,6 @@ public static class CandidateIntakeMapper
         candidate.WakalaNo = NullIfEmpty(p.WakalaNo);
         candidate.ContractNo = NullIfEmpty(p.ContractNo);
         candidate.StickerVisaNo = NullIfEmpty(p.StickerVisaNo);
-        candidate.SignedOn = ParseDate(p.SignedOn);
         candidate.RelativeName = NullIfEmpty(p.RelativeName);
         candidate.RelativePhone = NullIfEmpty(p.RelativePhone);
         candidate.RelativeKinship = NullIfEmpty(p.RelativeKinship);

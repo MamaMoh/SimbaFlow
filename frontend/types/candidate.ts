@@ -42,7 +42,6 @@ export interface Candidate {
   /** Every country in workExperiences, comma-separated. */
   worksIn?: string;
   workExperiences?: CandidateWorkExperience[];
-  referenceNo?: string;
   remark?: string;
   cookingLevel?: string;
   skillCleaning?: boolean;

@@ -24,9 +24,10 @@ public static class AgencyIntakeSeeder
             db.AgencyIntakeDefaults.Add(FromLegacy(legacy));
         }
 
-        var existing = await db.AgencySkills
-            .Where(s => !s.IsDeleted)
-            .ToListAsync(cancellationToken);
+        // Deleted rows included on purpose. An agency that places no cooks can take Arabic
+        // cooking off its own registration form; checking only the live rows would seed it
+        // again on the next page load and the removal would never stick.
+        var existing = await db.AgencySkills.ToListAsync(cancellationToken);
 
         foreach (var spec in BuiltInSkills.All)
         {

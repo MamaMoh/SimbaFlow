@@ -169,6 +169,9 @@ public class IntakeDefaultsModule : ICarterModule
         IReadOnlyList<IntakeSkillBody> payload)
     {
         var live = existing.Where(s => !s.IsDeleted).ToList();
+        // The removed ones too, so a built-in taken off the form can be put back by name
+        // instead of being refused as "already on the list" by a row nobody can see.
+        var removed = existing.Where(s => s.IsDeleted).ToList();
         var seen = new HashSet<Guid>();
         var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -188,6 +191,24 @@ public class IntakeDefaultsModule : ICarterModule
             {
                 if (usedNames.Contains(name) || live.Any(s => !s.IsDeleted && s.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
                     continue;
+
+                // Typing back a built-in that was removed restores the original row rather than
+                // making a custom skill with the same name — the candidate column behind it is
+                // still there, and two "Cooking"s on one form is nobody's intention.
+                var revived = removed.FirstOrDefault(s =>
+                    s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                if (revived is not null)
+                {
+                    revived.IsDeleted = false;
+                    revived.IsDefaultSelected = item.IsDefaultSelected;
+                    revived.SortOrder = item.SortOrder;
+                    live.Add(revived);
+                    removed.Remove(revived);
+                    seen.Add(revived.Id);
+                    usedNames.Add(revived.Name);
+                    continue;
+                }
+
                 if (BuiltInSkills.IsBuiltInName(name))
                     continue;
 
@@ -214,7 +235,10 @@ public class IntakeDefaultsModule : ICarterModule
             usedNames.Add(row.Name);
         }
 
-        foreach (var row in live.Where(s => !s.IsBuiltIn && !seen.Contains(s.Id)))
+        // Built-ins included. An agency's registration form is its own, and a skill it never
+        // places for is a checkbox nobody reads. The candidate column behind it is untouched,
+        // so values already recorded survive and the skill can be put back by name.
+        foreach (var row in live.Where(s => !seen.Contains(s.Id)))
             row.IsDeleted = true;
     }
 

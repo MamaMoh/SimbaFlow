@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import {
   useReactTable,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   type ColumnDef,
@@ -149,6 +150,7 @@ export default function PartnerDetailPage() {
     data: candidates.data?.items ?? [],
     columns: candidateColumns,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 20 } },
