@@ -21,7 +21,7 @@ export function SiteFooter() {
             Pricing
           </a>
           <a
-            href="mailto:hello@simbaflow.com"
+            href="#contact"
             className="transition-colors hover:text-[var(--mkt-strong)]"
           >
             Contact

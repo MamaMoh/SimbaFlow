@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { firstPermittedRoute } from "@/components/layout/nav-items";
 import { signIn, getSession } from "next-auth/react";
@@ -17,6 +17,7 @@ import {
 import { Globe } from "lucide-react";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
+import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
 import { Eye, EyeOff, Loader2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -72,9 +73,41 @@ function recordSuccessfulLogin(identifier: string) {
   loginAttempts.delete(identifier);
 }
 
+/**
+ * The username this browser last signed in with.
+ *
+ * Only the username. Not the password, and not a longer session — the session already lasts a
+ * week — so what this saves is the typing, on the shared desk machines these agencies work from
+ * where the same person signs in every morning. Unticking it forgets the name immediately.
+ */
+const REMEMBERED_USERNAME = "simbaflow.remembered-username";
+
+function readRememberedUsername(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(REMEMBERED_USERNAME) ?? "";
+  } catch {
+    // Private windows and locked-down browsers throw on localStorage; a forgotten name is not
+    // a reason to fail to render the form.
+    return "";
+  }
+}
+
+function rememberUsername(username: string, remember: boolean) {
+  try {
+    if (remember) window.localStorage.setItem(REMEMBERED_USERNAME, username);
+    else window.localStorage.removeItem(REMEMBERED_USERNAME);
+  } catch {
+    /* see above */
+  }
+}
+
 const LoginForm = () => {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  // Read once, on the client, so the server-rendered HTML does not differ from the first paint.
+  const [remembered] = useState(readRememberedUsername);
+  const [remember, setRemember] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // A blocked agency is not a typo to retry — it is a state someone has to act on, so it stays on
@@ -85,6 +118,7 @@ const LoginForm = () => {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -93,6 +127,12 @@ const LoginForm = () => {
       password: "",
     },
   });
+
+  useEffect(() => {
+    if (!remembered) return;
+    setValue("username", remembered);
+    setRemember(true);
+  }, [remembered, setValue]);
 
   const onSubmit = async (data: LoginFormData) => {
     // Prevent duplicate form submissions
@@ -156,6 +196,8 @@ setIsSubmitting(false);
         
         // Record successful login to reset rate limit
         recordSuccessfulLogin(rateLimitKey);
+        // Only after the credentials were accepted: a mistyped name is not worth keeping.
+        rememberUsername(data.username, remember);
         
         if (isFirstLogin) {
           router.push(`/change-password`);
@@ -328,7 +370,23 @@ setIsSubmitting(false);
                 </p>
               )}
             </div>
-              <Button
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox
+                checked={remember}
+                onCheckedChange={(v) => {
+                  const next = v === true;
+                  setRemember(next);
+                  // Unticking forgets the stored name now, not at the next sign-in — otherwise
+                  // someone who unticks it and walks away has still left their name on the machine.
+                  if (!next) rememberUsername("", false);
+                }}
+                disabled={isSubmitting}
+                aria-label="Remember my username"
+              />
+              Remember my username
+            </label>
+
+            <Button
               type="submit"
               className="w-full h-10 font-medium"
               disabled={isSubmitting}

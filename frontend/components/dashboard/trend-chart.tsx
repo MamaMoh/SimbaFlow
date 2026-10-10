@@ -32,23 +32,25 @@ export function TrendChart({
   isLoading?: boolean;
 }) {
   return (
-    <div className="rounded-lg border bg-card p-5 shadow-sm">
+    // h-full with a growing chart area: this sits beside the funnel, whose height depends on how
+    // many stages the agency has configured, and a fixed-height card left a ragged gap under it.
+    <div className="flex h-full flex-col rounded-lg border bg-card p-5 shadow-sm">
       <div className="mb-4">
         <h2 className="text-sm font-semibold">Intake & outcomes</h2>
         <p className="text-xs text-muted-foreground">Last 12 months</p>
       </div>
 
       {isLoading ? (
-        <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+        <div className="flex min-h-[260px] flex-1 items-center justify-center text-sm text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Loading trends…
         </div>
       ) : !data || data.length === 0 ? (
-        <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+        <div className="flex min-h-[260px] flex-1 items-center justify-center text-sm text-muted-foreground">
           No trend data yet.
         </div>
       ) : (
-        <ChartContainer config={config} className="h-[260px] w-full">
+        <ChartContainer config={config} className="min-h-[260px] w-full flex-1">
           <AreaChart data={data} margin={{ left: 4, right: 8, top: 8 }}>
             <defs>
               {Object.entries(config).map(([key, v]) => (

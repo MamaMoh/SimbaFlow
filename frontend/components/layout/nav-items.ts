@@ -35,12 +35,6 @@ export const navigation: NavItem[] = [
     claims: ["candidate.read", "system.admin"],
   },
   {
-    name: "Candidates",
-    href: "/candidates",
-    icon: require("lucide-react").Users,
-    claims: ["candidate.read", "system.admin"],
-  },
-  {
     name: "My work",
     href: "/my-work",
     icon: require("lucide-react").ListChecks,
@@ -59,6 +53,15 @@ export const navigation: NavItem[] = [
   // ──── Separator: Workflow ────
   { name: "sep-workflow", isSeparator: true, icon: null, sectionLabel: "Workflow" },
 
+  {
+    // At the head of Workflow rather than up in Core: the candidate list is the first board of
+    // the pipeline, not a separate place, and sitting above the separator it read as though
+    // registering someone and moving them through were two different jobs.
+    name: "Candidates",
+    href: "/candidates",
+    icon: require("lucide-react").Users,
+    claims: ["candidate.read", "system.admin"],
+  },
   {
     name: "New Contracts",
     href: "/workflow/new-contracts",

@@ -19,12 +19,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Four sections: what it is, what it does, what it costs, how to see it.
+ * Four sections: what it is, what it does, what it costs, how to get in touch.
  *
  * It ran to eight — a corridor marquee, a stage-by-stage walk through the pipeline, a security
  * page and an FAQ, each about as long as this whole page is now. Everything there was true and
- * almost none of it was being read; what survives is what a visitor needs in order to decide
- * whether to book the demo, and the rest is the demo's job.
+ * almost none of it was being read; what survives is what somebody needs in order to decide to
+ * write to us, and the rest is that conversation.
  */
 export default function LandingPage() {
   return (
