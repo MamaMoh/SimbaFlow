@@ -91,7 +91,17 @@ public class IntakeDefaultsModule : ICarterModule
 
             var loaded = await LoadOrSeedAsync(tenantDb, platform, user, ct);
             if (loaded is null)
-                return Results.Json(new { isSuccess = false, error = "No agency on this account." }, statusCode: 400);
+                // Says what to do about it. A platform administrator reading "No agency on this
+                // account" while the switcher at the top named an agency had nothing to act on.
+                return Results.Json(
+                    new
+                    {
+                        isSuccess = false,
+                        error = user.IsSuperAdmin
+                            ? "No agency is selected. Choose one in the switcher at the top of the page."
+                            : "This account is not attached to an agency.",
+                    },
+                    statusCode: 400);
 
             Apply(loaded.Value.Defaults, body);
             if (body.Skills is not null)

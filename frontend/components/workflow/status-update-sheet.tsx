@@ -187,7 +187,7 @@ export function StatusUpdateSheet({
           {description && <SheetDescription>{description}</SheetDescription>}
         </SheetHeader>
         <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">{body}</div>
-        <SheetFooter className="px-6">{buttons}</SheetFooter>
+        <SheetFooter>{buttons}</SheetFooter>
       </SheetContent>
     </Sheet>
   );

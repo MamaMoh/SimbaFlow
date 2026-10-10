@@ -10,7 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
 import {
@@ -114,14 +113,11 @@ export function CreateTransitionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg overflow-y-auto">
+      <SheetContent aria-describedby={undefined} className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Add transition</SheetTitle>
-          <SheetDescription>
-            Define a button that moves candidates between stages.
-          </SheetDescription>
         </SheetHeader>
-        <form onSubmit={onSubmit} className="space-y-4 mt-6 px-1">
+        <form onSubmit={onSubmit} className="mt-2 space-y-4 px-6">
           <div className="space-y-1.5">
             <Label>From stage</Label>
             <Select value={sourceStageId} onValueChange={setSourceStageId}>
@@ -199,7 +195,7 @@ export function CreateTransitionSheet({
               Remove candidate from source stage
             </Label>
           </div>
-          <SheetFooter className="pt-4">
+          <SheetFooter className="-mx-6 mt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

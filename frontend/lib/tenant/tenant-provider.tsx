@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
+import { syncActingTenantCookie } from "@/lib/tenant/acting-tenant";
 
 interface TenantInfo {
   id: string;
@@ -49,6 +50,10 @@ function readIsSuperAdmin(session: unknown, claims: string[]): boolean {
 }
 
 export function TenantProvider({ children }: { children: ReactNode }) {
+  // Before anything below fetches: the proxy scopes every request by this cookie, and a stale
+  // one sends the whole page to the wrong agency — or to none.
+  syncActingTenantCookie();
+
   const { data: session, status } = useSession();
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
 

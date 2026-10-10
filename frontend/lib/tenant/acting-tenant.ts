@@ -46,13 +46,40 @@ export function setActingTenant(id: string | null, name?: string | null): void {
   } catch {
     // Nothing to do — the switch just will not be remembered across reloads.
   }
-  // The cookie is what the API proxy actually reads, so every request picks the agency up
-  // regardless of which fetcher a page happens to use. Lax is enough: it only ever travels to
-  // our own proxy route.
-  document.cookie = id
-    ? `simba_acting_tenant=${encodeURIComponent(id)}; path=/; max-age=86400; samesite=lax`
-    : "simba_acting_tenant=; path=/; max-age=0; samesite=lax";
+  writeActingTenantCookie(id);
   window.dispatchEvent(new CustomEvent(ACTING_TENANT_EVENT, { detail: { id, name } }));
+}
+
+/**
+ * The cookie the API proxy reads, which is what actually scopes a request.
+ *
+ * A year, not a day. It used to expire after 24 hours while the choice itself lived in
+ * localStorage and did not, so the switcher went on naming an agency that no request carried
+ * any more: every write came back "No agency on this account" and every read quietly answered
+ * with the built-in defaults instead of that agency's.
+ */
+function writeActingTenantCookie(id: string | null): void {
+  // Lax is enough: it only ever travels to our own proxy route.
+  document.cookie = id
+    ? `simba_acting_tenant=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`
+    : "simba_acting_tenant=; path=/; max-age=0; samesite=lax";
+}
+
+/**
+ * Puts the cookie back in step with the stored choice.
+ *
+ * Called while rendering rather than from an effect, so the cookie is in place before the
+ * page's own requests go out — an effect would run after them and the first load would be
+ * answered for the wrong agency.
+ */
+export function syncActingTenantCookie(): void {
+  if (typeof document === "undefined") return;
+  const id = getActingTenantId();
+  const present = document.cookie
+    .split("; ")
+    .some((c) => c.startsWith("simba_acting_tenant="));
+  if (id) writeActingTenantCookie(id);
+  else if (present) writeActingTenantCookie(null);
 }
 
 /**

@@ -10,7 +10,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   Select,
@@ -90,14 +89,11 @@ export function LinkPartnerSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[480px] sm:max-w-[480px] flex flex-col px-6">
+      <SheetContent aria-describedby={undefined} className="w-[480px] sm:max-w-[480px] flex flex-col">
         <SheetHeader>
           <SheetTitle>Link partner to my agency</SheetTitle>
-          <SheetDescription>
-            Signs an agreement with a foreign partner. Your agency level caps how many partners you may hold per country.
-          </SheetDescription>
         </SheetHeader>
-        <div className="mt-4 flex flex-1 flex-col gap-4">
+        <div className="px-6 mt-4 flex flex-1 flex-col gap-4">
           <div className="space-y-1.5">
             <Label>Foreign partner *</Label>
             <Select value={partnerId || undefined} onValueChange={setPartnerId}>

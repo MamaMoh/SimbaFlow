@@ -15,7 +15,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Shield, FileText } from "lucide-react";
@@ -106,18 +105,15 @@ export function CreateRoleSheet({ open, onOpenChange, onCreated }: CreateRoleShe
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[600px] sm:max-w-[600px] flex flex-col px-6">
+      <SheetContent aria-describedby={undefined} className="w-[600px] sm:max-w-[600px] flex flex-col">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-green-700" />
             Create New Role
           </SheetTitle>
-          <SheetDescription>
-            Define a custom role for your agency and assign permissions.
-          </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-6 flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 pr-1">
             {/* Basic Info */}
             <div>

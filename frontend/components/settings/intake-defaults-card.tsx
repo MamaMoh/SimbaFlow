@@ -26,8 +26,23 @@ import {
 } from "@/lib/api/intake-defaults";
 
 /** Must match the registration form's list, or the default is a value its dropdown cannot show. */
-const OCCUPATIONS = ["HOUSE MAID", "NANNY", "COOK", "DRIVER", "CLEANER", "CAREGIVER", "OTHER"];
-const RELIGIONS = ["Orthodox", "Muslim", "Non-Muslim", "Protestant", "Catholic", "Other"];
+const OCCUPATIONS = [
+  "HOUSE MAID",
+  "NANNY",
+  "COOK",
+  "DRIVER",
+  "CLEANER",
+  "CAREGIVER",
+  "OTHER",
+];
+const RELIGIONS = [
+  "Orthodox",
+  "Muslim",
+  "Non-Muslim",
+  "Protestant",
+  "Catholic",
+  "Other",
+];
 const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"];
 const PASSPORT_TYPES = ["Normal", "Official", "Diplomatic", "Service"];
 const COOKING_LEVELS = ["None", "Fair", "Good", "Excellent"];
@@ -78,7 +93,8 @@ export function IntakeDefaultsCard() {
   const nationality = draft.nationality ?? defaults?.nationality ?? "";
   const passportType = draft.passportType ?? defaults?.passportType ?? "";
   const maritalStatus = draft.maritalStatus ?? defaults?.maritalStatus ?? "";
-  const countryOfTravel = draft.countryOfTravel ?? defaults?.countryOfTravel ?? "";
+  const countryOfTravel =
+    draft.countryOfTravel ?? defaults?.countryOfTravel ?? "";
   const contractPeriod = draft.contractPeriod ?? defaults?.contractPeriod ?? "";
   const cookingLevel = draft.cookingLevel ?? defaults?.cookingLevel ?? "";
   const cvTemplate = draft.cvTemplate ?? defaults?.cvTemplate ?? "enjaz";
@@ -129,7 +145,15 @@ export function IntakeDefaultsCard() {
         skills,
       });
       // Keep the layouts list from the GET; the save echo does not repeat it.
-      await mutate({ ...defaults, ...saved, cvTemplates: saved.cvTemplates ?? defaults?.cvTemplates, skills: saved.skills ?? skills }, { revalidate: true });
+      await mutate(
+        {
+          ...defaults,
+          ...saved,
+          cvTemplates: saved.cvTemplates ?? defaults?.cvTemplates,
+          skills: saved.skills ?? skills,
+        },
+        { revalidate: true },
+      );
       setDraft({});
       toast.success("New candidate forms will start with these");
     } catch (err) {
@@ -140,191 +164,215 @@ export function IntakeDefaultsCard() {
   };
 
   return (
-    <form onSubmit={onSave} className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
-      <div>
-        <h2 className="text-sm font-semibold">New candidate defaults</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Pre-filled on a new registration only.
-        </p>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5">
-          <Label>Gender</Label>
-          <Select
-            value={intakeSelectValue(gender, NONE)}
-            onValueChange={(v) => patch("gender", v === NONE ? "" : v)}
-          >
-            <SelectTrigger>
-              <SelectValue>
-                {intakeSelectLabel(gender, GENDER_OPTIONS, "No default — ask each time")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>No default — ask each time</SelectItem>
-              <SelectItem value="1">Female</SelectItem>
-              <SelectItem value="0">Male</SelectItem>
-            </SelectContent>
-          </Select>
+    // Three cards, one form. They are three separate things to decide — what a blank form starts
+    // with, which skills the form offers, which page a CV prints on — and running them together
+    // under one heading with hairlines between made the longest page in the application read as
+    // one undifferentiated block. One Save still covers all three.
+    <form onSubmit={onSave} className="space-y-6">
+      <section className="space-y-4 rounded-lg border bg-card p-5 shadow-sm">
+        <div>
+          <h2 className="text-sm font-semibold">New candidate defaults</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Pre-filled on a new registration only.
+          </p>
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Occupation</Label>
-          <Select
-            value={intakeSelectValue(occupation, NONE)}
-            onValueChange={(v) => patch("occupation", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="def-occupation">
-              <SelectValue>
-                {intakeSelectLabel(
-                  occupation,
-                  OCCUPATIONS.map((o) => ({ value: o, label: o })),
-                  "No default"
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>No default</SelectItem>
-              {OCCUPATIONS.map((o) => (
-                <SelectItem key={o} value={o}>
-                  {o}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1.5">
+            <Label>Gender</Label>
+            <Select
+              value={intakeSelectValue(gender, NONE)}
+              onValueChange={(v) => patch("gender", v === NONE ? "" : v)}
+            >
+              <SelectTrigger>
+                <SelectValue>
+                  {intakeSelectLabel(
+                    gender,
+                    GENDER_OPTIONS,
+                    "No default — ask each time",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No default — ask each time</SelectItem>
+                <SelectItem value="1">Female</SelectItem>
+                <SelectItem value="0">Male</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Religion</Label>
-          <Select
-            value={intakeSelectValue(religion, NONE)}
-            onValueChange={(v) => patch("religion", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="def-religion">
-              <SelectValue>
-                {intakeSelectLabel(
-                  religion,
-                  RELIGIONS.map((r) => ({ value: r, label: r })),
-                  "No default"
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>No default</SelectItem>
-              {RELIGIONS.map((r) => (
-                <SelectItem key={r} value={r}>{r}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="space-y-1.5">
+            <Label>Occupation</Label>
+            <Select
+              value={intakeSelectValue(occupation, NONE)}
+              onValueChange={(v) => patch("occupation", v === NONE ? "" : v)}
+            >
+              <SelectTrigger id="def-occupation">
+                <SelectValue>
+                  {intakeSelectLabel(
+                    occupation,
+                    OCCUPATIONS.map((o) => ({ value: o, label: o })),
+                    "No default",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No default</SelectItem>
+                {OCCUPATIONS.map((o) => (
+                  <SelectItem key={o} value={o}>
+                    {o}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Marital status</Label>
-          <Select
-            value={intakeSelectValue(maritalStatus, NONE)}
-            onValueChange={(v) => patch("maritalStatus", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="def-marital">
-              <SelectValue>
-                {intakeSelectLabel(
-                  maritalStatus,
-                  MARITAL_STATUSES.map((m) => ({ value: m, label: m })),
-                  "No default"
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>No default</SelectItem>
-              {MARITAL_STATUSES.map((m) => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="space-y-1.5">
+            <Label>Religion</Label>
+            <Select
+              value={intakeSelectValue(religion, NONE)}
+              onValueChange={(v) => patch("religion", v === NONE ? "" : v)}
+            >
+              <SelectTrigger id="def-religion">
+                <SelectValue>
+                  {intakeSelectLabel(
+                    religion,
+                    RELIGIONS.map((r) => ({ value: r, label: r })),
+                    "No default",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No default</SelectItem>
+                {RELIGIONS.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Passport type</Label>
-          <Select
-            value={intakeSelectValue(passportType, NONE)}
-            onValueChange={(v) => patch("passportType", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="def-passport-type">
-              <SelectValue>
-                {intakeSelectLabel(
-                  passportType,
-                  PASSPORT_TYPES.map((x) => ({ value: x, label: x })),
-                  "No default"
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>No default</SelectItem>
-              {PASSPORT_TYPES.map((x) => (
-                <SelectItem key={x} value={x}>{x}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+          <div className="space-y-1.5">
+            <Label>Marital status</Label>
+            <Select
+              value={intakeSelectValue(maritalStatus, NONE)}
+              onValueChange={(v) => patch("maritalStatus", v === NONE ? "" : v)}
+            >
+              <SelectTrigger id="def-marital">
+                <SelectValue>
+                  {intakeSelectLabel(
+                    maritalStatus,
+                    MARITAL_STATUSES.map((m) => ({ value: m, label: m })),
+                    "No default",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No default</SelectItem>
+                {MARITAL_STATUSES.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Nationality</Label>
-          {/* The name, matching the registration form — "ET" is the picker key, not what a CV prints. */}
-          <CountrySelect value={nationality} onChange={(_code, name) => patch("nationality", name)} />
-        </div>
+          <div className="space-y-1.5">
+            <Label>Passport type</Label>
+            <Select
+              value={intakeSelectValue(passportType, NONE)}
+              onValueChange={(v) => patch("passportType", v === NONE ? "" : v)}
+            >
+              <SelectTrigger id="def-passport-type">
+                <SelectValue>
+                  {intakeSelectLabel(
+                    passportType,
+                    PASSPORT_TYPES.map((x) => ({ value: x, label: x })),
+                    "No default",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No default</SelectItem>
+                {PASSPORT_TYPES.map((x) => (
+                  <SelectItem key={x} value={x}>
+                    {x}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Country of travel</Label>
-          <CountrySelect value={countryOfTravel} onChange={(_code, name) => patch("countryOfTravel", name)} />
-        </div>
+          <div className="space-y-1.5">
+            <Label>Nationality</Label>
+            {/* The name, matching the registration form — "ET" is the picker key, not what a CV prints. */}
+            <CountrySelect
+              value={nationality}
+              onChange={(_code, name) => patch("nationality", name)}
+            />
+          </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="def-period">Contract period (Years)</Label>
-          {/* A number, like the years of experience. Free text collected "2 Years", "2yrs" and
+          <div className="space-y-1.5">
+            <Label>Country of travel</Label>
+            <CountrySelect
+              value={countryOfTravel}
+              onChange={(_code, name) => patch("countryOfTravel", name)}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="def-period">Contract period (Years)</Label>
+            {/* A number, like the years of experience. Free text collected "2 Years", "2yrs" and
               "Two years" for the same contract, so an older saved answer is shown as its number
               and keeps its wording until it is changed. */}
-          <Input
-            id="def-period"
-            type="number"
-            min={0}
-            step={1}
-            inputMode="numeric"
-            value={contractYears(contractPeriod)}
-            onChange={(e) => patch("contractPeriod", e.target.value)}
-            placeholder="2"
-          />
-        </div>
+            <Input
+              id="def-period"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              value={contractYears(contractPeriod)}
+              onChange={(e) => patch("contractPeriod", e.target.value)}
+              placeholder="2"
+            />
+          </div>
 
-        <div className="space-y-1.5">
-          <Label>Cooking level</Label>
-          <Select
-            value={intakeSelectValue(cookingLevel, NONE)}
-            onValueChange={(v) => patch("cookingLevel", v === NONE ? "" : v)}
-          >
-            <SelectTrigger id="def-cooking">
-              <SelectValue>
-                {intakeSelectLabel(
-                  cookingLevel,
-                  COOKING_LEVELS.map((l) => ({ value: l, label: l })),
-                  "No default"
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NONE}>No default</SelectItem>
-              {COOKING_LEVELS.map((l) => (
-                <SelectItem key={l} value={l}>{l}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1.5">
+            <Label>Cooking level</Label>
+            <Select
+              value={intakeSelectValue(cookingLevel, NONE)}
+              onValueChange={(v) => patch("cookingLevel", v === NONE ? "" : v)}
+            >
+              <SelectTrigger id="def-cooking">
+                <SelectValue>
+                  {intakeSelectLabel(
+                    cookingLevel,
+                    COOKING_LEVELS.map((l) => ({ value: l, label: l })),
+                    "No default",
+                  )}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE}>No default</SelectItem>
+                {COOKING_LEVELS.map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {l}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-2 border-t pt-4">
+      <section className="space-y-4 rounded-lg border bg-card p-5 shadow-sm">
         <div>
-          <Label>Skills</Label>
+          <h2 className="text-sm font-semibold">Skills</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Ticked skills are pre-checked on a new registration. Remove any you do not place for —
-            typing the name back puts it on the form again.
+            Ticked skills are pre-checked on a new registration. Remove any you
+            do not place for — typing the name back puts it on the form again.
           </p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -335,8 +383,10 @@ export function IntakeDefaultsCard() {
                 onCheckedChange={(v) =>
                   setSkills(
                     skills.map((s) =>
-                      s.id === skill.id ? { ...s, isDefaultSelected: v === true } : s
-                    )
+                      s.id === skill.id
+                        ? { ...s, isDefaultSelected: v === true }
+                        : s,
+                    ),
                   )
                 }
               />
@@ -349,7 +399,9 @@ export function IntakeDefaultsCard() {
                 className="rounded p-0.5 text-muted-foreground hover:text-destructive"
                 aria-label={`Remove ${skill.name}`}
                 title={`Remove ${skill.name} from the registration form`}
-                onClick={() => setSkills(skills.filter((s) => s.id !== skill.id))}
+                onClick={() =>
+                  setSkills(skills.filter((s) => s.id !== skill.id))
+                }
               >
                 <X className="h-3 w-3" />
               </button>
@@ -373,11 +425,11 @@ export function IntakeDefaultsCard() {
             Add
           </Button>
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-2 border-t pt-4">
+      <section className="space-y-4 rounded-lg border bg-card p-5 shadow-sm">
         <div>
-          <Label>CV layout</Label>
+          <h2 className="text-sm font-semibold">CV layout</h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Which layout a generated CV is printed on.
           </p>
@@ -413,10 +465,14 @@ export function IntakeDefaultsCard() {
                   <span className="flex items-center gap-2 px-3 py-2.5">
                     <span
                       className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
-                        selected ? "border-green-700" : "border-muted-foreground/40"
+                        selected
+                          ? "border-green-700"
+                          : "border-muted-foreground/40"
                       }`}
                     >
-                      {selected && <span className="h-1.5 w-1.5 rounded-full bg-green-700" />}
+                      {selected && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-700" />
+                      )}
                     </span>
                     <span className="text-sm font-medium">{tpl.name}</span>
                   </span>
@@ -434,9 +490,13 @@ export function IntakeDefaultsCard() {
             );
           })}
         </div>
-      </div>
+      </section>
 
-      <Button type="submit" disabled={saving || !defaults} className="bg-green-800 text-white hover:bg-green-900">
+      <Button
+        type="submit"
+        disabled={saving || !defaults}
+        className="bg-green-800 text-white hover:bg-green-900"
+      >
         {saving ? "Saving…" : "Save defaults"}
       </Button>
     </form>

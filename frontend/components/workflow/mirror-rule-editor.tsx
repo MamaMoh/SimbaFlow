@@ -14,9 +14,9 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetFooter,
 } from "@/components/ui/sheet";
 import { ConditionBuilder, emptyConditionGroup } from "@/components/workflow/condition-builder";
 import type { ConditionGroup, MirrorViewRule, WorkflowStage } from "@/types/workflow";
@@ -99,16 +99,12 @@ export function MirrorRuleEditor({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent aria-describedby={undefined} className="w-full overflow-y-auto sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>{rule ? "Edit mirror" : "New mirror"}</SheetTitle>
-          <SheetDescription>
-            Show a candidate on a second board while they stay on the first. Saving re-checks
-            every candidate currently in flight against the new conditions.
-          </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-2 space-y-6 px-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>From board</Label>
@@ -162,15 +158,19 @@ export function MirrorRuleEditor({
             <Switch checked={isActive} onCheckedChange={setIsActive} />
           </div>
 
-          <div className="flex justify-end gap-2">
+          <SheetFooter className="-mx-6 mt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={() => void save()} disabled={saving}>
+            <Button
+              onClick={() => void save()}
+              disabled={saving}
+              className="bg-green-800 text-white hover:bg-green-900"
+            >
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {saving ? "Applying…" : "Save & apply"}
             </Button>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

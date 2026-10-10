@@ -14,7 +14,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   Select,
@@ -132,18 +131,15 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[480px] sm:max-w-[480px] flex flex-col px-6">
+      <SheetContent aria-describedby={undefined} className="w-[480px] sm:max-w-[480px] flex flex-col">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <User className="h-5 w-5 text-green-700" />
             Add New User
           </SheetTitle>
-          <SheetDescription>
-            Create a new user account with role assignment.
-          </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-6 flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 pr-1">
           {/* Agency — platform administrators only; everyone else creates inside their own. */}
           {isSuperAdmin && (

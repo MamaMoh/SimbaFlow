@@ -79,7 +79,7 @@ export function RecordPaymentSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[420px] sm:max-w-[420px] flex flex-col gap-4 px-6">
+      <SheetContent className="w-[420px] sm:max-w-[420px] flex flex-col gap-4">
         <SheetHeader>
           <SheetTitle>Record payment</SheetTitle>
           <SheetDescription>
@@ -93,7 +93,7 @@ export function RecordPaymentSheet({
           </p>
         ) : null}
 
-        <div className="space-y-3">
+        <div className="px-6 space-y-3">
           <div className="space-y-1.5">
             <Label>Amount</Label>
             <Input
@@ -144,7 +144,7 @@ export function RecordPaymentSheet({
         </div>
 
         <Button
-          className="mt-auto bg-green-800 hover:bg-green-900 text-white"
+          className="mx-6 mb-6 mt-auto bg-green-800 hover:bg-green-900 text-white"
           disabled={busy || !!disabledReason}
           onClick={submit}
         >

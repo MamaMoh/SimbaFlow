@@ -12,7 +12,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
 import {
@@ -126,14 +125,11 @@ export function StageEditor({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-md overflow-y-auto">
+      <SheetContent aria-describedby={undefined} className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{isEdit ? "Edit stage" : "Add stage"}</SheetTitle>
-          <SheetDescription>
-            Configure a pipeline stage for this tenant workflow.
-          </SheetDescription>
         </SheetHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-6 px-1">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4 px-6">
           <div className="space-y-1.5">
             <Label htmlFor="stage-name">Name</Label>
             <Input id="stage-name" {...register("name")} />
@@ -176,7 +172,7 @@ export function StageEditor({
               )}
             />
           </div>
-          <SheetFooter className="pt-4">
+          <SheetFooter className="-mx-6 mt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

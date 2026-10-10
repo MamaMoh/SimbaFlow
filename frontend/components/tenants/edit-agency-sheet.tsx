@@ -21,7 +21,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Building2, Pencil, User, Shield, Settings2 } from "lucide-react";
@@ -179,18 +178,15 @@ export function EditAgencySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[540px] sm:max-w-[540px] flex flex-col px-6">
+      <SheetContent aria-describedby={undefined} className="w-[540px] sm:max-w-[540px] flex flex-col">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Pencil className="h-5 w-5 text-green-700" />
             Edit agency
           </SheetTitle>
-          <SheetDescription>
-            The URL identifier and schema cannot be changed after creation.
-          </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-6 flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 pr-1">
             <div>
               <h3 className="flex items-center gap-2 text-sm font-semibold mb-4">

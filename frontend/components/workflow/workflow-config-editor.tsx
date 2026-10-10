@@ -394,23 +394,24 @@ export function WorkflowConfigEditor() {
         )}
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold">Board mirroring</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Which candidates show up on a second board without leaving the first.
-            </p>
-          </div>
+      {/* A card, like Stages and Transitions above it. This section was the one bare block on
+          the page: the same kind of table, sitting on the page background with its heading in a
+          different size, so it read as something bolted on rather than the third of three. */}
+      <section className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Board mirroring ({mirrors.length})
+          </h2>
           <Button
             size="sm"
+            variant="outline"
             onClick={() => {
               setEditingMirror(null);
               setMirrorEditorOpen(true);
             }}
           >
-            <Plus className="mr-2 h-4 w-4" />
-            New mirror
+            <Plus className="mr-1 h-4 w-4" />
+            Mirror
           </Button>
         </div>
 
@@ -421,7 +422,7 @@ export function WorkflowConfigEditor() {
             description="Candidates will only ever appear on the board matching their current step."
           />
         ) : (
-          <div className="rounded-lg border">
+          <div className="overflow-x-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>

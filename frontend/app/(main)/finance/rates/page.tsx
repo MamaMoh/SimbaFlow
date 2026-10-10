@@ -156,14 +156,14 @@ export default function ExchangeRatesPage() {
 
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent className="w-[400px] sm:max-w-[400px] flex flex-col gap-4 px-6">
+        <SheetContent className="w-[400px] sm:max-w-[400px] flex flex-col gap-4">
           <SheetHeader>
             <SheetTitle>Add exchange rate</SheetTitle>
             <SheetDescription>
               Replaces any existing rate for the same pair and date.
             </SheetDescription>
           </SheetHeader>
-          <div className="space-y-3">
+          <div className="px-6 space-y-3">
             <div className="space-y-1.5">
               <Label>From currency</Label>
               <Input
@@ -196,7 +196,7 @@ export default function ExchangeRatesPage() {
             </div>
           </div>
           <Button
-            className="mt-auto bg-green-800 hover:bg-green-900 text-white"
+            className="mx-6 mb-6 mt-auto bg-green-800 hover:bg-green-900 text-white"
             disabled={busy}
             onClick={submit}
           >

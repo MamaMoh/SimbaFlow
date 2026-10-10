@@ -208,7 +208,12 @@ setIsSubmitting(false);
           const claims = (session?.user as any)?.grantedClaims ?? [];
           const superAdmin =
             userProfile?.isSuperAdmin === true || claims.includes("system.admin");
-          router.push(firstPermittedRoute(claims, superAdmin));
+          // A real navigation, not router.push. The password is never stored by this
+          // application — it is kept by the browser's own password manager, and Chrome and
+          // Safari only offer to save one when a form submission is followed by a page load.
+          // A client-side route change looked to them like nothing had happened, so the offer
+          // never appeared and people typed their password every morning.
+          window.location.assign(firstPermittedRoute(claims, superAdmin));
         }
       } else {
         // Check if the error indicates password change is required

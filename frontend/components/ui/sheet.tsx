@@ -124,7 +124,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-4", className)}
+      className={cn("flex flex-col gap-1.5 px-6 py-4", className)}
       {...props}
     />
   );
@@ -137,7 +137,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
       // Standard action bar: stacked (primary first) on narrow screens, and a
       // right-aligned row — Cancel then Save — from `sm` up. Pinned to the bottom.
       className={cn(
-        "mt-auto flex flex-col-reverse gap-2 border-t p-4 sm:flex-row sm:justify-end",
+        "mt-auto flex flex-col-reverse gap-2 border-t px-6 py-4 sm:flex-row sm:justify-end",
         className,
       )}
       {...props}

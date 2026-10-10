@@ -54,9 +54,11 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Settings" />
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      {/* Both cards the same height, and the two images side by side rather than stacked — the
+          branding card was twice as tall as the one next to it, which left half the row empty. */}
+      <div className="grid gap-6 lg:grid-cols-2">
         {canManageSettings ? (
-          <div className="space-y-5 rounded-lg border bg-card p-5 shadow-sm">
+          <div className="flex h-full flex-col gap-5 rounded-lg border bg-card p-5 shadow-sm">
             <div>
               <h2 className="text-sm font-semibold">Branding</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -71,20 +73,24 @@ export default function SettingsPage() {
               </p>
             ) : null}
 
-            <LogoUpload
-              endpoint="/api/proxy/branding/agency/letterhead"
-              logoPath={pathFor("letterhead")}
-              onChange={applied("letterhead")}
-              label="Letterhead"
-              hint="Across the top of CVs and visa forms."
-            />
-            <LogoUpload
-              endpoint="/api/proxy/branding/agency/logo"
-              logoPath={pathFor("logo")}
-              onChange={applied("logo")}
-              label="Logo"
-              hint="In the top bar, and on documents with no letterhead."
-            />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <LogoUpload
+                endpoint="/api/proxy/branding/agency/letterhead"
+                logoPath={pathFor("letterhead")}
+                onChange={applied("letterhead")}
+                label="Letterhead"
+                hint="Across the top of CVs and visa forms."
+                stacked
+              />
+              <LogoUpload
+                endpoint="/api/proxy/branding/agency/logo"
+                logoPath={pathFor("logo")}
+                onChange={applied("logo")}
+                label="Logo"
+                hint="In the top bar, and on documents with no letterhead."
+                stacked
+              />
+            </div>
           </div>
         ) : null}
 

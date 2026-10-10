@@ -12,7 +12,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet";
 import { CountrySelect } from "@/components/ui/country-select";
 import { toast } from "sonner";
@@ -108,15 +107,11 @@ export function CreatePartnerSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[480px] sm:max-w-[480px] flex flex-col px-6">
+      <SheetContent aria-describedby={undefined} className="w-[480px] sm:max-w-[480px] flex flex-col">
         <SheetHeader>
           <SheetTitle>Register partner agency</SheetTitle>
-          <SheetDescription>
-            A receiving-country agency your agency signs agreements with. Its letterhead is printed
-            on the documents of every candidate you place through it.
-          </SheetDescription>
         </SheetHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-4 flex flex-1 flex-col gap-4 overflow-y-auto">
+        <form onSubmit={handleSubmit(onSubmit)} className="px-6 mt-4 flex flex-1 flex-col gap-4 overflow-y-auto">
           <div className="space-y-1.5">
             <Label>Agency name *</Label>
             <Input {...register("name")} placeholder="e.g. Etenaa Resources" />
@@ -162,18 +157,10 @@ export function CreatePartnerSheet({
 
           <div className="space-y-4 rounded-lg border bg-muted/20 p-3">
             <p className="text-xs font-medium text-foreground">Branding</p>
-            <PendingImagePicker
-              file={letterhead}
-              onPick={setLetterhead}
-              label="Letterhead"
-              hint="The wide banner printed across the top of this partner's candidate documents."
-            />
-            <PendingImagePicker
-              file={logo}
-              onPick={setLogo}
-              label="Logo"
-              hint="The mark, shown in lists. Stands in on documents if there is no letterhead."
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <PendingImagePicker file={letterhead} onPick={setLetterhead} label="Letterhead" />
+              <PendingImagePicker file={logo} onPick={setLogo} label="Logo" />
+            </div>
           </div>
 
           <div className="mt-auto flex justify-end gap-2 border-t pt-4">

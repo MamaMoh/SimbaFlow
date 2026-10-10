@@ -11,7 +11,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
 import type { WorkflowTransitionRule } from "@/types/workflow";
@@ -107,15 +106,12 @@ export function TransitionEditor({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent aria-describedby={undefined} className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Edit step</SheetTitle>
-          <SheetDescription>
-            {fromName && toName ? `${fromName} → ${toName}` : "Workflow step"}
-          </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-5 px-1">
+        <div className="mt-2 space-y-5 px-6">
           <div className="space-y-1.5">
             <Label htmlFor="t-label">Button text</Label>
             <Input

@@ -23,6 +23,8 @@ interface LogoUploadProps {
   disabled?: boolean;
   /** Table-cell sizing: a small preview and one button, no label or hint. */
   compact?: boolean;
+  /** Preview above the buttons and as wide as the column, for side-by-side cards. */
+  stacked?: boolean;
 }
 
 
@@ -40,6 +42,7 @@ export function LogoUpload({
   hint,
   disabled = false,
   compact = false,
+  stacked = false,
 }: LogoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -86,12 +89,20 @@ export function LogoUpload({
     }
   };
 
-  const box = compact ? "h-9 w-20" : "h-20 w-44";
+  const box = compact ? "h-9 w-20" : stacked ? "h-24 w-full" : "h-20 w-44";
 
   return (
     <div className={compact ? "flex items-center gap-2" : "space-y-2"}>
       {!compact && <Label>{label}</Label>}
-      <div className={compact ? "flex items-center gap-2" : "flex items-center gap-4"}>
+      <div
+        className={
+          compact
+            ? "flex items-center gap-2"
+            : stacked
+              ? "space-y-2"
+              : "flex items-center gap-4"
+        }
+      >
         {/* A plain img, not next/image: this one has to be able to say that it failed. A stored
             path whose file cannot be served used to render an empty frame indistinguishable from
             having uploaded nothing, which is exactly the case somebody needs to be told about. */}
@@ -100,7 +111,7 @@ export function LogoUpload({
           onClick={() => logoPath && !broken && setZoomed(true)}
           disabled={!logoPath || broken}
           title={logoPath && !broken ? "View full size" : undefined}
-          className={`flex ${box} shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40 p-1 ${
+          className={`flex ${box} items-center justify-center overflow-hidden rounded-md border bg-muted/40 p-1 ${
             logoPath && !broken ? "cursor-zoom-in hover:border-primary/40" : "cursor-default"
           }`}
         >
@@ -191,10 +202,11 @@ export function PendingImagePicker({
   file: File | null;
   onPick: (file: File | null) => void;
   label: string;
-  hint: string;
+  hint?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
     if (!file) {
@@ -210,15 +222,25 @@ export function PendingImagePicker({
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <div className="flex items-center gap-3">
-        <div className="flex h-16 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40">
+        {/* Big enough to recognise, and it opens: a letterhead is a banner of small type, and at
+            thumbnail size one agency's looks like another's. */}
+        <button
+          type="button"
+          onClick={() => preview && setZoomed(true)}
+          disabled={!preview}
+          title={preview ? "View full size" : undefined}
+          className={`flex h-20 w-36 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40 p-1 ${
+            preview ? "cursor-zoom-in hover:border-primary/40" : "cursor-default"
+          }`}
+        >
           {preview ? (
             // A blob URL from the file just chosen — next/image cannot optimise it.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt={label} className="max-h-full w-auto object-contain" />
+            <img src={preview} alt={label} className="max-h-full max-w-full object-contain" />
           ) : (
             <span className="text-[10px] text-muted-foreground">None</span>
           )}
-        </div>
+        </button>
         <div className="space-y-1.5">
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>
@@ -240,7 +262,7 @@ export function PendingImagePicker({
               </Button>
             )}
           </div>
-          <p className="text-xs text-muted-foreground">{hint}</p>
+          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
         </div>
       </div>
       <input
@@ -250,6 +272,7 @@ export function PendingImagePicker({
         className="hidden"
         onChange={(e) => onPick(e.target.files?.[0] ?? null)}
       />
+      <ImageLightbox src={preview} alt={label} open={zoomed} onOpenChange={setZoomed} />
     </div>
   );
 }

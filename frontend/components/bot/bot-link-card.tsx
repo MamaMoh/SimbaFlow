@@ -59,7 +59,7 @@ export function BotLinkCard() {
   const botName = botStatus?.botUsername;
 
   return (
-    <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
+    <div className="flex h-full flex-col gap-4 rounded-lg border bg-card p-5 shadow-sm">
       <div>
         <h2 className="text-sm font-semibold">Link my Telegram</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">
