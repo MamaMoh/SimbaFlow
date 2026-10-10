@@ -41,9 +41,15 @@ const PINNED =
  * Clamped to the viewport, because a click near the right or bottom edge would otherwise open a
  * menu half off the screen.
  */
+let unplace: (() => void) | null = null;
+
 function openMenuAt(x: number, y: number): void {
-  // The last one: a tooltip or an earlier menu may still be in the DOM, and the newest wrapper
-  // is appended last.
+  // Only ever one menu, and only ever one of these running: a second right-click cancels the
+  // first rather than leaving it to keep writing.
+  unplace?.();
+
+  // The last wrapper: a tooltip or an earlier menu may still be in the DOM, and the newest is
+  // appended last.
   const wrappers = document.querySelectorAll<HTMLElement>("[data-radix-popper-content-wrapper]");
   const wrapper = wrappers[wrappers.length - 1];
   if (!wrapper) return;
@@ -53,23 +59,39 @@ function openMenuAt(x: number, y: number): void {
     const left = Math.max(8, Math.min(x, window.innerWidth - w - 8));
     const top = Math.max(8, Math.min(y, window.innerHeight - h - 8));
     const wanted = `translate(${left}px, ${top}px)`;
-    // Compared before writing, or the observer below would see its own write and loop forever.
-    if (wrapper.style.transform === wanted) return;
-    wrapper.style.setProperty("transform", wanted, "important");
+    if (wrapper.style.transform !== wanted)
+      wrapper.style.setProperty("transform", wanted, "important");
   };
 
-  place();
-
-  const watcher = new MutationObserver(place);
-  watcher.observe(wrapper, { attributeFilter: ["style"] });
-  // Stops when the menu goes: Radix removes the wrapper from the DOM on close.
-  const gone = new MutationObserver(() => {
-    if (!wrapper.isConnected) {
-      watcher.disconnect();
-      gone.disconnect();
+  // Held for a few frames rather than watched for the life of the menu.
+  //
+  // This used to be a MutationObserver on the wrapper's style, plus a second one on the whole
+  // of document.body to know when the menu went away. Two problems with that. The wide one
+  // fired on every DOM change anywhere on the page for as long as a menu was open, which on a
+  // table that re-renders is thousands of callbacks. And the narrow one re-applied our
+  // position every time the popper wrote its own — while the popper, watching the element it
+  // had just been moved out from under, recomputed and wrote again. Two pieces of code each
+  // correcting the other is a loop with no exit, and the tab stops answering.
+  //
+  // Radix settles its position within a frame or two of mounting, so a short window covers it.
+  // Nothing of ours runs after that, which is the point.
+  let frame = 0;
+  let raf = 0;
+  const tick = () => {
+    if (!wrapper.isConnected || frame++ > 12) {
+      unplace = null;
+      return;
     }
-  });
-  gone.observe(document.body, { childList: true, subtree: true });
+    place();
+    raf = requestAnimationFrame(tick);
+  };
+  place();
+  raf = requestAnimationFrame(tick);
+
+  unplace = () => {
+    cancelAnimationFrame(raf);
+    unplace = null;
+  };
 }
 
 type PaginationProps = Omit<

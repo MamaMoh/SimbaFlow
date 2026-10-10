@@ -7,7 +7,7 @@ using SimbaFlow.Domain.Entities.Identity;
 
 namespace SimbaFlow.API.Features.Roles.Commands;
 
-public record DeleteRoleCommand(Guid Id) : IRequest<Result<bool>>, IRequirePermission
+public record DeleteRoleCommand(Guid Id) : IRequest<Result<bool>>, IRequirePermission, IRequirePlatformAdmin
 {
     public string RequiredPermission => "role.write";
 }

@@ -25,6 +25,7 @@ import {
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { CreateRoleSheet } from "@/components/roles/create-role-sheet";
 import { toast } from "sonner";
+import { AccessDenied } from "@/components/ui/page-alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 
@@ -41,10 +42,12 @@ interface RoleRow {
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
 export default function RolesPage() {
-  // Reading the roles and rewriting them are separate permissions, and an agency is free to grant
-  // the first on its own — so Create Role and Delete follow role.write, not the page.
-  const { hasPermission } = usePermissions();
-  const canManage = hasPermission("role.write");
+  // The platform team's page, not an agency's. The role catalogue defines what every permission
+  // means and who may hold it — including the permission to edit roles — so an agency owner who
+  // could open this could grant their own account anything. The API refuses them outright now;
+  // this is so they meet a sentence rather than an empty table.
+  const { isSuperAdmin } = usePermissions();
+  const canManage = isSuperAdmin;
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -52,7 +55,9 @@ export default function RolesPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data, mutate } = useSWR("/api/proxy/roles", fetcher, { revalidateOnFocus: false });
+  const { data, mutate } = useSWR(isSuperAdmin ? "/api/proxy/roles" : null, fetcher, {
+    revalidateOnFocus: false,
+  });
   const roles: RoleRow[] = data?.data || [];
 
   const confirmDelete = async () => {
@@ -167,6 +172,10 @@ export default function RolesPage() {
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 10 } },
   });
+
+  if (!isSuperAdmin) {
+    return <AccessDenied resource="roles and permissions" />;
+  }
 
   return (
     <div className="flex flex-col gap-6">

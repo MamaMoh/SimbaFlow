@@ -74,29 +74,43 @@ function recordSuccessfulLogin(identifier: string) {
 }
 
 /**
- * The username this browser last signed in with.
+ * The sign-in this browser last used.
  *
- * Only the username. Not the password, and not a longer session — the session already lasts a
- * week — so what this saves is the typing, on the shared desk machines these agencies work from
- * where the same person signs in every morning. Unticking it forgets the name immediately.
+ * Both fields, at the agency's request, having been told what it means: a password kept here is
+ * kept in this browser's storage on this machine, in plain text, readable by anything else that
+ * runs on this page. The browser's own password manager is the safer place for it and the form
+ * still offers that — this is the box for people who want the whole sign-in filled in for them.
+ *
+ * So the label says "username and password" rather than "remember me": somebody sitting down at
+ * a shared desk machine should be able to see what is being left behind. Unticking clears both
+ * immediately, not at the next sign-in.
  */
-const REMEMBERED_USERNAME = "simbaflow.remembered-username";
+const REMEMBERED = "simbaflow.remembered-sign-in";
 
-function readRememberedUsername(): string {
-  if (typeof window === "undefined") return "";
+type Remembered = { username: string; password: string };
+
+function readRemembered(): Remembered {
+  const empty = { username: "", password: "" };
+  if (typeof window === "undefined") return empty;
   try {
-    return window.localStorage.getItem(REMEMBERED_USERNAME) ?? "";
+    const raw = window.localStorage.getItem(REMEMBERED);
+    if (!raw) return empty;
+    const parsed = JSON.parse(raw) as Partial<Remembered>;
+    return {
+      username: typeof parsed.username === "string" ? parsed.username : "",
+      password: typeof parsed.password === "string" ? parsed.password : "",
+    };
   } catch {
-    // Private windows and locked-down browsers throw on localStorage; a forgotten name is not
-    // a reason to fail to render the form.
-    return "";
+    // Private windows and locked-down browsers throw on localStorage, and a half-written entry
+    // throws on parse. Neither is a reason to fail to render the form.
+    return empty;
   }
 }
 
-function rememberUsername(username: string, remember: boolean) {
+function remember(credentials: Remembered | null) {
   try {
-    if (remember) window.localStorage.setItem(REMEMBERED_USERNAME, username);
-    else window.localStorage.removeItem(REMEMBERED_USERNAME);
+    if (credentials) window.localStorage.setItem(REMEMBERED, JSON.stringify(credentials));
+    else window.localStorage.removeItem(REMEMBERED);
   } catch {
     /* see above */
   }
@@ -106,8 +120,8 @@ const LoginForm = () => {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   // Read once, on the client, so the server-rendered HTML does not differ from the first paint.
-  const [remembered] = useState(readRememberedUsername);
-  const [remember, setRemember] = useState(false);
+  const [remembered] = useState(readRemembered);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // A blocked agency is not a typo to retry — it is a state someone has to act on, so it stays on
@@ -129,9 +143,10 @@ const LoginForm = () => {
   });
 
   useEffect(() => {
-    if (!remembered) return;
-    setValue("username", remembered);
-    setRemember(true);
+    if (!remembered.username && !remembered.password) return;
+    setValue("username", remembered.username);
+    setValue("password", remembered.password);
+    setRememberMe(true);
   }, [remembered, setValue]);
 
   const onSubmit = async (data: LoginFormData) => {
@@ -196,8 +211,8 @@ setIsSubmitting(false);
         
         // Record successful login to reset rate limit
         recordSuccessfulLogin(rateLimitKey);
-        // Only after the credentials were accepted: a mistyped name is not worth keeping.
-        rememberUsername(data.username, remember);
+        // Only after the credentials were accepted: a mistyped password is worse than none.
+        remember(rememberMe ? { username: data.username, password: data.password } : null);
         
         if (isFirstLogin) {
           router.push(`/change-password`);
@@ -375,20 +390,26 @@ setIsSubmitting(false);
                 </p>
               )}
             </div>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
               <Checkbox
-                checked={remember}
+                className="mt-0.5"
+                checked={rememberMe}
                 onCheckedChange={(v) => {
                   const next = v === true;
-                  setRemember(next);
-                  // Unticking forgets the stored name now, not at the next sign-in — otherwise
-                  // someone who unticks it and walks away has still left their name on the machine.
-                  if (!next) rememberUsername("", false);
+                  setRememberMe(next);
+                  // Unticking clears what is stored now, not at the next sign-in — otherwise
+                  // somebody who unticks it and walks away has still left it on the machine.
+                  if (!next) remember(null);
                 }}
                 disabled={isSubmitting}
-                aria-label="Remember my username"
+                aria-label="Remember my username and password on this device"
               />
-              Remember my username
+              <span>
+                Remember my username and password
+                <span className="block text-xs text-muted-foreground/80">
+                  Kept in this browser. Leave it off on a shared computer.
+                </span>
+              </span>
             </label>
 
             <Button

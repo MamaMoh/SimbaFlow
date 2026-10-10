@@ -41,7 +41,10 @@ public static class RolePermissionSeeder
             "bot.configure", "bot.use",
             "report.view", "report.export", "report.schedule",
             "audit.read",
-            "role.read", "role.write",
+            // Not role.read or role.write. The role catalogue defines what every permission in
+            // the system means and who may hold it, including the permission to edit roles — an
+            // agency owner holding it could grant their own account anything. It is the platform
+            // team's, and the endpoints behind it now refuse anyone else outright.
             "users.read", "users.write",
             // The agency configures its own intake defaults and preferences.
             "settings.read", "settings.write",

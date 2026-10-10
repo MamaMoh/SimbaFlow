@@ -7,7 +7,7 @@ using SimbaFlow.Domain.Entities.Identity;
 
 namespace SimbaFlow.API.Features.Roles.Queries;
 
-public record GetRolesQuery : IRequest<Result<List<RoleListDto>>>, IRequirePermission
+public record GetRolesQuery : IRequest<Result<List<RoleListDto>>>, IRequirePermission, IRequirePlatformAdmin
 {
     public string RequiredPermission => "role.read";
 }

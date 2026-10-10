@@ -9,7 +9,7 @@ using SimbaFlow.Domain.Entities.Identity;
 namespace SimbaFlow.API.Features.Roles.Commands;
 
 public record UpdateRoleCommand(Guid Id, string Name, string? Description, List<Guid> PermissionIds)
-    : IRequest<Result<Guid>>, IRequirePermission
+    : IRequest<Result<Guid>>, IRequirePermission, IRequirePlatformAdmin
 {
     public string RequiredPermission => "role.write";
 }

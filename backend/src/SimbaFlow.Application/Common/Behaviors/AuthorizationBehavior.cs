@@ -8,7 +8,8 @@ namespace SimbaFlow.Application.Common.Behaviors;
 /// MediatR pipeline behavior that enforces permission-based authorization.
 /// Commands/queries implementing IRequirePermission (one permission) or IRequireAnyPermission
 /// (any one of several) are checked before handler execution.
-/// SuperAdmin bypasses all checks.
+/// SuperAdmin bypasses those checks — but not IRequirePlatformAdmin, which is the one gate a
+/// permission grant cannot open.
 /// </summary>
 public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -25,6 +26,18 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
         RequestHandlerDelegate<TResponse> next,
         CancellationToken cancellationToken)
     {
+        // First, and with no bypass: the platform's own work is not reachable by granting
+        // yourself a permission.
+        if (request is IRequirePlatformAdmin)
+        {
+            if (string.IsNullOrEmpty(_currentUser.UserId))
+                throw new UnauthorizedAccessException("Authentication required");
+
+            if (!_currentUser.IsSuperAdmin)
+                throw new ForbiddenAccessException(
+                    "Roles and permissions are managed by the platform team.");
+        }
+
         if (request is IRequirePermission permissionRequest)
         {
             // SuperAdmin bypasses all permission checks

@@ -159,11 +159,14 @@ export const navigation: NavItem[] = [
         claims: ["users.read", "system.admin"],
       },
       {
+        // Platform only. The role catalogue says what every permission means and who may hold
+        // it, the permission to edit roles included, so an agency owner with it could grant
+        // their own account anything.
         name: "Roles & permissions",
         href: "/roles",
         scope: "both",
         icon: require("lucide-react").Shield,
-        claims: ["role.read", "system.admin"],
+        claims: ["system.admin"],
       },
     ],
   },
