@@ -66,8 +66,12 @@ export function ProductPreview() {
           <Plane className="h-3.5 w-3.5 text-[var(--mkt-green)]" />
         </span>
         <div>
-          <p className="text-[11.5px] font-medium text-[var(--mkt-strong)]">Abel K. moved to Ticket</p>
-          <p className="text-[10.5px] text-[var(--mkt-faint)]">pushed to every desk · just now</p>
+          <p className="text-[11.5px] font-medium text-[var(--mkt-strong)]">
+            Abel K. moved to Ticket
+          </p>
+          <p className="text-[10.5px] text-[var(--mkt-faint)]">
+            pushed to every desk · just now
+          </p>
         </div>
       </div>
     </div>

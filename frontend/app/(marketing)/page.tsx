@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
 import { Cta } from "@/components/marketing/cta";
-import { Faq } from "@/components/marketing/faq";
 import { Features } from "@/components/marketing/features";
 import { Hero } from "@/components/marketing/hero";
 import { Pricing } from "@/components/marketing/pricing";
-import { Security } from "@/components/marketing/security";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteNav } from "@/components/marketing/site-nav";
-import { Ticker } from "@/components/marketing/ticker";
-import { Workflow } from "@/components/marketing/workflow";
 
 export const metadata: Metadata = {
   title: "SimbaFlow — Labour export agency management",
   description:
-    "SimbaFlow runs the full overseas deployment lifecycle for labour export agencies: candidate intake, embassy and Tasheer processing, government clearances, travel logistics and commission settlement — on one configurable pipeline.",
+    "One pipeline for a labour export agency: candidate intake, embassy and Tasheer processing, government clearances, travel and commission settlement.",
   openGraph: {
     title: "SimbaFlow — Labour export agency management",
     description:
@@ -22,18 +18,22 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Four sections: what it is, what it does, what it costs, how to see it.
+ *
+ * It ran to eight — a corridor marquee, a stage-by-stage walk through the pipeline, a security
+ * page and an FAQ, each about as long as this whole page is now. Everything there was true and
+ * almost none of it was being read; what survives is what a visitor needs in order to decide
+ * whether to book the demo, and the rest is the demo's job.
+ */
 export default function LandingPage() {
   return (
     <>
       <SiteNav />
       <main>
         <Hero />
-        <Ticker />
         <Features />
-        <Workflow />
-        <Security />
         <Pricing />
-        <Faq />
         <Cta />
       </main>
       <SiteFooter />

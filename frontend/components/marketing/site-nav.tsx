@@ -1,117 +1,51 @@
-"use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Menu, X, ArrowRight } from "lucide-react";
 import { Logo } from "./logo";
 
-const LINKS = [
-  { href: "#platform", label: "Platform" },
-  { href: "#workflow", label: "Workflow engine" },
-  { href: "#corridors", label: "Corridors" },
-  { href: "#security", label: "Security & architecture" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
-];
-
+/**
+ * The public header.
+ *
+ * Two links. It carried six — Platform, Workflow engine, Corridors, Security & architecture,
+ * Pricing, FAQ — which is a table of contents for a page nobody had agreed to read yet, and the
+ * two things a visitor actually came to do (see the price, sign in) were lost among them.
+ *
+ * No scroll listener and no mobile menu either, so the header ships no JavaScript: it is a
+ * hairline and four links at every width.
+ */
 export function SiteNav() {
-  const [scrolled, setScrolled] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  // The page scrolls inside .mkt-scroll, so listen there instead of on window.
-  useEffect(() => {
-    const scroller = document.querySelector(".mkt-scroll");
-    if (!scroller) return;
-
-    const onScroll = () => setScrolled(scroller.scrollTop > 12);
-    onScroll();
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => scroller.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
-    <header className="sticky top-0 z-50">
-      <div
-        className={`transition-all duration-300 ${
-          scrolled ? "mkt-glass border-b border-[var(--mkt-line)]" : "border-b border-transparent"
-        }`}
-      >
-        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
-          <Link href="#top" aria-label="SimbaFlow home">
-            <Logo />
-          </Link>
+    <header className="sticky top-0 z-50 mkt-glass border-b border-[var(--mkt-line)]">
+      <nav className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-4 px-5 sm:px-8">
+        <Link href="#top" aria-label="SimbaFlow home">
+          <Logo />
+        </Link>
 
-          <div className="hidden items-center gap-1 md:flex">
-            {LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="rounded-full px-3.5 py-2 text-[13.5px] text-[var(--mkt-muted)] transition-colors hover:bg-[var(--mkt-surface)] hover:text-[var(--mkt-strong)]"
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-
-          <div className="hidden items-center gap-2.5 md:flex">
-            <Link
-              href="/login"
-              className="rounded-full px-4 py-2 text-[13.5px] font-medium text-[var(--mkt-muted)] transition-colors hover:text-[var(--mkt-strong)]"
-            >
-              Sign in
-            </Link>
-            <a
-              href="#demo"
-              className="group inline-flex items-center gap-1.5 rounded-full bg-[var(--mkt-strong)] px-4 py-2 text-[13.5px] font-semibold text-white transition-transform hover:scale-[1.03]"
-            >
-              Book a demo
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </a>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--mkt-line)] text-[var(--mkt-strong)] md:hidden"
+        <div className="flex items-center gap-1 sm:gap-2">
+          <a
+            href="#platform"
+            className="hidden rounded-full px-3.5 py-2 text-[13.5px] text-[var(--mkt-muted)] transition-colors hover:text-[var(--mkt-strong)] sm:block"
           >
-            {open ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
-          </button>
-        </nav>
-      </div>
-
-      {open && (
-        <div className="mkt-glass border-b border-[var(--mkt-line)] px-5 pb-6 pt-2 md:hidden">
-          <div className="flex flex-col">
-            {LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="border-b border-[var(--mkt-line)] py-3.5 text-[15px] text-[var(--mkt-muted)]"
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-col gap-2.5">
-            <Link
-              href="/login"
-              className="rounded-full border border-[var(--mkt-line-strong)] py-2.5 text-center text-sm font-medium text-[var(--mkt-strong)]"
-            >
-              Sign in
-            </Link>
-            <a
-              href="#demo"
-              onClick={() => setOpen(false)}
-              className="rounded-full bg-[var(--mkt-strong)] py-2.5 text-center text-sm font-semibold text-white"
-            >
-              Book a demo
-            </a>
-          </div>
+            Platform
+          </a>
+          <a
+            href="#pricing"
+            className="rounded-full px-3.5 py-2 text-[13.5px] text-[var(--mkt-muted)] transition-colors hover:text-[var(--mkt-strong)]"
+          >
+            Pricing
+          </a>
+          <Link
+            href="/login"
+            className="rounded-full px-3.5 py-2 text-[13.5px] font-medium text-[var(--mkt-strong)] transition-colors hover:bg-[var(--mkt-surface)]"
+          >
+            Sign in
+          </Link>
+          <a
+            href="#demo"
+            className="rounded-full bg-[var(--mkt-strong)] px-4 py-2 text-[13.5px] font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Book a demo
+          </a>
         </div>
-      )}
+      </nav>
     </header>
   );
 }

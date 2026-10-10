@@ -74,33 +74,11 @@
     radial-gradient(64% 52% at 62% 46%, rgba(0, 102, 51, 0.05) 0%, transparent 66%);
 }
 
-.mkt-grid-lines {
-  background-image:
-    linear-gradient(to right, rgba(6, 32, 21, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(6, 32, 21, 0.05) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(72% 60% at 50% 34%, #000 0%, transparent 100%);
-  -webkit-mask-image: radial-gradient(72% 60% at 50% 34%, #000 0%, transparent 100%);
-}
-
-/* Hairline that fades out at both ends, used as a section divider. */
-.mkt-rule {
-  height: 1px;
-  background: linear-gradient(to right, transparent, rgba(6, 32, 21, 0.14), transparent);
-}
-
 /* --- Type --------------------------------------------------------------- */
 
 .mkt-display {
   letter-spacing: -0.035em;
   line-height: 1.02;
-}
-
-.mkt-gradient-text {
-  background: linear-gradient(100deg, #006633 6%, #0a7d45 54%, #00522a 96%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
 /* The app paints its wordmark with the flag across the letters; the site does the same so the
@@ -137,17 +115,6 @@
 
 /* --- Motion ------------------------------------------------------------- */
 
-.mkt-reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.mkt-reveal[data-visible="true"] {
-  opacity: 1;
-  transform: none;
-}
-
 @keyframes mkt-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
@@ -167,46 +134,8 @@
   animation: mkt-pulse 2.2s ease-in-out infinite;
 }
 
-/* Marquee for the stage ticker; the track holds two identical copies. */
-@keyframes mkt-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-.mkt-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: mkt-marquee 38s linear infinite;
-}
-
-.mkt-marquee:hover .mkt-marquee-track {
-  animation-play-state: paused;
-}
-
-.mkt-fade-x {
-  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .mkt-scroll { scroll-behavior: auto; }
-  .mkt-reveal { opacity: 1; transform: none; transition: none; }
   .mkt-float,
-  .mkt-pulse,
-  .mkt-marquee-track { animation: none; }
-}
-
-/* --- FAQ ---------------------------------------------------------------- */
-
-.mkt-faq summary::-webkit-details-marker {
-  display: none;
-}
-
-.mkt-faq summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-.mkt-faq details[open] .mkt-faq-icon {
-  transform: rotate(45deg);
+  .mkt-pulse { animation: none; }
 }

@@ -11,11 +11,18 @@ export function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <LogoMark className="h-8 w-8" />
-      <span className="mkt-wordmark text-[19px] font-bold tracking-[-0.02em]">SimbaFlow</span>
+      <span className="mkt-wordmark text-[19px] font-bold tracking-[-0.02em]">
+        SimbaFlow
+      </span>
     </span>
   );
 }
 
 export function LogoMark({ className = "" }: { className?: string }) {
-  return <Globe className={`text-[var(--mkt-green)] ${className}`} aria-hidden="true" />;
+  return (
+    <Globe
+      className={`text-[var(--mkt-green)] ${className}`}
+      aria-hidden="true"
+    />
+  );
 }

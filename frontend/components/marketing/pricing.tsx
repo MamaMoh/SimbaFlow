@@ -1,53 +1,56 @@
-import { Check, Sparkles } from "lucide-react";
-import { Reveal } from "./reveal";
-import { SectionHeading } from "./section-heading";
+import { Check } from "lucide-react";
 
+/**
+ * Priced in birr, because the agencies buying this are in Addis and bill in birr.
+ *
+ * The figures are the previous dollar plans converted at roughly 160 birr and rounded to
+ * something a person can say out loud — change the numbers here, they are plain strings.
+ *
+ * Four lines per plan rather than seven: a feature list long enough to need reading is a list
+ * nobody compares, and it was also where the page promised things in passing.
+ */
 const PLANS = [
   {
     name: "Starter",
-    price: "$249",
+    price: "Br 40,000",
     cadence: "/month",
-    blurb: "For smaller agencies stepping away from WhatsApp threads and spreadsheets.",
-    cta: "Start trial",
+    blurb: "For smaller agencies coming off spreadsheets and WhatsApp groups.",
+    cta: "Book a demo",
     featured: false,
     features: [
       "Up to 10 staff accounts",
-      "Default 7-stage deployment pipeline",
-      "Unlimited candidate registrations",
-      "Document vault & CV export",
-      "Standard email support",
+      "The standard deployment pipeline",
+      "Unlimited candidates and documents",
+      "Generated CVs and contracts",
     ],
   },
   {
     name: "Agency",
-    price: "$690",
+    price: "Br 110,000",
     cadence: "/month",
-    blurb: "For growing labour exporters managing multi-country desks and partner agencies.",
+    blurb:
+      "For agencies running several destinations and partner agencies at once.",
     cta: "Book a demo",
     featured: true,
     features: [
       "Unlimited staff accounts",
-      "Fully configurable stages & transition rules",
-      "Parallel tracks (Medical & Embassy)",
-      "Commission & double-entry ledger",
-      "Partner agency directory portal",
-      "One-click Excel & PDF ministry reporting",
-      "Priority phone & WhatsApp desk support",
+      "Your own stages and rules",
+      "Commission and expense ledger",
+      "Partner agency directory",
     ],
   },
   {
     name: "Enterprise",
     price: "Custom",
     cadence: "",
-    blurb: "For large recruitment consortia, federation bodies and multi-branch groups.",
-    cta: "Contact sales",
+    blurb: "For groups running several agencies under one administration.",
+    cta: "Talk to us",
     featured: false,
     features: [
-      "Multiple agency schemas under one master admin",
-      "Single sign-on (SAML / Okta / Azure AD)",
-      "Custom Telegram & WhatsApp bot notifications",
-      "Full REST & GraphQL API access",
-      "Dedicated deployment engineer & data migration",
+      "Several agencies, one administration",
+      "Single sign-on",
+      "API access",
+      "Migration of your existing records",
     ],
   },
 ];
@@ -56,71 +59,73 @@ export function Pricing() {
   return (
     <section
       id="pricing"
-      className="relative border-y border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] px-5 py-24 sm:px-8 sm:py-32"
+      className="border-y border-[var(--mkt-line)] bg-[var(--mkt-bg-raised)] px-5 py-20 sm:px-8 sm:py-24"
     >
-      <div className="mx-auto max-w-6xl">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Fair enterprise pricing"
-            title="Priced per agency, not per candidate"
-            description="Your busy recruitment cycles shouldn't cost more to operate. Every plan includes the isolated PostgreSQL schema, the audit trail and unlimited candidate files."
-          />
-        </Reveal>
+      <div className="mx-auto max-w-5xl">
+        <h2 className="mkt-display text-center text-[30px] font-semibold text-[var(--mkt-strong)] sm:text-[40px]">
+          Priced per agency, not per candidate
+        </h2>
+        <p className="mx-auto mt-4 max-w-lg text-center text-[15.5px] leading-relaxed text-[var(--mkt-muted)]">
+          A busy season should not cost more to run. Every plan includes your
+          own isolated database, the audit trail and unlimited candidate files.
+        </p>
 
-        <div className="mt-14 grid items-start gap-5 lg:grid-cols-3">
-          {PLANS.map((plan, index) => (
-            <Reveal key={plan.name} delay={index * 80}>
-              <div
-                className={`relative h-full rounded-2xl p-7 ${
+        <div className="mt-12 grid items-start gap-5 lg:grid-cols-3">
+          {PLANS.map((plan) => (
+            <div
+              key={plan.name}
+              className={`relative h-full rounded-2xl p-7 ${
+                plan.featured
+                  ? "border border-[var(--mkt-green)]/45 bg-white shadow-[0_20px_50px_-30px_rgba(0,102,51,0.45)]"
+                  : "mkt-card"
+              }`}
+            >
+              <h3 className="text-[15px] font-semibold text-[var(--mkt-strong)]">
+                {plan.name}
+              </h3>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--mkt-muted)]">
+                {plan.blurb}
+              </p>
+
+              <p className="mt-6 flex items-baseline gap-1">
+                <span className="mkt-display text-[34px] font-semibold text-[var(--mkt-strong)]">
+                  {plan.price}
+                </span>
+                <span className="text-[13.5px] text-[var(--mkt-faint)]">
+                  {plan.cadence}
+                </span>
+              </p>
+
+              <a
+                href="#demo"
+                className={`mt-6 block rounded-full py-2.5 text-center text-[14px] font-semibold transition-opacity hover:opacity-90 ${
                   plan.featured
-                    ? "border border-[var(--mkt-green)]/45 bg-white shadow-[0_24px_60px_-30px_rgba(15,157,88,0.45)]"
-                    : "mkt-card"
+                    ? "bg-[var(--mkt-strong)] text-white"
+                    : "border border-[var(--mkt-line-strong)] text-[var(--mkt-strong)]"
                 }`}
               >
-                {plan.featured && (
-                  <span className="absolute -top-3 left-7 inline-flex items-center gap-1.5 rounded-full bg-[var(--mkt-green)] px-3 py-1 text-[11px] font-semibold text-white">
-                    <Sparkles className="h-3 w-3" />
-                    Most chosen by agencies
-                  </span>
-                )}
+                {plan.cta}
+              </a>
 
-                <h3 className="text-[15px] font-semibold text-[var(--mkt-strong)]">{plan.name}</h3>
-                <p className="mt-1.5 text-[13.5px] leading-relaxed text-[var(--mkt-muted)]">{plan.blurb}</p>
-
-                <p className="mt-6 flex items-baseline gap-1">
-                  <span className="mkt-display text-[38px] font-semibold text-[var(--mkt-strong)]">{plan.price}</span>
-                  <span className="text-[13.5px] text-[var(--mkt-faint)]">{plan.cadence}</span>
-                </p>
-
-                <a
-                  href="#demo"
-                  className={`mt-6 block rounded-full py-2.5 text-center text-[14px] font-semibold transition-transform hover:scale-[1.02] ${
-                    plan.featured
-                      ? "bg-[var(--mkt-strong)] text-white"
-                      : "border border-[var(--mkt-line-strong)] text-[var(--mkt-strong)] hover:bg-[var(--mkt-surface)]"
-                  }`}
-                >
-                  {plan.cta}
-                </a>
-
-                <ul className="mt-7 space-y-3 border-t border-[var(--mkt-line)] pt-6">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex gap-2.5 text-[13.5px] text-[var(--mkt-muted)]">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--mkt-green)]" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
+              <ul className="mt-7 space-y-3 border-t border-[var(--mkt-line)] pt-6">
+                {plan.features.map((feature) => (
+                  <li
+                    key={feature}
+                    className="flex gap-2.5 text-[13.5px] text-[var(--mkt-muted)]"
+                  >
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--mkt-green)]" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
         </div>
 
-        <Reveal>
-          <p className="mt-10 text-center text-[12.5px] text-[var(--mkt-faint)]">
-            All prices in USD. Annual upfront billing receives two months complimentary.
-          </p>
-        </Reveal>
+        <p className="mt-9 text-center text-[12.5px] text-[var(--mkt-faint)]">
+          Prices in Ethiopian birr, excluding VAT. Paying a year ahead gets two
+          months free.
+        </p>
       </div>
     </section>
   );
