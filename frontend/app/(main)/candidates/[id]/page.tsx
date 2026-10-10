@@ -15,6 +15,7 @@ import {
   type VisaFormGap,
 } from "@/lib/api/candidates";
 import { VisaDetailsDialog } from "@/components/workflow/visa-details-dialog";
+import { CandidateImage } from "@/components/candidates/candidate-image";
 import { useAvailableActions, useWorkflowState } from "@/lib/api/workflow";
 import { FormSection } from "@/components/candidates/form-section";
 import { StageProgress } from "@/components/candidates/stage-progress";
@@ -393,6 +394,32 @@ export default function CandidateDetailPage() {
             </Button>
           </div>
         <ShowEmptyFields.Provider value={showEmpty}>
+          {/*
+            The three images on file, which were on no screen at all: the only way to see a
+            candidate's photograph was to open the edit form, and the only way to read their
+            passport page was to download it. Each opens full size — a biodata page is a grey
+            rectangle at thumbnail width, and its number and dates are what gets checked.
+
+            Each tile removes itself when there is nothing behind it, so a candidate with only
+            a portrait shows one frame rather than two empty ones captioned with what is absent.
+          */}
+          <div className="rounded-lg border bg-card p-4 shadow-sm">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <CandidateImage
+                url={`/api/proxy/candidates/${id}/media/photo`}
+                label="Portrait"
+              />
+              <CandidateImage
+                url={`/api/proxy/candidates/${id}/media/full-photo`}
+                label="Full body"
+              />
+              <CandidateImage
+                url={`/api/proxy/candidates/${id}/media/passport`}
+                label="Passport"
+              />
+            </div>
+          </div>
+
           <ProfileSection icon={FileText} title="Basic information">
             <Field
               label="Gender"

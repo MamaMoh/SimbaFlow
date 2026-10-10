@@ -31,11 +31,13 @@ import {
   Plus,
   ScanLine,
   BookOpen,
+  Maximize2,
   ArrowLeft,
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FormSection } from "@/components/candidates/form-section";
+import { ImageLightbox } from "@/components/candidates/candidate-image";
 import { toast } from "sonner";
 import { useIntakeDefaults, type AgencySkill } from "@/lib/api/intake-defaults";
 import { CountrySelect, countryName } from "@/components/ui/country-select";
@@ -454,7 +456,9 @@ const defaults: Partial<RegisterCandidateForm> = {
   skillBabysitting: false,
   skillChildCare: false,
   extraSkills: [],
-  workExperiences: [],
+  // One empty line, so the section opens with somewhere to type rather than with a button that
+  // has to be found and pressed before anything can be entered.
+  workExperiences: [{ country: "", occupation: "", years: "" }],
 };
 
 function formatApiError(result: {
@@ -549,6 +553,7 @@ function PhotoPicker({
   const [loading, setLoading] = useState(false);
   const [broken, setBroken] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
     const gen = ++previewGen.current;
@@ -683,17 +688,29 @@ function PhotoPicker({
             <span>Loading preview…</span>
           </div>
         ) : showImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={previewUrl.slice(0, 64)}
-            src={previewUrl}
-            alt={label}
-            className="h-full w-full object-contain bg-white"
-            onError={() => {
-              setBroken(true);
-              setPreviewUrl(null);
-            }}
-          />
+          // Click to see it full size. A passport biodata page at 200px is a grey rectangle,
+          // and its number and dates are exactly what someone is checking against the form.
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            aria-label={`View ${label} full size`}
+            className="group relative h-full w-full"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={previewUrl.slice(0, 64)}
+              src={previewUrl}
+              alt={label}
+              className="h-full w-full bg-white object-contain"
+              onError={() => {
+                setBroken(true);
+                setPreviewUrl(null);
+              }}
+            />
+            <span className="absolute inset-0 flex items-center justify-center bg-slate-900/0 opacity-0 transition group-hover:bg-slate-900/35 group-hover:opacity-100">
+              <Maximize2 className="h-5 w-5 text-white" />
+            </span>
+          </button>
         ) : (
           <div className="flex flex-col items-center gap-2 px-4 text-center text-sm text-muted-foreground">
             <PhotoSample kind={kind} />
@@ -718,6 +735,13 @@ function PhotoPicker({
           </button>
         )}
       </div>
+
+      <ImageLightbox
+        src={previewUrl}
+        alt={label}
+        open={zoomed}
+        onOpenChange={setZoomed}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -1040,13 +1064,14 @@ export function CandidateApplicationForm({
       certificateNo: d.certificateNo || "",
       certifiedDate: d.certifiedDate || "",
       medicalPlace: d.medicalPlace || "",
-      workExperiences: (Array.isArray(d.workExperiences) ? d.workExperiences : []).map(
-        (w: { country?: string; occupation?: string; years?: number | null }) => ({
-          country: w.country || "",
-          occupation: w.occupation || "",
-          years: w.years != null ? String(w.years) : "",
-        }),
-      ),
+      workExperiences: (Array.isArray(d.workExperiences) && d.workExperiences.length > 0
+        ? d.workExperiences
+        : [{}]
+      ).map((w: { country?: string; occupation?: string; years?: number | null }) => ({
+        country: w.country || "",
+        occupation: w.occupation || "",
+        years: w.years != null ? String(w.years) : "",
+      })),
     });
     setPhotoFile(null);
     setFullPhotoFile(null);
@@ -1124,9 +1149,10 @@ export function CandidateApplicationForm({
       setValue("contractPeriod", agencyDefaults.contractPeriod);
     }
     if (agencyDefaults.countryOfTravel && stillAt("countryOfTravel", "")) {
-      const destination = countryName(agencyDefaults.countryOfTravel) || agencyDefaults.countryOfTravel;
-      setValue("countryOfTravel", destination);
-      setValue("country", destination);
+      setValue(
+        "countryOfTravel",
+        countryName(agencyDefaults.countryOfTravel) || agencyDefaults.countryOfTravel,
+      );
     }
     if (agencyDefaults.cookingLevel && stillAt("cookingLevel", defaults.cookingLevel ?? "")) {
       setValue("cookingLevel", matchOption(LANGUAGE_LEVELS, agencyDefaults.cookingLevel));
@@ -1935,12 +1961,11 @@ export function CandidateApplicationForm({
                       const p = linkedPartners.find((x) => x.id === id);
                       if (p) {
                         // The partner decides the destination, so it is set here rather than
-                        // asked for twice.
+                        // asked for twice. Not the candidate's own Country, which is where they
+                        // live — writing the destination there printed "Saudi Arabia" as the
+                        // home address of every candidate with no address on file.
                         setValue("partnerName", p.name);
-                        if (p.country) {
-                          setValue("countryOfTravel", p.country);
-                          setValue("country", p.country);
-                        }
+                        if (p.country) setValue("countryOfTravel", p.country);
                       }
                     }}
                   >
@@ -2250,7 +2275,7 @@ export function CandidateApplicationForm({
                 </Select>
               </div>
             </FormSection>
-            <FormSection icon={MapPin} title="Work experience" defaultOpen={false}>
+            <FormSection icon={MapPin} title="Work experience">
               {/* One row per posting. Two years in Lebanon and three in Kuwait is a five-year
                   career, and the single country-and-years pair this replaced recorded one of
                   them — the partner read a shorter history than the candidate had, which is

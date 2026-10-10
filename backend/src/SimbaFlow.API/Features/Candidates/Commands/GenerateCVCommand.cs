@@ -38,6 +38,8 @@ public class GenerateCVHandler : IRequestHandler<GenerateCVCommand, Result<Gener
     public async Task<Result<GeneratedPdf>> Handle(GenerateCVCommand request, CancellationToken cancellationToken)
     {
         var candidate = await _context.Candidates
+            // The CV prints every posting, not the summary columns.
+            .Include(c => c.WorkExperiences)
             .FirstOrDefaultAsync(c => c.Id == request.CandidateId && !c.IsDeleted, cancellationToken);
 
         if (candidate is null)

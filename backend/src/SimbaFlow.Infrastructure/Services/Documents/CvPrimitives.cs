@@ -2,6 +2,7 @@ using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.Infrastructure.Services.Documents;
 
@@ -116,11 +117,5 @@ internal static class CvPrimitives
         return age >= 0 ? age : null;
     }
 
-    internal static string? FormatAddress(Candidate c)
-    {
-        var parts = new[] { c.HouseNo, c.Woreda, c.Subcity, c.Address, c.City, c.Region, c.Country }
-            .Where(s => !string.IsNullOrWhiteSpace(s));
-        var joined = string.Join(", ", parts);
-        return string.IsNullOrWhiteSpace(joined) ? null : joined;
-    }
+    internal static string? FormatAddress(Candidate c) => HomeAddress.Format(c);
 }

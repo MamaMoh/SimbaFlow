@@ -111,6 +111,8 @@ public class DownloadCandidateDocumentsHandler
 
         var candidates = await _context.Candidates
             .AsNoTracking()
+            // A CV can be produced here, and it prints every posting.
+            .Include(c => c.WorkExperiences)
             .Where(c => ids.Contains(c.Id) && !c.IsDeleted)
             .OrderBy(c => c.LastName)
             .ThenBy(c => c.FirstName)

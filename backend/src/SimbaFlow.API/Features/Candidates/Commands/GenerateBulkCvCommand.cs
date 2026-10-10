@@ -42,6 +42,7 @@ public class GenerateBulkCvHandler : IRequestHandler<GenerateBulkCvCommand, Resu
 
         var candidates = await _context.Candidates
             .AsNoTracking()
+            .Include(c => c.WorkExperiences)
             .Where(c => ids.Contains(c.Id) && !c.IsDeleted)
             .ToListAsync(cancellationToken);
 

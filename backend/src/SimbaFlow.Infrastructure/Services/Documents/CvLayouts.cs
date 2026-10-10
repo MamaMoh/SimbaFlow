@@ -250,8 +250,8 @@ internal static class CvLayouts
                         Bar(right, "Previous Employment Abroad", "خبرة خارج البلاد");
                         right.Item().Border(0.5f).BorderColor(Border).Column(t =>
                         {
-                            Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
-                            Row3(t, "Country", V(c.WorksIn), "البلد");
+                            Row3(t, "Period", WorkHistory.Years(c), "المدة");
+                            Row3(t, "Country", WorkHistory.Countries(c), "البلد");
                         });
 
                         right.Item().PaddingTop(6).Border(0.5f).BorderColor(Border).Column(t =>
@@ -386,8 +386,8 @@ internal static class CvLayouts
                             Bar(left, "Previous Employment Abroad", "خبرة خارج البلاد");
                             left.Item().Border(0.5f).BorderColor(Border).Column(t =>
                             {
-                                Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
-                                Row3(t, "Country", V(c.WorksIn), "البلد");
+                                Row3(t, "Period", WorkHistory.Years(c), "المدة");
+                                Row3(t, "Country", WorkHistory.Countries(c), "البلد");
                             });
                         });
                         body.ConstantItem(6);
@@ -526,8 +526,8 @@ internal static class CvLayouts
                                 Bar(rest, "Work Experience", "خبرة في العمل");
                                 rest.Item().Border(0.5f).BorderColor(Border).Column(t =>
                                 {
-                                    Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة", 60);
-                                    Row3(t, "Country", V(c.WorksIn), "البلد", 60);
+                                    Row3(t, "Period", WorkHistory.Years(c), "المدة", 60);
+                                    Row3(t, "Country", WorkHistory.Countries(c), "البلد", 60);
                                 });
 
                                 rest.Item().PaddingTop(5);
@@ -625,8 +625,8 @@ internal static class CvLayouts
                             Bar(left, "Work Experience", "خبرة في العمل");
                             left.Item().Border(0.5f).BorderColor(Border).Column(t =>
                             {
-                                Row3(t, "Period", c.ExperienceAbroadYears?.ToString() ?? "", "المدة");
-                                Row3(t, "Country", V(c.WorksIn), "البلد");
+                                Row3(t, "Period", WorkHistory.Years(c), "المدة");
+                                Row3(t, "Country", WorkHistory.Countries(c), "البلد");
                             });
                         });
                         body.ConstantItem(6);
@@ -719,7 +719,7 @@ internal static class CvLayouts
                                     r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
                                         .Text(Reference(c)).FontSize(FormType.Value).Bold();
                                     r.RelativeItem().PaddingVertical(2.5f).AlignCenter()
-                                        .Text(c.ExperienceAbroadYears is > 0 ? "Experienced" : "First-Time")
+                                        .Text(WorkHistory.HasAny(c) ? "Experienced" : "First-Time")
                                         .FontSize(FormType.Value);
                                 });
                                 Row3(t, "POSITION", V(c.Occupation), "وظيفة");
@@ -762,11 +762,11 @@ internal static class CvLayouts
                                 t.Item().BorderTop(0.4f).BorderColor(Border).Row(r =>
                                 {
                                     r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                        .Text(V(c.WorksIn)).FontSize(FormType.Value);
+                                        .Text(WorkHistory.Countries(c)).FontSize(FormType.Value);
                                     r.RelativeItem().PaddingVertical(3).AlignCenter()
                                         .Text(V(c.Occupation)).FontSize(FormType.Value);
                                     r.RelativeItem().PaddingVertical(3).AlignCenter()
-                                        .Text(c.ExperienceAbroadYears?.ToString() ?? "").FontSize(FormType.Value);
+                                        .Text(WorkHistory.Years(c)).FontSize(FormType.Value);
                                 });
                             });
                         });
@@ -965,11 +965,11 @@ internal static class CvLayouts
                             {
                                 SectionBar(box, "Work Experience", "خبرة العمل");
                                 SimpleRow(box, "Period",
-                                    candidate.ExperienceAbroadYears.HasValue
-                                        ? PluralText.Count(candidate.ExperienceAbroadYears.Value, "Year")
+                                    WorkHistory.Years(candidate) is { Length: > 0 } years
+                                        ? years
                                         : "—");
                                 SimpleRow(box, "Country",
-                                    candidate.WorksIn ?? candidate.CountryOfTravel ?? "—");
+                                    WorkHistory.Countries(candidate) is { Length: > 0 } where ? where : "—");
                             });
 
                             left.Item().PaddingTop(3).Border(0.75f).BorderColor(Border).Column(box =>

@@ -93,9 +93,13 @@ export interface DataTableProps<TData, TValue> {
   /** Navigate/act when a row body is clicked (ignores clicks on buttons, links, inputs). */
   onRowClick?: (row: TData) => void;
   /**
-   * Clicking a row opens that row's ⋯ menu instead of navigating. On the workflow boards the
-   * useful thing to do with a row is act on it, and the menu already leads with "View details" —
-   * so this gives the whole row a target rather than an 8px button at the far right.
+   * The row itself is the target: right-click opens that row's ⋯ menu where the pointer is,
+   * left-click ticks the row.
+   *
+   * Left-click used to open the menu, which made the table unusable in two ways at once. Every
+   * click anywhere on a row threw a menu up, including the click meant to dismiss the last one
+   * — so the menu appeared never to close. And ticking a row meant hitting the checkbox
+   * exactly. Right-click is where a menu belongs, and it is what people try first.
    */
   rowClickOpensActions?: boolean;
   isFullscreen?: boolean;
@@ -243,33 +247,40 @@ export function DataTable<TData, TValue>(
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
                   className={onRowClick || rowClickOpensActions ? "cursor-pointer" : undefined}
+                  onContextMenu={(e) => {
+                    if (!rowClickOpensActions) return;
+                    const trigger = e.currentTarget.querySelector<HTMLElement>(
+                      '[aria-label="Row actions"]',
+                    );
+                    if (!trigger) return;
+                    // No browser menu over ours.
+                    e.preventDefault();
+                    // Drive the row's own ⋯ trigger rather than duplicating each board's menu
+                    // here — the menus differ per board and stay the single source of truth.
+                    // The trigger opens on pointerdown, not click, so a plain .click() on it
+                    // does nothing; dispatch what it actually listens for.
+                    trigger.dispatchEvent(
+                      new PointerEvent("pointerdown", {
+                        bubbles: true,
+                        cancelable: true,
+                        button: 0,
+                        pointerType: "mouse",
+                      }),
+                    );
+                    // Then move it to the pointer. Radix has mounted the content by the next
+                    // frame; before that there is nothing to move.
+                    const { clientX, clientY } = e;
+                    requestAnimationFrame(() => openMenuAt(clientX, clientY));
+                  }}
                   onClick={(e) => {
-                    if (!onRowClick && !rowClickOpensActions) return;
                     // Don't hijack clicks on interactive controls inside the row.
                     if ((e.target as HTMLElement).closest(
                       'button, a, input, label, [role="checkbox"], [role="menuitem"], [data-no-row-click]'
                     )) return;
-                    if (rowClickOpensActions) {
-                      // Drive the row's own ⋯ trigger rather than duplicating each board's menu
-                      // here — the menus differ per board and stay the single source of truth.
-                      // The trigger opens on pointerdown, not click, so a plain .click() on it
-                      // does nothing; dispatch what it actually listens for.
-                      const trigger = e.currentTarget.querySelector<HTMLElement>(
-                        '[aria-label="Row actions"]',
-                      );
-                      if (!trigger) return;
-                      trigger.dispatchEvent(
-                        new PointerEvent("pointerdown", {
-                          bubbles: true,
-                          cancelable: true,
-                          button: 0,
-                          pointerType: "mouse",
-                        }),
-                      );
-                      // Then move it to the pointer. Radix has mounted the content by the next
-                      // frame; before that there is nothing to move.
-                      const { clientX, clientY } = e;
-                      requestAnimationFrame(() => openMenuAt(clientX, clientY));
+                    // Ticking the row is what a left click does on a table that has a
+                    // selection, and a selection is what the Export and bulk buttons act on.
+                    if (rowClickOpensActions && row.getCanSelect?.()) {
+                      row.toggleSelected(!row.getIsSelected());
                       return;
                     }
                     onRowClick?.(row.original as TData);
