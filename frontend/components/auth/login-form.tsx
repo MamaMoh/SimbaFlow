@@ -74,16 +74,14 @@ function recordSuccessfulLogin(identifier: string) {
 }
 
 /**
- * The sign-in this browser last used.
+ * The sign-in this browser last used — both the username and the password.
  *
- * Both fields, at the agency's request, having been told what it means: a password kept here is
- * kept in this browser's storage on this machine, in plain text, readable by anything else that
- * runs on this page. The browser's own password manager is the safer place for it and the form
- * still offers that — this is the box for people who want the whole sign-in filled in for them.
+ * Asked for, and granted knowing what it means: a password kept here sits in this browser's
+ * storage on this machine, in plain text, readable by anything else that runs on this page. The
+ * browser's own password manager is the safer place for it and the form still offers that; this
+ * is for people who want the whole sign-in filled in for them on their own machine.
  *
- * So the label says "username and password" rather than "remember me": somebody sitting down at
- * a shared desk machine should be able to see what is being left behind. Unticking clears both
- * immediately, not at the next sign-in.
+ * Unticking clears both immediately, not at the next sign-in.
  */
 const REMEMBERED = "simbaflow.remembered-sign-in";
 
@@ -390,9 +388,8 @@ setIsSubmitting(false);
                 </p>
               )}
             </div>
-            <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <Checkbox
-                className="mt-0.5"
                 checked={rememberMe}
                 onCheckedChange={(v) => {
                   const next = v === true;
@@ -402,14 +399,9 @@ setIsSubmitting(false);
                   if (!next) remember(null);
                 }}
                 disabled={isSubmitting}
-                aria-label="Remember my username and password on this device"
+                aria-label="Remember"
               />
-              <span>
-                Remember my username and password
-                <span className="block text-xs text-muted-foreground/80">
-                  Kept in this browser. Leave it off on a shared computer.
-                </span>
-              </span>
+              Remember
             </label>
 
             <Button
