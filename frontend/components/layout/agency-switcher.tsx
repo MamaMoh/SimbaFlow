@@ -19,6 +19,7 @@ import {
   getActingTenantName,
   setActingTenant,
 } from "@/lib/tenant/acting-tenant";
+import { AgencyMark } from "@/components/layout/agency-mark";
 
 interface Agency {
   id: string;
@@ -93,7 +94,9 @@ export function AgencySwitcher() {
           aria-label="Switch agency"
         >
           {activeId ? (
-            <Building2 className="h-3.5 w-3.5 text-green-700" />
+            // The agency's own logo once one is chosen — the picker names the agency, and this
+            // says which one without reading it.
+            <AgencyMark fallback={<Building2 className="h-3.5 w-3.5 text-green-700" />} />
           ) : (
             <Shield className="h-3.5 w-3.5 text-amber-600" />
           )}

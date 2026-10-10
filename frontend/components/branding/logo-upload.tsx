@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ImagePlus, Trash2, Loader2 } from "lucide-react";
+import { ImageLightbox } from "@/components/candidates/candidate-image";
 import { toast } from "sonner";
+import { logoUrl } from "@/lib/api/branding";
+
+export { logoUrl };
 
 interface LogoUploadProps {
   /** Where to POST the image and DELETE it again. */
@@ -22,9 +25,6 @@ interface LogoUploadProps {
   compact?: boolean;
 }
 
-export function logoUrl(path: string): string {
-  return `/api/proxy/branding/file?path=${encodeURIComponent(path)}`;
-}
 
 /**
  * Upload the letterhead that heads this organisation's generated documents.
@@ -43,6 +43,10 @@ export function LogoUpload({
 }: LogoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
+  // A replacement gets a new filename, so a path that changes is a fresh image worth retrying.
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [logoPath]);
 
   const upload = async (file: File) => {
     setBusy(true);
@@ -88,22 +92,32 @@ export function LogoUpload({
     <div className={compact ? "flex items-center gap-2" : "space-y-2"}>
       {!compact && <Label>{label}</Label>}
       <div className={compact ? "flex items-center gap-2" : "flex items-center gap-4"}>
-        <div
-          className={`flex ${box} shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40`}
+        {/* A plain img, not next/image: this one has to be able to say that it failed. A stored
+            path whose file cannot be served used to render an empty frame indistinguishable from
+            having uploaded nothing, which is exactly the case somebody needs to be told about. */}
+        <button
+          type="button"
+          onClick={() => logoPath && !broken && setZoomed(true)}
+          disabled={!logoPath || broken}
+          title={logoPath && !broken ? "View full size" : undefined}
+          className={`flex ${box} shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted/40 p-1 ${
+            logoPath && !broken ? "cursor-zoom-in hover:border-primary/40" : "cursor-default"
+          }`}
         >
-          {logoPath ? (
-            <Image
+          {logoPath && !broken ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={logoUrl(logoPath)}
               alt={label || "Letterhead"}
-              width={compact ? 80 : 176}
-              height={compact ? 36 : 80}
-              unoptimized
-              className="max-h-full w-auto object-contain"
+              onError={() => setBroken(true)}
+              className="max-h-full max-w-full object-contain"
             />
           ) : (
-            <span className="text-[10px] text-muted-foreground">No logo</span>
+            <span className="px-1 text-center text-[10px] leading-tight text-muted-foreground">
+              {broken ? "Image unavailable" : "Nothing uploaded"}
+            </span>
           )}
-        </div>
+        </button>
         <div className={compact ? "" : "space-y-2"}>
           <div className="flex gap-2">
             <Button
@@ -149,6 +163,14 @@ export function LogoUpload({
           if (file) void upload(file);
         }}
       />
+      {logoPath && (
+        <ImageLightbox
+          src={logoUrl(logoPath)}
+          alt={label || "Letterhead"}
+          open={zoomed}
+          onOpenChange={setZoomed}
+        />
+      )}
     </div>
   );
 }

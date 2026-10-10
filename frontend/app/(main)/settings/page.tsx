@@ -1,13 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { AccessDenied } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
 import { IntakeDefaultsCard } from "@/components/settings/intake-defaults-card";
 import { LogoUpload } from "@/components/branding/logo-upload";
-import useSWR from "swr";
+import { useAgencyBranding } from "@/lib/api/branding";
 
+/**
+ * The agency's own settings.
+ *
+ * Two columns: the branding on the left, Telegram linking beside it. The page ran as one narrow
+ * column down the left-hand side with the whole right-hand half empty, and the Telegram card —
+ * the one thing on here every member of staff uses — was below the fold under it.
+ */
 export default function SettingsPage() {
   const { hasPermission } = usePermissions();
   const canAdmin = hasPermission("system.admin");
@@ -17,13 +25,26 @@ export default function SettingsPage() {
   const canReadSettings = canManageSettings || hasPermission("settings.read");
   const canUseBot = hasPermission("bot.use") || canAdmin;
 
-  const { data: branding, mutate: mutateBranding } = useSWR(
-    canReadSettings ? "/api/proxy/branding/agency" : null,
-    (url: string) => fetch(url).then((r) => r.json()),
-    { revalidateOnFocus: false }
-  );
-  const agencyLogoPath: string | null = branding?.data?.logoPath ?? null;
-  const agencyLetterheadPath: string | null = branding?.data?.letterheadPath ?? null;
+  const { branding, error, mutate } = useAgencyBranding(canReadSettings);
+
+  // What the last upload returned, shown straight away. The card used to re-request the branding
+  // and draw whatever came back, so an upload that succeeded still read "No logo" whenever that
+  // second request did not — which is the state somebody was looking at while holding a file
+  // they had just watched upload.
+  const [justUploaded, setJustUploaded] = useState<{
+    letterhead?: string | null;
+    logo?: string | null;
+  }>({});
+
+  const pathFor = (kind: "letterhead" | "logo") =>
+    kind in justUploaded
+      ? justUploaded[kind] ?? null
+      : (kind === "letterhead" ? branding?.letterheadPath : branding?.logoPath) ?? null;
+
+  const applied = (kind: "letterhead" | "logo") => (path: string | null) => {
+    setJustUploaded((current) => ({ ...current, [kind]: path }));
+    void mutate();
+  };
 
   if (!canReadSettings && !canUseBot) {
     return <AccessDenied resource="settings" />;
@@ -33,34 +54,44 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Settings" />
 
-      {canManageSettings ? (
-        <div className="space-y-5 rounded-lg border bg-card p-4 shadow-sm lg:max-w-xl">
-          <div>
-            <h2 className="text-sm font-semibold">Branding</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              PNG or JPEG, up to 2MB. Used when the candidate has no partner agency.
-            </p>
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        {canManageSettings ? (
+          <div className="space-y-5 rounded-lg border bg-card p-5 shadow-sm">
+            <div>
+              <h2 className="text-sm font-semibold">Branding</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Printed on this agency&apos;s own documents. PNG or JPEG, up to 2MB.
+              </p>
+            </div>
+
+            {error ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                The current branding could not be loaded, so what is shown below may be out of
+                date. Uploading still works.
+              </p>
+            ) : null}
+
+            <LogoUpload
+              endpoint="/api/proxy/branding/agency/letterhead"
+              logoPath={pathFor("letterhead")}
+              onChange={applied("letterhead")}
+              label="Letterhead"
+              hint="Across the top of CVs and visa forms."
+            />
+            <LogoUpload
+              endpoint="/api/proxy/branding/agency/logo"
+              logoPath={pathFor("logo")}
+              onChange={applied("logo")}
+              label="Logo"
+              hint="In the top bar, and on documents with no letterhead."
+            />
           </div>
-          <LogoUpload
-            endpoint="/api/proxy/branding/agency/letterhead"
-            logoPath={agencyLetterheadPath}
-            onChange={() => mutateBranding()}
-            label="Letterhead"
-            hint="Printed across the top of CVs and visa forms."
-          />
-          <LogoUpload
-            endpoint="/api/proxy/branding/agency/logo"
-            logoPath={agencyLogoPath}
-            onChange={() => mutateBranding()}
-            label="Logo"
-            hint="Used when no letterhead is uploaded."
-          />
-        </div>
-      ) : null}
+        ) : null}
+
+        {canUseBot ? <BotLinkCard /> : null}
+      </div>
 
       {canAdmin ? <IntakeDefaultsCard /> : null}
-
-      {canUseBot ? <BotLinkCard /> : null}
     </div>
   );
 }

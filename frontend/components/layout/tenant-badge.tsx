@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { Building2, Globe } from "lucide-react";
 import { AgencySwitcher } from "@/components/layout/agency-switcher";
+import { AgencyMark } from "@/components/layout/agency-mark";
 
 export function TenantBadge() {
   const { data: session } = useSession();
@@ -24,7 +25,9 @@ export function TenantBadge() {
     <div className="flex items-center gap-1.5 rounded-md border bg-muted/60 px-2.5 py-1 text-xs">
       {agency ? (
         <>
-          <Building2 className="h-3.5 w-3.5 shrink-0 text-green-700" />
+          <AgencyMark
+            fallback={<Building2 className="h-3.5 w-3.5 shrink-0 text-green-700" />}
+          />
           <span className="max-w-[16rem] truncate font-medium text-green-800" title={agency}>
             {agency}
           </span>
