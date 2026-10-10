@@ -51,6 +51,24 @@ public class ApplicationUser : IdentityUser<Guid>
     // ──── Bot Integration ────
     public bool BotLinked { get; set; }
     public string? TelegramChatId { get; set; }
+
+    /// <summary>
+    /// Silence without disconnecting.
+    ///
+    /// Before this the only way to stop the notifications was to unlink, which also gave up
+    /// looking candidates up from your phone — so people unlinked, and then nobody in the
+    /// agency was reachable.
+    /// </summary>
+    public bool BotMuted { get; set; }
+
+    /// <summary>
+    /// The stages this person wants to hear about, comma-separated. Empty means all of them.
+    ///
+    /// Everyone linked got every move in the agency, which for an embassy officer is mostly
+    /// other people's work. A list of names rather than ids: stages are renamed rarely and a
+    /// name survives a workflow being rebuilt, where an id does not.
+    /// </summary>
+    public string? BotWatchStages { get; set; }
     public string? WhatsAppNumber { get; set; }
 
     // ──── Activity Tracking ────

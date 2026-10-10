@@ -39,15 +39,18 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
     private readonly ITenantDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly IPlatformDbContext _platform;
+    private readonly ICandidateNotifier _notifier;
 
     public RegisterCandidateHandler(
         ITenantDbContext context,
         ICurrentUserService currentUser,
-        IPlatformDbContext platform)
+        IPlatformDbContext platform,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _currentUser = currentUser;
         _platform = platform;
+        _notifier = notifier;
     }
 
     public async Task<Result<Guid>> Handle(RegisterCandidateCommand request, CancellationToken cancellationToken)
@@ -133,6 +136,11 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // The first thing that happens to a candidate, and until now the only one the office was
+        // not told about: the stage moves afterwards all announced themselves while the arrival
+        // of the person they were about did not.
+        await _notifier.NotifyAsync(candidate.Id, "candidate.registered", cancellationToken);
 
         return Result<Guid>.Success(candidate.Id, 201);
     }

@@ -22,13 +22,18 @@ public class ConfirmArrivedHandler : IRequestHandler<ConfirmArrivedCommand, Resu
     private readonly ITenantDbContext _context;
     private readonly IWorkflowEngineService _engine;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICandidateNotifier _notifier;
 
     public ConfirmArrivedHandler(
-        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+        ITenantDbContext context,
+        IWorkflowEngineService engine,
+        ICurrentUserService currentUser,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _engine = engine;
         _currentUser = currentUser;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(ConfirmArrivedCommand request, CancellationToken ct)
@@ -57,7 +62,13 @@ public class ConfirmArrivedHandler : IRequestHandler<ConfirmArrivedCommand, Resu
             request.CandidateId, TravelArrivalHelpers.ArrivalTrack, "Arrived", userId,
             _currentUser.UserName ?? "unknown", request.Notes, meta, ct: ct);
 
-        return result.IsSuccess ? Result.Success() : Result.Failure(result.Error ?? "Failed", 400);
+        if (!result.IsSuccess)
+            return Result.Failure(result.Error ?? "Failed", 400);
+
+        // The end of the journey, and the one message the agency owner actually wants.
+        await _notifier.NotifyAsync(request.CandidateId, "arrival.confirmed", ct);
+
+        return Result.Success();
     }
 
     private async Task<Result<Domain.Entities.Candidates.Candidate>> EnsureArrivalAsync(

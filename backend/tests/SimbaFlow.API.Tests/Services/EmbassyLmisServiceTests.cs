@@ -252,7 +252,7 @@ public class EmbassyLmisServiceTests
         var (_, _, _, _, _, candidate) = await SeedUnit3Async(db);
 
         await engine.UpdateStatusAsync(candidate.Id, "visa", "Submitted", userId, "tester");
-        var outcome = new RecordVisaOutcomeHandler(db, engine, user);
+        var outcome = new RecordVisaOutcomeHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
         (await outcome.Handle(
             new RecordVisaOutcomeCommand(candidate.Id, "Rejected", "Docs incomplete"),
             CancellationToken.None)).IsSuccess.Should().BeTrue();

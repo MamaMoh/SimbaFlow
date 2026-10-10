@@ -40,6 +40,12 @@ public sealed class TelegramCandidateNotifier : ICandidateNotifier
             return;
 
         var tenantId = _currentUser.TenantId.Value;
+
+        // The agency's own off switch. Checked before anything is drawn or sent, so turning the
+        // bot off is silence rather than a pile of failed deliveries.
+        if (await BotSwitch.IsOffAsync(_platform, tenantId, cancellationToken))
+            return;
+
         await using var tenantDb = await _tenantFactory.CreateAsync(tenantId, _currentUser.IsSuperAdmin, cancellationToken);
         var candidate = await tenantDb.Candidates
             .AsNoTracking()
@@ -49,7 +55,10 @@ public sealed class TelegramCandidateNotifier : ICandidateNotifier
 
         var recipients = await _platform.ApplicationUsers
             .Where(u => u.TenantId == tenantId && u.BotLinked && u.TelegramChatId != null && !u.IsDeleted)
-            .Select(u => new { u.Id, u.UserName, u.TelegramChatId, u.PreferredLanguage })
+            .Select(u => new
+            {
+                u.Id, u.UserName, u.TelegramChatId, u.PreferredLanguage, u.BotMuted, u.BotWatchStages,
+            })
             .ToListAsync(cancellationToken);
 
         foreach (var recipient in recipients)
@@ -58,13 +67,19 @@ public sealed class TelegramCandidateNotifier : ICandidateNotifier
             if (!BotNotificationRules.ShouldNotify(recipient.UserName, _currentUser.UserName))
                 continue;
 
+            // Muted, or watching other stages than the one this candidate is standing in.
+            if (!BotSubscription.Wants(
+                    recipient.BotMuted, recipient.BotWatchStages, candidate.CurrentStageName))
+                continue;
+
             // Was "Notification: FOZIYA SEID YIMER - departure.notified" — the system talking to
             // itself in front of the user. BotMessages turns the key into a sentence.
             var text = BotMessages.EventHeadline(
                 candidate.FullName,
                 candidate.PassportNumber,
                 messageKey,
-                string.Equals(recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase));
+                string.Equals(recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase),
+                _currentUser.UserName);
 
             var delivery = new NotificationDelivery
             {

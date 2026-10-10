@@ -27,6 +27,9 @@ public interface ITelegramGateway
     /// no menu and every command has to be known in advance, which is the difference between a
     /// tool and a trick.
     /// </summary>
+    Task<string?> SendPhotoAsync(
+        string chatId, byte[] content, string fileName, string caption, CancellationToken ct = default);
+
     Task<bool> SetMyCommandsAsync(string commandsJson, CancellationToken ct = default);
 }
 
@@ -151,6 +154,40 @@ public sealed class TelegramGateway : ITelegramGateway
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Telegram sendDocument failed");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// A photograph with the card under it, as one message.
+    ///
+    /// The card names a candidate and a passport number; a desk officer checking whether they
+    /// have the right person has to put a face to it, and until now that meant opening the web
+    /// application. Sent as a photo rather than a document so Telegram shows it inline.
+    /// </summary>
+    public async Task<string?> SendPhotoAsync(
+        string chatId, byte[] content, string fileName, string caption, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            return null;
+
+        try
+        {
+            using var form = new MultipartFormDataContent();
+            form.Add(new StringContent(chatId), "chat_id");
+            form.Add(new StringContent(caption), "caption");
+            form.Add(new StringContent("HTML"), "parse_mode");
+            form.Add(new ByteArrayContent(content), "photo", fileName);
+
+            using var response = await _httpClient.PostAsync(BuildUrl("sendPhoto"), form, ct);
+            var root = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            return ExtractMessageId(root);
+        }
+        catch (Exception ex)
+        {
+            // The card still goes out as text; a photograph that will not send is not a reason
+            // to withhold the answer.
+            _logger.LogWarning(ex, "Telegram sendPhoto failed");
             return null;
         }
     }

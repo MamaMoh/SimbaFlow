@@ -23,13 +23,18 @@ public class BookTicketHandler : IRequestHandler<BookTicketCommand, Result>
     private readonly ITenantDbContext _context;
     private readonly IWorkflowEngineService _engine;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICandidateNotifier _notifier;
 
     public BookTicketHandler(
-        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+        ITenantDbContext context,
+        IWorkflowEngineService engine,
+        ICurrentUserService currentUser,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _engine = engine;
         _currentUser = currentUser;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(BookTicketCommand request, CancellationToken ct)
@@ -53,7 +58,13 @@ public class BookTicketHandler : IRequestHandler<BookTicketCommand, Result>
             request.CandidateId, "ticket_status", "Booking Complete", userId,
             _currentUser.UserName ?? "unknown", request.Notes, meta, ct: ct);
 
-        return result.IsSuccess ? Result.Success() : Result.Failure(result.Error ?? "Failed", 400);
+        if (!result.IsSuccess)
+            return Result.Failure(result.Error ?? "Failed", 400);
+
+        // A date on a ticket is the one fact the whole office reorganises around.
+        await _notifier.NotifyAsync(request.CandidateId, "ticket.booked", ct);
+
+        return Result.Success();
     }
 
     private async Task<Result<Domain.Entities.Candidates.Candidate>> EnsureOnStageAsync(
@@ -154,13 +165,18 @@ public class ConfirmDepartedHandler : IRequestHandler<ConfirmDepartedCommand, Re
     private readonly ITenantDbContext _context;
     private readonly IWorkflowEngineService _engine;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICandidateNotifier _notifier;
 
     public ConfirmDepartedHandler(
-        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+        ITenantDbContext context,
+        IWorkflowEngineService engine,
+        ICurrentUserService currentUser,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _engine = engine;
         _currentUser = currentUser;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(ConfirmDepartedCommand request, CancellationToken ct)
@@ -222,7 +238,11 @@ public class ConfirmDepartedHandler : IRequestHandler<ConfirmDepartedCommand, Re
             var init = await _engine.UpdateStatusAsync(
                 request.CandidateId, TravelArrivalHelpers.ArrivalTrack, "Pending", userId,
                 _currentUser.UserName ?? "unknown", null, ct: ct);
-            return init.IsSuccess ? Result.Success() : Result.Failure(init.Error ?? "Failed", 400);
+            if (!init.IsSuccess)
+                return Result.Failure(init.Error ?? "Failed", 400);
+
+            await _notifier.NotifyAsync(request.CandidateId, "departure.confirmed", ct);
+            return Result.Success();
         }, ct);
     }
 

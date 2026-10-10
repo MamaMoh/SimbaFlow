@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimbaFlow.Application.Common.Documents;
@@ -22,6 +23,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
     private readonly ITenantBotDbContextFactory _tenantFactory;
     private readonly ICvGenerationService _cvGenerationService;
     private readonly IFileStorageService _fileStorage;
+    private readonly IMemoryCache _cache;
     private readonly ITelegramGateway _telegram;
     private readonly IBotLinkService _botLinkService;
     private readonly ILogger<TelegramCommandDispatcher> _logger;
@@ -32,6 +34,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         ITenantBotDbContextFactory tenantFactory,
         ICvGenerationService cvGenerationService,
         IFileStorageService fileStorage,
+        IMemoryCache cache,
         ITelegramGateway telegram,
         IBotLinkService botLinkService,
         ILogger<TelegramCommandDispatcher> logger)
@@ -41,6 +44,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         _tenantFactory = tenantFactory;
         _cvGenerationService = cvGenerationService;
         _fileStorage = fileStorage;
+        _cache = cache;
         _telegram = telegram;
         _botLinkService = botLinkService;
         _logger = logger;
@@ -116,6 +120,45 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 BotNotificationRules.UnlinkedInstructionsReply(),
                 ct);
             return;
+        }
+
+        // The agency's own off switch. /unlink still answers: somebody whose agency has turned
+        // the bot off should still be able to disconnect their chat rather than be stuck.
+        if (parsed.Command != BotCommand.Unlink && await BotSwitch.IsOffAsync(_platform, user.TenantId, ct))
+        {
+            await _telegram.SendMessageAsync(update.ChatId,
+                BotMessages.BotTurnedOff(
+                    string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase)),
+                ct);
+            return;
+        }
+
+        if (parsed.Command == BotCommand.Unlink)
+        {
+            var unlinkAm = string.Equals(user.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase);
+            // Confirmed in words rather than on one tap: losing the link means losing every
+            // notification until somebody goes back to the web application for a new code.
+            if (!parsed.Argument.Trim().Equals("yes", StringComparison.OrdinalIgnoreCase))
+            {
+                await _telegram.SendMessageAsync(update.ChatId, BotMessages.UnlinkConfirm(unlinkAm), ct);
+                return;
+            }
+
+            await _botLinkService.UnlinkCurrentUserAsync(user.Id, ct);
+            await _telegram.SendMessageAsync(update.ChatId, BotMessages.Unlinked(unlinkAm), ct);
+            return;
+        }
+
+        // A button asked a question a moment ago, and this is the answer to it. Only bare text
+        // is treated this way — typing a real command instead abandons the question.
+        if (parsed.Command == BotCommand.Search)
+        {
+            if (TakePendingPrompt(update.ChatId) is BotCommand pending && pending != BotCommand.Search)
+                parsed = new BotCommandParse(pending, parsed.Argument);
+        }
+        else
+        {
+            _cache.Remove(PromptKey(update.ChatId));
         }
 
         if (parsed.Command == BotCommand.Language)
@@ -197,11 +240,23 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             if (matches.Count == 1)
             {
                 var c = matches[0];
-                await _telegram.SendMessageAsync(update.ChatId,
-                    BotMessages.CandidateCard(
-                        c.FullName, c.PassportNumber, c.CurrentStageName, c.Status.ToString(),
-                        c.CountryOfTravel, amLang),
-                    ct);
+                var card = BotMessages.CandidateCard(
+                    c.FullName, c.PassportNumber, c.CurrentStageName, c.Status.ToString(),
+                    c.CountryOfTravel, amLang);
+
+                // The photograph with the card under it. A name and a passport number is not
+                // enough to know you have the right person, and checking used to mean leaving
+                // the chat for the web application.
+                var (photo, _) = await CandidatePhotos.LoadAsync(_fileStorage, c, ct);
+                if (photo is not null &&
+                    await _telegram.SendPhotoAsync(
+                        update.ChatId, photo, $"{c.PassportNumber}.jpg", card, ct) is not null)
+                {
+                    return;
+                }
+
+                // No photograph on file, or Telegram would not take it — the card still goes.
+                await _telegram.SendMessageAsync(update.ChatId, card, ct);
                 return;
             }
 
@@ -260,6 +315,178 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             var pdf = await _cvGenerationService.GenerateForTenantAsync(
                 candidate, user.TenantId, template, photo, fullPhoto, ct);
             await _telegram.SendDocumentAsync(update.ChatId, pdf, $"{candidate.PassportNumber}-cv.pdf", candidate.FullName, ct);
+            return;
+        }
+
+        if (parsed.Command is BotCommand.Mute or BotCommand.Unmute)
+        {
+            var linked = await _userManager.FindByIdAsync(user.Id.ToString());
+            if (linked is not null)
+            {
+                linked.BotMuted = parsed.Command == BotCommand.Mute;
+                await _platform.SaveChangesAsync(ct);
+            }
+            await _telegram.SendMessageAsync(update.ChatId,
+                parsed.Command == BotCommand.Mute
+                    ? BotMessages.Muted(amLang)
+                    : BotMessages.Unmuted(amLang),
+                ct);
+            return;
+        }
+
+        if (parsed.Command == BotCommand.Watch)
+        {
+            var linked = await _userManager.FindByIdAsync(user.Id.ToString());
+            if (linked is not null && !string.IsNullOrWhiteSpace(parsed.Argument))
+            {
+                // "all" is how you undo it, and an empty list is what "all" is stored as.
+                linked.BotWatchStages = BotSubscription.MeansEverything(parsed.Argument)
+                    ? null
+                    : BotSubscription.Format(parsed.Argument.Split(','));
+                await _platform.SaveChangesAsync(ct);
+            }
+
+            await _telegram.SendMessageAsync(update.ChatId,
+                BotMessages.Watching(
+                    BotSubscription.Parse(linked?.BotWatchStages ?? user.BotWatchStages), amLang),
+                ct);
+            return;
+        }
+
+        if (parsed.Command == BotCommand.Stage)
+        {
+            await using var stageDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
+            var stageNames = await stageDb.WorkflowStages.AsNoTracking()
+                .Where(x => !x.IsDeleted).OrderBy(x => x.SortOrder)
+                .Select(x => x.Name).ToListAsync(ct);
+
+            if (string.IsNullOrWhiteSpace(parsed.Argument))
+            {
+                // The button sends no argument, so ask — and remember that we asked, so the
+                // next bare message is read as the stage name rather than as a candidate search.
+                AskFor(update.ChatId, BotCommand.Stage);
+                await _telegram.SendMessageAsync(update.ChatId,
+                    BotMessages.AskForStage(stageNames, amLang), ct);
+                return;
+            }
+
+            var wanted = parsed.Argument.Trim();
+            var stage = await stageDb.WorkflowStages.AsNoTracking()
+                .FirstOrDefaultAsync(x => !x.IsDeleted && x.Name.ToLower() == wanted.ToLower(), ct)
+                ?? await stageDb.WorkflowStages.AsNoTracking()
+                    .FirstOrDefaultAsync(x => !x.IsDeleted && x.Name.ToLower().Contains(wanted.ToLower()), ct);
+
+            if (stage is null)
+            {
+                await _telegram.SendMessageAsync(update.ChatId,
+                    BotMessages.AskForStage(stageNames, amLang), ct);
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var standing = await stageDb.Candidates.AsNoTracking()
+                .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active && c.CurrentStageId == stage.Id)
+                .OrderBy(c => c.StageEnteredAt)
+                .Select(c => new { c.FirstName, c.MiddleName, c.LastName, c.PassportNumber, c.StageEnteredAt })
+                .Take(BotCandidateSearch.MaxResults)
+                .ToListAsync(ct);
+
+            var rows = standing
+                .Select(c => (
+                    FullName: string.Join(" ", new[] { c.FirstName, c.MiddleName, c.LastName }
+                        .Where(n => !string.IsNullOrWhiteSpace(n))),
+                    PassportNumber: (string?)c.PassportNumber,
+                    // The heading is the stage, so each line only has to say how long.
+                    Detail: (string?)BotMessages.DaysHere(
+                        WorkQueueRules.DaysInStage(c.StageEnteredAt, now), amLang)))
+                .ToList();
+
+            foreach (var page in BotMessages.PeopleList(stage.Name, rows, null, amLang))
+                await _telegram.SendMessageAsync(update.ChatId, page, ct);
+            return;
+        }
+
+        if (parsed.Command == BotCommand.Overdue)
+        {
+            await using var db = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
+            var now = DateTime.UtcNow;
+            var cutoff = WorkQueueRules.OverdueCutoff(now);
+
+            var stuck = await db.Candidates.AsNoTracking()
+                .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active
+                            && c.StageEnteredAt != null && c.StageEnteredAt < cutoff)
+                .OrderBy(c => c.StageEnteredAt)
+                .Select(c => new { c.FirstName, c.MiddleName, c.LastName, c.PassportNumber,
+                                   c.CurrentStageName, c.StageEnteredAt })
+                .Take(BotCandidateSearch.MaxResults)
+                .ToListAsync(ct);
+
+            var rows = stuck
+                .Select(c => (
+                    FullName: string.Join(" ", new[] { c.FirstName, c.MiddleName, c.LastName }
+                        .Where(n => !string.IsNullOrWhiteSpace(n))),
+                    PassportNumber: (string?)c.PassportNumber,
+                    Detail: (string?)BotMessages.DaysInStage(
+                        WorkQueueRules.DaysInStage(c.StageEnteredAt, now), c.CurrentStageName, amLang)))
+                .ToList();
+
+            var title = amLang ? "የቆዩ" : "Overdue";
+            foreach (var page in BotMessages.PeopleList(
+                         title, rows, BotMessages.NothingOverdue(amLang), amLang))
+                await _telegram.SendMessageAsync(update.ChatId, page, ct);
+            return;
+        }
+
+        if (parsed.Command == BotCommand.Expiring)
+        {
+            await using var db = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var horizon = WorkQueueRules.ExpiryHorizon(today);
+
+            var expiring = await db.Candidates.AsNoTracking()
+                .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active
+                            && c.PassportExpiryDate != null && c.PassportExpiryDate <= horizon)
+                .OrderBy(c => c.PassportExpiryDate)
+                .Select(c => new { c.FirstName, c.MiddleName, c.LastName, c.PassportNumber,
+                                   c.PassportExpiryDate })
+                .Take(BotCandidateSearch.MaxResults)
+                .ToListAsync(ct);
+
+            var rows = expiring
+                .Select(c => (
+                    FullName: string.Join(" ", new[] { c.FirstName, c.MiddleName, c.LastName }
+                        .Where(n => !string.IsNullOrWhiteSpace(n))),
+                    PassportNumber: (string?)c.PassportNumber,
+                    Detail: (string?)BotMessages.PassportAge(
+                        c.PassportExpiryDate!.Value.DayNumber - today.DayNumber, amLang)))
+                .ToList();
+
+            var title = amLang ? "ፓስፖርት" : "Passports";
+            foreach (var page in BotMessages.PeopleList(
+                         title, rows, BotMessages.NothingExpiring(amLang), amLang))
+                await _telegram.SendMessageAsync(update.ChatId, page, ct);
+            return;
+        }
+
+        if (parsed.Command == BotCommand.Me)
+        {
+            // Overdue and expiring in one message, which is what My work shows on the web.
+            await using var db = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
+            var now = DateTime.UtcNow;
+            var today = DateOnly.FromDateTime(now);
+            var active = db.Candidates.AsNoTracking()
+                .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active);
+
+            var overdueCount = await active.CountAsync(
+                c => c.StageEnteredAt != null && c.StageEnteredAt < WorkQueueRules.OverdueCutoff(now), ct);
+            var expiringCount = await active.CountAsync(
+                c => c.PassportExpiryDate != null
+                     && c.PassportExpiryDate <= WorkQueueRules.ExpiryHorizon(today), ct);
+            var exceptions = await db.ExceptionCases.AsNoTracking()
+                .CountAsync(e => !e.IsDeleted && e.Status == ExceptionStatus.Open, ct);
+
+            await _telegram.SendMessageAsync(update.ChatId,
+                BotMessages.MyWork(overdueCount, expiringCount, exceptions, amLang), ct);
             return;
         }
 
@@ -441,6 +668,28 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
     /// tenant's candidates only. Name matching cannot be expressed as a translatable predicate
     /// once the query has an arbitrary number of terms.
     /// </summary>
+    /// <summary>
+    /// What a button asked for and is waiting to have answered by the next message.
+    ///
+    /// A Telegram keyboard button can only send a fixed string, so a command that needs an
+    /// argument cannot be one tap. The button asks the question instead and this remembers what
+    /// was asked, for five minutes — long enough to type a name, short enough that a message
+    /// sent tomorrow is read as a fresh search rather than an answer to a forgotten question.
+    /// </summary>
+    private static readonly TimeSpan PromptWindow = TimeSpan.FromMinutes(5);
+
+    private static string PromptKey(string chatId) => $"bot:prompt:{chatId}";
+
+    private void AskFor(string chatId, BotCommand command) =>
+        _cache.Set(PromptKey(chatId), command, PromptWindow);
+
+    private BotCommand? TakePendingPrompt(string chatId)
+    {
+        if (!_cache.TryGetValue<BotCommand>(PromptKey(chatId), out var pending)) return null;
+        _cache.Remove(PromptKey(chatId));
+        return pending;
+    }
+
     private static async Task<List<Candidate>> FindCandidatesAsync(
         ITenantDbContext db, string query, CancellationToken ct)
     {

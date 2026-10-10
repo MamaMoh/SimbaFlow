@@ -351,6 +351,12 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<bool>("BotLinked")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("BotMuted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("BotWatchStages")
+                        .HasColumnType("text");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");

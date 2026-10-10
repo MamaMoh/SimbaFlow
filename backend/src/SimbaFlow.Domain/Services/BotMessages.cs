@@ -204,10 +204,16 @@ public static class BotMessages
     /// system talking to itself in front of the user. An unmapped key falls back to the candidate's
     /// name alone rather than printing the key, because a key tells the reader nothing either way.
     /// </summary>
-    public static string EventHeadline(string candidateName, string? passportNumber, string messageKey, bool amharic)
+    public static string EventHeadline(
+        string candidateName,
+        string? passportNumber,
+        string messageKey,
+        bool amharic,
+        string? by = null)
     {
         var what = messageKey?.Trim().ToLowerInvariant() switch
         {
+            "candidate.registered" => amharic ? "ተመዝግቧል" : "has been registered",
             "departure.notified" => amharic ? "ለጉዞ ተነግሯል" : "has been told about their flight",
             "departure.confirmed" => amharic ? "ጉዞ ተረጋግጧል" : "has departed",
             "arrival.confirmed" => amharic ? "ደርሷል" : "has arrived",
@@ -225,8 +231,178 @@ public static class BotMessages
             sb.Append($"  <code>{Escape(passportNumber)}</code>");
         if (what is not null)
             sb.Append($"\n{what}");
+        // Who did it, where the caller knows — the same courtesy the stage message pays, so
+        // nobody has to open the web application to find out who to ask about it.
+        if (!string.IsNullOrWhiteSpace(by))
+            sb.Append(amharic ? $" — በ {Escape(by)}" : $" — by {Escape(by)}");
         return sb.ToString();
     }
+
+    // ── Lists the desk asks for ─────────────────────────────────────────────
+
+    /// <summary>
+    /// One line per person, with how long they have been standing there.
+    ///
+    /// The same shape serves a stage list, the overdue list and the expiry list, because they
+    /// are the same question asked three ways: who, and for how long. Paged like the search
+    /// results, for the same reason — Telegram will not take a message over 4096 characters.
+    /// </summary>
+    public static IReadOnlyList<string> PeopleList(
+        string title,
+        IReadOnlyList<(string FullName, string? PassportNumber, string? Detail)> rows,
+        string? emptyLine,
+        bool amharic)
+    {
+        if (rows.Count == 0)
+            return [emptyLine ?? (amharic ? "ምንም የለም።" : "Nothing here.")];
+
+        var pages = new List<string>();
+        var sb = new StringBuilder($"<b>{Escape(title)}</b> — {rows.Count}\n\n");
+        var index = 0;
+
+        foreach (var r in rows)
+        {
+            index++;
+            var line = new StringBuilder();
+            line.Append($"{index}. <b>{Escape(r.FullName)}</b>\n");
+            if (!string.IsNullOrWhiteSpace(r.PassportNumber))
+                line.Append($"    <code>{Escape(r.PassportNumber)}</code>");
+            if (!string.IsNullOrWhiteSpace(r.Detail))
+                line.Append(string.IsNullOrWhiteSpace(r.PassportNumber)
+                    ? $"    {Escape(r.Detail)}"
+                    : $" · {Escape(r.Detail)}");
+            line.Append('\n');
+
+            if (sb.Length + line.Length > MaxMessageLength)
+            {
+                pages.Add(sb.ToString().TrimEnd());
+                sb = new StringBuilder();
+            }
+            sb.Append(line);
+        }
+
+        pages.Add(sb.ToString().TrimEnd());
+        return pages;
+    }
+
+    /// <summary>Which stage? — asked when the button was pressed with nothing after it.</summary>
+    public static string AskForStage(IReadOnlyList<string> stageNames, bool amharic)
+    {
+        var list = string.Join(" · ", stageNames.Select(n => $"<code>{Escape(n)}</code>"));
+        return amharic
+            ? $"የትኛው ደረጃ? ስሙን ይላኩ።\n\n{list}"
+            : $"Which stage? Send the name.\n\n{list}";
+    }
+
+    public static string NothingOverdue(bool amharic) => amharic
+        ? $"✅ ከ{WorkQueueRules.OverdueThresholdDays} ቀን በላይ በአንድ ደረጃ የቆየ የለም።"
+        : $"✅ Nobody has been in one stage longer than {WorkQueueRules.OverdueThresholdDays} days.";
+
+    public static string NothingExpiring(bool amharic) => amharic
+        ? $"✅ በ{WorkQueueRules.ExpirySoonDays} ቀን ውስጥ የሚያልቅ ፓስፖርት የለም።"
+        : $"✅ No passport runs out within {WorkQueueRules.ExpirySoonDays} days.";
+
+    /// <summary>How long a passport has left, or how long ago it went.</summary>
+    public static string PassportAge(int daysLeft, bool amharic) => daysLeft < 0
+        ? (amharic ? $"ከ{-daysLeft} ቀን በፊት አልቋል" : $"expired {PluralText.Count(-daysLeft, "day")} ago")
+        : (amharic ? $"በ{daysLeft} ቀን ያልቃል" : $"expires in {PluralText.Count(daysLeft, "day")}");
+
+    /// <summary>How long they have been standing here, where the heading already says where.</summary>
+    public static string DaysHere(int days, bool amharic) => amharic
+        ? $"{days} ቀን"
+        : PluralText.Count(days, "day");
+
+    public static string DaysInStage(int days, string? stageName, bool amharic) => amharic
+        ? $"{days} ቀን በ{Or(stageName, true)}"
+        : $"{PluralText.Count(days, "day")} in {Or(stageName, false)}";
+
+    /// <summary>The three numbers My work opens with, as one message.</summary>
+    public static string MyWork(int overdue, int expiring, int exceptions, bool amharic)
+    {
+        if (overdue == 0 && expiring == 0 && exceptions == 0)
+            return amharic ? "✅ ምንም የሚጠብቅ የለም።" : "✅ Nothing waiting on you.";
+
+        var sb = new StringBuilder(amharic ? "<b>የእርስዎ ተግባራት</b>\n\n" : "<b>Your queue</b>\n\n");
+        if (exceptions > 0)
+            sb.Append(amharic
+                ? $"⚠️ {exceptions} ክፍት ችግር\n"
+                : $"⚠️ {PluralText.Count(exceptions, "open case")}\n");
+        if (overdue > 0)
+            sb.Append(amharic
+                ? $"⏰ {overdue} የቆዩ — <code>/overdue</code>\n"
+                : $"⏰ {overdue} overdue — <code>/overdue</code>\n");
+        if (expiring > 0)
+            sb.Append(amharic
+                ? $"🛂 {expiring} የሚያልቅ ፓስፖርት — <code>/expiring</code>\n"
+                : $"🛂 {expiring} passports running out — <code>/expiring</code>\n");
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>The morning digest: what the day starts with.</summary>
+    public static string Digest(
+        int registeredYesterday, int overdue, int expiring, int openCases, bool amharic)
+    {
+        var sb = new StringBuilder(amharic ? "<b>☀️ ጠዋት</b>\n\n" : "<b>☀️ This morning</b>\n\n");
+
+        if (registeredYesterday > 0)
+            sb.Append(amharic
+                ? $"🆕 ትናንት {registeredYesterday} ተመዝግበዋል\n"
+                : $"🆕 {PluralText.Count(registeredYesterday, "registration")} yesterday\n");
+        if (openCases > 0)
+            sb.Append(amharic
+                ? $"⚠️ {openCases} ክፍት ችግር\n"
+                : $"⚠️ {PluralText.Count(openCases, "open case")}\n");
+        if (overdue > 0)
+            sb.Append(amharic
+                ? $"⏰ {overdue} የቆዩ — <code>/overdue</code>\n"
+                : $"⏰ {overdue} overdue — <code>/overdue</code>\n");
+        if (expiring > 0)
+            sb.Append(amharic
+                ? $"🛂 {expiring} የሚያልቅ ፓስፖርት — <code>/expiring</code>\n"
+                : $"🛂 {expiring} passports running out — <code>/expiring</code>\n");
+
+        return sb.ToString().TrimEnd();
+    }
+
+    // ── What you hear about ─────────────────────────────────────────────────
+
+    public static string Muted(bool amharic) => amharic
+        ? "🔕 ማሳወቂያ ቆሟል። መፈለግና ሲቪ ማውረድ እንደተለመደው ይሰራል።\n\nለመመለስ <code>/unmute</code>።"
+        : "🔕 Notifications off. Looking people up and fetching CVs still works.\n\n"
+          + "Turn them back on with <code>/unmute</code>.";
+
+    public static string Unmuted(bool amharic) => amharic
+        ? "🔔 ማሳወቂያ ተመልሷል።"
+        : "🔔 Notifications are back on.";
+
+    public static string Watching(IReadOnlyList<string> stages, bool amharic)
+    {
+        if (stages.Count == 0)
+            return amharic
+                ? "ሁሉንም ደረጃ እየተከታተሉ ነው።\n\nለመገደብ: <code>/watch embassy, lmis</code>"
+                : "You hear about every stage.\n\nTo narrow it: <code>/watch embassy, lmis</code>";
+
+        var list = string.Join(", ", stages.Select(Escape));
+        return amharic
+            ? $"እየተከታተሉ ያሉት: <b>{list}</b>\n\nሁሉንም ለመመለስ <code>/watch all</code>"
+            : $"You hear about: <b>{list}</b>\n\nBack to everything with <code>/watch all</code>";
+    }
+
+    // ── Unlinking ───────────────────────────────────────────────────────────
+
+    public static string UnlinkConfirm(bool amharic) => amharic
+        ? "ይህን ውይይት ከመለያዎ ልለያየው? <code>/unlink yes</code> ይላኩ።\n\nከዚያ በኋላ ማሳወቂያ አይደርስዎትም፤ እንደገና ለማገናኘት አዲስ ኮድ ያስፈልጋል።"
+        : "Disconnect this chat from your account? Send <code>/unlink yes</code>.\n\n"
+          + "Notifications stop, and linking again needs a fresh code from Settings.";
+
+    public static string Unlinked(bool amharic) => amharic
+        ? "ተለያይቷል። ለማገናኘት ከSimbaFlow ቅንብሮች አዲስ ኮድ ይውሰዱ።"
+        : "Disconnected. To link again, take a fresh code from Settings in SimbaFlow.";
+
+    /// <summary>The agency has switched the bot off for everyone.</summary>
+    public static string BotTurnedOff(bool amharic) => amharic
+        ? "ይህ ኤጀንሲ ቦቱን አጥፍቶታል። አስተዳዳሪዎን ያነጋግሩ።"
+        : "This agency has turned the bot off. Ask your administrator to switch it back on.";
 
     // ── Help and errors ─────────────────────────────────────────────────────
 
@@ -236,15 +412,28 @@ public static class BotMessages
           + "• <code>/cv ፓስፖርት</code> — ሲቪ ማውረድ\n"
           + "• <code>/stats</code> — የኤጀንሲው ቁጥሮች\n"
           + "   <code>/stats week</code> · <code>/stats month</code> · <code>/stats embassy</code>\n"
-          + "• <code>/lang en</code> — ወደ እንግሊዝኛ\n\n"
-          + "እጩ ደረጃ ሲቀይር እዚህ አሳውቃለሁ — የራስዎን ለውጥ አላሳውቅም።"
+          + "• <code>/stage embassy</code> — በደረጃው ያሉትን ስም በስም\n"
+          + "• <code>/overdue</code> — በአንድ ደረጃ የቆዩ\n"
+          + "• <code>/expiring</code> — የሚያልቅ ፓስፖርት\n"
+          + "• <code>/me</code> — የእርስዎ ተግባራት\n"
+          + "• <code>/mute</code> — ማሳወቂያ ማቆም · <code>/watch embassy</code> — የተወሰነ ደረጃ ብቻ\n"
+          + "• <code>/lang en</code> — ወደ እንግሊዝኛ\n"
+          + "• <code>/unlink</code> — ይህን ውይይት መለየት\n\n"
+          + "እጩ ሲመዘገብ፣ ደረጃ ሲቀይር፣ ሕክምና፣ ቪዛ፣ ቲኬት፣ ጉዞና መድረስ እዚህ አሳውቃለሁ — የራስዎን ለውጥ አላሳውቅም።"
         : "<b>What I can do</b>\n\n"
           + "• Just send a passport number or a name — I'll find the candidate\n"
           + "• <code>/cv PASSPORT</code> — get their CV as a PDF\n"
           + "• <code>/stats</code> — where your agency stands\n"
           + "   <code>/stats week</code> · <code>/stats month</code> · <code>/stats embassy</code>\n"
-          + "• <code>/lang am</code> — switch to Amharic\n\n"
-          + "I'll tell you when a candidate moves stage — never for changes you made yourself.";
+          + "• <code>/stage embassy</code> — who is standing in a stage, by name\n"
+          + "• <code>/overdue</code> — anyone stuck too long in one stage\n"
+          + "• <code>/expiring</code> — passports running out\n"
+          + "• <code>/me</code> — your own queue\n"
+          + "• <code>/mute</code> — stop notifications · <code>/watch embassy</code> — only certain stages\n"
+          + "• <code>/lang am</code> — switch to Amharic\n"
+          + "• <code>/unlink</code> — disconnect this chat\n\n"
+          + "I'll tell you when a candidate is registered or moves stage, and about medicals, "
+          + "visas, tickets, departures and arrivals — never for changes you made yourself.";
 
     /// <summary>
     /// The "what else can /stats do" line.

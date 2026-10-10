@@ -159,7 +159,7 @@ public class IntakeDefaultsModule : ICarterModule
             SupportedCurrencies = current.SupportedCurrencies,
             MaxFileUploadSizeMB = current.MaxFileUploadSizeMB,
             SignalREnabled = current.SignalREnabled,
-            BotEnabled = current.BotEnabled,
+            BotDisabled = current.BotDisabled,
             Documents = new DocumentSettings { CvTemplate = row.CvTemplate },
             Intake = new IntakeDefaults
             {

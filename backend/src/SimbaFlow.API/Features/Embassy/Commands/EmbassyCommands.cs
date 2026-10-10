@@ -142,13 +142,18 @@ public class RecordMedicalResultHandler : IRequestHandler<RecordMedicalResultCom
     private readonly ITenantDbContext _context;
     private readonly IWorkflowEngineService _engine;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICandidateNotifier _notifier;
 
     public RecordMedicalResultHandler(
-        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+        ITenantDbContext context,
+        IWorkflowEngineService engine,
+        ICurrentUserService currentUser,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _engine = engine;
         _currentUser = currentUser;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(RecordMedicalResultCommand request, CancellationToken ct)
@@ -192,6 +197,11 @@ public class RecordMedicalResultHandler : IRequestHandler<RecordMedicalResultCom
             candidate.Status = Domain.Enums.CandidateStatus.Inactive;
             await _context.SaveChangesAsync(ct);
         }
+
+        // A medical result is the kind of thing the rest of the desk is waiting on — the next
+        // step for a Fit is booking the Tasheer, and an Unfit ends the file.
+        await _notifier.NotifyAsync(
+            request.CandidateId, normalized == "Fit" ? "medical.fit" : "medical.unfit", ct);
 
         return Result.Success();
     }
@@ -449,13 +459,18 @@ public class RecordVisaOutcomeHandler : IRequestHandler<RecordVisaOutcomeCommand
     private readonly ITenantDbContext _context;
     private readonly IWorkflowEngineService _engine;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICandidateNotifier _notifier;
 
     public RecordVisaOutcomeHandler(
-        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+        ITenantDbContext context,
+        IWorkflowEngineService engine,
+        ICurrentUserService currentUser,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _engine = engine;
         _currentUser = currentUser;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(RecordVisaOutcomeCommand request, CancellationToken ct)
@@ -502,7 +517,14 @@ public class RecordVisaOutcomeHandler : IRequestHandler<RecordVisaOutcomeCommand
             request.CandidateId, "visa", normalized, userId,
             _currentUser.UserName ?? "unknown", request.Notes, meta, ct: ct);
 
-        return result.IsSuccess ? Result.Success() : Result.Failure(result.Error ?? "Failed", 400);
+        if (!result.IsSuccess)
+            return Result.Failure(result.Error ?? "Failed", 400);
+
+        // The outcome everybody in the office is waiting for.
+        await _notifier.NotifyAsync(
+            request.CandidateId, isIssued ? "visa.issued" : "visa.rejected", ct);
+
+        return Result.Success();
     }
 }
 

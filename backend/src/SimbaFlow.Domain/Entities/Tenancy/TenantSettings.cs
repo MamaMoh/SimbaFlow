@@ -11,7 +11,16 @@ public class TenantSettings
     public string[] SupportedCurrencies { get; set; } = ["ETB", "USD", "SAR", "AED"];
     public int MaxFileUploadSizeMB { get; set; } = 10;
     public bool SignalREnabled { get; set; } = true;
-    public bool BotEnabled { get; set; }
+    /// <summary>
+    /// The agency's own off switch for the Telegram bot.
+    ///
+    /// Off by default, so an agency that has never touched this keeps the bot it already has.
+    /// Expressed as "disabled" rather than "enabled" for exactly that reason: a bool named
+    /// BotEnabled defaults to false, and introducing it as a gate would have silenced every
+    /// agency at once. Turning it on stops the bot answering and stops it notifying, without
+    /// anyone having to unlink.
+    /// </summary>
+    public bool BotDisabled { get; set; }
 
     /// <summary>
     /// Legacy JSON copy of new-candidate defaults. Live values now live in agency_intake_defaults

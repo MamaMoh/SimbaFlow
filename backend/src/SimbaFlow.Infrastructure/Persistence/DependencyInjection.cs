@@ -194,6 +194,7 @@ public static class DependencyInjection
         services.AddHostedService<TokenCleanupService>();
         services.AddHostedService<SessionCleanupService>();
         services.AddHostedService<TelegramPollingService>();
+        services.AddHostedService<BotDigestService>();
 
         return services;
     }

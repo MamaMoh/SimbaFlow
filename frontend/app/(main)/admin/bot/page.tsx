@@ -7,6 +7,7 @@ import { botApi, useBotDeliveries, useBotStatus } from "@/lib/api/bot";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
+import { AgencyBotSwitch } from "@/components/bot/agency-bot-switch";
 
 export default function BotAdminPage() {
   const { hasPermission } = usePermissions();
@@ -78,6 +79,8 @@ export default function BotAdminPage() {
           <PageAlert variant="error" title="Last error" description={status.lastError} />
         ) : null}
       </div>
+
+      <AgencyBotSwitch />
 
       {canUseBot ? <BotLinkCard /> : null}
 

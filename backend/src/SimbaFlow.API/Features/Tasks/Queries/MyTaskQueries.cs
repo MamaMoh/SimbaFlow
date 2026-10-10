@@ -28,8 +28,9 @@ public record GetMyTasksQuery : IRequest<Result<MyTasksResult>>, IRequirePermiss
 
 public class GetMyTasksHandler : IRequestHandler<GetMyTasksQuery, Result<MyTasksResult>>
 {
-    private const int OverdueThresholdDays = 14;
-    private const int ExpirySoonDays = 30;
+    // Shared with the bot, so /overdue and My work cannot disagree about what overdue means.
+    private const int OverdueThresholdDays = WorkQueueRules.OverdueThresholdDays;
+    private const int ExpirySoonDays = WorkQueueRules.ExpirySoonDays;
     private const int PerBucket = 15;
 
     private readonly ITenantDbContext _context;

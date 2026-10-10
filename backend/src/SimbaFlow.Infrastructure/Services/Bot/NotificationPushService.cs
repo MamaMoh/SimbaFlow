@@ -71,9 +71,17 @@ public sealed class NotificationPushService : INotificationPushService
 
     public async Task PushStageChangedAsync(StageChangePush push, CancellationToken ct = default)
     {
+        // The agency's own off switch. SignalR still broadcasts — the web application is not
+        // what was switched off.
+        if (await BotSwitch.IsOffAsync(_platform, push.TenantId, ct))
+            return;
+
         var recipients = await _userManager.Users
             .Where(u => u.TenantId == push.TenantId && u.BotLinked && u.TelegramChatId != null && !u.IsDeleted)
-            .Select(u => new { u.Id, u.UserName, u.TelegramChatId, u.PreferredLanguage })
+            .Select(u => new
+            {
+                u.Id, u.UserName, u.TelegramChatId, u.PreferredLanguage, u.BotMuted, u.BotWatchStages,
+            })
             .ToListAsync(ct);
 
         foreach (var recipient in recipients)
@@ -82,6 +90,11 @@ public sealed class NotificationPushService : INotificationPushService
             // removes most of the traffic, because the person working a board is usually the only
             // one of the agency's staff who has linked the bot.
             if (!BotNotificationRules.ShouldNotify(recipient.UserName, push.ChangedByUserName))
+                continue;
+
+            // Muted, or watching other stages. Checked before the delivery row is written: a
+            // message nobody wanted is not a delivery that failed.
+            if (!BotSubscription.Wants(recipient.BotMuted, recipient.BotWatchStages, push.ToStageName))
                 continue;
 
             var amharic = string.Equals(recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase);

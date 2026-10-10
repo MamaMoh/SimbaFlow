@@ -82,7 +82,12 @@ public class BotCommandRulesTests
         var json = System.Text.Json.JsonDocument.Parse(BotCommandRules.KeyboardJson);
         json.RootElement.GetProperty("resize_keyboard").GetBoolean().Should().BeTrue();
         json.RootElement.GetProperty("is_persistent").GetBoolean().Should().BeTrue();
-        json.RootElement.GetProperty("keyboard").GetArrayLength().Should().Be(2);
+
+        // Rows of two. Not a fixed row count — buttons get added — but three across is
+        // unreadable on the phones these are used on, and an empty row is a gap in the grid.
+        var rows = json.RootElement.GetProperty("keyboard").EnumerateArray().ToList();
+        rows.Should().NotBeEmpty();
+        rows.Should().OnlyContain(r => r.GetArrayLength() >= 1 && r.GetArrayLength() <= 2);
     }
 
     [Theory]

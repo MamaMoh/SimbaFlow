@@ -195,7 +195,7 @@ public class TravelArrivalServiceTests
         var (db, engine, _, user) = CreateSut();
         var (_, _, _, _, _, _, _, _, candidate) = await SeedUnit4Async(db);
 
-        var handler = new BookTicketHandler(db, engine, user);
+        var handler = new BookTicketHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
         var result = await handler.Handle(
             new BookTicketCommand(candidate.Id, "Riyadh", new DateOnly(2026, 8, 1), "TK-1"),
             CancellationToken.None);
@@ -320,7 +320,7 @@ public class TravelArrivalServiceTests
             .IsSuccess.Should().BeTrue();
         await engine.UpdateStatusAsync(candidate.Id, "notification_status", "Notified", userId, "tester");
 
-        var handler = new ConfirmDepartedHandler(db, engine, user);
+        var handler = new ConfirmDepartedHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
         (await handler.Handle(new ConfirmDepartedCommand(candidate.Id), CancellationToken.None))
             .IsSuccess.Should().BeTrue();
 

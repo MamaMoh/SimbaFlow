@@ -41,6 +41,59 @@ public class BotModule : ICarterModule
             });
         });
 
+        // ──── The agency's own off switch ────
+        //
+        // Separate from a person unlinking their own chat: this stops the bot answering anyone
+        // in the agency and stops every notification, without staff having to unlink one by one.
+        group.MapGet("/agency", async (
+            ICurrentUserService currentUser,
+            IPlatformDbContext platform,
+            CancellationToken ct) =>
+        {
+            if (!currentUser.HasPermission("bot.configure"))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+            if (currentUser.TenantId is not Guid tenantId)
+                return Results.Ok(new { isSuccess = true, data = new { botDisabled = false } });
+
+            var settings = await platform.Tenants.AsNoTracking()
+                .Where(t => t.Id == tenantId && !t.IsDeleted)
+                .Select(t => t.Settings)
+                .FirstOrDefaultAsync(ct);
+
+            return Results.Ok(new
+            {
+                isSuccess = true,
+                data = new { botDisabled = settings?.BotDisabled == true },
+            });
+        });
+
+        group.MapPut("/agency", async (
+            AgencyBotSettingsBody body,
+            ICurrentUserService currentUser,
+            IPlatformDbContext platform,
+            CancellationToken ct) =>
+        {
+            if (!currentUser.HasPermission("bot.configure"))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+            if (currentUser.TenantId is not Guid tenantId)
+                return Results.Json(
+                    new { isSuccess = false, error = "No agency is selected." }, statusCode: 400);
+
+            var tenant = await platform.Tenants
+                .FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsDeleted, ct);
+            if (tenant is null)
+                return Results.Json(new { isSuccess = false, error = "Agency not found." }, statusCode: 404);
+
+            // Settings is a JSON column behind a value comparer that snapshots by serialising,
+            // so mutating the tracked instance is seen as a change without touching the entry.
+            var settings = tenant.Settings ?? new Domain.Entities.Tenancy.TenantSettings();
+            settings.BotDisabled = body.BotDisabled;
+            tenant.Settings = settings;
+            await platform.SaveChangesAsync(ct);
+
+            return Results.Ok(new { isSuccess = true, data = new { botDisabled = settings.BotDisabled } });
+        });
+
         group.MapPost("/test", async (
             ICurrentUserService currentUser,
             ITelegramGateway telegram,
@@ -126,4 +179,10 @@ public class BotModule : ICarterModule
             });
         });
     }
+}
+
+/// <summary>Body of the agency bot switch. A class, so a single bool binds by name.</summary>
+public sealed class AgencyBotSettingsBody
+{
+    public bool BotDisabled { get; set; }
 }
