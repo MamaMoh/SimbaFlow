@@ -1362,6 +1362,12 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("character varying(64)")
                         .HasColumnName("marital_status");
 
+                    b.Property<string>("MonthlySalary")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("monthly_salary");
+
                     b.Property<string>("Nationality")
                         .IsRequired()
                         .HasMaxLength(128)

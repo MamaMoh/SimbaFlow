@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using SimbaFlow.Application.Common.Documents;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Identity;
@@ -20,6 +21,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITenantBotDbContextFactory _tenantFactory;
     private readonly ICvGenerationService _cvGenerationService;
+    private readonly IFileStorageService _fileStorage;
     private readonly ITelegramGateway _telegram;
     private readonly IBotLinkService _botLinkService;
     private readonly ILogger<TelegramCommandDispatcher> _logger;
@@ -29,6 +31,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         UserManager<ApplicationUser> userManager,
         ITenantBotDbContextFactory tenantFactory,
         ICvGenerationService cvGenerationService,
+        IFileStorageService fileStorage,
         ITelegramGateway telegram,
         IBotLinkService botLinkService,
         ILogger<TelegramCommandDispatcher> logger)
@@ -37,6 +40,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         _userManager = userManager;
         _tenantFactory = tenantFactory;
         _cvGenerationService = cvGenerationService;
+        _fileStorage = fileStorage;
         _telegram = telegram;
         _botLinkService = botLinkService;
         _logger = logger;
@@ -240,7 +244,21 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             // presses the button again.
             await _telegram.SendMessageAsync(update.ChatId, BotMessages.CvBeingPrepared(amLang), ct);
 
-            var pdf = await _cvGenerationService.GenerateAsync(candidate, cancellationToken: ct);
+            // Everything the renderer needs has to be handed to it here. There is no signed-in
+            // user behind a Telegram message, so the layout and the letterhead cannot be read
+            // from the request the way they are in the browser: the bot sent every CV on the
+            // default form, with no letterhead and empty photo frames, while the same candidate
+            // printed correctly from the web application.
+            var template = await tenantDb.AgencyIntakeDefaults
+                .AsNoTracking()
+                .Where(x => !x.IsDeleted)
+                .Select(x => x.CvTemplate)
+                .FirstOrDefaultAsync(ct);
+
+            var (photo, fullPhoto) = await CandidatePhotos.LoadAsync(_fileStorage, candidate, ct);
+
+            var pdf = await _cvGenerationService.GenerateForTenantAsync(
+                candidate, user.TenantId, template, photo, fullPhoto, ct);
             await _telegram.SendDocumentAsync(update.ChatId, pdf, $"{candidate.PassportNumber}-cv.pdf", candidate.FullName, ct);
             return;
         }
@@ -431,6 +449,8 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         if (BotCandidateSearch.LooksLikePassport(trimmed))
         {
             var byPassport = await db.Candidates.AsNoTracking()
+                // The CV prints every posting, so the history has to come with the candidate.
+                .Include(c => c.WorkExperiences)
                 .Where(c => !c.IsDeleted && c.PassportNumber.ToLower() == trimmed.ToLower())
                 .ToListAsync(ct);
             if (byPassport.Count > 0) return byPassport;
@@ -444,6 +464,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         // enough to cut the set to a handful even in an agency with thousands of candidates.
         var lead = terms[0];
         var shortlist = await db.Candidates.AsNoTracking()
+            .Include(c => c.WorkExperiences)
             .Where(c => !c.IsDeleted &&
                 (c.FirstName.ToLower().Contains(lead)
                  || c.LastName.ToLower().Contains(lead)

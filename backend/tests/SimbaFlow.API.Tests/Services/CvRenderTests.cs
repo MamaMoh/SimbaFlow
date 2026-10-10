@@ -40,6 +40,9 @@ public class CvRenderTests
         public Task<byte[]?> GetHeaderLogoAsync(Candidate c, CancellationToken ct = default) =>
             Task.FromResult<byte[]?>(SolidPng(1200, 130));
 
+        public Task<byte[]?> GetHeaderLogoAsync(Candidate c, Guid? tenantId, CancellationToken ct = default) =>
+            Task.FromResult<byte[]?>(SolidPng(1200, 130));
+
         public Task<string> GetCvTemplateAsync(CancellationToken ct = default) =>
             Task.FromResult(template);
 
@@ -50,9 +53,9 @@ public class CvRenderTests
 
     private static Candidate SampleCandidate() => new()
     {
-        FirstName = "ZINET",
-        MiddleName = "YIBRE",
-        LastName = "ABEBAW",
+        FirstName = "SAMPLE",
+        MiddleName = "TEST",
+        LastName = "CANDIDATE",
         PassportNumber = "E00201748",
         PassportIssueDate = new DateOnly(2026, 3, 6),
         PassportExpiryDate = new DateOnly(2031, 3, 5),

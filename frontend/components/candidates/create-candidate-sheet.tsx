@@ -1122,7 +1122,7 @@ export function CandidateApplicationForm({
   const { defaults: agencyDefaults } = useIntakeDefaults(true);
   useEffect(() => {
     if (isEdit || !agencyDefaults) return;
-    const stillAt = (field: "gender" | "occupation" | "religion" | "nationality" | "passportType" | "maritalStatus" | "contractPeriod" | "countryOfTravel" | "cookingLevel", formDefault: string) => {
+    const stillAt = (field: "gender" | "occupation" | "religion" | "nationality" | "passportType" | "maritalStatus" | "contractPeriod" | "monthlySalary" | "countryOfTravel" | "cookingLevel", formDefault: string) => {
       const shown = getValues(field) || "";
       return !shown || shown === formDefault;
     };
@@ -1148,6 +1148,9 @@ export function CandidateApplicationForm({
     }
     if (agencyDefaults.contractPeriod && stillAt("contractPeriod", defaults.contractPeriod ?? "")) {
       setValue("contractPeriod", contractYears(agencyDefaults.contractPeriod));
+    }
+    if (agencyDefaults.monthlySalary && stillAt("monthlySalary", defaults.monthlySalary ?? "")) {
+      setValue("monthlySalary", agencyDefaults.monthlySalary);
     }
     if (agencyDefaults.countryOfTravel && stillAt("countryOfTravel", "")) {
       setValue(

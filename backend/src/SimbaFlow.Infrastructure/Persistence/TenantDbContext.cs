@@ -152,6 +152,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.Property(x => x.MaritalStatus).HasMaxLength(64);
             entity.Property(x => x.CountryOfTravel).HasMaxLength(128);
             entity.Property(x => x.ContractPeriod).HasMaxLength(64);
+            entity.Property(x => x.MonthlySalary).HasMaxLength(64);
             entity.Property(x => x.CvTemplate).HasMaxLength(32);
             entity.Property(x => x.CookingLevel).HasMaxLength(64);
         });

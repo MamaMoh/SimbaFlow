@@ -114,7 +114,7 @@ export function CreatePartnerSheet({
         <form onSubmit={handleSubmit(onSubmit)} className="px-6 mt-4 flex flex-1 flex-col gap-4 overflow-y-auto">
           <div className="space-y-1.5">
             <Label>Agency name *</Label>
-            <Input {...register("name")} placeholder="e.g. Etenaa Resources" />
+            <Input {...register("name")} placeholder="e.g. Gulf Manpower Services" />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 

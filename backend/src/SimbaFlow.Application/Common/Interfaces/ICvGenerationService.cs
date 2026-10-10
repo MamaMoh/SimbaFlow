@@ -17,6 +17,22 @@ public interface ICvGenerationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The same CV, for a caller with no HTTP request behind it.
+    ///
+    /// Both the layout and the letterhead are the agency's, and both are normally read from the
+    /// signed-in user. The Telegram bot has no such user, so it names the agency and passes the
+    /// layout it has read from that agency's own schema — otherwise every CV the bot sends came
+    /// out on the default form with no letterhead, whatever the agency had chosen.
+    /// </summary>
+    Task<byte[]> GenerateForTenantAsync(
+        Candidate candidate,
+        Guid? tenantId,
+        string? template,
+        byte[]? photoBytes = null,
+        byte[]? fullPhotoBytes = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Render an Enjaz / visa application style PDF (photo + sponsor/visa block).
     /// </summary>
     Task<byte[]> GenerateVisaFormAsync(

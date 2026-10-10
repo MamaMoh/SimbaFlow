@@ -22,6 +22,7 @@ public sealed class IntakeDefaultsBody
     public string? MaritalStatus { get; set; }
     public string? CountryOfTravel { get; set; }
     public string? ContractPeriod { get; set; }
+    public string? MonthlySalary { get; set; }
     public string? CvTemplate { get; set; }
     public string? CookingLevel { get; set; }
     public List<IntakeSkillBody>? Skills { get; set; }
@@ -136,6 +137,7 @@ public class IntakeDefaultsModule : ICarterModule
         current.MaritalStatus = (body.MaritalStatus ?? "").Trim();
         current.CountryOfTravel = (body.CountryOfTravel ?? "").Trim();
         current.ContractPeriod = (body.ContractPeriod ?? "").Trim();
+        current.MonthlySalary = (body.MonthlySalary ?? "").Trim();
         current.CookingLevel = (body.CookingLevel ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(body.CvTemplate))
             current.CvTemplate = CvTemplates.Normalise(body.CvTemplate);
@@ -269,6 +271,7 @@ public class IntakeDefaultsModule : ICarterModule
             maritalStatus = defaults.MaritalStatus,
             countryOfTravel = defaults.CountryOfTravel,
             contractPeriod = defaults.ContractPeriod,
+            monthlySalary = defaults.MonthlySalary,
             cookingLevel = defaults.CookingLevel,
             cvTemplate = CvTemplates.Normalise(defaults.CvTemplate),
             cvTemplates = CvTemplates.All

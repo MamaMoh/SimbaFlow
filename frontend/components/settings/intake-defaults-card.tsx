@@ -73,6 +73,7 @@ type Draft = Partial<
     | "maritalStatus"
     | "countryOfTravel"
     | "contractPeriod"
+    | "monthlySalary"
     | "cookingLevel"
     | "cvTemplate"
     | "skills"
@@ -96,6 +97,7 @@ export function IntakeDefaultsCard() {
   const countryOfTravel =
     draft.countryOfTravel ?? defaults?.countryOfTravel ?? "";
   const contractPeriod = draft.contractPeriod ?? defaults?.contractPeriod ?? "";
+  const monthlySalary = draft.monthlySalary ?? defaults?.monthlySalary ?? "";
   const cookingLevel = draft.cookingLevel ?? defaults?.cookingLevel ?? "";
   const cvTemplate = draft.cvTemplate ?? defaults?.cvTemplate ?? "enjaz";
   const skills = draft.skills ?? defaults?.skills ?? [];
@@ -140,6 +142,7 @@ export function IntakeDefaultsCard() {
         maritalStatus,
         countryOfTravel,
         contractPeriod,
+        monthlySalary,
         cookingLevel,
         cvTemplate,
         skills,
@@ -323,6 +326,18 @@ export function IntakeDefaultsCard() {
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="def-salary">Salary</Label>
+            {/* Free text, like the field on the registration form: the figure is quoted in
+                riyals on one corridor and dirhams on the next, and the unit travels with it. */}
+            <Input
+              id="def-salary"
+              value={monthlySalary}
+              onChange={(e) => patch("monthlySalary", e.target.value)}
+              placeholder="1000"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="def-period">Contract period (Years)</Label>
             {/* A number, like the years of experience. Free text collected "2 Years", "2yrs" and
               "Two years" for the same contract, so an older saved answer is shown as its number
@@ -492,13 +507,16 @@ export function IntakeDefaultsCard() {
         </div>
       </section>
 
-      <Button
-        type="submit"
-        disabled={saving || !defaults}
-        className="bg-green-800 text-white hover:bg-green-900"
-      >
-        {saving ? "Saving…" : "Save defaults"}
-      </Button>
+      {/* Right, where the save sits on every sheet and dialog in the application. */}
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          disabled={saving || !defaults}
+          className="bg-green-800 text-white hover:bg-green-900"
+        >
+          {saving ? "Saving…" : "Save defaults"}
+        </Button>
+      </div>
     </form>
   );
 }

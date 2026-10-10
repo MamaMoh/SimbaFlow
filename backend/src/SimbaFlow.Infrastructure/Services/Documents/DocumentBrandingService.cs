@@ -29,8 +29,12 @@ public sealed class DocumentBrandingService : IDocumentBrandingService
         _logger = logger;
     }
 
+    public Task<byte[]?> GetHeaderLogoAsync(
+        Candidate candidate, CancellationToken cancellationToken = default) =>
+        GetHeaderLogoAsync(candidate, _currentUser.TenantId, cancellationToken);
+
     public async Task<byte[]?> GetHeaderLogoAsync(
-        Candidate candidate, CancellationToken cancellationToken = default)
+        Candidate candidate, Guid? tenantId, CancellationToken cancellationToken = default)
     {
         // The partner's branding wins: the paperwork is presented under their name. Within each
         // organisation the printed letterhead is preferred, and the logo stands in when they have
@@ -49,11 +53,11 @@ public sealed class DocumentBrandingService : IDocumentBrandingService
         }
 
         // No partner, or the partner has no branding at all — fall back to the agency's own.
-        if (_currentUser.TenantId is Guid tenantId)
+        if (tenantId is Guid agencyId)
         {
             var agency = await _platform.Tenants
                 .AsNoTracking()
-                .Where(t => t.Id == tenantId && !t.IsDeleted)
+                .Where(t => t.Id == agencyId && !t.IsDeleted)
                 .Select(t => new { t.LetterheadPath, t.LogoPath })
                 .FirstOrDefaultAsync(cancellationToken);
 

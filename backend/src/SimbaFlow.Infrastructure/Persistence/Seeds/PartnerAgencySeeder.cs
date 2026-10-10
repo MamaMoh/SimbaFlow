@@ -14,7 +14,7 @@ public static class PartnerAgencySeeder
 {
     private static readonly (string Name, string Code, string Country, string? License)[] SeedData =
     [
-        ("Etenaa Resources Co.", "SA", "Saudi Arabia", "SA-MOL-48291"),
+        ("Sample Resources Co.", "SA", "Saudi Arabia", "SA-MOL-48291"),
         ("Al Nour Manpower LLC", "AE", "United Arab Emirates", "UAE-MOHRE-11902"),
         ("Kuwait Home Care Agency", "KW", "Kuwait", "KW-PAM-3301"),
         ("Qatar Domestic Services", "QA", "Qatar", "QA-ADLSA-7740"),

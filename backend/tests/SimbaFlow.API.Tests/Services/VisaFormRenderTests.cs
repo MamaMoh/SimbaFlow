@@ -21,6 +21,9 @@ public class VisaFormRenderTests
         public Task<byte[]?> GetHeaderLogoAsync(Candidate c, CancellationToken ct = default) =>
             Task.FromResult<byte[]?>(null);
 
+        public Task<byte[]?> GetHeaderLogoAsync(Candidate c, Guid? tenantId, CancellationToken ct = default) =>
+            Task.FromResult<byte[]?>(null);
+
         public Task<string> GetCvTemplateAsync(CancellationToken ct = default) =>
             Task.FromResult(CvTemplates.Default);
 
@@ -31,9 +34,9 @@ public class VisaFormRenderTests
 
     private static Candidate Placed() => new()
     {
-        FirstName = "ZINET",
-        MiddleName = "YIBRE",
-        LastName = "ABEBAW",
+        FirstName = "SAMPLE",
+        MiddleName = "TEST",
+        LastName = "CANDIDATE",
         PassportNumber = "E00201748",
         PassportIssueDate = new DateOnly(2026, 3, 6),
         PassportExpiryDate = new DateOnly(2031, 3, 5),

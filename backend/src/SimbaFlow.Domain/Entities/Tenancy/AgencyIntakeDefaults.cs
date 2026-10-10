@@ -22,6 +22,13 @@ public class AgencyIntakeDefaults : BaseEntity
     public string MaritalStatus { get; set; } = "Single";
     public string CountryOfTravel { get; set; } = "";
     public string ContractPeriod { get; set; } = "2";
+
+    /// <summary>
+    /// The monthly wage a new registration starts with, as it is written on the contract —
+    /// free text, because the figure is quoted in riyals on one corridor and dirhams on the
+    /// next and the form has always carried the unit with it.
+    /// </summary>
+    public string MonthlySalary { get; set; } = "1000";
     public string CvTemplate { get; set; } = "layout3";
     public string CookingLevel { get; set; } = "";
 }

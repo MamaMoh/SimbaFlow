@@ -18,6 +18,8 @@ export type IntakeDefaults = {
   maritalStatus: string;
   countryOfTravel: string;
   contractPeriod: string;
+  /** The monthly wage a new registration starts with, unit included. */
+  monthlySalary: string;
   cookingLevel: string;
   /** Which CV layout this agency prints. */
   cvTemplate: string;
@@ -129,6 +131,7 @@ export function parseIntakeDefaults(payload: unknown): IntakeDefaults | undefine
     maritalStatus: readString(data, "maritalStatus", "MaritalStatus"),
     countryOfTravel: readString(data, "countryOfTravel", "CountryOfTravel"),
     contractPeriod: readString(data, "contractPeriod", "ContractPeriod"),
+    monthlySalary: readString(data, "monthlySalary", "MonthlySalary"),
     cookingLevel: readString(data, "cookingLevel", "CookingLevel"),
     cvTemplate: readString(data, "cvTemplate", "CvTemplate") || "layout3",
     cvTemplates: Array.isArray(data.cvTemplates)
@@ -174,6 +177,7 @@ export async function saveIntakeDefaults(body: IntakeDefaults): Promise<IntakeDe
       maritalStatus: body.maritalStatus,
       countryOfTravel: body.countryOfTravel,
       contractPeriod: body.contractPeriod,
+      monthlySalary: body.monthlySalary,
       cookingLevel: body.cookingLevel,
       cvTemplate: body.cvTemplate,
       skills: (body.skills ?? []).map((skill, index) => ({

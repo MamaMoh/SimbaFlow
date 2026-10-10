@@ -23,6 +23,16 @@ public interface IDocumentBrandingService
     Task<byte[]?> GetHeaderLogoAsync(Candidate candidate, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The same, for a caller with no HTTP request behind it.
+    ///
+    /// The agency is normally read from the signed-in user. The Telegram bot has no such user —
+    /// it works out the agency from the linked account — so it has to say which one, or every
+    /// document it sends falls back to no letterhead at all.
+    /// </summary>
+    Task<byte[]?> GetHeaderLogoAsync(
+        Candidate candidate, Guid? tenantId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The agency's own name and contact details.
     ///
     /// The agency's own, not the partner's, even where the letterhead is the partner's. On the

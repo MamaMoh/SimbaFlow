@@ -42,6 +42,20 @@ public class CvGenerationService : ICvGenerationService
         return CvLayouts.Render(template, candidate, photoBytes, fullPhotoBytes, logoBytes);
     }
 
+    public async Task<byte[]> GenerateForTenantAsync(
+        Candidate candidate,
+        Guid? tenantId,
+        string? template,
+        byte[]? photoBytes = null,
+        byte[]? fullPhotoBytes = null,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var logoBytes = await _branding.GetHeaderLogoAsync(candidate, tenantId, cancellationToken);
+        return CvLayouts.Render(
+            CvTemplates.Normalise(template), candidate, photoBytes, fullPhotoBytes, logoBytes);
+    }
+
     public async Task<byte[]> GeneratePreviewAsync(
         string template, CancellationToken cancellationToken = default)
     {
