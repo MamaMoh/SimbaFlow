@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CountrySelect } from "@/components/ui/country-select";
+import { contractYears } from "@/lib/utils/contract-period";
 import {
   intakeSelectLabel,
   intakeSelectValue,
@@ -277,12 +278,19 @@ export function IntakeDefaultsCard() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="def-period">Contract period</Label>
+          <Label htmlFor="def-period">Contract period (Years)</Label>
+          {/* A number, like the years of experience. Free text collected "2 Years", "2yrs" and
+              "Two years" for the same contract, so an older saved answer is shown as its number
+              and keeps its wording until it is changed. */}
           <Input
             id="def-period"
-            value={contractPeriod}
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={contractYears(contractPeriod)}
             onChange={(e) => patch("contractPeriod", e.target.value)}
-            placeholder="2 Years"
+            placeholder="2"
           />
         </div>
 
@@ -315,7 +323,8 @@ export function IntakeDefaultsCard() {
         <div>
           <Label>Skills</Label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Ticked skills are pre-checked on a new registration.
+            Ticked skills are pre-checked on a new registration. Remove any you do not place for —
+            typing the name back puts it on the form again.
           </p>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -332,16 +341,18 @@ export function IntakeDefaultsCard() {
                 }
               />
               <span>{skill.name}</span>
-              {!skill.isBuiltIn ? (
-                <button
-                  type="button"
-                  className="rounded p-0.5 text-muted-foreground hover:text-destructive"
-                  aria-label={`Remove ${skill.name}`}
-                  onClick={() => setSkills(skills.filter((s) => s.id !== skill.id))}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              ) : null}
+              {/* The built-in ones too. An agency's registration form is its own, and a skill it
+                  never places for is a checkbox nobody reads. Nothing already recorded against it
+                  is lost, and typing the name back brings the original skill back. */}
+              <button
+                type="button"
+                className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                aria-label={`Remove ${skill.name}`}
+                title={`Remove ${skill.name} from the registration form`}
+                onClick={() => setSkills(skills.filter((s) => s.id !== skill.id))}
+              >
+                <X className="h-3 w-3" />
+              </button>
             </label>
           ))}
         </div>
@@ -399,7 +410,7 @@ export function IntakeDefaultsCard() {
                       className="block h-auto w-full"
                     />
                   </span>
-                  <span className="flex items-center gap-2 px-3 pt-2.5">
+                  <span className="flex items-center gap-2 px-3 py-2.5">
                     <span
                       className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border ${
                         selected ? "border-green-700" : "border-muted-foreground/40"
@@ -408,9 +419,6 @@ export function IntakeDefaultsCard() {
                       {selected && <span className="h-1.5 w-1.5 rounded-full bg-green-700" />}
                     </span>
                     <span className="text-sm font-medium">{tpl.name}</span>
-                  </span>
-                  <span className="mt-1 block px-3 pb-2 text-xs leading-relaxed text-muted-foreground">
-                    {tpl.description}
                   </span>
                 </button>
                 <a

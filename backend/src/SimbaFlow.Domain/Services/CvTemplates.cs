@@ -18,20 +18,19 @@ public static class CvTemplates
 
     public const string Default = Layout3;
 
-    public static readonly IReadOnlyList<(string Value, string Name, string Description)> All =
+    /// <summary>
+    /// The layouts, by the number the agencies call them. Only the number: the picker shows each
+    /// page as a picture, and a paragraph describing a layout you are already looking at is three
+    /// lines of reading between you and the next one.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Value, string Name)> All =
     [
-        (Layout1, "1st layout",
-            "Full-body photo down the left with name, address and passport beneath it; personal details, contract and skills on the right."),
-        (Layout2, "2nd layout",
-            "Wide header with headshot, applicant details beside a full-body photo, and skills across the full width."),
-        (Layout3, "3rd layout",
-            "Application for Employment: summary at the top, applicant and passport side by side, photo on the right."),
-        (Layout4, "4th layout",
-            "Headshot in the letterhead, full-body photo with work and skills on the left, passport and applicant details on the right."),
-        (Layout5, "5th layout",
-            "Job Application: photo, letterhead and placement summary across the top, personal details left, photo and skill ticks right."),
-        (Layout7, "7th layout",
-            "Candidate's Resume: both photos stacked left, one personal-information table right, skills as a tick grid along the bottom."),
+        (Layout1, "1st layout"),
+        (Layout2, "2nd layout"),
+        (Layout3, "3rd layout"),
+        (Layout4, "4th layout"),
+        (Layout5, "5th layout"),
+        (Layout7, "7th layout"),
     ];
 
     /// <summary>Falls back to the default rather than failing on a value we no longer recognise.</summary>

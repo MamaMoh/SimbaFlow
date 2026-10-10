@@ -126,7 +126,7 @@ public class CvRenderTests
     public static TheoryData<string, string, bool> Layouts()
     {
         var data = new TheoryData<string, string, bool>();
-        foreach (var (value, name, _) in CvTemplates.All)
+        foreach (var (value, name) in CvTemplates.All)
         {
             data.Add(value, name, false);
             data.Add(value, name, true);

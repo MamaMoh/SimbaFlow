@@ -21,8 +21,8 @@ export type IntakeDefaults = {
   cookingLevel: string;
   /** Which CV layout this agency prints. */
   cvTemplate: string;
-  /** The layouts to choose from, described for the person choosing. */
-  cvTemplates?: { value: string; name: string; description: string }[];
+  /** The layouts to choose from. The picker shows each one as a picture of the page itself. */
+  cvTemplates?: { value: string; name: string }[];
   skills: AgencySkill[];
 };
 

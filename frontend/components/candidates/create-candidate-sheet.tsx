@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { useIntakeDefaults, type AgencySkill } from "@/lib/api/intake-defaults";
 import { CountrySelect, countryName } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
+import { contractYears } from "@/lib/utils/contract-period";
 import { Progress } from "@/components/ui/progress";
 import {
   generateCandidateCv,
@@ -436,7 +437,7 @@ const defaults: Partial<RegisterCandidateForm> = {
   occupation: "HOUSE MAID",
   qualification: "SECONDARY LEVEL",
   monthlySalary: "1000",
-  contractPeriod: "2 Years",
+  contractPeriod: "2",
   religion: "",
   maritalStatus: "Single",
   numberOfChildren: "0",
@@ -1015,7 +1016,7 @@ export function CandidateApplicationForm({
       occupation: matchOption(OCCUPATIONS, d.occupation) || "HOUSE MAID",
       qualification: d.qualification || "SECONDARY LEVEL",
       monthlySalary: d.monthlySalary || "1000",
-      contractPeriod: d.contractPeriod || "2 Years",
+      contractPeriod: contractYears(d.contractPeriod) || "2",
       englishLevel: matchOption(LANGUAGE_LEVELS, d.englishLevel),
       arabicLevel: matchOption(LANGUAGE_LEVELS, d.arabicLevel),
       otherLanguages: d.otherLanguages || "",
@@ -1146,7 +1147,7 @@ export function CandidateApplicationForm({
       setValue("maritalStatus", matchOption(MARITAL_STATUSES, agencyDefaults.maritalStatus));
     }
     if (agencyDefaults.contractPeriod && stillAt("contractPeriod", defaults.contractPeriod ?? "")) {
-      setValue("contractPeriod", agencyDefaults.contractPeriod);
+      setValue("contractPeriod", contractYears(agencyDefaults.contractPeriod));
     }
     if (agencyDefaults.countryOfTravel && stillAt("countryOfTravel", "")) {
       setValue(
@@ -1255,7 +1256,7 @@ export function CandidateApplicationForm({
     occupation: data.occupation || null,
     qualification: data.qualification || null,
     monthlySalary: data.monthlySalary || null,
-    contractPeriod: data.contractPeriod || "2 Years",
+    contractPeriod: data.contractPeriod || "2",
     englishLevel: data.englishLevel || null,
     arabicLevel: data.arabicLevel || null,
     otherLanguages: data.otherLanguages || null,
@@ -2350,8 +2351,16 @@ export function CandidateApplicationForm({
                   )}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Contract period</Label>
-                  <Input {...register("contractPeriod")} placeholder="2 Years" />
+                  <Label>Contract period (Years)</Label>
+                  {/* A number, like the years of experience above it. */}
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    placeholder="2"
+                    {...register("contractPeriod")}
+                  />
                 </div>
               </div>
             </FormSection>

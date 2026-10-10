@@ -262,7 +262,7 @@ public class IntakeDefaultsModule : ICarterModule
             cookingLevel = defaults.CookingLevel,
             cvTemplate = CvTemplates.Normalise(defaults.CvTemplate),
             cvTemplates = CvTemplates.All
-                .Select(x => new { value = x.Value, name = x.Name, description = x.Description }),
+                .Select(x => new { value = x.Value, name = x.Name }),
             skills = skills
                 .Where(s => !s.IsDeleted)
                 .OrderBy(s => s.SortOrder)
@@ -314,8 +314,10 @@ public class IntakeDefaultsModule : ICarterModule
         if (defaults is null)
             return null;
 
+        // Removed skills included. The save needs to see them: typing a built-in's name back on
+        // restores the original row, and a list that stopped at the live rows could not find it,
+        // so a skill taken off the form could never be put back. ToDto drops them on the way out.
         var skills = await tenantDb.AgencySkills
-            .Where(s => !s.IsDeleted)
             .OrderBy(s => s.SortOrder)
             .ThenBy(s => s.Name)
             .ToListAsync(ct);

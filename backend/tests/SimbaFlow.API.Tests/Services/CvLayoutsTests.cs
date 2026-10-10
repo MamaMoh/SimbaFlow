@@ -17,8 +17,7 @@ public class CvLayoutsTests
     {
         CvTemplates.All.Should().HaveCountGreaterThan(1);
         CvTemplates.All.Select(t => t.Value).Should().OnlyHaveUniqueItems();
-        CvTemplates.All.Should().OnlyContain(t =>
-            !string.IsNullOrWhiteSpace(t.Name) && !string.IsNullOrWhiteSpace(t.Description));
+        CvTemplates.All.Should().OnlyContain(t => !string.IsNullOrWhiteSpace(t.Name));
     }
 
     [Fact]
@@ -39,7 +38,7 @@ public class CvLayoutsTests
     [Fact]
     public void AKnownLayoutIsKept()
     {
-        foreach (var (value, _, _) in CvTemplates.All)
+        foreach (var (value, _) in CvTemplates.All)
             CvTemplates.Normalise(value).Should().Be(value);
     }
 }

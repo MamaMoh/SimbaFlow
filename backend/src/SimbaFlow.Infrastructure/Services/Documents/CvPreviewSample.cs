@@ -45,7 +45,7 @@ internal static class CvPreviewSample
 
         Occupation = "HOUSE MAID",
         MonthlySalary = "1,000 SR",
-        ContractPeriod = "2 Years",
+        ContractPeriod = "2",
         CountryOfTravel = "Saudi Arabia",
         WorksIn = "Saudi Arabia",
         ExperienceAbroadYears = 2,

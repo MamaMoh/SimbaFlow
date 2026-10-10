@@ -215,6 +215,51 @@ public class IntakeDefaultsTests : IDisposable
     }
 
     [Fact]
+    public async Task ABuiltInSkillCanBeTakenOffTheFormAndPutBackByName()
+    {
+        var options = new DbContextOptionsBuilder<TenantDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var db = new TenantDbContext(options, Substitute.For<ICurrentUserService>());
+        await AgencyIntakeSeeder.EnsureAsync(db, new TenantSettings());
+
+        // Saved without Ironing on the list, which is how the settings page removes a skill.
+        var existing = await db.AgencySkills.ToListAsync();
+        var kept = existing
+            .Where(s => s.BuiltInKey != BuiltInSkills.Ironing)
+            .Select((s, i) => new IntakeSkillBody { Id = s.Id, Name = s.Name, SortOrder = i })
+            .ToList();
+        IntakeDefaultsModule.ApplySkills(db, existing, kept);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        // A built-in, so the seeder must not quietly put it back on the next request.
+        await AgencyIntakeSeeder.EnsureAsync(db, new TenantSettings());
+        var afterReseed = await db.AgencySkills.Where(s => !s.IsDeleted).ToListAsync();
+        afterReseed.Should().NotContain(s => s.BuiltInKey == BuiltInSkills.Ironing);
+
+        // Typing the name back restores the original row rather than being refused as built-in
+        // or added a second time as a custom skill.
+        var removedId = (await db.AgencySkills.SingleAsync(s => s.BuiltInKey == BuiltInSkills.Ironing)).Id;
+        db.ChangeTracker.Clear();
+
+        var all = await db.AgencySkills.ToListAsync();
+        var readded = all
+            .Where(s => !s.IsDeleted)
+            .Select((s, i) => new IntakeSkillBody { Id = s.Id, Name = s.Name, SortOrder = i })
+            .ToList();
+        readded.Add(new IntakeSkillBody { Name = "Ironing", SortOrder = readded.Count });
+        IntakeDefaultsModule.ApplySkills(db, all, readded);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var live = await db.AgencySkills.Where(s => !s.IsDeleted).ToListAsync();
+        live.Should().ContainSingle(s => s.Name == "Ironing");
+        live.Single(s => s.Name == "Ironing").Id.Should().Be(removedId);
+        live.Single(s => s.Name == "Ironing").IsBuiltIn.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ReplacingIntakeOnALoadedTenantIsWrittenBack()
     {
         var id = Guid.NewGuid();

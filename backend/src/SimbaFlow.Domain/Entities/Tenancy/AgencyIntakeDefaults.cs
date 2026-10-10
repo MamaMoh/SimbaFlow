@@ -21,7 +21,7 @@ public class AgencyIntakeDefaults : BaseEntity
     public string PassportType { get; set; } = "Normal";
     public string MaritalStatus { get; set; } = "Single";
     public string CountryOfTravel { get; set; } = "";
-    public string ContractPeriod { get; set; } = "2 Years";
+    public string ContractPeriod { get; set; } = "2";
     public string CvTemplate { get; set; } = "layout3";
     public string CookingLevel { get; set; } = "";
 }

@@ -36,7 +36,7 @@ public sealed class ContractGenerationService : IContractGenerationService
         var cityOfWork = V(candidate.WorksIn ?? candidate.CountryOfTravel);
         var position = V(candidate.Occupation ?? "House Maid");
         var wage = V(candidate.MonthlySalary);
-        var period = V(candidate.ContractPeriod ?? "Two years");
+        var period = V(ContractTerm.Label(candidate.ContractPeriod, "Two years"));
 
         string Fill(string s) => s
             .Replace("{CITY_OF_WORK}", cityOfWork)

@@ -166,7 +166,7 @@ public static class SampleDataSpec
         Occupation: p.Occupation,
         Qualification: index % 2 == 0 ? "Grade 10" : "Grade 8",
         MonthlySalary: p.Salary,
-        ContractPeriod: "2 Years",
+        ContractPeriod: "2",
         EnglishLevel: index % 3 == 0 ? "Good" : "Fair",
         ArabicLevel: index % 4 == 0 ? "Fair" : "None",
         ExperienceAbroadYears: index % 5,

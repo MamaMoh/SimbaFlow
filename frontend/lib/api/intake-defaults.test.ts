@@ -22,7 +22,7 @@ const productionGet = {
     countryOfTravel: "",
     contractPeriod: "2 Years",
     cvTemplate: "layout2",
-    cvTemplates: [{ value: "layout2", name: "Layout 2", description: "x" }],
+    cvTemplates: [{ value: "layout2", name: "Layout 2" }],
   },
 };
 

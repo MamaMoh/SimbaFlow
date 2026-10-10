@@ -112,7 +112,7 @@ public static class CandidateIntakeMapper
         candidate.Occupation = NullIfEmpty(p.Occupation);
         candidate.Qualification = NullIfEmpty(p.Qualification);
         candidate.MonthlySalary = NullIfEmpty(p.MonthlySalary);
-        candidate.ContractPeriod = NullIfEmpty(p.ContractPeriod) ?? "2 Years";
+        candidate.ContractPeriod = NullIfEmpty(p.ContractPeriod) ?? "2";
         candidate.EnglishLevel = NullIfEmpty(p.EnglishLevel);
         candidate.ArabicLevel = NullIfEmpty(p.ArabicLevel);
         candidate.OtherLanguages = NullIfEmpty(p.OtherLanguages);

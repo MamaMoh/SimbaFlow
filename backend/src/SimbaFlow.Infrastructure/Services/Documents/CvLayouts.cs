@@ -213,7 +213,7 @@ internal static class CvLayouts
                         right.Item().PaddingTop(6);
                         Bar(right, "CONTRACT PERIOD", "مدة العقد");
                         right.Item().PaddingVertical(4).AlignCenter()
-                            .Text(V(c.ContractPeriod)).FontSize(10).Bold();
+                            .Text(V(ContractTerm.Label(c.ContractPeriod))).FontSize(10).Bold();
 
                         right.Item().Row(sp =>
                         {
@@ -576,7 +576,7 @@ internal static class CvLayouts
                         Row3(t, "E Number", V(c.ENumber), "رقم الطلب", 80, 58);
                         Row3(t, "Post Applied For", V(c.Occupation), "الوظيفة", 80, 58);
                         Row3(t, "Monthly Salary", V(c.MonthlySalary), "الراتب الشهري", 80, 64);
-                        Row3(t, "Contract Period", V(c.ContractPeriod), "مدة العقد", 80, 58);
+                        Row3(t, "Contract Period", V(ContractTerm.Label(c.ContractPeriod)), "مدة العقد", 80, 58);
                     });
                 });
 
@@ -890,7 +890,7 @@ internal static class CvLayouts
                             BilingualRow(left, "Reference No.", "رقم المرجع", refNo);
                             BilingualRow(left, "Post Applied For", "الوظيفة المطلوبة", candidate.Occupation ?? "—");
                             BilingualRow(left, "Monthly Salary", "الراتب الشهري", candidate.MonthlySalary ?? "—");
-                            BilingualRow(left, "Contract Period", "مدة العقد", candidate.ContractPeriod ?? "2 Years");
+                            BilingualRow(left, "Contract Period", "مدة العقد", ContractTerm.Label(candidate.ContractPeriod, "2 Years"));
                             BilingualRow(left, "Phone No.", "رقم الهاتف", candidate.PhoneNumber ?? "—");
                             left.Item().PaddingVertical(5).PaddingHorizontal(4)
                                 .AlignCenter().Text(candidate.FullName.ToUpperInvariant())

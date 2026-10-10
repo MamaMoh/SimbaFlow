@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { saveFile } from "@/lib/files/download";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
+import { contractPeriodLabel } from "@/lib/utils/contract-period";
 
 const GENDER_LABELS = ["Male", "Female", "Other"];
 
@@ -501,7 +502,7 @@ export default function CandidateDetailPage() {
             />
             <Field label="Occupation" value={candidate.occupation} />
             <Field label="Salary" value={candidate.monthlySalary} />
-            <Field label="Contract period" value={candidate.contractPeriod} />
+            <Field label="Contract period" value={contractPeriodLabel(candidate.contractPeriod)} />
           </ProfileSection>
 
           <ProfileSection icon={Stamp} title="Skills & experience">
