@@ -207,7 +207,6 @@ public class BotMessagesTests
         AssertParsesAsTelegramHtml(BotMessages.WebAppOnly(amharic));
         AssertParsesAsTelegramHtml(BotMessages.LanguageChoices(amharic));
         AssertParsesAsTelegramHtml(BotMessages.LanguageUpdated(amharic));
-        AssertParsesAsTelegramHtml(BotMessages.CvBeingPrepared(amharic));
         AssertParsesAsTelegramHtml(BotMessages.SomethingWentWrong(amharic));
         AssertParsesAsTelegramHtml(
             BotMessages.CandidateCard("SEADA MEKONNEN", "EQ1030621", "LMIS", "Active", "Saudi Arabia", amharic));

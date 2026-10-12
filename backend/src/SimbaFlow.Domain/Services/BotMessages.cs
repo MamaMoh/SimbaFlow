@@ -63,13 +63,20 @@ public static class BotMessages
     /// One candidate, as a card. Passport is included because it is what staff quote to each other
     /// and to the embassy — a name on its own is not enough to act on when two people share one.
     /// </summary>
+    /// <param name="withCvHint">
+    /// Whether to end with "CV: /cv PASSPORT". On a lookup that is the next thing you want and
+    /// the card is the only place that says how to ask for it. On the answer to /cv itself the
+    /// document is attached to this very message, so the line was telling someone holding the
+    /// CV how to request the CV.
+    /// </param>
     public static string CandidateCard(
         string fullName,
         string passportNumber,
         string? stageName,
         string? statusLabel,
         string? countryOfTravel,
-        bool amharic)
+        bool amharic,
+        bool withCvHint = true)
     {
         var sb = new StringBuilder();
         sb.Append($"<b>{Escape(fullName)}</b>\n");
@@ -78,11 +85,14 @@ public static class BotMessages
         sb.Append(amharic ? $"ሁኔታ: {Or(statusLabel, true)}\n" : $"Status: {Or(statusLabel, false)}\n");
         if (!string.IsNullOrWhiteSpace(countryOfTravel))
             sb.Append(amharic ? $"መድረሻ: {Escape(countryOfTravel)}\n" : $"Destination: {Escape(countryOfTravel)}\n");
-        sb.Append('\n');
-        sb.Append(amharic
-            ? $"ሲቪ: <code>/cv {Escape(passportNumber)}</code>"
-            : $"CV: <code>/cv {Escape(passportNumber)}</code>");
-        return sb.ToString();
+        if (withCvHint)
+        {
+            sb.Append('\n');
+            sb.Append(amharic
+                ? $"ሲቪ: <code>/cv {Escape(passportNumber)}</code>"
+                : $"CV: <code>/cv {Escape(passportNumber)}</code>");
+        }
+        return sb.ToString().TrimEnd();
     }
 
     /// <summary>
@@ -156,10 +166,6 @@ public static class BotMessages
     public static string AskForCandidate(bool amharic) => amharic
         ? "የፓስፖርት ቁጥር ወይም ስም ይላኩ።\nለምሳሌ: <code>EQ1030621</code> ወይም <code>Seada Mekonnen</code>"
         : "Send a passport number or a name.\nFor example: <code>EQ1030621</code> or <code>Seada Mekonnen</code>";
-
-    public static string CvBeingPrepared(bool amharic) => amharic
-        ? "ሲቪ በመዘጋጀት ላይ…"
-        : "Preparing the CV…";
 
     // ── Change reports ──────────────────────────────────────────────────────
 

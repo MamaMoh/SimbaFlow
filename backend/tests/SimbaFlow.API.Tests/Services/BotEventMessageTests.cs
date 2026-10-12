@@ -62,6 +62,23 @@ public class BotEventMessageTests
     }
 
     [Fact]
+    public void TheCardDropsTheAskForTheCvLineWhenTheCvIsAttachedToIt()
+    {
+        var lookup = BotMessages.CandidateCard(
+            "SAMPLE CANDIDATE", "E00000001", "Embassy", "Active", "Saudi Arabia", amharic: false);
+        var withCv = BotMessages.CandidateCard(
+            "SAMPLE CANDIDATE", "E00000001", "Embassy", "Active", "Saudi Arabia", amharic: false,
+            withCvHint: false);
+
+        // On a lookup the card is the only place that says how to ask for the CV.
+        lookup.Should().Contain("/cv E00000001");
+        // On the answer to /cv the document is right there, so telling the reader how to ask
+        // for it is telling somebody holding a thing how to request that thing.
+        withCv.Should().NotContain("/cv");
+        withCv.Should().Contain("Embassy");
+    }
+
+    [Fact]
     public void AnEmptyListSaysSoRatherThanPrintingAHeadingWithNothingUnderIt()
     {
         var pages = BotMessages.PeopleList("Embassy", [], "Nobody here.", false);

@@ -295,10 +295,6 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             var candidate = found[0];
 
-            // A CV takes about a second to draw. Without this the chat sits silent and the user
-            // presses the button again.
-            await _telegram.SendMessageAsync(update.ChatId, BotMessages.CvBeingPrepared(amLang), ct);
-
             // Everything the renderer needs has to be handed to it here. There is no signed-in
             // user behind a Telegram message, so the layout and the letterhead cannot be read
             // from the request the way they are in the browser: the bot sent every CV on the
@@ -315,22 +311,27 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             var pdf = await _cvGenerationService.GenerateForTenantAsync(
                 candidate, user.TenantId, template, photo, fullPhoto, ct);
 
-            // The photograph first, the same as a name or passport lookup gives. A PDF arrives
-            // as a file you have to open; the face arrives in the chat, and the question being
-            // asked is usually "is this the right person".
-            if (photo is not null)
-            {
-                await _telegram.SendPhotoAsync(
+            // The photograph with the card on it, the same as a name or passport lookup gives,
+            // then the file. Nothing is said twice: the card leaves out the "ask me for the CV"
+            // line, since the CV is the next thing in the chat, and the file carries a caption
+            // only when there was no photograph to put the name on.
+            var sentPhoto = photo is not null
+                && await _telegram.SendPhotoAsync(
                     update.ChatId,
                     photo,
                     $"{candidate.PassportNumber}.jpg",
                     BotMessages.CandidateCard(
                         candidate.FullName, candidate.PassportNumber, candidate.CurrentStageName,
-                        candidate.Status.ToString(), candidate.CountryOfTravel, amLang),
-                    ct);
-            }
+                        candidate.Status.ToString(), candidate.CountryOfTravel, amLang,
+                        withCvHint: false),
+                    ct) is not null;
 
-            await _telegram.SendDocumentAsync(update.ChatId, pdf, $"{candidate.PassportNumber}-cv.pdf", candidate.FullName, ct);
+            await _telegram.SendDocumentAsync(
+                update.ChatId,
+                pdf,
+                $"{candidate.PassportNumber}-cv.pdf",
+                sentPhoto ? "" : candidate.FullName,
+                ct);
             return;
         }
 
