@@ -21,6 +21,12 @@ interface TenantContextValue {
   permissions: string[];
   hasPermission: (permission: string) => boolean;
   isSuperAdmin: boolean;
+  /**
+   * The one account that answers for this agency — the admin created when the agency was set
+   * up. Not a permission: see IRequireAgencyOwner on the server for why the distinction is
+   * load-bearing rather than cosmetic.
+   */
+  isAgencyOwner: boolean;
   isLoading: boolean;
 }
 
@@ -29,6 +35,7 @@ const TenantContext = createContext<TenantContextValue>({
   permissions: [],
   hasPermission: () => false,
   isSuperAdmin: false,
+  isAgencyOwner: false,
   isLoading: true,
 });
 
@@ -38,6 +45,15 @@ function readClaims(session: unknown): string[] {
   if (Array.isArray(fromUser)) return fromUser;
   if (Array.isArray(s?.permissions)) return s.permissions;
   return [];
+}
+
+/** The role name is the server's; see AgencyRoles on the other side. */
+const AGENCY_OWNER = "AgencyOwner";
+
+function readIsAgencyOwner(session: unknown): boolean {
+  const s = session as any;
+  if (s?.role === AGENCY_OWNER) return true;
+  return s?.user?.roles?.includes?.(AGENCY_OWNER) === true;
 }
 
 function readIsSuperAdmin(session: unknown, claims: string[]): boolean {
@@ -62,6 +78,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     () => readIsSuperAdmin(session, permissions),
     [session, permissions]
   );
+  const isAgencyOwner = useMemo(() => readIsAgencyOwner(session), [session]);
   const isLoading = status === "loading";
 
   useEffect(() => {
@@ -78,8 +95,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const hasPermission = (permission: string): boolean => {
     if (isLoading) return false;
     if (isSuperAdmin) return true;
-    if ((session as any)?.role === "AgencyOwner") return true;
-    if ((session as any)?.user?.roles?.includes?.("AgencyOwner")) return true;
+    if (isAgencyOwner) return true;
     return permissions.includes(permission);
   };
 
@@ -90,6 +106,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         permissions,
         hasPermission,
         isSuperAdmin,
+        isAgencyOwner,
         isLoading,
       }}
     >
@@ -103,7 +120,7 @@ export function useTenant() {
 }
 
 export function usePermissions() {
-  const { hasPermission, permissions, isLoading, isSuperAdmin } =
+  const { hasPermission, permissions, isLoading, isSuperAdmin, isAgencyOwner } =
     useContext(TenantContext);
-  return { hasPermission, permissions, isLoading, isSuperAdmin };
+  return { hasPermission, permissions, isLoading, isSuperAdmin, isAgencyOwner };
 }

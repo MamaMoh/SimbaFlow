@@ -1,6 +1,7 @@
 using MediatR;
 using SimbaFlow.Application.Common.Exceptions;
 using SimbaFlow.Application.Common.Interfaces;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.Application.Common.Behaviors;
 
@@ -8,8 +9,8 @@ namespace SimbaFlow.Application.Common.Behaviors;
 /// MediatR pipeline behavior that enforces permission-based authorization.
 /// Commands/queries implementing IRequirePermission (one permission) or IRequireAnyPermission
 /// (any one of several) are checked before handler execution.
-/// SuperAdmin bypasses those checks — but not IRequirePlatformAdmin, which is the one gate a
-/// permission grant cannot open.
+/// SuperAdmin bypasses those checks — but not IRequirePlatformAdmin or IRequireAgencyOwner,
+/// the two gates a permission grant cannot open.
 /// </summary>
 public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -36,6 +37,17 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
             if (!_currentUser.IsSuperAdmin)
                 throw new ForbiddenAccessException(
                     "Roles and permissions are managed by the platform team.");
+        }
+
+        // Then the agency's own shape — who it is, how its pipeline runs. Its owner, or the
+        // platform team, and no permission grant reaches it either.
+        if (request is IRequireAgencyOwner ownerRequest)
+        {
+            if (string.IsNullOrEmpty(_currentUser.UserId))
+                throw new UnauthorizedAccessException("Authentication required");
+
+            if (!_currentUser.IsSuperAdmin && !AgencyRoles.Owns(_currentUser.Roles))
+                throw new ForbiddenAccessException(ownerRequest.OwnerOnlyMessage);
         }
 
         if (request is IRequirePermission permissionRequest)

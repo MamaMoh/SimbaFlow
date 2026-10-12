@@ -9,6 +9,16 @@ using SimbaFlow.Infrastructure.Workflow;
 
 namespace SimbaFlow.API.Features.Workflow.Commands;
 
+/// <summary>
+/// Everything in this file that reshapes the pipeline answers to the same gate, so it says the
+/// same thing when it refuses.
+/// </summary>
+internal static class WorkflowSetup
+{
+    public const string OwnerOnly =
+        "The workflow is set up by the agency owner or the platform team.";
+}
+
 public record ExecuteTransitionCommand(Guid CandidateId, Guid TransitionRuleId, string? Notes)
     : IRequest<Result>, IRequirePermission
 {
@@ -83,9 +93,9 @@ public class UpdateStatusHandler : IRequestHandler<UpdateStatusCommand, Result>
 }
 
 public record CreateStageCommand(string Name, string? Description, int SortOrder, int StageType)
-    : IRequest<Result<Guid>>, IRequirePermission
+    : IRequest<Result<Guid>>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class CreateStageHandler : IRequestHandler<CreateStageCommand, Result<Guid>>
@@ -118,9 +128,9 @@ public class CreateStageHandler : IRequestHandler<CreateStageCommand, Result<Gui
 }
 
 public record UpdateStageCommand(Guid StageId, string Name, string? Description, int SortOrder, int StageType)
-    : IRequest<Result>, IRequirePermission
+    : IRequest<Result>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class UpdateStageHandler : IRequestHandler<UpdateStageCommand, Result>
@@ -150,9 +160,9 @@ public class UpdateStageHandler : IRequestHandler<UpdateStageCommand, Result>
 public record CreateTransitionRuleCommand(
     Guid SourceStageId, Guid TargetStageId, string ButtonLabel,
     string? ButtonIcon, object? Conditions, string[]? RequiredFields,
-    string[]? AllowedRoles, bool RemoveFromSource) : IRequest<Result<Guid>>, IRequirePermission
+    string[]? AllowedRoles, bool RemoveFromSource) : IRequest<Result<Guid>>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class CreateTransitionRuleHandler : IRequestHandler<CreateTransitionRuleCommand, Result<Guid>>
@@ -202,9 +212,9 @@ public class CreateTransitionRuleHandler : IRequestHandler<CreateTransitionRuleC
 }
 
 public record ConfigureParallelTracksCommand(Guid StageId, List<ParallelTrackInput> Tracks)
-    : IRequest<Result>, IRequirePermission
+    : IRequest<Result>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public record ParallelTrackInput(string TrackName, string CompletionStatus, int SortOrder);
@@ -253,9 +263,9 @@ public class ConfigureParallelTracksHandler : IRequestHandler<ConfigureParallelT
 public record UpdateTransitionRuleCommand(
     Guid TransitionId, string ButtonLabel, string? ButtonIcon,
     string[]? RequiredFields, string[]? AllowedRoles,
-    bool RemoveFromSource, bool IsActive) : IRequest<Result>, IRequirePermission
+    bool RemoveFromSource, bool IsActive) : IRequest<Result>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class UpdateTransitionRuleHandler : IRequestHandler<UpdateTransitionRuleCommand, Result>
@@ -285,9 +295,9 @@ public class UpdateTransitionRuleHandler : IRequestHandler<UpdateTransitionRuleC
     }
 }
 
-public record DeleteTransitionRuleCommand(Guid TransitionId) : IRequest<Result>, IRequirePermission
+public record DeleteTransitionRuleCommand(Guid TransitionId) : IRequest<Result>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class DeleteTransitionRuleHandler : IRequestHandler<DeleteTransitionRuleCommand, Result>
@@ -308,9 +318,9 @@ public class DeleteTransitionRuleHandler : IRequestHandler<DeleteTransitionRuleC
     }
 }
 
-public record DeleteStageCommand(Guid StageId) : IRequest<Result>, IRequirePermission
+public record DeleteStageCommand(Guid StageId) : IRequest<Result>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class DeleteStageHandler : IRequestHandler<DeleteStageCommand, Result>
@@ -366,9 +376,9 @@ public record UpsertMirrorViewRuleCommand(
     Guid SourceStageId,
     Guid TargetStageId,
     JsonElement Conditions,
-    bool IsActive) : IRequest<Result<Guid>>, IRequirePermission
+    bool IsActive) : IRequest<Result<Guid>>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class UpsertMirrorViewRuleHandler : IRequestHandler<UpsertMirrorViewRuleCommand, Result<Guid>>
@@ -508,9 +518,9 @@ public class UpsertMirrorViewRuleHandler : IRequestHandler<UpsertMirrorViewRuleC
     }
 }
 
-public record DeleteMirrorViewRuleCommand(Guid Id) : IRequest<Result>, IRequirePermission
+public record DeleteMirrorViewRuleCommand(Guid Id) : IRequest<Result>, IRequireAgencyOwner
 {
-    public string RequiredPermission => "workflow.configure";
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
 
 public class DeleteMirrorViewRuleHandler : IRequestHandler<DeleteMirrorViewRuleCommand, Result>

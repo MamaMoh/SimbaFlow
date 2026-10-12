@@ -11,6 +11,15 @@ namespace SimbaFlow.Infrastructure.Persistence.Seeds;
 
 /// <summary>
 /// Idempotently adds Unit 3/4 workflow artifacts to tenants that already have an active definition.
+///
+/// It fills gaps; it does not overrule the agency. A tenant provisioned before a feature shipped
+/// is missing the stages and steps that feature needs, and this is what gives them to it. But an
+/// agency that has deliberately removed one of those stages or steps has made a decision about
+/// its own pipeline, and putting it back on the next restart would mean the workflow was only
+/// configurable until the next deploy.
+///
+/// The two cases are told apart by the soft delete: a row the agency removed is still there with
+/// IsDeleted set, where a tenant that predates the feature has no row at all.
 /// </summary>
 public interface IWorkflowDefinitionUpgrader
 {
@@ -115,7 +124,13 @@ public class WorkflowDefinitionUpgrader : IWorkflowDefinitionUpgrader
         var caseExecutive = definition.Stages.FirstOrDefault(s =>
             !s.IsDeleted && s.Name.Equals(CaseExecutiveStageName, StringComparison.OrdinalIgnoreCase));
 
-        if (caseExecutive is null)
+        if (caseExecutive is null && WasRemoved(definition, CaseExecutiveStageName))
+        {
+            _logger.LogDebug(
+                "Tenant {TenantId} has removed the {Stage} stage; leaving it removed",
+                tenantId, CaseExecutiveStageName);
+        }
+        else if (caseExecutive is null)
         {
             var stagesToBump = await context.WorkflowStages
                 .Where(s => s.WorkflowDefinitionId == definition.Id
@@ -157,11 +172,12 @@ public class WorkflowDefinitionUpgrader : IWorkflowDefinitionUpgrader
             """,
             ct);
 
-        await EnsureMirrorAsync(
-            context,
-            embassy.Id,
-            caseExecutive.Id,
-            """
+        if (caseExecutive is not null)
+            await EnsureMirrorAsync(
+                context,
+                embassy.Id,
+                caseExecutive.Id,
+                """
             {
               "operator": "OR",
               "rules": [
@@ -170,10 +186,18 @@ public class WorkflowDefinitionUpgrader : IWorkflowDefinitionUpgrader
               ]
             }
             """,
-            ct);
+                ct);
 
         await context.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Whether this stage is gone because the agency took it out, rather than because the
+    /// tenant predates it.
+    /// </summary>
+    private static bool WasRemoved(WorkflowDefinition definition, string name) =>
+        definition.Stages.Any(s =>
+            s.IsDeleted && s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 
     public async Task EnsureUnit4ArtifactsAsync(ITenantDbContext context, Guid tenantId, CancellationToken ct = default)
     {
@@ -249,22 +273,10 @@ public class WorkflowDefinitionUpgrader : IWorkflowDefinitionUpgrader
             sortOrder: 1,
             ct);
 
-        // Force RemoveFromSource=false even if transition already existed with wrong flag
-        var addToCommission = await context.WorkflowTransitionRules
-            .FirstOrDefaultAsync(r =>
-                r.WorkflowDefinitionId == definition.Id
-                && !r.IsDeleted
-                && r.ButtonLabel == AddToCommissionAction
-                && r.SourceStageId == arrival.Id
-                && r.TargetStageId == commission.Id, ct);
-
-        if (addToCommission is not null && addToCommission.RemoveFromSource)
-        {
-            addToCommission.RemoveFromSource = false;
-            _logger.LogInformation(
-                "Corrected Add to Commission RemoveFromSource=false for tenant {TenantId}",
-                tenantId);
-        }
+        // The Arrival ledger used to be emptied by this step, which lost the record of everyone
+        // who had already travelled. That was repaired on every tenant years of restarts ago and
+        // is correct in the seeder, so it is no longer forced here: an agency that has since set
+        // this deliberately gets to keep its answer.
 
         await context.SaveChangesAsync(ct);
         _logger.LogDebug("Unit 4 workflow artifacts ensured for tenant {TenantId}", tenantId);
@@ -289,20 +301,15 @@ public class WorkflowDefinitionUpgrader : IWorkflowDefinitionUpgrader
         var existing = await context.WorkflowTransitionRules
             .FirstOrDefaultAsync(r =>
                 r.WorkflowDefinitionId == definitionId
-                && !r.IsDeleted
                 && r.ButtonLabel == actionName
                 && r.SourceStageId == sourceStageId
                 && r.TargetStageId == targetStageId, ct);
 
+        // Already there, in one form or another. It is the agency's now — including what it
+        // requires and when it is offered, which this used to overwrite on every restart, and
+        // including a decision to remove it.
         if (existing is not null)
-        {
-            existing.RemoveFromSource = removeFromSource;
-            if (requiredFields is not null)
-                existing.RequiredFields = requiredFields;
-            if (conditionsJson is not null)
-                existing.Conditions = JsonDocument.Parse(conditionsJson);
             return;
-        }
 
         context.WorkflowTransitionRules.Add(new WorkflowTransitionRule
         {
@@ -325,10 +332,11 @@ public class WorkflowDefinitionUpgrader : IWorkflowDefinitionUpgrader
         string conditionsJson,
         CancellationToken ct)
     {
+        // Including a mirror the agency has removed: the row survives the delete, and putting it
+        // back would make the removal last until the next restart.
         var exists = await context.MirrorViewRules.AnyAsync(r =>
             r.WorkflowStageId == sourceStageId
-            && r.TargetStageId == targetStageId
-            && !r.IsDeleted, ct);
+            && r.TargetStageId == targetStageId, ct);
 
         if (exists)
             return;

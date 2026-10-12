@@ -41,7 +41,18 @@ function formatConditions(raw: unknown): string {
 }
 
 export function WorkflowConfigEditor() {
-  const { hasPermission, isLoading: permsLoading } = usePermissions();
+  const { hasPermission, isAgencyOwner, isSuperAdmin, isLoading: permsLoading } =
+    usePermissions();
+  /**
+   * Reading the pipeline and reshaping it are different things.
+   *
+   * A coordinator may need to see which step comes after which, and `workflow.configure` is
+   * what opens this screen. Changing it — removing a stage, loosening what a step requires —
+   * moves everyone's work at once and cannot be undone from a board, so it stays with the
+   * agency's owner and the platform team. The server refuses the rest regardless; this is so
+   * nobody is offered a button that will only tell them no.
+   */
+  const canEdit = isAgencyOwner || isSuperAdmin;
   const { definition, stages, isLoading, error, mutate } = useWorkflowDefinition();
   const [stageEditorOpen, setStageEditorOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<WorkflowStage | null>(null);
@@ -209,28 +220,35 @@ export function WorkflowConfigEditor() {
             )}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setDefaultSourceId(undefined);
-              setTransitionOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Transition
-          </Button>
-          <Button
-            size="sm"
-            className="bg-green-800 hover:bg-green-900 text-white"
-            onClick={() => {
-              setEditingStage(null);
-              setStageEditorOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" /> Stage
-          </Button>
-        </div>
+        {canEdit ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setDefaultSourceId(undefined);
+                setTransitionOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Transition
+            </Button>
+            <Button
+              size="sm"
+              className="bg-green-800 hover:bg-green-900 text-white"
+              onClick={() => {
+                setEditingStage(null);
+                setStageEditorOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Stage
+            </Button>
+          </div>
+        ) : (
+          <p className="max-w-xs text-sm text-muted-foreground">
+            This is your agency&rsquo;s own pipeline. It is changed by the agency owner or the
+            platform team.
+          </p>
+        )}
       </div>
 
       <section className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
@@ -272,6 +290,7 @@ export function WorkflowConfigEditor() {
                       : ""}
                   </p>
                 </div>
+                {canEdit ? (
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -302,6 +321,7 @@ export function WorkflowConfigEditor() {
                     <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
                   </Button>
                 </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -329,7 +349,7 @@ export function WorkflowConfigEditor() {
                   <TableHead>Who can do it</TableHead>
                   <TableHead>Conditions</TableHead>
                   <TableHead>Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {canEdit ? <TableHead className="text-right">Actions</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody className="divide-y">
@@ -369,6 +389,7 @@ export function WorkflowConfigEditor() {
                         label={t.isActive ? "Yes" : "No"}
                       />
                     </TableCell>
+                    {canEdit ? (
                     <TableCell className="text-right whitespace-nowrap">
                       <Button
                         size="sm"
@@ -386,6 +407,7 @@ export function WorkflowConfigEditor() {
                         Remove
                       </Button>
                     </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>
@@ -402,17 +424,19 @@ export function WorkflowConfigEditor() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Board mirroring ({mirrors.length})
           </h2>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditingMirror(null);
-              setMirrorEditorOpen(true);
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Mirror
-          </Button>
+          {canEdit ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingMirror(null);
+                setMirrorEditorOpen(true);
+              }}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Mirror
+            </Button>
+          ) : null}
         </div>
 
         {mirrors.length === 0 ? (
@@ -430,7 +454,7 @@ export function WorkflowConfigEditor() {
                   <TableHead>Also appears on</TableHead>
                   <TableHead>When</TableHead>
                   <TableHead>Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {canEdit ? <TableHead className="text-right">Actions</TableHead> : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -447,6 +471,7 @@ export function WorkflowConfigEditor() {
                         label={m.isActive ? "Yes" : "No"}
                       />
                     </TableCell>
+                    {canEdit ? (
                     <TableCell className="whitespace-nowrap text-right">
                       <Button
                         size="sm"
@@ -467,6 +492,7 @@ export function WorkflowConfigEditor() {
                         Remove
                       </Button>
                     </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

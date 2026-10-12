@@ -33,7 +33,7 @@ public static class PermissionSeeder
         // Workflow
         ("workflow", "workflow.view", "View workflow stage views"),
         ("workflow", "workflow.execute", "Execute workflow transitions"),
-        ("workflow", "workflow.configure", "Configure workflow stages, statuses, and rules"),
+        ("workflow", "workflow.configure", "Open the workflow setup screen. Changing the pipeline is the agency owner's"),
 
         // Embassy
         ("embassy", "embassy.read", "View embassy processing stage"),

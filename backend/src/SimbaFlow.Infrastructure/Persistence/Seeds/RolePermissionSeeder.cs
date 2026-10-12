@@ -26,6 +26,9 @@ public static class RolePermissionSeeder
     {
         ["AgencyOwner"] = [
             "candidate.read", "candidate.create", "candidate.update", "candidate.delete",
+            // workflow.configure opens the setup screen; reshaping the pipeline answers
+            // to the owner role itself, not to a permission anyone inside the agency
+            // could be granted.
             "workflow.view", "workflow.execute", "workflow.configure",
             "embassy.read", "embassy.update", "embassy.case_view", "embassy.case_submit", "embassy.visa_outcome",
             "lmis.read", "lmis.update", "lmis.document",
