@@ -1,4 +1,8 @@
 import useSWR from "swr";
+// The slug table and the resolver live in a leaf module so the sidebar can build addresses
+// without pulling the data layer into the sign-in page. Re-exported: this is where the rest
+// of the app has always imported it from.
+export { resolveStageFromSlugOrId, stageHref } from "@/lib/workflow/stage-slug";
 import type {
   AvailableAction,
   WorkflowDefinition,
@@ -57,41 +61,15 @@ const fetcher = async <T>(url: string): Promise<T> => {
   return res.json();
 };
 
-/** Map nav slugs → seed stage names (handles plural nav paths). */
-const STAGE_SLUG_TO_NAMES: Record<string, string[]> = {
-  "new-contracts": ["New Contracts"],
-  embassy: ["Embassy"],
-  lmis: ["LMIS"],
-  tickets: ["Ticket", "Tickets"],
-  ticket: ["Ticket"],
-  departures: ["Departure", "Departures"],
-  departure: ["Departure"],
-  arrivals: ["Arrival", "Arrivals"],
-  arrival: ["Arrival"],
-  commissions: ["Commission", "Commissions"],
-  commission: ["Commission"],
-  intake: ["Intake"],
-};
-
-export function resolveStageFromSlugOrId(
-  stages: WorkflowStage[],
-  stageIdOrSlug: string
-): WorkflowStage | undefined {
-  const byId = stages.find((s) => s.id === stageIdOrSlug);
-  if (byId) return byId;
-
-  const names = STAGE_SLUG_TO_NAMES[stageIdOrSlug.toLowerCase()] ?? [
-    stageIdOrSlug.replace(/-/g, " "),
-  ];
-
-  return stages.find((s) =>
-    names.some((n) => s.name.toLowerCase() === n.toLowerCase())
-  );
-}
-
-export function useWorkflowDefinition() {
+/**
+ * The agency's pipeline: its stages, the steps between them, and the mirroring rules.
+ *
+ * @param enabled False holds the request back. A platform administrator with no agency chosen
+ *   is not inside one, and asking for its workflow would be asking whose.
+ */
+export function useWorkflowDefinition(enabled = true) {
   const { data, error, isLoading, mutate } = useSWR<ApiResult<WorkflowDefinition>>(
-    "/api/proxy/workflow/config",
+    enabled ? "/api/proxy/workflow/config" : null,
     fetcher,
     { revalidateOnFocus: false }
   );

@@ -1,3 +1,6 @@
+import type { WorkflowStage } from "@/types/workflow";
+import { stageHref } from "@/lib/workflow/stage-slug";
+
 /**
  * Which of the two jobs a link belongs to.
  *
@@ -21,6 +24,18 @@ export interface NavItem {
   scope?: NavScope;
   children?: NavItem[];
   isSeparator?: boolean;
+  /**
+   * The workflow stage this board is built around.
+   *
+   * These seven boards are not generic lists — each has its own columns, its own row actions
+   * and its own endpoint — but each one is still a window onto one stage of the agency's
+   * pipeline. Naming that stage here is what lets the sidebar follow the pipeline: the link
+   * appears in the stage's own position, and goes away with the stage.
+   *
+   * The name, not the id, because ids differ per agency and this file is the same for all of
+   * them. It is matched case-insensitively against the stage's name.
+   */
+  stage?: string;
   isActive?: (pathname: string) => boolean;
   sectionLabel?: string;
 }
@@ -65,18 +80,21 @@ export const navigation: NavItem[] = [
   {
     name: "New Contracts",
     href: "/workflow/new-contracts",
+    stage: "New Contracts",
     icon: require("lucide-react").FileText,
     claims: ["workflow.view", "system.admin"],
   },
   {
     name: "Embassy",
     href: "/workflow/embassy",
+    stage: "Embassy",
     icon: require("lucide-react").Building,
     claims: ["embassy.read", "system.admin"],
   },
   {
     name: "Case Executive",
     href: "/workflow/case-executive",
+    stage: "Case Executive",
     icon: require("lucide-react").Briefcase,
     // Only embassy.case_view — the board's own query requires it, so listing embassy.read here
     // showed Embassy Officers a link that opened straight onto a permission error.
@@ -85,24 +103,28 @@ export const navigation: NavItem[] = [
   {
     name: "LMIS",
     href: "/workflow/lmis",
+    stage: "LMIS",
     icon: require("lucide-react").FileCheck,
     claims: ["lmis.read", "system.admin"],
   },
   {
     name: "Tickets",
     href: "/workflow/tickets",
+    stage: "Ticket",
     icon: require("lucide-react").Plane,
     claims: ["travel.read", "system.admin"],
   },
   {
     name: "Departures",
     href: "/workflow/departures",
+    stage: "Departure",
     icon: require("lucide-react").Clock,
     claims: ["travel.read", "system.admin"],
   },
   {
     name: "Arrivals",
     href: "/workflow/arrivals",
+    stage: "Arrival",
     icon: require("lucide-react").MapPin,
     claims: ["arrival.read", "system.admin"],
   },
@@ -118,6 +140,7 @@ export const navigation: NavItem[] = [
   {
     name: "Commissions",
     href: "/workflow/commissions",
+    stage: "Commission",
     icon: require("lucide-react").Banknote,
     claims: ["commission.read", "system.admin"],
   },
@@ -230,6 +253,95 @@ export const navigation: NavItem[] = [
     claims: ["system.admin", "bot.use", "settings.read"],
   },
 ];
+
+/**
+ * Stages that deliberately have no link of their own.
+ *
+ * Intake is the candidate list: everyone registered is in it, and a second entry pointing at
+ * the same people under a different word is the kind of link somebody clicks exactly once.
+ */
+const STAGES_WITHOUT_A_LINK = new Set(["intake"]);
+
+/** Where a generated board sits in the sidebar — the stage's own name, and a plain icon. */
+function generatedBoard(stage: WorkflowStage, href: string): NavItem {
+  return {
+    name: stage.name,
+    href,
+    icon: require("lucide-react").Layers,
+    // What the generic board asks for. A stage an agency added has no endpoint of its own, so
+    // there is no narrower permission to name.
+    claims: ["workflow.view", "system.admin"],
+    stage: stage.name,
+  };
+}
+
+/**
+ * The navigation, with the Workflow section following the agency's own pipeline.
+ *
+ * The sidebar used to be a fixed list. An agency could add a stage on the setup screen, and the
+ * board existed and worked, but nothing in the app pointed at it — so the pipeline was
+ * configurable and the way into it was not. Remove a stage and the opposite: a link that opened
+ * onto nothing.
+ *
+ * So the Workflow section is derived. Each stage, in the order the agency put them in, becomes
+ * one entry: the board built for it where there is one — Embassy and LMIS keep their own
+ * columns and their own actions — and the general-purpose board otherwise. A stage that is gone
+ * takes its link with it.
+ *
+ * Two entries in that section are not stages and keep their places: Candidates at the top, which
+ * is the pipeline's front door rather than a step in it, and Exceptions at the bottom, which is
+ * every stage at once.
+ *
+ * Given no stages — still loading, or the request failed — this returns the static list
+ * unchanged. A sidebar that empties itself while a fetch is in flight is worse than one that is
+ * briefly out of date.
+ */
+export function navigationForStages(
+  stages: readonly WorkflowStage[],
+  items: NavItem[] = navigation,
+): NavItem[] {
+  if (stages.length === 0) return items;
+
+  const firstBoard = items.findIndex((i) => i.stage && !i.isSeparator);
+  if (firstBoard < 0) return items;
+
+  // The run of the list the stages govern: from the first stage-backed board to the next
+  // section heading. Commissions sits below the Finance heading and so is outside it — it is
+  // still claimed by its stage, which is what keeps a second Commission link from appearing up
+  // here, but it is not moved into the pipeline's order.
+  let end = firstBoard;
+  while (end < items.length && !items[end].isSeparator) end += 1;
+
+  const before = items.slice(0, firstBoard);
+  const run = items.slice(firstBoard, end);
+  const after = items.slice(end);
+
+  const boardFor = new Map<string, NavItem>();
+  for (const item of items)
+    if (item.stage) boardFor.set(item.stage.toLowerCase(), item);
+
+  // Anything in the run that is not a board — Exceptions — stays where it is relative to the
+  // boards, which in practice means after them.
+  const notABoard = run.filter((i) => !i.stage);
+
+  const inRun = new Set(run.filter((i) => i.stage).map((i) => i.name));
+  const ordered = [...stages].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const boards: NavItem[] = [];
+  for (const stage of ordered) {
+    const key = stage.name.toLowerCase().trim();
+    if (STAGES_WITHOUT_A_LINK.has(key)) continue;
+
+    const built = boardFor.get(key);
+    // A stage whose board lives in another section — Commission, under Finance — is already
+    // reachable, and is left there rather than listed twice.
+    if (built && !inRun.has(built.name)) continue;
+
+    boards.push(built ?? generatedBoard(stage, stageHref([...stages], stage)));
+  }
+
+  return [...before, ...boards, ...notABoard, ...after];
+}
 
 /**
  * Remove section headings with nothing left underneath them.

@@ -22,10 +22,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 // Avoid strict coupling to backend User type; use relaxed typing
 import {
   navigation as baseNavigation,
+  navigationForStages,
   type NavItem,
   filterNavigationByClaims,
   type NavScope,
 } from "@/components/layout/nav-items";
+import { useWorkflowDefinition } from "@/lib/api/workflow";
 import { useState, useRef, useEffect, useMemo } from "react";
 
 /** Returns the top-level parent nav item name whose subtree contains the current path (for opening on expand). */
@@ -387,11 +389,21 @@ export function Sidebar({ className }: SidebarProps) {
   const navMode: NavScope =
     isSuperAdmin() && actingTenantId === null ? "platform" : "agency";
 
-  const navItems = filterNavigationByClaims(
-    baseNavigation,
-    userClaims as any,
-    isSuperAdmin(),
-    navMode,
+  // The Workflow section is the agency's own pipeline, so it is read from the pipeline rather
+  // than written down here. Not fetched in platform mode: there is no agency to ask about, and
+  // the whole section is filtered out of that sidebar anyway.
+  const { stages } = useWorkflowDefinition(navMode === "agency");
+
+  const navItems = useMemo(
+    () =>
+      filterNavigationByClaims(
+        navigationForStages(stages, baseNavigation),
+        userClaims as any,
+        isSuperAdmin(),
+        navMode,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stages, userClaims.join("|"), navMode, isSuperAdmin()],
   );
 
   // Accordion state: track which top-level parent is open

@@ -11,7 +11,13 @@ import {
   CommandItem,
   CommandSeparator,
 } from "@/components/ui/command";
-import { navigation, filterNavigationByClaims, type NavItem } from "@/components/layout/nav-items";
+import {
+  navigation,
+  navigationForStages,
+  filterNavigationByClaims,
+  type NavItem,
+} from "@/components/layout/nav-items";
+import { useWorkflowDefinition } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { useCommandPalette } from "@/lib/stores/command-store";
 import { UserPlus, Search, User, ArrowRight } from "lucide-react";
@@ -55,9 +61,20 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", onKey);
   }, [toggle]);
 
+  // Same list the sidebar shows, boards an agency has added included. SWR hands back the
+  // sidebar's own copy, so this costs no second request.
+  const { stages } = useWorkflowDefinition();
+
   const destinations = useMemo(
-    () => flattenNav(filterNavigationByClaims(navigation, permissions ?? [], !!isSuperAdmin)),
-    [permissions, isSuperAdmin]
+    () =>
+      flattenNav(
+        filterNavigationByClaims(
+          navigationForStages(stages, navigation),
+          permissions ?? [],
+          !!isSuperAdmin,
+        ),
+      ),
+    [stages, permissions, isSuperAdmin]
   );
 
   const canReadCandidates =

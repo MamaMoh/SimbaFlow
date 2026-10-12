@@ -9,6 +9,7 @@
     "dev:clean": "rm -rf .next && cross-env NODE_OPTIONS=--max-old-space-size=4096 NODE_TLS_REJECT_UNAUTHORIZED=0 next dev --turbo",
     "dev:no-turbo": "cross-env NODE_OPTIONS=--max-old-space-size=4096 NODE_TLS_REJECT_UNAUTHORIZED=0 next dev",
     "lint": "next lint",
+    "test": "node scripts/run-unit-tests.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
