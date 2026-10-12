@@ -252,6 +252,13 @@ public class WorkflowEngineService : IWorkflowEngineService
         return new TransitionResult(true);
     }
 
+    /// <summary>Whether this board defines the given track, as a parallel track or on its statuses.</summary>
+    private static bool Declares(Domain.Entities.Workflow.WorkflowStage stage, string trackName) =>
+        stage.ParallelTracks.Any(t =>
+            !t.IsDeleted && t.TrackName.Equals(trackName, StringComparison.OrdinalIgnoreCase))
+        || stage.Statuses.Any(s =>
+            !s.IsDeleted && string.Equals(s.TrackName, trackName, StringComparison.OrdinalIgnoreCase));
+
     public async Task<StatusUpdateResult> UpdateStatusAsync(
         Guid candidateId, string trackName, string newValue, Guid userId, string userName,
         string? notes = null,
@@ -271,13 +278,35 @@ public class WorkflowEngineService : IWorkflowEngineService
         if (candidate.CurrentStageId is null)
             return new StatusUpdateResult(false, "Candidate has no current stage.");
 
-        var stage = await _context.WorkflowStages
+        // Every board this candidate is on, not only the one they are standing in.
+        //
+        // A mirror exists so a second desk can start before the candidate formally leaves the
+        // first board: LMIS records the insurance while the embassy is still finishing the
+        // medical. That track belongs to the mirrored board, so checking it against the stage
+        // they happen to be standing in refused the exact thing the mirror was created to
+        // allow — "Unknown track 'insurance' for stage 'Embassy'" on every mirrored row. The
+        // LMIS endpoint had already decided a mirrored row is fair game; this was the layer
+        // that disagreed with it.
+        var boardIds = new List<Guid> { candidate.CurrentStageId.Value };
+        boardIds.AddRange(candidate.VisibleInStages);
+
+        var boards = await _context.WorkflowStages
             .Include(s => s.Statuses)
             .Include(s => s.ParallelTracks)
-            .FirstOrDefaultAsync(s => s.Id == candidate.CurrentStageId, ct);
+            .Where(s => boardIds.Contains(s.Id) && !s.IsDeleted)
+            .ToListAsync(ct);
 
-        if (stage is null)
+        var current = boards.FirstOrDefault(s => s.Id == candidate.CurrentStageId);
+        if (current is null)
             return new StatusUpdateResult(false, "Current stage not found.");
+
+        // The board that owns the track. The one they are standing in wins, so a name used by
+        // two boards still resolves to the nearer one; otherwise the first mirrored board that
+        // declares it; otherwise fall back to the current board so the checks below produce
+        // the same refusal they always did.
+        var stage = Declares(current, trackName)
+            ? current
+            : boards.FirstOrDefault(s => Declares(s, trackName)) ?? current;
 
         // Validate track if stage uses parallel tracks
         if (stage.StageType == StageType.ParallelTrack && stage.ParallelTracks.Count > 0)
@@ -294,7 +323,8 @@ public class WorkflowEngineService : IWorkflowEngineService
                     (string.Equals(s.TrackName, trackName, StringComparison.OrdinalIgnoreCase) ||
                      string.Equals(s.Name, newValue, StringComparison.OrdinalIgnoreCase)));
                 if (!statusOk)
-                    return new StatusUpdateResult(false, $"Unknown track '{trackName}' for stage '{stage.Name}'.");
+                    return new StatusUpdateResult(false,
+                        $"Unknown track '{trackName}' for {string.Join(" or ", boards.Select(b => $"'{b.Name}'"))}.");
             }
         }
 
