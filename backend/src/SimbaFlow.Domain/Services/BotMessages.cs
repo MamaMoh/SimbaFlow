@@ -69,6 +69,11 @@ public static class BotMessages
     /// document is attached to this very message, so the line was telling someone holding the
     /// CV how to request the CV.
     /// </param>
+    /// <param name="profileUrl">
+    /// The candidate's page in the web application. A card answers the question you asked and
+    /// raises the next one — the address, the next of kin, the documents — and the only way on
+    /// from here was to put the phone down and find the right row in a browser.
+    /// </param>
     public static string CandidateCard(
         string fullName,
         string passportNumber,
@@ -76,7 +81,8 @@ public static class BotMessages
         string? statusLabel,
         string? countryOfTravel,
         bool amharic,
-        bool withCvHint = true)
+        bool withCvHint = true,
+        string? profileUrl = null)
     {
         var sb = new StringBuilder();
         sb.Append($"<b>{Escape(fullName)}</b>\n");
@@ -91,6 +97,13 @@ public static class BotMessages
             sb.Append(amharic
                 ? $"ሲቪ: <code>/cv {Escape(passportNumber)}</code>"
                 : $"CV: <code>/cv {Escape(passportNumber)}</code>");
+        }
+        if (!string.IsNullOrWhiteSpace(profileUrl))
+        {
+            sb.Append('\n');
+            sb.Append(amharic
+                ? $"<a href=\"{Escape(profileUrl)}\">ሙሉ መረጃ ይክፈቱ</a>"
+                : $"<a href=\"{Escape(profileUrl)}\">Open the full record</a>");
         }
         return sb.ToString().TrimEnd();
     }
@@ -243,6 +256,15 @@ public static class BotMessages
             sb.Append(amharic ? $" — በ {Escape(by)}" : $" — by {Escape(by)}");
         return sb.ToString();
     }
+
+    /// <summary>
+    /// The candidate's page in the web application, or null when nobody has told the server
+    /// what address it answers on — better no link than one that goes nowhere.
+    /// </summary>
+    public static string? ProfileUrl(string? appBaseUrl, Guid candidateId) =>
+        string.IsNullOrWhiteSpace(appBaseUrl)
+            ? null
+            : $"{appBaseUrl.TrimEnd('/')}/candidates/{candidateId}";
 
     // ── Lists the desk asks for ─────────────────────────────────────────────
 

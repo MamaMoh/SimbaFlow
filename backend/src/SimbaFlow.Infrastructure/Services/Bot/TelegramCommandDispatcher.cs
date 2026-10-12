@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
+using SimbaFlow.Infrastructure.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SimbaFlow.Application.Common.Documents;
@@ -24,6 +26,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
     private readonly ICvGenerationService _cvGenerationService;
     private readonly IFileStorageService _fileStorage;
     private readonly IMemoryCache _cache;
+    private readonly IOptionsMonitor<EmailOptions> _appOptions;
     private readonly ITelegramGateway _telegram;
     private readonly IBotLinkService _botLinkService;
     private readonly ILogger<TelegramCommandDispatcher> _logger;
@@ -35,6 +38,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         ICvGenerationService cvGenerationService,
         IFileStorageService fileStorage,
         IMemoryCache cache,
+        IOptionsMonitor<EmailOptions> appOptions,
         ITelegramGateway telegram,
         IBotLinkService botLinkService,
         ILogger<TelegramCommandDispatcher> logger)
@@ -45,6 +49,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         _cvGenerationService = cvGenerationService;
         _fileStorage = fileStorage;
         _cache = cache;
+        _appOptions = appOptions;
         _telegram = telegram;
         _botLinkService = botLinkService;
         _logger = logger;
@@ -242,7 +247,8 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 var c = matches[0];
                 var card = BotMessages.CandidateCard(
                     c.FullName, c.PassportNumber, c.CurrentStageName, c.Status.ToString(),
-                    c.CountryOfTravel, amLang);
+                    c.CountryOfTravel, amLang,
+                    profileUrl: BotMessages.ProfileUrl(_appOptions.CurrentValue.AppBaseUrl, c.Id));
 
                 // The photograph with the card under it. A name and a passport number is not
                 // enough to know you have the right person, and checking used to mean leaving
@@ -323,7 +329,9 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                     BotMessages.CandidateCard(
                         candidate.FullName, candidate.PassportNumber, candidate.CurrentStageName,
                         candidate.Status.ToString(), candidate.CountryOfTravel, amLang,
-                        withCvHint: false),
+                        withCvHint: false,
+                        profileUrl: BotMessages.ProfileUrl(
+                            _appOptions.CurrentValue.AppBaseUrl, candidate.Id)),
                     ct) is not null;
 
             await _telegram.SendDocumentAsync(

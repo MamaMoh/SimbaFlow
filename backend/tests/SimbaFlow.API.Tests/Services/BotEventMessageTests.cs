@@ -79,6 +79,30 @@ public class BotEventMessageTests
     }
 
     [Fact]
+    public void TheCardLinksToTheCandidatesPage()
+    {
+        var id = Guid.NewGuid();
+        var card = BotMessages.CandidateCard(
+            "SAMPLE CANDIDATE", "E00000001", "Embassy", "Active", "Saudi Arabia", amharic: false,
+            profileUrl: BotMessages.ProfileUrl("https://app.example.com/", id));
+
+        card.Should().Contain($"https://app.example.com/candidates/{id}");
+        card.Should().Contain("Open the full record");
+    }
+
+    [Fact]
+    public void NoAddressConfiguredMeansNoLinkRatherThanALinkToNowhere()
+    {
+        BotMessages.ProfileUrl(null, Guid.NewGuid()).Should().BeNull();
+        BotMessages.ProfileUrl("  ", Guid.NewGuid()).Should().BeNull();
+
+        BotMessages.CandidateCard(
+                "SAMPLE CANDIDATE", "E1", "Embassy", "Active", "Saudi Arabia", amharic: false,
+                profileUrl: null)
+            .Should().NotContain("<a href");
+    }
+
+    [Fact]
     public void AnEmptyListSaysSoRatherThanPrintingAHeadingWithNothingUnderIt()
     {
         var pages = BotMessages.PeopleList("Embassy", [], "Nobody here.", false);

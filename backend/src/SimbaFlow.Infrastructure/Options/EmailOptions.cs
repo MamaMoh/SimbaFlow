@@ -15,7 +15,13 @@ public sealed class EmailOptions
     public string Password { get; set; } = string.Empty;
     public string SenderName { get; set; } = "SimbaFlow";
 
-    /// <summary>Base URL used to build links in emails, e.g. https://app.laba.et.</summary>
+    /// <summary>
+    /// Where the web application lives, e.g. https://app.laba.et.
+    ///
+    /// Named for emails because that is what first needed it, and read by anything that has to
+    /// point somebody at a page: the password-reset link, and the Telegram bot's link to a
+    /// candidate. One address for the application, configured once.
+    /// </summary>
     public string AppBaseUrl { get; set; } = string.Empty;
 
     /// <summary>Nothing is sent until a server and password are configured.</summary>
