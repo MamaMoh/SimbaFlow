@@ -39,6 +39,10 @@ function SheetOverlay({
       data-slot="sheet-overlay"
       className={cn(
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/40 backdrop-blur supports-[backdrop-filter]:backdrop-blur-sm",
+        // forceMount keeps this in the page after it closes, so that it can slide out rather
+        // than vanish. An invisible sheet of glass over the whole app is still a sheet of
+        // glass: nothing underneath it can be clicked, and the page reads as frozen.
+        "data-[state=closed]:pointer-events-none",
         className
       )}
       {...props}
@@ -63,7 +67,7 @@ function SheetContent({
   const cameFromPopper = usePopperInteractionGuard();
 
   const baseClasses =
-    "bg-background fixed z-50 flex flex-col gap-4 shadow-lg will-change-transform will-change-opacity transition-transform transition-opacity ease-in-out duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0";
+    "bg-background fixed z-50 flex flex-col gap-4 shadow-lg will-change-transform will-change-opacity transition-transform transition-opacity ease-in-out duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 data-[state=closed]:pointer-events-none";
 
   const sideClasses = {
     right: cn(

@@ -158,15 +158,11 @@ export const embassyApi = {
     postJson(`/api/proxy/embassy/candidates/${id}/tasheer/result`, { result, notes }),
   setVisaReady: (id: string, notes?: string) =>
     postJson(`/api/proxy/embassy/candidates/${id}/visa/ready`, { notes }),
-  submitVisa: (
-    id: string,
-    submissionDate?: string,
-    referenceNumber?: string,
-    notes?: string
-  ) =>
+  // No reference number: the embassy hands one back days later, long after this is recorded,
+  // so the box was always submitted empty. The API still accepts one for anything that has it.
+  submitVisa: (id: string, submissionDate?: string, notes?: string) =>
     postJson(`/api/proxy/embassy/candidates/${id}/visa/submit`, {
       submissionDate,
-      referenceNumber,
       notes,
     }),
   recordVisaOutcome: (

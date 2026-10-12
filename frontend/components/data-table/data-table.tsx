@@ -94,6 +94,20 @@ function openMenuAt(x: number, y: number): void {
   };
 }
 
+/**
+ * Whether the event happened on the row itself, rather than inside something the row rendered
+ * into a portal.
+ *
+ * Every row carries its own dialogs and sheets, and React sends their events back up the tree
+ * they were declared in — not the tree they are drawn in. So a right-click inside an open form
+ * arrived here as a right-click on the row underneath it: the row opened its ⋯ menu over the
+ * form, and the form, seeing a menu open outside itself, closed. Typing in a form ticked the
+ * row's checkbox. The row's own handlers only have business with the row's own cells.
+ */
+function inThisRow(event: React.MouseEvent<HTMLElement>): boolean {
+  return event.currentTarget.contains(event.target as Node);
+}
+
 type PaginationProps = Omit<
   React.ComponentProps<typeof DataTablePagination>,
   "table"
@@ -270,7 +284,7 @@ export function DataTable<TData, TValue>(
                   data-state={row.getIsSelected() && "selected"}
                   className={onRowClick || rowClickOpensActions ? "cursor-pointer" : undefined}
                   onContextMenu={(e) => {
-                    if (!rowClickOpensActions) return;
+                    if (!rowClickOpensActions || !inThisRow(e)) return;
                     const trigger = e.currentTarget.querySelector<HTMLElement>(
                       '[aria-label="Row actions"]',
                     );
@@ -295,6 +309,7 @@ export function DataTable<TData, TValue>(
                     requestAnimationFrame(() => openMenuAt(clientX, clientY));
                   }}
                   onClick={(e) => {
+                    if (!inThisRow(e)) return;
                     // Don't hijack clicks on interactive controls inside the row.
                     if ((e.target as HTMLElement).closest(
                       'button, a, input, label, [role="checkbox"], [role="menuitem"], [data-no-row-click]'

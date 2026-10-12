@@ -104,7 +104,8 @@ export function MoveBackStageItem({
       </DropdownMenuItem>
 
       <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
-        {/* Not dismissible: this one destroys something, so it closes on Cancel or the X. */}
+        {/* This one undoes work, so once a reason has been typed a click on the page
+            behind it will not throw that away. Untouched, it closes like any other. */}
         <DialogContent dismissible={false} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Move back a stage</DialogTitle>

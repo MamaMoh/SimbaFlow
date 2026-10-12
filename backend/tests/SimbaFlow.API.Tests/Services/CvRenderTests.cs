@@ -56,7 +56,7 @@ public class CvRenderTests
         FirstName = "SAMPLE",
         MiddleName = "TEST",
         LastName = "CANDIDATE",
-        PassportNumber = "E00201748",
+        PassportNumber = "EP0101010",
         PassportIssueDate = new DateOnly(2026, 3, 6),
         PassportExpiryDate = new DateOnly(2031, 3, 5),
         PassportPlaceOfIssue = "ETHIOPIA",

@@ -50,6 +50,27 @@ internal static class VisaFormLayout
 
     private const float BarcodeHeight = 27.5f;
 
+    /// <summary>
+    /// The width of the consular block on the right — the E-number barcode and the headings
+    /// under it, and the Arabic titles and agency name below those.
+    ///
+    /// Constant rather than half the page, because half the page centres that column halfway
+    /// between the middle and the right edge, and the form has it hard against the right
+    /// margin. The two stacks share the width so that the barcode, the E number, EMBASSY OF
+    /// SAUDI ARABIA and the agency's name all sit on one centre line.
+    /// </summary>
+    private const float RightBlock = 220f;
+
+    /// <summary>The photograph box, to the size the consulate's own form prints it.</summary>
+    private const float PhotoWidth = 112f;
+    private const float PhotoHeight = 118f;
+
+    /// <summary>
+    /// The emblem, drawn to the proportions of the artwork so nothing is stretched.
+    /// </summary>
+    private const float EmblemHeight = 100f;
+    private const float EmblemWidth = EmblemHeight * 811f / 1012f;
+
     public static void Compose(
         IDocumentContainer container,
         Candidate candidate,
@@ -109,7 +130,7 @@ internal static class VisaFormLayout
                 });
             });
 
-            bar.RelativeItem().Column(c =>
+            bar.ConstantItem(RightBlock).Column(c =>
             {
                 // The E number, not the passport number. They sit side by side on the form and
                 // look alike — E000111222 against EP0000001 — and the first copy of this read the
@@ -122,23 +143,37 @@ internal static class VisaFormLayout
             });
         });
 
-        root.Item().PaddingTop(4).Row(band =>
+        root.Item().PaddingTop(4).Layers(layers =>
         {
-            band.ConstantItem(112).Height(118).Border(Hair).BorderColor(Rule)
-                .AlignCenter().AlignMiddle()
-                .Element(e => CvPrimitives.PlaceImage(e, photoBytes, "PHOTO"));
-
-            band.RelativeItem().PaddingHorizontal(8).AlignCenter().AlignTop()
-                .Height(100).Element(Emblem);
-
-            band.ConstantItem(230).Column(c =>
+            layers.PrimaryLayer().Row(band =>
             {
-                c.Item().AlignCenter().Text("سفارة المملكة العربية السعودية").FontSize(10).Bold();
-                c.Item().AlignCenter().Text("القسم القنصلي").FontSize(10).Bold();
-                c.Item().PaddingTop(14).AlignCenter().Text(agency.Name).FontSize(Value);
-                if (!string.IsNullOrWhiteSpace(agency.Email))
-                    c.Item().PaddingTop(10).AlignCenter().Text(agency.Email).FontSize(10).Bold();
+                band.ConstantItem(PhotoWidth).Height(PhotoHeight).Border(Hair).BorderColor(Rule)
+                    .AlignCenter().AlignMiddle()
+                    .Element(e => CvPrimitives.PlaceImage(e, photoBytes, "PHOTO"));
+
+                // The emblem belongs in this gap, but not centred *in* it — see below.
+                band.RelativeItem();
+
+                band.ConstantItem(RightBlock).Column(c =>
+                {
+                    c.Item().AlignCenter().Text("سفارة المملكة العربية السعودية").FontSize(10).Bold();
+                    c.Item().AlignCenter().Text("القسم القنصلي").FontSize(10).Bold();
+                    c.Item().PaddingTop(14).AlignCenter().Text(agency.Name).FontSize(Value);
+                    if (!string.IsNullOrWhiteSpace(agency.Email))
+                        c.Item().PaddingTop(10).AlignCenter().Text(agency.Email).FontSize(10).Bold();
+                });
             });
+
+            // Centred on the sheet, in its own layer over the row.
+            //
+            // It used to be the middle cell of that row, centred in whatever space the
+            // photograph on one side and the consular block on the other left over. Those two
+            // are not the same width, so the gap between them is not the middle of the page,
+            // and the ministry's mark printed a good centimetre left of where the form has it.
+            // Nothing in the row moves to accommodate this; the emblem is simply drawn over
+            // the space that was left for it.
+            layers.Layer().AlignCenter().AlignTop()
+                .Width(EmblemWidth).Height(EmblemHeight).Element(Emblem);
         });
     }
 
@@ -152,7 +187,7 @@ internal static class VisaFormLayout
     /// </summary>
     private static void Emblem(IContainer container)
     {
-        if (EmblemBytes is { Length: > 0 }) container.Image(EmblemBytes).FitHeight();
+        if (EmblemBytes is { Length: > 0 }) container.Image(EmblemBytes).FitArea();
         else container.Text(string.Empty);
     }
 
@@ -164,7 +199,7 @@ internal static class VisaFormLayout
         {
             var assembly = Assembly.GetExecutingAssembly();
             var name = assembly.GetManifestResourceNames()
-                .FirstOrDefault(n => n.EndsWith("saudi-mofa-emblem.jpg", StringComparison.Ordinal));
+                .FirstOrDefault(n => n.EndsWith("saudi-mofa-emblem.png", StringComparison.Ordinal));
             if (name is null) return null;
 
             using var stream = assembly.GetManifestResourceStream(name);

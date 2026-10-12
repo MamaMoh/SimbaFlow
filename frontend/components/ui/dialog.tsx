@@ -77,10 +77,43 @@ export function usePopperInteractionGuard() {
 }
 
 /**
- * @param dismissible Whether clicking away or pressing Escape closes it. A dialog someone is
- *   typing into should set this false: there is nothing to undo a dismissal with, so a stray
- *   click on the page behind it throws away everything they have entered. Cancel and the X still
- *   close it, which is the point — closing becomes something they chose.
+ * Whether anything has been typed into the dialog that is currently open.
+ *
+ * Reset every time a dialog mounts, which is what makes it per-dialog without a ref: the hook
+ * lives and dies with the content it guards.
+ */
+function useTypedIn() {
+  const typed = React.useRef(false);
+
+  React.useEffect(() => {
+    const note = (event: Event) => {
+      const node = event.target as HTMLElement | null;
+      if (node?.closest?.("[data-slot='dialog-content'],[data-slot='sheet-content']"))
+        typed.current = true;
+    };
+    // Capture, because a form may stop these on the way up. `change` as well as `input`: a
+    // select and a file picker announce themselves with nothing else.
+    document.addEventListener("input", note, true);
+    document.addEventListener("change", note, true);
+    return () => {
+      document.removeEventListener("input", note, true);
+      document.removeEventListener("change", note, true);
+    };
+  }, []);
+
+  return () => typed.current;
+}
+
+/**
+ * @param dismissible Whether clicking away or pressing Escape closes it. Left true — the
+ *   default — it always does. Set false it still does, right up until something is typed into
+ *   the dialog: from then on a stray click on the page behind would throw that away, and there
+ *   is nothing to undo a dismissal with, so it stops being one. Cancel and the X close it
+ *   either way.
+ *
+ *   This used to mean "never", which protected a half-filled form at the cost of a dialog
+ *   somebody had only opened to look at: clicking away did nothing, and the only way out was
+ *   to find the X. Clicking away is how every other dialog in the app closes.
  */
 function DialogContent({
   className,
@@ -96,6 +129,10 @@ function DialogContent({
   dismissible?: boolean;
 }) {
   const cameFromPopper = usePopperInteractionGuard();
+  const typedIn = useTypedIn();
+
+  /** There is work in here to lose, and the caller asked for it to be kept. */
+  const holdOpen = () => !dismissible && typedIn();
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -103,15 +140,15 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         onPointerDownOutside={(event) => {
-          if (!dismissible || cameFromPopper()) event.preventDefault();
+          if (holdOpen() || cameFromPopper()) event.preventDefault();
           onPointerDownOutside?.(event);
         }}
         onInteractOutside={(event) => {
-          if (!dismissible || cameFromPopper()) event.preventDefault();
+          if (holdOpen() || cameFromPopper()) event.preventDefault();
           onInteractOutside?.(event);
         }}
         onEscapeKeyDown={(event) => {
-          if (!dismissible) event.preventDefault();
+          if (holdOpen()) event.preventDefault();
           onEscapeKeyDown?.(event);
         }}
         // A modal dialog has no business closing because focus moved — which is what a Select

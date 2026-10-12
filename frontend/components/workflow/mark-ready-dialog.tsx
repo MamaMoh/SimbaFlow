@@ -211,8 +211,8 @@ export function MarkReadyDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      {/* Not dismissible: this is a long form, and a click on the page behind it used to throw
-          away everything typed into it. Cancel and the X still close it. */}
+      {/* A long form: once anything is typed into it, a click on the page behind stops
+          closing it. Untouched, it closes like any other. */}
       <DialogContent dismissible={false} className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Mark Ready</DialogTitle>

@@ -99,8 +99,8 @@ export function VisaDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
-      {/* Not dismissible: a stray click on the board behind used to throw away a screen of
-          typing. Cancel and the X still close it. */}
+      {/* Once anything is typed into it, a stray click on the board behind stops closing
+          it — that used to be a screen of typing gone. Untouched, it closes like any other. */}
       <DialogContent dismissible={false} className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>

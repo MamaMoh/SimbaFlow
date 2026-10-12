@@ -54,7 +54,6 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const canEditCandidate = hasPermission("candidate.update");
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
-  const [paidOpen, setPaidOpen] = useState(false);
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
   const [portalOpen, setPortalOpen] = useState(false);
@@ -120,8 +119,20 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
             {canUpdate && (
               <>
                 <DropdownMenuSeparator />
+                {/* Paid and unpaid are the same kind of answer, so they are the same kind of
+                    click. This one used to open a form asking for a payment date and a note
+                    that nobody filled in — two more steps to say a thing that has two
+                    possible values. */}
                 {(insurance === "Insurance Unpaid" || !insurance) && (
-                  <DropdownMenuItem onClick={() => setPaidOpen(true)}>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      void run(
+                        () => lmisApi.recordInsurancePaid(candidate.id),
+                        "Insurance marked paid → Available",
+                      );
+                    }}
+                  >
                     <BadgeCheck className="mr-2 h-4 w-4" />
                     Mark insurance paid
                   </DropdownMenuItem>
@@ -183,30 +194,6 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
             () => lmisApi.recordPortalStatus(candidate.id, v.status, v.notes),
             "Portal status recorded",
           );
-        }}
-      />
-      <StatusUpdateSheet
-        open={paidOpen}
-        onOpenChange={setPaidOpen}
-        title="Mark insurance paid"
-        description="Sets Insurance Paid then Available in one audited chain."
-        fields={[
-          { name: "paymentDate", label: "Payment date", type: "date" },
-          { name: "notes", label: "Notes", type: "textarea" },
-        ]}
-        onSubmit={async (v) => {
-          try {
-            await lmisApi.recordInsurancePaid(
-              candidate.id,
-              v.paymentDate || undefined,
-              v.notes
-            );
-            toast.success("Insurance marked paid → Available");
-            refresh();
-          } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Failed");
-            throw e;
-          }
         }}
       />
       <StatusUpdateSheet

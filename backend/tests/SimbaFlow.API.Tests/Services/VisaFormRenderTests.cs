@@ -37,7 +37,7 @@ public class VisaFormRenderTests
         FirstName = "SAMPLE",
         MiddleName = "TEST",
         LastName = "CANDIDATE",
-        PassportNumber = "E00201748",
+        PassportNumber = "EP0101010",
         PassportIssueDate = new DateOnly(2026, 3, 6),
         PassportExpiryDate = new DateOnly(2031, 3, 5),
         PassportPlaceOfIssue = "ETHIOPIA",
@@ -95,6 +95,16 @@ public class VisaFormRenderTests
         }
 
         PageCount(pdf).Should().Be(1, "the enjaze form is a single-sheet form");
+    }
+
+    [Fact]
+    public void TheMinistryEmblemIsEmbeddedInTheBuild()
+    {
+        // The loader swallows a missing resource so that the rest of the sheet still prints —
+        // which also means renaming or dropping the file leaves a hole where the ministry's
+        // mark belongs and nothing anywhere says so.
+        typeof(CvGenerationService).Assembly.GetManifestResourceNames()
+            .Should().Contain(n => n.EndsWith("saudi-mofa-emblem.png", StringComparison.Ordinal));
     }
 
     [Fact]

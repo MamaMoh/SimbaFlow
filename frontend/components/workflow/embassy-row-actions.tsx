@@ -339,19 +339,13 @@ function StatusSheets({
         title="Submit visa documentation"
         fields={[
           { name: "submissionDate", label: "Submission date", type: "date" },
-          { name: "referenceNumber", label: "Reference number", type: "text" },
           { name: "notes", label: "Notes", type: "textarea" },
         ]}
         submitLabel="Submit"
         onSubmit={(v) =>
           run(
             () =>
-              embassyApi.submitVisa(
-                candidateId,
-                v.submissionDate || undefined,
-                v.referenceNumber || undefined,
-                v.notes
-              ),
+              embassyApi.submitVisa(candidateId, v.submissionDate || undefined, v.notes),
             "Documentation submitted"
           )
         }

@@ -16,7 +16,7 @@ public class Code128Tests
     [Theory]
     [InlineData("1900111222")]
     [InlineData("EP0000001")]
-    [InlineData("E00201748")]
+    [InlineData("EP0101010")]
     [InlineData("0")]
     [InlineData("SF-2026/0001")]
     [InlineData("abcXYZ 789")]
