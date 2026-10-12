@@ -914,6 +914,9 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("OwnerTenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()

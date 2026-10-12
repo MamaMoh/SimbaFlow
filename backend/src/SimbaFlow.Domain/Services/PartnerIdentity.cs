@@ -31,4 +31,15 @@ public static class PartnerIdentity
     /// <summary>Whether these two are the same partner typed twice.</summary>
     public static bool SameAs(string? name, string? address, string? otherName, string? otherAddress) =>
         Normalise(name) == Normalise(otherName) && Normalise(address) == Normalise(otherAddress);
+
+    /// <summary>
+    /// Whether one agency's list already holds this name.
+    ///
+    /// Inside a single agency the name alone settles it. The address was part of the comparison
+    /// while the catalog was shared, because two agencies entering the same recruiter's two
+    /// branches both had a claim on the name. An agency's own list has no such excuse: a second
+    /// "Gulf Manpower" in it is the same partner typed twice, whatever address was given.
+    /// </summary>
+    public static bool SameNameAs(string? name, string? otherName) =>
+        Normalise(name) == Normalise(otherName);
 }

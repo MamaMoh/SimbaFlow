@@ -95,6 +95,17 @@ public class PartnerModule : ICarterModule
             }
 
             var query = context.PartnerAgencies.AsNoTracking().Where(p => !p.IsDeleted);
+
+            // The agency's own partners. This listed every partner on the platform, so each
+            // agency's list of who it works with — its commercial relationships — was on screen
+            // for every competitor who opened Browse catalog.
+            if (!PartnerOwnership.SeesEverything(user))
+            {
+                if (user.TenantId is not Guid ownerId)
+                    return Results.Ok(new { isSuccess = true, data = Array.Empty<object>() });
+                query = query.Where(p => p.OwnerTenantId == ownerId);
+            }
+
             if (activeOnly != false)
                 query = query.Where(p => p.IsActive);
             if (!string.IsNullOrWhiteSpace(country))
@@ -125,11 +136,15 @@ public class PartnerModule : ICarterModule
             return Results.Ok(new { isSuccess = true, data = partners });
         });
 
-        group.MapGet("/{id:guid}", async (Guid id, IPlatformDbContext context) =>
+        group.MapGet("/{id:guid}", async (
+            Guid id, IPlatformDbContext context, ICurrentUserService user) =>
         {
             var p = await context.PartnerAgencies.AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Id == id && !x.IsDeleted);
-            if (p is null)
+            // Not found rather than forbidden, for a row this agency has no business knowing
+            // about. The list is scoped; the detail behind it has to be scoped too, or the id
+            // in a URL is enough to read another agency's partner.
+            if (p is null || !PartnerOwnership.IsVisibleTo(p.OwnerTenantId, user))
                 return Results.Json(new { isSuccess = false, error = "Partner not found" }, statusCode: 404);
 
             var linked = await context.PartnerLinks.CountAsync(l =>
@@ -168,12 +183,15 @@ public class PartnerModule : ICarterModule
             if (string.IsNullOrWhiteSpace(body.Name) || string.IsNullOrWhiteSpace(body.CountryCode))
                 return Results.Json(new { isSuccess = false, error = "Name and country code are required" }, statusCode: 400);
 
-            var clash = await PartnerDuplicates.FindDuplicateAsync(context, body.Name, body.Address, null);
+            var clash = await PartnerDuplicates.FindDuplicateAsync(context, user.TenantId, body.Name, null);
             if (clash is not null)
                 return Results.Json(new { isSuccess = false, error = PartnerDuplicates.DuplicateMessage(clash) }, statusCode: 409);
 
             var partner = new PartnerAgency
             {
+                // Whoever registers it owns it. A platform administrator standing outside any
+                // agency creates a row nobody's list claims, which is what the seeded ones are.
+                OwnerTenantId = user.TenantId,
                 Name = body.Name.Trim(),
                 CountryCode = body.CountryCode.Trim().ToUpperInvariant(),
                 CountryName = string.IsNullOrWhiteSpace(body.CountryName) ? body.CountryCode.Trim() : body.CountryName.Trim(),
@@ -203,13 +221,17 @@ public class PartnerModule : ICarterModule
             if (partner is null)
                 return Results.Json(new { isSuccess = false, error = "Partner not found" }, statusCode: 404);
 
-            // Checked against what the row would become, not what was sent: an edit that only
-            // touches the address can still collide with an existing partner under the name this
-            // one already has.
+            // Someone else's partner is not found, rather than forbidden: an agency has no
+            // business learning that a row it cannot see exists.
+            if (!PartnerOwnership.IsVisibleTo(partner.OwnerTenantId, user))
+                return Results.Json(new { isSuccess = false, error = "Partner not found" }, statusCode: 404);
+
+            // Checked against what the row would become, not what was sent: an edit that renames
+            // this office can still collide with another on the same agency's list.
             var clash = await PartnerDuplicates.FindDuplicateAsync(
                 context,
+                partner.OwnerTenantId,
                 string.IsNullOrWhiteSpace(body.Name) ? partner.Name : body.Name,
-                body.Address ?? partner.Address,
                 partner.Id);
             if (clash is not null)
                 return Results.Json(new { isSuccess = false, error = PartnerDuplicates.DuplicateMessage(clash) }, statusCode: 409);
@@ -304,7 +326,10 @@ public class PartnerModule : ICarterModule
 
             var partner = await context.PartnerAgencies
                 .FirstOrDefaultAsync(p => p.Id == body.PartnerAgencyId && !p.IsDeleted && p.IsActive);
-            if (partner is null)
+            // Linking is how a partner reaches candidate intake, so the ownership check belongs
+            // here too — otherwise a partner id lifted from elsewhere is a way in.
+            if (partner is null
+                || (partner.OwnerTenantId is not null && partner.OwnerTenantId != tenantId && !user.IsSuperAdmin))
                 return Results.Json(new { isSuccess = false, error = "Partner agency not found or inactive" }, statusCode: 404);
 
             var tenant = await context.Tenants.AsNoTracking()
@@ -716,27 +741,51 @@ public class PartnerModule : ICarterModule
 /// the catalog is the platform's list of foreign recruiters — hundreds of rows, read once when
 /// somebody adds one.
 /// </summary>
+/// <summary>
+/// Whose partner is whose.
+///
+/// A platform administrator standing outside any agency is running the catalog itself and sees
+/// all of it. Everyone else sees the rows their own agency registered — including a platform
+/// administrator who has switched into an agency, because at that moment they are looking at
+/// that agency's business and nobody else's.
+/// </summary>
+internal static class PartnerOwnership
+{
+    internal static bool SeesEverything(ICurrentUserService user) =>
+        user.IsSuperAdmin && user.TenantId is null;
+
+    internal static bool IsVisibleTo(Guid? ownerTenantId, ICurrentUserService user) =>
+        SeesEverything(user) || (user.TenantId is Guid id && ownerTenantId == id);
+}
+
 internal static class PartnerDuplicates
 {
+    /// <summary>
+    /// Already on this agency's list?
+    ///
+    /// Scoped to the owner, and on the name alone. While the catalog was shared this had to
+    /// compare the address too, because two agencies registering the same recruiter's two
+    /// branches both had a claim on the name. Within one agency's own list there is no such
+    /// case: a second row with the same name is the same partner entered twice.
+    /// </summary>
     internal static async Task<PartnerAgency?> FindDuplicateAsync(
-        IPlatformDbContext context, string? name, string? address, Guid? excluding)
+        IPlatformDbContext context, Guid? ownerTenantId, string? name, Guid? excluding)
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
 
         var candidates = await context.PartnerAgencies
             .AsNoTracking()
-            .Where(p => !p.IsDeleted && (excluding == null || p.Id != excluding))
+            .Where(p => !p.IsDeleted
+                        && p.OwnerTenantId == ownerTenantId
+                        && (excluding == null || p.Id != excluding))
             .ToListAsync();
 
-        return candidates.FirstOrDefault(p => PartnerIdentity.SameAs(name, address, p.Name, p.Address));
+        return candidates.FirstOrDefault(p => PartnerIdentity.SameNameAs(name, p.Name));
     }
 
     internal static string DuplicateMessage(PartnerAgency existing) =>
-        string.IsNullOrWhiteSpace(existing.Address)
-            ? $"\u201c{existing.Name}\u201d is already in the partner catalog. "
-              + "Use that one, or give this entry an address to tell them apart."
-            : $"\u201c{existing.Name}\u201d at {existing.Address} is already in the partner catalog. "
-              + "Use that one, or change the name or address if this is a different office.";
+        $"\u201c{existing.Name}\u201d is already one of your partners. "
+        + "Open that one, or give this office a name that tells them apart.";
 }
 
 public record CreatePartnerRequest(

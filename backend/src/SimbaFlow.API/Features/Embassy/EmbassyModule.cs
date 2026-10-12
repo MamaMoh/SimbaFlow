@@ -30,15 +30,6 @@ public class EmbassyModule : ICarterModule
         });
 
         // The slip a candidate carries to their Tasheer appointment
-        group.MapPost("/candidates/{id:guid}/tasheer/document", async (
-            Guid id, TasheerDocumentRequest? body, ISender sender) =>
-        {
-            var result = await sender.Send(new GenerateTasheerDocumentCommand(id, body?.AppointmentDate));
-            return result.IsSuccess
-                ? Results.File(result.Data!.Bytes, result.Data.ContentType, result.Data.FileName)
-                : Results.Json(result, statusCode: result.StatusCode);
-        });
-
         // The selected candidates as a Tasheer submission sheet
         group.MapPost("/tasheer/export", async (ExportTasheerListCommand command, ISender sender) =>
         {
@@ -123,7 +114,6 @@ public record BookMedicalRequest(DateOnly? AppointmentDate = null, string? Facil
 public record MedicalResultRequest(string Result, string? Notes);
 public record BookTasheerRequest(DateOnly AppointmentDate, string? Notes);
 public record TasheerResultRequest(string Result, string? Notes);
-public record TasheerDocumentRequest(DateOnly? AppointmentDate);
 public record NotesRequest(string? Notes);
 public record SubmitVisaRequest(DateOnly? SubmissionDate, string? ReferenceNumber, string? Notes);
 public record VisaOutcomeRequest(string Outcome, string? RejectionReason, string? Notes);

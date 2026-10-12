@@ -13,7 +13,6 @@ import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
-import { saveFile } from "@/lib/files/download";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -285,26 +284,13 @@ function StatusSheets({
         title="Book tasheer"
         fields={[
           { name: "appointmentDate", label: "Appointment date", type: "date", required: true },
-          {
-            name: "slip",
-            label: "Appointment slip",
-            type: "select",
-            options: [
-              { value: "yes", label: "Generate and file the slip" },
-              { value: "no", label: "Skip for now" },
-            ],
-          },
           { name: "notes", label: "Notes", type: "textarea" },
         ]}
         onSubmit={(v) =>
-          run(async () => {
-            await embassyApi.bookTasheer(candidateId, v.appointmentDate, v.notes);
-            // Default to producing it: the slip is what the candidate carries, and the desk was
-            // otherwise retyping these details into a Word template for every appointment.
-            if (v.slip !== "no") {
-              saveFile(await embassyApi.generateTasheerDocument(candidateId, v.appointmentDate));
-            }
-          }, "Tasheer booked")
+          run(
+            () => embassyApi.bookTasheer(candidateId, v.appointmentDate, v.notes),
+            "Tasheer booked"
+          )
         }
       />
       <StatusUpdateSheet

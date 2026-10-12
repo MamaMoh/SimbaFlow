@@ -277,7 +277,7 @@ export default function PartnersPage() {
           variant={tab === "catalog" ? "default" : "outline"}
           onClick={() => setTab("catalog")}
         >
-          Browse catalog
+          All my partners
         </Button>
       </div>
 
@@ -295,7 +295,11 @@ export default function PartnersPage() {
             onRowClick={(row: { id: string }) => router.push(`/partners/${row.id}`)}
         exportFileName="partners"
           table={table}
-          emptyMessage="No partners linked yet — link a foreign agency from the catalog so staff can select it when registering candidates."
+          emptyMessage={
+            tab === "linked"
+              ? "No partners linked yet — register a foreign agency, then link it so staff can select it when registering candidates."
+              : "No partners registered yet. Register the foreign agencies your agency works with."
+          }
           enableGlobalFilter
           searchPlaceholder="Search partners…"
           paginated

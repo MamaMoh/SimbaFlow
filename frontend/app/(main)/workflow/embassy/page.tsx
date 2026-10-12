@@ -44,6 +44,9 @@ export default function EmbassyBoardPage() {
   // What the selected candidates are still missing. Non-empty means the dialog is open asking
   // for it; printing resumes on its own once it is saved.
   const [gaps, setGaps] = useState<VisaFormGap[]>([]);
+  // Kept apart from the enjaze gaps: the same dialog, a shorter list, and a different thing
+  // waiting on the other side of it.
+  const [tasheerGaps, setTasheerGaps] = useState<VisaFormGap[]>([]);
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useEmbassyBoard({
     search: search || undefined,
@@ -168,19 +171,44 @@ export default function EmbassyBoardPage() {
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   // Tasheer appointments are booked for a group, so the batch leaves as one sheet.
-  const exportTasheer = async () => {
-    if (selectedIds.length === 0) return toast.error("Select the candidates for this Tasheer batch");
+  const buildTasheer = async (ids: string[]) => {
     setBusy("tasheer");
     try {
-      const blob = await embassyApi.exportTasheerList(selectedIds);
+      const blob = await embassyApi.exportTasheerList(ids);
       saveFile(blob, `Tasheer list ${new Date().toISOString().slice(0, 10)}.xlsx`);
-      toast.success(`${selectedIds.length} candidate${selectedIds.length === 1 ? "" : "s"} exported`);
+      toast.success(`${ids.length} candidate${ids.length === 1 ? "" : "s"} exported`);
       setRowSelection({});
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Export failed");
     } finally {
       setBusy(null);
     }
+  };
+
+  /**
+   * The sheet's first column is the E number, and it was going out blank.
+   *
+   * The Tasheer system keys on it, so a batch exported before the number was recorded is a
+   * sheet that has to be done again. Asked for here the same way the enjaze asks — and only
+   * the E number, because nothing else on that form stops this sheet being usable.
+   */
+  const exportTasheer = async () => {
+    if (selectedIds.length === 0) return toast.error("Select the candidates for this Tasheer batch");
+    setBusy("tasheer");
+    try {
+      const found = (await visaFormGaps(selectedIds))
+        .map((g) => ({ ...g, fields: g.fields.filter((f) => f.key === "eNumber") }))
+        .filter((g) => g.fields.length > 0);
+      if (found.length > 0) {
+        setBusy(null);
+        setTasheerGaps(found);
+        return;
+      }
+    } catch (e) {
+      // A convenience: the export still runs, with whatever is on file.
+      toast.warning(e instanceof Error ? e.message : "Could not check the E numbers");
+    }
+    await buildTasheer(selectedIds);
   };
 
   // One document, one enjaze per page — the run is printed as a batch.
@@ -258,6 +286,17 @@ export default function EmbassyBoardPage() {
           setGaps([]);
           mutate();
           void buildEnjaze(selectedIds);
+        }}
+      />
+
+      <VisaDetailsDialog
+        open={tasheerGaps.length > 0}
+        gaps={tasheerGaps}
+        onOpenChange={(next) => !next && setTasheerGaps([])}
+        onFilled={() => {
+          setTasheerGaps([]);
+          mutate();
+          void buildTasheer(selectedIds);
         }}
       />
 

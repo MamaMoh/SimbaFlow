@@ -314,6 +314,22 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             var pdf = await _cvGenerationService.GenerateForTenantAsync(
                 candidate, user.TenantId, template, photo, fullPhoto, ct);
+
+            // The photograph first, the same as a name or passport lookup gives. A PDF arrives
+            // as a file you have to open; the face arrives in the chat, and the question being
+            // asked is usually "is this the right person".
+            if (photo is not null)
+            {
+                await _telegram.SendPhotoAsync(
+                    update.ChatId,
+                    photo,
+                    $"{candidate.PassportNumber}.jpg",
+                    BotMessages.CandidateCard(
+                        candidate.FullName, candidate.PassportNumber, candidate.CurrentStageName,
+                        candidate.Status.ToString(), candidate.CountryOfTravel, amLang),
+                    ct);
+            }
+
             await _telegram.SendDocumentAsync(update.ChatId, pdf, $"{candidate.PassportNumber}-cv.pdf", candidate.FullName, ct);
             return;
         }

@@ -18,12 +18,13 @@ import { saveFile } from "@/lib/files/download";
 import { downloadCandidateDocuments } from "@/lib/api/candidates";
 
 /**
- * The four documents a candidate's file is made of, with the numbers the API's DocumentType
+ * The documents a candidate's file is made of, with the numbers the API's DocumentType
  * enum uses.
  *
  * Eleven kinds were offered, which is the enum rather than the job: medical certificates, LMIS
  * documents, ticket bookings and "Other" were on the list because they exist, not because
- * anybody prints them together. These four are what gets sent.
+ * anybody prints them together. The Tasheer appointment slip went the same way once the
+ * agencies said they do not use it. These three are what gets sent.
  *
  * The order is the order the merged download comes out in: keep it in step with PageOrder in
  * backend/src/SimbaFlow.API/Features/Candidates/Commands/DownloadCandidateDocumentsCommand.cs.
@@ -31,7 +32,6 @@ import { downloadCandidateDocuments } from "@/lib/api/candidates";
 export const DOCUMENT_KINDS: { type: number; label: string }[] = [
   { type: 3, label: "CV" },
   { type: 2, label: "Contract" },
-  { type: 6, label: "Tasheer document" },
   { type: 9, label: "Visa form" },
 ];
 
