@@ -10,17 +10,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
-import { DocumentUploader } from "@/components/candidates/document-uploader";
 import { lmisApi, nextLmisMilestone, type LmisBoardRow } from "@/lib/api/lmis";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -29,11 +22,9 @@ import {
   ArrowRight,
   BadgeCheck,
   CircleSlash,
-  ClipboardList,
   Eye,
   MoreHorizontal,
   Pencil,
-  Upload,
 } from "lucide-react";
 
 type Props = {
@@ -46,7 +37,6 @@ type Props = {
 export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("lmis.update") || hasPermission("system.admin");
-  const canDoc = hasPermission("lmis.document") || hasPermission("lmis.update") || hasPermission("system.admin");
   // The candidate's own page, and the paperwork below it, are read under candidate.read. Reaching
   // this board is a different permission, and holding one does not imply the other, so the link has
   // to ask for what the page it points at requires.
@@ -55,8 +45,6 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
 
   const [milestoneOpen, setMilestoneOpen] = useState(false);
-  const [docOpen, setDocOpen] = useState(false);
-  const [portalOpen, setPortalOpen] = useState(false);
 
   const insurance = candidate.insurance ?? candidate.statusValues?.insurance ?? "";
   const milestone = candidate.milestone ?? candidate.statusValues?.milestone ?? "";
@@ -151,25 +139,16 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                     Mark insurance unpaid
                   </DropdownMenuItem>
                 )}
+                {/* The milestone's own name, not "Advance to" it. The menu is a list of
+                    things to do; the verb was the same on every one of them and the only
+                    part that differed was the word at the end. */}
                 {canAdvanceMilestone && (
                   <DropdownMenuItem onClick={() => setMilestoneOpen(true)}>
                     <ArrowRight className="mr-2 h-4 w-4" />
-                    Advance to {next}
+                    {next}
                   </DropdownMenuItem>
                 )}
               </>
-            )}
-            {canUpdate && (
-              <DropdownMenuItem onClick={() => setPortalOpen(true)}>
-                <ClipboardList className="mr-2 h-4 w-4" />
-                Record LMIS portal status
-              </DropdownMenuItem>
-            )}
-            {canDoc && (
-              <DropdownMenuItem onClick={() => setDocOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload LMIS document
-              </DropdownMenuItem>
             )}
             <WorkflowActionItems
               candidateId={candidate.id}
@@ -180,22 +159,6 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
           </DropdownMenuContent>
       </DropdownMenu>
 
-      <StatusUpdateSheet
-        open={portalOpen}
-        onOpenChange={setPortalOpen}
-        title="LMIS portal status"
-        description="What the government portal shows right now, copied across."
-        fields={[
-          { name: "status", label: "Status on the portal", type: "text", required: true },
-          { name: "notes", label: "Notes", type: "textarea" },
-        ]}
-        onSubmit={async (v) => {
-          await run(
-            () => lmisApi.recordPortalStatus(candidate.id, v.status, v.notes),
-            "Portal status recorded",
-          );
-        }}
-      />
       <StatusUpdateSheet
         open={milestoneOpen}
         onOpenChange={setMilestoneOpen}
@@ -215,22 +178,6 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
           }
         }}
       />
-      <Dialog open={docOpen} onOpenChange={setDocOpen}>
-        <DialogContent className="z-[200]">
-          <DialogHeader>
-            <DialogTitle>Upload LMIS document</DialogTitle>
-          </DialogHeader>
-          <DocumentUploader
-            candidateId={candidate.id}
-            defaultDocumentType={4}
-            onUploaded={() => {
-              toast.success("Document uploaded");
-              setDocOpen(false);
-              refresh();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
