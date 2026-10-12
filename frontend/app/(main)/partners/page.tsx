@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useTableRows } from "@/lib/data/use-table-rows";
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
@@ -78,7 +79,7 @@ export default function PartnersPage() {
   const { data, error, mutate } = useSWR(canRead ? catalogUrl : null, fetcher, {
     revalidateOnFocus: false,
   });
-  const partners: PartnerRow[] = data?.data || [];
+  const partners = useTableRows<PartnerRow>(data?.data);
 
   const unlinkPartner = async (linkId: string, name: string) => {
     setUnlinkingId(linkId);

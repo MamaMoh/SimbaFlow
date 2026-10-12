@@ -97,6 +97,8 @@ export function useJournalEntry(id: string | undefined) {
   };
 }
 
+const EMPTY_RATES: ExchangeRateRow[] = [];
+
 export function useExchangeRates(params?: {
   fromCurrency?: string;
   toCurrency?: string;
@@ -113,7 +115,9 @@ export function useExchangeRates(params?: {
   });
 
   return {
-    rates: data?.data ?? [],
+    // Kept, not rebuilt: a fresh array on every render is new data as far as TanStack Table is
+    // concerned, and that is a loop. See lib/data/use-table-rows.
+    rates: data?.data ?? EMPTY_RATES,
     isLoading,
     error,
     mutate,

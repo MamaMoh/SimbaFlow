@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTableRows } from "@/lib/data/use-table-rows";
 import useSWR from "swr";
 import {
   useReactTable,
@@ -58,7 +59,7 @@ export default function RolesPage() {
   const { data, mutate } = useSWR(isSuperAdmin ? "/api/proxy/roles" : null, fetcher, {
     revalidateOnFocus: false,
   });
-  const roles: RoleRow[] = data?.data || [];
+  const roles = useTableRows<RoleRow>(data?.data);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;

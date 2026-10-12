@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTableRows } from "@/lib/data/use-table-rows";
 import useSWR from "swr";
 import {
   useReactTable,
@@ -67,7 +68,7 @@ export default function TenantsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, mutate } = useSWR("/api/proxy/tenants", fetcher, { revalidateOnFocus: false });
-  const agencies: AgencyRow[] = data?.data || [];
+  const agencies = useTableRows<AgencyRow>(data?.data);
 
   const handleStatusChange = async (id: string, status: number) => {
     const res = await fetch(`/api/proxy/tenants/${id}/status`, {

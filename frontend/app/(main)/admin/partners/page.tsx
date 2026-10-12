@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTableRows } from "@/lib/data/use-table-rows";
 import {
   useReactTable,
   getCoreRowModel,
@@ -35,9 +36,10 @@ export default function AdminPartnersPage() {
   const [globalFilter, setGlobalFilter] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
 
-  const { data: partners = [], error, mutate } = usePartners({
+  const { data: partnerData, error, mutate } = usePartners({
     enabled: canManage,
   });
+  const partners = useTableRows<PartnerRow>(partnerData);
 
   const columns: ColumnDef<PartnerRow>[] = useMemo(
     () => [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTableRows } from "@/lib/data/use-table-rows";
 import useSWR from "swr";
 import {
   useReactTable,
@@ -75,7 +76,7 @@ export default function StaffPage() {
     { revalidateOnFocus: false }
   );
 
-  const users: UserRow[] = data?.data?.items || [];
+  const users = useTableRows<UserRow>(data?.data?.items);
 
   const handleToggleStatus = async (id: string) => {
     await fetch(`/api/proxy/users/${id}/toggle-status`, { method: "PUT" });

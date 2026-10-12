@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useTableRows } from "@/lib/data/use-table-rows";
 import useSWR from "swr";
 import {
   useReactTable,
@@ -211,7 +212,7 @@ export default function CandidatesPage() {
     total: 0,
   };
 
-  const candidates: CandidateRow[] = data?.data?.items || [];
+  const candidates = useTableRows<CandidateRow>(data?.data?.items);
   const totalCount: number = data?.data?.totalCount ?? candidates.length;
   const loadFailed = !!error || (data && data.isSuccess === false);
   const selectedIds = useMemo(
