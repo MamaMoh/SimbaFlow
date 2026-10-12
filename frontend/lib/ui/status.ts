@@ -112,6 +112,57 @@ export function remainingDays(days?: number | null): { tone: StatusTone; label: 
 }
 
 /**
+ * Whole days from today until a date, by the calendar rather than by the clock.
+ *
+ * Milliseconds would make an appointment tomorrow morning read as "today" from eleven at night
+ * onwards, which is exactly when somebody is checking whether they have missed it. Negative
+ * means the date has passed.
+ */
+export function daysUntil(date?: string | null): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((date ?? "").trim());
+  if (!m) return null;
+  const target = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Rounded, because the clocks going forward puts an hour into one of these days.
+  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+/** Inside this many days an appointment is the next thing to deal with. */
+export const APPOINTMENT_SOON_DAYS = 3;
+/** Inside this many days it is worth seeing coming. */
+export const APPOINTMENT_NEAR_DAYS = 7;
+
+/**
+ * Days until a booked appointment → tone + label.
+ *
+ * A date on its own is a date; it takes arithmetic to know whether to do something about it, and
+ * nobody does that arithmetic across forty rows. The colour does it for them.
+ *
+ * @param stillWaiting Whether anything is still owed on this appointment. A date that has gone
+ *   by with no result recorded is somebody's missed job and shows red; the same date once the
+ *   result is in is just history, and a board of red for work already done teaches people to
+ *   ignore red.
+ */
+export function appointmentCountdown(
+  date?: string | null,
+  stillWaiting = false,
+): { tone: StatusTone; label: string } | null {
+  const days = daysUntil(date);
+  if (days == null) return null;
+  if (days < 0)
+    return {
+      tone: stillWaiting ? "danger" : "neutral",
+      label: `${-days}d ago`,
+    };
+  if (days === 0) return { tone: "danger", label: "Today" };
+  if (days === 1) return { tone: "warning", label: "Tomorrow" };
+  if (days <= APPOINTMENT_SOON_DAYS) return { tone: "warning", label: `${days}d left` };
+  if (days <= APPOINTMENT_NEAR_DAYS) return { tone: "info", label: `${days}d left` };
+  return { tone: "neutral", label: `${days}d left` };
+}
+
+/**
  * Case age → tone.
  *
  * The number alone doesn't help a supervisor scanning 200 rows; the colour is the signal. Two

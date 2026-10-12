@@ -11,7 +11,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { AgeCell } from "@/components/data-table/age-cell";
-import { PendingCell } from "@/components/data-table/pending-cell";
+import { AppointmentCell } from "@/components/data-table/appointment-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -97,6 +97,19 @@ export default function EmbassyBoardPage() {
         ),
       },
       {
+        id: "tasheerAppointment",
+        header: "Tasheer appt.",
+        // Ahead of the two age chips: the appointment is the date on this board that anyone
+        // can still do something about, and it was sitting past them at the right-hand edge.
+        cell: ({ row }) => (
+          <AppointmentCell
+            date={row.original.statusValues?.tasheer_appointment_date}
+            pendingLabel="No appointment"
+            stillWaiting={row.original.statusValues?.tasheer === "Booked"}
+          />
+        ),
+      },
+      {
         accessorKey: "daysInStage",
         header: "In stage",
         cell: ({ getValue }) => <AgeCell days={getValue() as number} />,
@@ -106,16 +119,6 @@ export default function EmbassyBoardPage() {
         header: "Case age",
         cell: ({ getValue }) => (
           <AgeCell days={getValue() as number} title="Days since the candidate was registered" />
-        ),
-      },
-      {
-        id: "tasheerAppointment",
-        header: "Tasheer appt.",
-        cell: ({ row }) => (
-          <PendingCell
-            value={row.original.statusValues?.tasheer_appointment_date}
-            pendingLabel="No appointment"
-          />
         ),
       },
       {
