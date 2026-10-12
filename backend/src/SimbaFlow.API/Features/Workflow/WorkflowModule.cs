@@ -109,6 +109,13 @@ public class WorkflowModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // Put the steps in a given order — the whole list at once, see ReorderStagesCommand.
+        configGroup.MapPut("/stages/order", async (ReorderStagesRequest request, ISender sender) =>
+        {
+            var result = await sender.Send(new ReorderStagesCommand(request.StageIds ?? []));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // Create transition rule
         configGroup.MapPost("/transitions", async (CreateTransitionRuleCommand command, ISender sender) =>
         {
@@ -132,7 +139,7 @@ public class WorkflowModule : ICarterModule
             var result = await sender.Send(new UpdateTransitionRuleCommand(
                 transitionId, request.ButtonLabel, request.ButtonIcon,
                 request.RequiredFields, request.AllowedRoles,
-                request.RemoveFromSource, request.IsActive));
+                request.RemoveFromSource, request.IsActive, request.Conditions));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
@@ -182,4 +189,6 @@ public record MoveBackRequest(string? Reason);
 public record UpdateStageRequest(string Name, string? Description, int SortOrder, int StageType);
 public record UpdateTransitionRequest(
     string ButtonLabel, string? ButtonIcon, string[]? RequiredFields,
-    string[]? AllowedRoles, bool RemoveFromSource, bool IsActive);
+    string[]? AllowedRoles, bool RemoveFromSource, bool IsActive,
+    System.Text.Json.JsonElement? Conditions = null);
+public record ReorderStagesRequest(List<Guid>? StageIds);

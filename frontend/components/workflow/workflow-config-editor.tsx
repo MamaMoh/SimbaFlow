@@ -1,72 +1,104 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable,
+  type ColumnDef,
+} from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table/data-table";
+import { indexColumn } from "@/components/data-table/index-column";
 import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StageEditor } from "@/components/workflow/stage-editor";
-import { CreateTransitionSheet } from "@/components/workflow/create-transition-sheet";
+import { TransitionSheet } from "@/components/workflow/transition-sheet";
+import { MirrorRuleEditor } from "@/components/workflow/mirror-rule-editor";
 import { useWorkflowDefinition } from "@/lib/api/workflow";
+import { describeConditions } from "@/lib/workflow/condition-fields";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { useTableRows } from "@/lib/data/use-table-rows";
 import type {
-  ConditionGroup,
   MirrorViewRule,
   WorkflowStage,
   WorkflowTransitionRule,
 } from "@/types/workflow";
-import { Loader2, Pencil, Plus } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TransitionEditor } from "@/components/workflow/transition-editor";
-import { MirrorRuleEditor } from "@/components/workflow/mirror-rule-editor";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  ArrowDown,
+  ArrowUp,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const STAGE_TYPE_LABEL: Record<number, string> = {
   0: "Simple",
-  1: "Parallel",
-  2: "Milestone",
+  1: "Parallel tracks",
+  2: "Milestones",
 };
 
-function formatConditions(raw: unknown): string {
-  if (!raw || typeof raw !== "object") return "None";
-  const g = raw as ConditionGroup;
-  if (!g.rules?.length) return "None";
-  return g.rules
-    .map((r) => {
-      const val = Array.isArray(r.value) ? r.value.join("|") : (r.value ?? "");
-      return `${r.field} ${r.op} ${val}`.trim();
-    })
-    .join(` ${g.operator || "AND"} `);
+/** The ⋯ menu every row in this app has, with whatever this row can do inside it. */
+function RowMenu({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex justify-center">
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Row actions">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="z-[200] w-56">
+          {children}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 export function WorkflowConfigEditor() {
   const { hasPermission, isAgencyOwner, isSuperAdmin, isLoading: permsLoading } =
     usePermissions();
+  const { definition, stages: rawStages, isLoading, error, mutate } = useWorkflowDefinition();
+
   /**
    * Reading the pipeline and reshaping it are different things.
    *
    * A coordinator may need to see which step comes after which, and `workflow.configure` is
-   * what opens this screen. Changing it — removing a stage, loosening what a step requires —
-   * moves everyone's work at once and cannot be undone from a board, so it stays with the
-   * agency's owner and the platform team. The server refuses the rest regardless; this is so
-   * nobody is offered a button that will only tell them no.
+   * what opens this screen. Changing it moves everyone's work at once and cannot be undone from
+   * a board, so it stays with the agency's owner and the platform team. The server refuses the
+   * rest regardless; this is so nobody is offered a button that will only tell them no.
    */
   const canEdit = isAgencyOwner || isSuperAdmin;
-  const { definition, stages, isLoading, error, mutate } = useWorkflowDefinition();
+
+  const stages = useTableRows<WorkflowStage>(rawStages);
+  const transitions = useTableRows<WorkflowTransitionRule>(definition?.transitionRules);
+  const mirrors = useTableRows<MirrorViewRule>(definition?.mirrorViewRules);
+
   const [stageEditorOpen, setStageEditorOpen] = useState(false);
   const [editingStage, setEditingStage] = useState<WorkflowStage | null>(null);
   const [transitionOpen, setTransitionOpen] = useState(false);
+  const [editingTransition, setEditingTransition] = useState<WorkflowTransitionRule | null>(null);
   const [defaultSourceId, setDefaultSourceId] = useState<string | undefined>();
-  const [editingTransition, setEditingTransition] =
-    useState<WorkflowTransitionRule | null>(null);
-  const [mirrorEditorOpen, setMirrorEditorOpen] = useState(false);
+  const [mirrorOpen, setMirrorOpen] = useState(false);
   const [editingMirror, setEditingMirror] = useState<MirrorViewRule | null>(null);
+  const [reordering, setReordering] = useState(false);
 
-  /**
-   * Removals are confirmed in the app rather than through window.confirm, which renders as a
-   * browser chrome box with the page's own styling nowhere in sight.
-   */
+  /** Removals are confirmed in the app, not by a browser box with none of the page's styling. */
   const [pendingRemoval, setPendingRemoval] = useState<{
     title: string;
     description: string;
@@ -74,108 +106,414 @@ export function WorkflowConfigEditor() {
   } | null>(null);
   const [removing, setRemoving] = useState(false);
 
-  /** Soft-delete a step (transition) after confirmation. */
-  const deleteTransition = (t: WorkflowTransitionRule) =>
+  const stageNameById = useMemo(
+    () => new Map(stages.map((s) => [s.id, s.name])),
+    [stages],
+  );
+
+  const call = async (url: string, init: RequestInit, failure: string) => {
+    const res = await fetch(url, init);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || body?.isSuccess === false) throw new Error(body?.error || failure);
+  };
+
+  // ── reordering ────────────────────────────────────────────────────────────
+  //
+  // The whole order goes up at once rather than one stage's number: two steps sharing a number
+  // leave their order to whatever the database returns, and that order is what the sidebar,
+  // every stage picker and the candidate's progress bar all show.
+  const moveStage = async (stage: WorkflowStage, by: -1 | 1) => {
+    const ordered = [...stages].sort((a, b) => a.sortOrder - b.sortOrder);
+    const from = ordered.findIndex((s) => s.id === stage.id);
+    const to = from + by;
+    if (from < 0 || to < 0 || to >= ordered.length) return;
+
+    const next = [...ordered];
+    [next[from], next[to]] = [next[to], next[from]];
+
+    setReordering(true);
+    try {
+      await call(
+        "/api/proxy/workflow/config/stages/order",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stageIds: next.map((s) => s.id) }),
+        },
+        "Could not reorder the steps",
+      );
+      toast.success("Order saved");
+      mutate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not reorder the steps");
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const removeStage = (stage: WorkflowStage) =>
+    setPendingRemoval({
+      title: `Remove “${stage.name}”?`,
+      description:
+        "Its board disappears from the sidebar, along with every step into or out of it and " +
+        "any mirroring onto it. Candidates standing in it must be moved first.",
+      run: async () => {
+        await call(
+          `/api/proxy/workflow/config/stages/${stage.id}`,
+          { method: "DELETE" },
+          "Could not remove the step",
+        );
+        toast.success("Step removed");
+        mutate();
+      },
+    });
+
+  const removeTransition = (t: WorkflowTransitionRule) =>
     setPendingRemoval({
       title: `Remove “${t.buttonLabel}”?`,
-      description: "Staff will no longer see this step on the board.",
-      run: () => reallyDeleteTransition(t),
+      description: "Staff will no longer see this button on the board.",
+      run: async () => {
+        await call(
+          `/api/proxy/workflow/config/transitions/${t.id}`,
+          { method: "DELETE" },
+          "Could not remove the move",
+        );
+        toast.success("Move removed");
+        mutate();
+      },
     });
 
-  const reallyDeleteTransition = async (t: WorkflowTransitionRule) => {
-    try {
-      const res = await fetch(
-        `/api/proxy/workflow/config/transitions/${t.id}`,
-        { method: "DELETE" },
-      );
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || body?.isSuccess === false) {
-        throw new Error(body?.error || "Failed to remove step");
-      }
-      toast.success("Step removed");
-      mutate();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to remove step");
-    }
-  };
-
-  /** Remove a mirror; the backend re-checks every candidate afterwards. */
-  const deleteMirror = (m: MirrorViewRule) =>
+  const removeMirror = (m: MirrorViewRule) =>
     setPendingRemoval({
-      title: `Stop mirroring onto ${m.targetStageName}?`,
-      description: `${m.sourceStageName} candidates will no longer appear on the ${m.targetStageName} board.`,
-      run: () => reallyDeleteMirror(m),
+      title: "Remove this mirroring?",
+      description: `Candidates on ${m.sourceStageName} will stop appearing on ${m.targetStageName}.`,
+      run: async () => {
+        await call(
+          `/api/proxy/workflow/config/mirrors/${m.id}`,
+          { method: "DELETE" },
+          "Could not remove the mirror",
+        );
+        toast.success("Mirroring removed");
+        mutate();
+      },
     });
 
-  const reallyDeleteMirror = async (m: MirrorViewRule) => {
+  const confirmRemoval = async () => {
+    if (!pendingRemoval) return;
+    setRemoving(true);
     try {
-      const res = await fetch(`/api/proxy/workflow/config/mirrors/${m.id}`, {
-        method: "DELETE",
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || body?.isSuccess === false) {
-        throw new Error(body?.error || "Failed to remove mirror");
-      }
-      toast.success("Mirror removed");
-      mutate();
+      await pendingRemoval.run();
+      setPendingRemoval(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to remove mirror");
+      toast.error(e instanceof Error ? e.message : "Could not remove it");
+    } finally {
+      setRemoving(false);
     }
   };
 
-  /** Retire a stage; backend refuses if candidates still sit in it. */
-  const deleteStage = (stage: WorkflowStage) =>
-    setPendingRemoval({
-      title: `Remove “${stage.name}” from this workflow?`,
-      description: "Candidates still sitting in this stage will block the removal.",
-      run: () => reallyDeleteStage(stage),
-    });
+  // ── columns ───────────────────────────────────────────────────────────────
 
-  const reallyDeleteStage = async (stage: WorkflowStage) => {
-    try {
-      const res = await fetch(`/api/proxy/workflow/config/stages/${stage.id}`, {
-        method: "DELETE",
+  const ordered = useMemo(
+    () => [...stages].sort((a, b) => a.sortOrder - b.sortOrder),
+    [stages],
+  );
+
+  const stageColumns = useMemo<ColumnDef<WorkflowStage>[]>(() => {
+    const cols: ColumnDef<WorkflowStage>[] = [
+      indexColumn<WorkflowStage>(),
+      {
+        accessorKey: "name",
+        header: "Step",
+        cell: ({ row }) => (
+          <div className="min-w-0">
+            <span className="font-medium">{row.original.name}</span>
+            {row.original.description && (
+              <p className="truncate text-xs text-muted-foreground">
+                {row.original.description}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "stageType",
+        header: "Kind",
+        accessorFn: (s) => STAGE_TYPE_LABEL[s.stageType] ?? "—",
+        cell: ({ getValue }) => <Badge variant="outline">{getValue() as string}</Badge>,
+      },
+      {
+        id: "tracks",
+        header: "Tracks",
+        accessorFn: (s) =>
+          (s.parallelTracks ?? []).map((t) => t.trackName).join(", ") || "—",
+        cell: ({ getValue }) => (
+          <span className="text-sm text-muted-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        id: "statuses",
+        header: "Statuses",
+        accessorFn: (s) => s.statuses?.length ?? 0,
+        cell: ({ getValue }) => (
+          <span className="tabular-nums text-muted-foreground">{getValue() as number}</span>
+        ),
+      },
+      {
+        id: "position",
+        header: "Position",
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="tabular-nums text-muted-foreground">
+              {row.original.sortOrder}
+            </span>
+            {row.original.isInitialStage && <Badge variant="secondary">First</Badge>}
+            {row.original.isFinalStage && <Badge variant="secondary">Last</Badge>}
+          </div>
+        ),
+      },
+    ];
+
+    if (canEdit) {
+      cols.push({
+        id: "actions",
+        header: () => <div className="text-center">Actions</div>,
+        enableColumnFilter: false,
+        cell: ({ row }) => {
+          const stage = row.original;
+          const index = ordered.findIndex((s) => s.id === stage.id);
+          return (
+            <RowMenu>
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditingStage(stage);
+                  setStageEditorOpen(true);
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditingTransition(null);
+                  setDefaultSourceId(stage.id);
+                  setTransitionOpen(true);
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Add a move from here
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={index <= 0 || reordering}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void moveStage(stage, -1);
+                }}
+              >
+                <ArrowUp className="mr-2 h-4 w-4" /> Move up
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={index < 0 || index >= ordered.length - 1 || reordering}
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void moveStage(stage, 1);
+                }}
+              >
+                <ArrowDown className="mr-2 h-4 w-4" /> Move down
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => removeStage(stage)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Remove
+              </DropdownMenuItem>
+            </RowMenu>
+          );
+        },
       });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || body?.isSuccess === false) {
-        throw new Error(body?.error || "Failed to remove step");
-      }
-      toast.success("Step removed");
-      mutate();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to remove step");
     }
+    return cols;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, ordered, reordering]);
+
+  const transitionColumns = useMemo<ColumnDef<WorkflowTransitionRule>[]>(() => {
+    const cols: ColumnDef<WorkflowTransitionRule>[] = [
+      indexColumn<WorkflowTransitionRule>(),
+      { accessorKey: "buttonLabel", header: "Button" },
+      {
+        id: "from",
+        header: "From",
+        accessorFn: (t) => stageNameById.get(t.sourceStageId) ?? "—",
+      },
+      {
+        id: "to",
+        header: "To",
+        accessorFn: (t) => stageNameById.get(t.targetStageId) ?? "—",
+      },
+      {
+        id: "who",
+        header: "Who can do it",
+        accessorFn: (t) =>
+          t.allowedRoles?.length ? t.allowedRoles.join(", ") : "Anyone with access",
+        cell: ({ row }) =>
+          row.original.allowedRoles?.length ? (
+            <div className="flex flex-wrap gap-1">
+              {row.original.allowedRoles.map((r) => (
+                <StatusBadge
+                  key={r}
+                  tone="info"
+                  label={r.replace(/([A-Z])/g, " $1").trim()}
+                  withDot={false}
+                />
+              ))}
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">Anyone with access</span>
+          ),
+      },
+      {
+        id: "conditions",
+        header: "Offered when",
+        accessorFn: (t) => describeConditions(t.conditions),
+        cell: ({ getValue }) => (
+          <span className="text-sm text-muted-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        id: "requires",
+        header: "Requires",
+        accessorFn: (t) => (t.requiredFields?.length ? t.requiredFields.join(", ") : "—"),
+        cell: ({ getValue }) => (
+          <span className="text-sm text-muted-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        id: "isActive",
+        header: "Active",
+        accessorFn: (t) => (t.isActive ? "Yes" : "No"),
+        cell: ({ row }) => (
+          <StatusBadge
+            tone={row.original.isActive ? "success" : "neutral"}
+            label={row.original.isActive ? "Yes" : "No"}
+          />
+        ),
+      },
+    ];
+
+    if (canEdit) {
+      cols.push({
+        id: "actions",
+        header: () => <div className="text-center">Actions</div>,
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <RowMenu>
+            <DropdownMenuItem
+              onClick={() => {
+                setEditingTransition(row.original);
+                setTransitionOpen(true);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => removeTransition(row.original)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Remove
+            </DropdownMenuItem>
+          </RowMenu>
+        ),
+      });
+    }
+    return cols;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit, stageNameById]);
+
+  const mirrorColumns = useMemo<ColumnDef<MirrorViewRule>[]>(() => {
+    const cols: ColumnDef<MirrorViewRule>[] = [
+      indexColumn<MirrorViewRule>(),
+      { accessorKey: "sourceStageName", header: "From board" },
+      { accessorKey: "targetStageName", header: "Also appears on" },
+      {
+        id: "conditions",
+        header: "When",
+        accessorFn: (m) => describeConditions(m.conditions),
+        cell: ({ getValue }) => (
+          <span className="text-sm text-muted-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        id: "isActive",
+        header: "Active",
+        accessorFn: (m) => (m.isActive ? "Yes" : "No"),
+        cell: ({ row }) => (
+          <StatusBadge
+            tone={row.original.isActive ? "success" : "neutral"}
+            label={row.original.isActive ? "Yes" : "No"}
+          />
+        ),
+      },
+    ];
+
+    if (canEdit) {
+      cols.push({
+        id: "actions",
+        header: () => <div className="text-center">Actions</div>,
+        enableColumnFilter: false,
+        cell: ({ row }) => (
+          <RowMenu>
+            <DropdownMenuItem
+              onClick={() => {
+                setEditingMirror(row.original);
+                setMirrorOpen(true);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => removeMirror(row.original)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" /> Remove
+            </DropdownMenuItem>
+          </RowMenu>
+        ),
+      });
+    }
+    return cols;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit]);
+
+  const common = {
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 20 } },
   };
 
-  const stageNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    stages.forEach((s) => map.set(s.id, s.name));
-    return map;
-  }, [stages]);
+  const stageTable = useReactTable({ data: ordered, columns: stageColumns, ...common });
+  const transitionTable = useReactTable({
+    data: transitions,
+    columns: transitionColumns,
+    ...common,
+  });
+  const mirrorTable = useReactTable({ data: mirrors, columns: mirrorColumns, ...common });
 
-  const transitions: WorkflowTransitionRule[] = definition?.transitionRules ?? [];
-  const mirrors: MirrorViewRule[] = definition?.mirrorViewRules ?? [];
+  // ── render ────────────────────────────────────────────────────────────────
 
-  if (permsLoading) {
+  if (permsLoading || isLoading) {
     return (
       <div className="flex items-center justify-center p-12 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
         Loading…
       </div>
     );
   }
 
   if (!hasPermission("workflow.configure") && !hasPermission("system.admin")) {
-    return <AccessDenied resource="workflow configuration" />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-12 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2" />
-        Loading workflow configuration…
-      </div>
-    );
+    return <AccessDenied resource="workflow setup" />;
   }
 
   if (error) {
@@ -191,404 +529,156 @@ export function WorkflowConfigEditor() {
     return (
       <PageAlert
         variant="error"
-        title="No workflow definition"
-        description="This tenant has no active workflow. Provision or seed the default pipeline first."
+        title="No workflow yet"
+        description="This agency has no active pipeline. Provision or seed the default one first."
       />
     );
   }
 
-  const nextSort =
-    stages.length > 0 ? Math.max(...stages.map((s) => s.sortOrder)) + 1 : 0;
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Workflow setup</h1>
-          <p className="text-sm text-muted-foreground">
-            {definition.name}
-            {definition.description ? ` — ${definition.description}` : ""} · v
-            {definition.version}
-            {definition.isActive ? (
-              <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-100">
-                Active
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="ml-2">
-                Inactive
-              </Badge>
-            )}
-          </p>
-        </div>
-        {canEdit ? (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setDefaultSourceId(undefined);
-                setTransitionOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-1" /> Transition
-            </Button>
-            <Button
-              size="sm"
-              className="bg-green-800 hover:bg-green-900 text-white"
-              onClick={() => {
-                setEditingStage(null);
-                setStageEditorOpen(true);
-              }}
-            >
-              <Plus className="h-4 w-4 mr-1" /> Stage
-            </Button>
-          </div>
-        ) : (
-          <p className="max-w-xs text-sm text-muted-foreground">
-            This is your agency&rsquo;s own pipeline. It is changed by the agency owner or the
-            platform team.
-          </p>
-        )}
-      </div>
-
-      <section className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          Stages ({stages.length})
-        </h2>
-        {stages.length === 0 ? (
-          <PageAlert
-            variant="info"
-            title="No stages"
-            description="Add stages to build the candidate pipeline."
-          />
-        ) : (
-          <div className="divide-y rounded-md border">
-            {stages.map((stage) => (
-              <div
-                key={stage.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+      <PageHeader
+        title="Workflow setup"
+        description={
+          canEdit
+            ? "The order of the steps below is the order of the boards in the sidebar."
+            : "Your agency’s pipeline. It is changed by the agency owner or the platform team."
+        }
+        actions={
+          canEdit ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingMirror(null);
+                  setMirrorOpen(true);
+                }}
               >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{stage.name}</span>
-                    <Badge variant="outline">{STAGE_TYPE_LABEL[stage.stageType] ?? "—"}</Badge>
-                    {stage.isInitialStage && (
-                      <Badge variant="secondary">Initial</Badge>
-                    )}
-                    {stage.isFinalStage && (
-                      <Badge variant="secondary">Final</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Order {stage.sortOrder}
-                    {stage.description ? ` · ${stage.description}` : ""}
-                    {stage.parallelTracks?.length
-                      ? ` · ${stage.parallelTracks.length} track${stage.parallelTracks.length === 1 ? "" : "s"}`
-                      : ""}
-                    {stage.statuses?.length
-                      ? ` · ${stage.statuses.length} status${stage.statuses.length === 1 ? "" : "es"}`
-                      : ""}
-                  </p>
-                </div>
-                {canEdit ? (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      setDefaultSourceId(stage.id);
-                      setTransitionOpen(true);
-                    }}
-                  >
-                    + Transition
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => void deleteStage(stage)}
-                  >
-                    Remove
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditingStage(stage);
-                      setStageEditorOpen(true);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-                  </Button>
-                </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="rounded-lg border bg-card p-4 shadow-sm space-y-3">
-        <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-          Transitions ({transitions.length})
-        </h2>
-        {transitions.length === 0 ? (
-          <PageAlert
-            variant="info"
-            title="No transitions"
-            description="Add transitions so staff can move candidates between stages."
-          />
-        ) : (
-          <div className="overflow-x-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Button</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Who can do it</TableHead>
-                  <TableHead>Conditions</TableHead>
-                  <TableHead>Active</TableHead>
-                  {canEdit ? <TableHead className="text-right">Actions</TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody className="divide-y">
-                {transitions.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>{t.buttonLabel}</TableCell>
-                    <TableCell>
-                      {stageNameById.get(t.sourceStageId) ?? t.sourceStageId}
-                    </TableCell>
-                    <TableCell>
-                      {stageNameById.get(t.targetStageId) ?? t.targetStageId}
-                    </TableCell>
-                    <TableCell>
-                      {t.allowedRoles && t.allowedRoles.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {t.allowedRoles.map((r) => (
-                            <StatusBadge
-                              key={r}
-                              tone="info"
-                              label={r.replace(/([A-Z])/g, " $1").trim()}
-                              withDot={false}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Anyone with access
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground max-w-xs truncate">
-                      {formatConditions(t.conditions)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        tone={t.isActive ? "success" : "neutral"}
-                        label={t.isActive ? "Yes" : "No"}
-                      />
-                    </TableCell>
-                    {canEdit ? (
-                    <TableCell className="text-right whitespace-nowrap">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingTransition(t)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => void deleteTransition(t)}
-                      >
-                        Remove
-                      </Button>
-                    </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </section>
-
-      {/* A card, like Stages and Transitions above it. This section was the one bare block on
-          the page: the same kind of table, sitting on the page background with its heading in a
-          different size, so it read as something bolted on rather than the third of three. */}
-      <section className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Board mirroring ({mirrors.length})
-          </h2>
-          {canEdit ? (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditingMirror(null);
-                setMirrorEditorOpen(true);
-              }}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Mirror
-            </Button>
-          ) : null}
-        </div>
-
-        {mirrors.length === 0 ? (
-          <PageAlert
-            variant="info"
-            title="No mirrors configured"
-            description="Candidates will only ever appear on the board matching their current step."
-          />
-        ) : (
-          <div className="overflow-x-auto rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>From board</TableHead>
-                  <TableHead>Also appears on</TableHead>
-                  <TableHead>When</TableHead>
-                  <TableHead>Active</TableHead>
-                  {canEdit ? <TableHead className="text-right">Actions</TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mirrors.map((m) => (
-                  <TableRow key={m.id}>
-                    <TableCell className="font-medium">{m.sourceStageName}</TableCell>
-                    <TableCell>{m.targetStageName}</TableCell>
-                    <TableCell className="max-w-xs truncate text-muted-foreground">
-                      {formatConditions(m.conditions)}
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        tone={m.isActive ? "success" : "neutral"}
-                        label={m.isActive ? "Yes" : "No"}
-                      />
-                    </TableCell>
-                    {canEdit ? (
-                    <TableCell className="whitespace-nowrap text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingMirror(m);
-                          setMirrorEditorOpen(true);
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => void deleteMirror(m)}
-                      >
-                        Remove
-                      </Button>
-                    </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </section>
-
-      <ConfirmDialog
-
-        open={pendingRemoval !== null}
-
-        onOpenChange={(open) => {
-
-          if (!open) setPendingRemoval(null);
-
-        }}
-
-        title={pendingRemoval?.title ?? ""}
-
-        description={pendingRemoval?.description ?? ""}
-
-        actionLabel="Remove"
-
-        isPending={removing}
-
-        onConfirm={async () => {
-
-          if (!pendingRemoval) return;
-
-          setRemoving(true);
-
-          try {
-
-            await pendingRemoval.run();
-
-          } finally {
-
-            setRemoving(false);
-
-            setPendingRemoval(null);
-
-          }
-
-        }}
-
-      />
-
-
-      <MirrorRuleEditor
-        open={mirrorEditorOpen}
-        onOpenChange={(o) => {
-          setMirrorEditorOpen(o);
-          if (!o) setEditingMirror(null);
-        }}
-        rule={editingMirror}
-        stages={stages}
-        onSaved={() => mutate()}
-      />
-
-      <TransitionEditor
-        open={!!editingTransition}
-        onOpenChange={(o) => {
-          if (!o) setEditingTransition(null);
-        }}
-        transition={editingTransition}
-        fromName={
-          editingTransition
-            ? stageNameById.get(editingTransition.sourceStageId)
-            : undefined
+                <Plus className="mr-1 h-4 w-4" /> Mirroring
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingTransition(null);
+                  setDefaultSourceId(undefined);
+                  setTransitionOpen(true);
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" /> Move
+              </Button>
+              <Button
+                size="sm"
+                className="bg-green-800 text-white hover:bg-green-900"
+                onClick={() => {
+                  setEditingStage(null);
+                  setStageEditorOpen(true);
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" /> Step
+              </Button>
+            </div>
+          ) : null
         }
-        toName={
-          editingTransition
-            ? stageNameById.get(editingTransition.targetStageId)
-            : undefined
-        }
-        onSaved={() => mutate()}
       />
+
+      <Section
+        title="Steps"
+        count={ordered.length}
+        hint="Each one is a board. Candidates stand in exactly one at a time."
+      >
+        <DataTable
+          table={stageTable}
+          paginated
+          exportFileName="workflow-steps"
+          emptyMessage="No steps yet. Add one to start building the pipeline."
+        />
+      </Section>
+
+      <Section
+        title="Moves between steps"
+        count={transitions.length}
+        hint="One button in a candidate's ⋯ menu. Who may press it, when it is offered, and what has to be filled in first."
+      >
+        <DataTable
+          table={transitionTable}
+          paginated
+          exportFileName="workflow-moves"
+          emptyMessage="No moves yet. Without them a candidate cannot leave the step they are in."
+        />
+      </Section>
+
+      <Section
+        title="Board mirroring"
+        count={mirrors.length}
+        hint="Shows a candidate on a second board without moving them off the first — how Embassy work reaches the LMIS desk before it is finished."
+      >
+        <DataTable
+          table={mirrorTable}
+          paginated
+          exportFileName="workflow-mirroring"
+          emptyMessage="No mirroring. Candidates appear only on the board matching their current step."
+        />
+      </Section>
 
       <StageEditor
         open={stageEditorOpen}
-        onOpenChange={(o) => {
-          setStageEditorOpen(o);
-          if (!o) setEditingStage(null);
-        }}
+        onOpenChange={setStageEditorOpen}
         stage={editingStage}
-        defaultSortOrder={nextSort}
+        defaultSortOrder={ordered.length + 1}
         onSaved={() => mutate()}
       />
-      <CreateTransitionSheet
+      <TransitionSheet
         open={transitionOpen}
         onOpenChange={setTransitionOpen}
-        stages={stages}
+        transition={editingTransition}
+        stages={ordered}
         defaultSourceId={defaultSourceId}
-        onCreated={() => mutate()}
+        onSaved={() => mutate()}
+      />
+      <MirrorRuleEditor
+        open={mirrorOpen}
+        onOpenChange={setMirrorOpen}
+        rule={editingMirror}
+        stages={ordered}
+        onSaved={() => mutate()}
+      />
+      <ConfirmDialog
+        open={!!pendingRemoval}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        title={pendingRemoval?.title}
+        description={pendingRemoval?.description}
+        actionLabel="Remove"
+        isPending={removing}
+        onConfirm={() => void confirmRemoval()}
       />
     </div>
+  );
+}
+
+/** A card with a heading, a count and one line saying what the thing in it is. */
+function Section({
+  title,
+  count,
+  hint,
+  children,
+}: {
+  title: string;
+  count: number;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
+      <div>
+        <h2 className="flex items-baseline gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+          <span className="tabular-nums font-normal">{count}</span>
+        </h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+      </div>
+      {children}
+    </section>
   );
 }

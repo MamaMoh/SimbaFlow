@@ -27,7 +27,6 @@ import { toast } from "sonner";
 const schema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional().nullable(),
-  sortOrder: z.coerce.number().int().min(0),
   stageType: z.coerce.number().int().min(0).max(2),
 });
 
@@ -66,7 +65,6 @@ export function StageEditor({
     defaultValues: {
       name: "",
       description: "",
-      sortOrder: defaultSortOrder,
       stageType: 0,
     },
   });
@@ -78,15 +76,9 @@ export function StageEditor({
           ? {
               name: stage.name,
               description: stage.description ?? "",
-              sortOrder: stage.sortOrder,
               stageType: stage.stageType,
             }
-          : {
-              name: "",
-              description: "",
-              sortOrder: defaultSortOrder,
-              stageType: 0,
-            }
+          : { name: "", description: "", stageType: 0 }
       );
     }
   }, [open, stage, defaultSortOrder, reset]);
@@ -96,7 +88,10 @@ export function StageEditor({
       const body = {
         name: values.name,
         description: values.description || null,
-        sortOrder: values.sortOrder,
+        // Not asked for: a new step goes on the end, and an existing one keeps where it
+        // is. The list reorders itself with Move up and Move down, which renumbers the whole
+        // pipeline at once — see ReorderStagesCommand.
+        sortOrder: stage?.sortOrder ?? defaultSortOrder,
         stageType: values.stageType,
       };
 
@@ -112,14 +107,14 @@ export function StageEditor({
       );
       const result = await res.json().catch(() => ({}));
       if (res.ok && result.isSuccess !== false) {
-        toast.success(isEdit ? "Stage updated" : "Stage created");
+        toast.success(isEdit ? "Step saved" : "Step added");
         onOpenChange(false);
         onSaved?.();
       } else {
-        toast.error(result.error || "Failed to save stage");
+        toast.error(result.error || "Could not save the step");
       }
     } catch {
-      toast.error("Failed to save stage. Please try again.");
+      toast.error("Could not save the step. Please try again.");
     }
   };
 
@@ -127,7 +122,7 @@ export function StageEditor({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent aria-describedby={undefined} className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{isEdit ? "Edit stage" : "Add stage"}</SheetTitle>
+          <SheetTitle>{isEdit ? "Edit step" : "Add step"}</SheetTitle>
         </SheetHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="mt-2 space-y-4 px-6">
           <div className="space-y-1.5">
@@ -136,20 +131,23 @@ export function StageEditor({
             {errors.name && (
               <p className="text-xs text-destructive">{errors.name.message}</p>
             )}
+            {isEdit && (
+              <p className="text-xs text-muted-foreground">
+                The name is how this step is found: the board in the sidebar, its address, and
+                what the bot calls it. Renaming one of the steps the app ships with — Embassy,
+                LMIS, Ticket — gives it the general-purpose board instead of its own.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="stage-description">Description</Label>
             <Input id="stage-description" {...register("description")} />
+            <p className="text-xs text-muted-foreground">
+              Shown under the name in the setup list. Optional.
+            </p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="stage-sort">Sort order</Label>
-            <Input id="stage-sort" type="number" {...register("sortOrder")} />
-            {errors.sortOrder && (
-              <p className="text-xs text-destructive">{errors.sortOrder.message}</p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label>Stage type</Label>
+            <Label>Kind</Label>
             <Controller
               control={control}
               name="stageType"
@@ -171,6 +169,10 @@ export function StageEditor({
                 </Select>
               )}
             />
+            <p className="text-xs text-muted-foreground">
+              Simple is one status at a time. Parallel runs several side by side, the way
+              Embassy runs medical, tasheer and visa. Milestones go in a fixed order.
+            </p>
           </div>
           <SheetFooter className="-mx-6 mt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

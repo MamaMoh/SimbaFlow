@@ -112,10 +112,17 @@ public class CreateStageHandler : IRequestHandler<CreateStageCommand, Result<Gui
         if (definition is null)
             return Result<Guid>.Failure("No active workflow definition found.", 404);
 
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return Result<Guid>.Failure("A step needs a name.", 400);
+
+        var name = request.Name.Trim();
+        if (await StageNames.TakenAsync(_context, definition.Id, name, null, cancellationToken))
+            return Result<Guid>.Failure($"There is already a step called \u201c{name}\u201d.", 409);
+
         var stage = new WorkflowStage
         {
             WorkflowDefinitionId = definition.Id,
-            Name = request.Name,
+            Name = name,
             Description = request.Description,
             SortOrder = request.SortOrder,
             StageType = (StageType)request.StageType
@@ -124,6 +131,28 @@ public class CreateStageHandler : IRequestHandler<CreateStageCommand, Result<Gui
         _context.WorkflowStages.Add(stage);
         await _context.SaveChangesAsync(cancellationToken);
         return Result<Guid>.Success(stage.Id, 201);
+    }
+}
+
+/// <summary>
+/// Whether another step already answers to this name.
+///
+/// Names are not decoration here. Every board the app ships with finds its step by name — the
+/// Embassy board asks for the step called "Embassy" — and so does the address bar, and so does
+/// the bot's list of stages to watch. Two steps called the same thing means half the app
+/// silently picks whichever one the database returned first.
+/// </summary>
+internal static class StageNames
+{
+    public static Task<bool> TakenAsync(
+        ITenantDbContext context, Guid definitionId, string name, Guid? excluding, CancellationToken ct)
+    {
+        var needle = name.Trim().ToLower();
+        return context.WorkflowStages.AnyAsync(s =>
+            !s.IsDeleted
+            && s.WorkflowDefinitionId == definitionId
+            && s.Name.ToLower() == needle
+            && (excluding == null || s.Id != excluding), ct);
     }
 }
 
@@ -147,12 +176,67 @@ public class UpdateStageHandler : IRequestHandler<UpdateStageCommand, Result>
         if (stage is null)
             return Result.Failure("Stage not found", 404);
 
-        stage.Name = request.Name;
+        if (string.IsNullOrWhiteSpace(request.Name))
+            return Result.Failure("A step needs a name.", 400);
+
+        var name = request.Name.Trim();
+        if (await StageNames.TakenAsync(_context, stage.WorkflowDefinitionId, name, stage.Id, cancellationToken))
+            return Result.Failure($"There is already a step called \u201c{name}\u201d.", 409);
+
+        stage.Name = name;
         stage.Description = request.Description;
         stage.SortOrder = request.SortOrder;
         stage.StageType = (StageType)request.StageType;
 
         await _context.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+}
+
+/// <summary>
+/// Put the steps in a given order.
+///
+/// Editing one step's sort number at a time cannot express "move this above that": the numbers
+/// collide, and two steps sharing a number leave their order to whatever the database feels
+/// like returning — which is also the order the sidebar and every stage picker then show. This
+/// takes the whole list and renumbers it 1..n, so there is exactly one answer.
+/// </summary>
+public record ReorderStagesCommand(IReadOnlyList<Guid> StageIds) : IRequest<Result>, IRequireAgencyOwner
+{
+    public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
+}
+
+public class ReorderStagesHandler : IRequestHandler<ReorderStagesCommand, Result>
+{
+    private readonly ITenantDbContext _context;
+
+    public ReorderStagesHandler(ITenantDbContext context) => _context = context;
+
+    public async Task<Result> Handle(ReorderStagesCommand request, CancellationToken ct)
+    {
+        var definition = await _context.WorkflowDefinitions
+            .FirstOrDefaultAsync(w => w.IsActive && !w.IsDeleted, ct);
+        if (definition is null)
+            return Result.Failure("No active workflow definition found.", 404);
+
+        var live = await _context.WorkflowStages
+            .Where(s => s.WorkflowDefinitionId == definition.Id && !s.IsDeleted)
+            .ToListAsync(ct);
+
+        // The caller must be holding the same list the server has. A page left open while
+        // somebody else added a step would otherwise renumber what it knows about and leave the
+        // new step at whatever number it was created with, somewhere in the middle.
+        var wanted = request.StageIds.Distinct().ToList();
+        if (wanted.Count != request.StageIds.Count)
+            return Result.Failure("The same step appears twice in that order.", 400);
+        if (wanted.Count != live.Count || wanted.Any(id => live.All(s => s.Id != id)))
+            return Result.Failure(
+                "The steps have changed since this page was opened. Reload and try again.", 409);
+
+        for (var i = 0; i < wanted.Count; i++)
+            live.First(s => s.Id == wanted[i]).SortOrder = i + 1;
+
+        await _context.SaveChangesAsync(ct);
         return Result.Success();
     }
 }
@@ -187,6 +271,24 @@ public class CreateTransitionRuleHandler : IRequestHandler<CreateTransitionRuleC
         if (!sourceExists || !targetExists)
             return Result<Guid>.Failure("Source or target stage not found.", 404);
 
+        if (request.SourceStageId == request.TargetStageId)
+            return Result<Guid>.Failure("A step cannot lead back to the step it starts from.", 400);
+
+        if (string.IsNullOrWhiteSpace(request.ButtonLabel))
+            return Result<Guid>.Failure("The button needs a label.", 400);
+
+        // Two buttons with the same words on the same board is a coin toss for whoever presses
+        // one, and the audit trail records the label.
+        var label = request.ButtonLabel.Trim();
+        var needle = label.ToLower();
+        var duplicate = await _context.WorkflowTransitionRules.AnyAsync(r =>
+            !r.IsDeleted
+            && r.SourceStageId == request.SourceStageId
+            && r.ButtonLabel.ToLower() == needle, cancellationToken);
+        if (duplicate)
+            return Result<Guid>.Failure(
+                $"That step already has a button called \u201c{label}\u201d.", 409);
+
         var conditionsJson = request.Conditions is null
             ? "{}"
             : JsonSerializer.Serialize(request.Conditions);
@@ -196,7 +298,7 @@ public class CreateTransitionRuleHandler : IRequestHandler<CreateTransitionRuleC
             WorkflowDefinitionId = definition.Id,
             SourceStageId = request.SourceStageId,
             TargetStageId = request.TargetStageId,
-            ButtonLabel = request.ButtonLabel,
+            ButtonLabel = label,
             ButtonIcon = request.ButtonIcon,
             Conditions = JsonDocument.Parse(conditionsJson),
             RequiredFields = request.RequiredFields ?? [],
@@ -263,7 +365,11 @@ public class ConfigureParallelTracksHandler : IRequestHandler<ConfigureParallelT
 public record UpdateTransitionRuleCommand(
     Guid TransitionId, string ButtonLabel, string? ButtonIcon,
     string[]? RequiredFields, string[]? AllowedRoles,
-    bool RemoveFromSource, bool IsActive) : IRequest<Result>, IRequireAgencyOwner
+    bool RemoveFromSource, bool IsActive,
+    // When a step is offered at all. Omitted leaves whatever is already there — the editor sends
+    // it, but anything older than the editor does not, and silently clearing the conditions on
+    // a step somebody renamed would start offering it to everyone.
+    JsonElement? Conditions = null) : IRequest<Result>, IRequireAgencyOwner
 {
     public string OwnerOnlyMessage => WorkflowSetup.OwnerOnly;
 }
@@ -289,6 +395,8 @@ public class UpdateTransitionRuleHandler : IRequestHandler<UpdateTransitionRuleC
         rule.AllowedRoles = request.AllowedRoles ?? [];
         rule.RemoveFromSource = request.RemoveFromSource;
         rule.IsActive = request.IsActive;
+        if (request.Conditions is { } conditions)
+            rule.Conditions = JsonDocument.Parse(conditions.GetRawText());
 
         await _context.SaveChangesAsync(ct);
         return Result.Success();

@@ -143,9 +143,16 @@ export function MirrorRuleEditor({
           <div className="space-y-2">
             <Label>Conditions</Label>
             <p className="text-xs text-muted-foreground">
-              Leave empty to mirror everyone. Values are matched ignoring case.
+              Who is pulled onto the second board. Leave it empty to mirror everyone; values
+              are matched ignoring case.
             </p>
-            <ConditionBuilder value={conditions} onChange={setConditions} />
+            <ConditionBuilder
+              value={conditions}
+              onChange={setConditions}
+              stages={stages}
+              focus={stages.find((s) => s.id === sourceStageId)}
+              emptyMeans="everyone on the first board also appears on the second"
+            />
           </div>
 
           <div className="flex items-center justify-between rounded-lg border p-3">
