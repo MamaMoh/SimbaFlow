@@ -7,6 +7,7 @@ import { RouteGuard } from "@/components/auth/route-guard";
 import { RenewalNotice } from "@/components/billing/renewal-notice";
 import { CommandPalette } from "@/components/command/command-palette";
 import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
+import { VisaDetailsHost } from "@/components/workflow/visa-details-host";
 
 export default function DashboardLayout({
   children,
@@ -14,23 +15,27 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen bg-gradient-to-br from-background to-muted/40">
-      <CommandPalette />
-      <PointerEventsGuard />
-      <Sidebar className="bg-card/95 border-r shadow-xl" />
-      <div className="flex-1 flex flex-col min-w-0 bg-background/90">
-        <Header />
-        <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-muted/60 dark:bg-background border-l border-border/40 shadow-inner min-h-0">
-          {/* Above the page, not inside it: when an agency is suspended every page below this
-              has stopped working, and this is the only thing that says why. */}
-          <div className="mb-4 empty:mb-0">
-            <RenewalNotice />
-          </div>
-          <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><LoadingSpinner size="lg" text="Loading..." /></div>}>
-            <RouteGuard>{children}</RouteGuard>
-          </Suspense>
-        </main>
+    // The visa-details form is mounted once, here, above every board. It is opened from row
+    // menus, and a dropdown unmounts whatever it contains the moment it closes.
+    <VisaDetailsHost>
+      <div className="flex h-screen bg-gradient-to-br from-background to-muted/40">
+        <CommandPalette />
+        <PointerEventsGuard />
+        <Sidebar className="bg-card/95 border-r shadow-xl" />
+        <div className="flex-1 flex flex-col min-w-0 bg-background/90">
+          <Header />
+          <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-muted/60 dark:bg-background border-l border-border/40 shadow-inner min-h-0">
+            {/* Above the page, not inside it: when an agency is suspended every page below this
+                has stopped working, and this is the only thing that says why. */}
+            <div className="mb-4 empty:mb-0">
+              <RenewalNotice />
+            </div>
+            <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><LoadingSpinner size="lg" text="Loading..." /></div>}>
+              <RouteGuard>{children}</RouteGuard>
+            </Suspense>
+          </main>
+        </div>
       </div>
-    </div>
+    </VisaDetailsHost>
   );
 }

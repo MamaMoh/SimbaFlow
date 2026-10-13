@@ -22,6 +22,7 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { identityColumns } from "@/components/data-table/identity-columns";
 import { selectionColumn } from "@/components/data-table/selection-column";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
@@ -51,10 +52,7 @@ export default function TicketBoardPage() {
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
         ),
       },
-      {
-        accessorKey: "passportNumber",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-      },
+      ...identityColumns<TravelBoardRow>(),
       {
         id: "destination",
         header: "Destination",

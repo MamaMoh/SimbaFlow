@@ -12,6 +12,7 @@ export type CommissionBoardRow = {
   candidateId: string;
   candidateName: string;
   passportNumber: string;
+  labourId?: string | null;
   status: string;
   countryOfTravel: string | null;
   partnerName: string | null;
@@ -58,6 +59,7 @@ export type CommissionDetail = {
   candidateId: string;
   candidateName: string;
   passportNumber: string;
+  labourId?: string | null;
   status: string;
   countryOfTravel: string | null;
   partnerName: string | null;

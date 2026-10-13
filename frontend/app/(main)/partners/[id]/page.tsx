@@ -14,6 +14,7 @@ import {
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { indexColumn } from "@/components/data-table/index-column";
+import { identityColumns } from "@/components/data-table/identity-columns";
 import { NameCell } from "@/components/data-table/name-cell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useSWR from "swr";
@@ -68,10 +69,7 @@ export default function PartnerDetailPage() {
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
         ),
       },
-      {
-        accessorKey: "passportNumber",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-      },
+      ...identityColumns<PartnerCandidateRow>(),
       {
         accessorKey: "stage",
         header: "Stage",
@@ -107,10 +105,7 @@ export default function PartnerDetailPage() {
           />
         ),
       },
-      {
-        accessorKey: "passportNumber",
-        header: "Passport",
-      },
+      ...identityColumns<PartnerBilling["items"][number]>(),
       {
         accessorKey: "status",
         header: "Status",

@@ -37,6 +37,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 import { saveFile } from "@/lib/files/download";
+import { identityColumns } from "@/components/data-table/identity-columns";
 
 interface CandidateRow {
   id: string;
@@ -147,7 +148,11 @@ export default function CandidatesPage() {
   const [bulkGenerating, setBulkGenerating] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setSearch(globalFilter.trim()), 300);
+    // `?? ""` is load-bearing. An empty search box means "no filter" to TanStack, which it
+    // signals as undefined — so this threw on every load of the page, and, worse, threw before
+    // it could clear `search`: emptying the box left the list narrowed by whatever had been
+    // typed last, with no way back short of a reload.
+    const timer = setTimeout(() => setSearch((globalFilter ?? "").trim()), 300);
     return () => clearTimeout(timer);
   }, [globalFilter]);
 
@@ -317,10 +322,7 @@ export default function CandidatesPage() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
         cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
       },
-      {
-        accessorKey: "passportNumber",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-      },
+      ...identityColumns<CandidateRow>(),
       {
         accessorKey: "age",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Age" />,
@@ -394,11 +396,6 @@ export default function CandidatesPage() {
         accessorKey: "partnerName",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
-      },
-      {
-        accessorKey: "labourId",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Labour ID" />,
-        cell: ({ getValue }) => getValue() || "—",
       },
       {
         accessorKey: "currentStageName",
@@ -489,7 +486,6 @@ export default function CandidatesPage() {
         sponsorName: false,
         visaNumber: false,
         agentName: false,
-        labourId: false,
         experienceAbroadYears: false,
         // Shown only where there is something to show — switching to Inactive turns it on.
         deletedBy: false,

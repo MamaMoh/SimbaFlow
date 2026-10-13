@@ -49,11 +49,14 @@ export function VisaDetailsDialog({
   /** One entry per candidate who is missing something. Candidates with nothing missing are not here. */
   gaps: VisaFormGap[];
   onOpenChange: (open: boolean) => void;
-  /** Everything saved — carry on with whatever wanted the form. */
-  onFilled: () => void;
+  /**
+   * Everything saved. `print` says which button did it: true carries on with whatever wanted
+   * the form, false means the typing was banked and nothing else should happen.
+   */
+  onFilled: (print: boolean) => void;
 }) {
   const [answers, setAnswers] = useState<Answers>({});
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"save" | "print" | null>(null);
 
   // Cleared whenever a new set arrives, so a second run does not start pre-filled with the
   // previous one's answers against candidates it is not about.
@@ -66,11 +69,13 @@ export function VisaDetailsDialog({
 
   const valueOf = (candidateId: string, key: string) => answers[candidateId]?.[key] ?? "";
 
+  const many = gaps.length > 1;
+
   const blanks = gaps.flatMap((g) =>
     g.fields.filter((f) => !valueOf(g.id, f.key).trim()).map((f) => `${g.fullName}: ${f.label}`),
   );
 
-  const save = async () => {
+  const save = async (print: boolean) => {
     if (blanks.length > 0) {
       toast.error(
         blanks.length === 1
@@ -80,22 +85,20 @@ export function VisaDetailsDialog({
       return;
     }
 
-    setBusy(true);
+    setBusy(print ? "print" : "save");
     try {
       // One save per candidate, in sequence. A batch endpoint would be fewer round trips, but
       // these are a handful of records and a sequence means a failure halfway has still written
       // everything before it rather than rolling the typing back.
       for (const gap of gaps) await setVisaDetails(gap.id, answers[gap.id] ?? {});
-      onOpenChange(false);
-      onFilled();
+      if (!print) toast.success(many ? "Details saved" : `Saved for ${gaps[0]?.fullName}`);
+      onFilled(print);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save the details");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
-
-  const many = gaps.length > 1;
 
   return (
     <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
@@ -161,18 +164,32 @@ export function VisaDetailsDialog({
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={busy}
+            disabled={busy !== null}
           >
             Cancel
           </Button>
+          {/* Saving without printing. Somebody taking the numbers down over the phone wants them
+              on the record now and the form later, and the only way to do that was to print a
+              copy nobody needed. Both buttons write the same thing; only one of them goes on to
+              produce a document. */}
           <Button
             type="button"
-            onClick={() => void save()}
-            disabled={busy}
+            variant="outline"
+            onClick={() => void save(false)}
+            disabled={busy !== null}
+            className="gap-1.5"
+          >
+            {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy === "save" ? "Saving…" : "Save"}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void save(true)}
+            disabled={busy !== null}
             className="gap-1.5 bg-green-800 text-white hover:bg-green-900"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {busy ? "Saving…" : "Save and print"}
+            {busy === "print" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {busy === "print" ? "Saving…" : "Save and print"}
           </Button>
         </DialogFooter>
       </DialogContent>

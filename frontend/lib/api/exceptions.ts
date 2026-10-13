@@ -13,6 +13,7 @@ export type ExceptionCaseListItem = {
   candidateId: string;
   candidateName: string;
   passportNumber: string;
+  labourId?: string | null;
   type: string;
   status: string;
   openedAt: string;
@@ -42,6 +43,7 @@ export type ExceptionCaseDetail = {
   candidateId: string;
   candidateName: string;
   passportNumber: string;
+  labourId?: string | null;
   type: string;
   status: string;
   openedAt: string;

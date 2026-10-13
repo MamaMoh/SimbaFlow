@@ -1,17 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { FileText, FileSignature, Loader2, StickyNote } from "lucide-react";
+import { FileText, FileSignature, StickyNote } from "lucide-react";
 import { toast } from "sonner";
 import {
   generateCandidateContract,
   generateCandidateCv,
   generateCandidateVisaForm,
   visaFormGaps,
-  type VisaFormGap,
 } from "@/lib/api/candidates";
-import { VisaDetailsDialog } from "@/components/workflow/visa-details-dialog";
+import { useVisaDetails } from "@/components/workflow/visa-details-host";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { saveFile } from "@/lib/files/download";
 
@@ -40,6 +38,12 @@ const DOCS: {
  * candidate's own page, so anyone working a board had to leave it, print, and come back. The
  * paperwork is the same wherever the candidate happens to be standing in the pipeline, so the items
  * are the same too.
+ *
+ * Nothing here renders a dialog or holds a spinner, and that is deliberate. A dropdown unmounts
+ * its children when it closes, so anything these items put on screen had to be paid for by
+ * holding the menu open — which left a menu sitting over the form it had just opened. Progress
+ * goes to a toast and the missing-details form goes to the app-level host, both of which outlive
+ * the menu, so the menu can close the instant something is picked, like every other item in the app.
  */
 export function CandidateDocumentItems({
   candidateId,
@@ -58,10 +62,7 @@ export function CandidateDocumentItems({
   visaFormMissing?: string[];
 }) {
   const { hasPermission } = usePermissions();
-  const [pending, setPending] = useState<Doc | null>(null);
-  // What this candidate is still missing. Non-empty means the dialog is asking for it, and the
-  // document is produced as soon as it is saved.
-  const [gaps, setGaps] = useState<VisaFormGap[]>([]);
+  const askForVisaDetails = useVisaDetails();
 
   // The API asks for candidate.read on all three — they are a rendering of the candidate, not a
   // separate thing to be granted. Offering an item that comes back 403 is worse than not offering it.
@@ -71,6 +72,25 @@ export function CandidateDocumentItems({
   const missing = visaFormMissing ?? [];
 
   /**
+   * Saved rather than opened in a tab. A tab goes straight to the print dialog, which is how
+   * these are used most of the time — but a blob URL has no filename, so the one document the
+   * desk does keep arrives in Downloads named after the URL's identifier and is indistinguishable
+   * from every other one. A saved file is named after the candidate and is still one double-click
+   * from the same print dialog.
+   */
+  const download = async (label: string, generate: () => Promise<File>) => {
+    // The toast is the progress indicator now. It belongs to the page rather than to the menu,
+    // so it survives the menu closing and is still there when the PDF lands a second later.
+    const id = toast.loading(`${label}…`);
+    try {
+      saveFile(await generate());
+      toast.success(label, { id });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `${label} failed`, { id });
+    }
+  };
+
+  /**
    * The visa form asks for what it is missing rather than refusing because of it.
    *
    * The item used to grey itself out with "Visa form — details missing" and a tooltip naming
@@ -78,86 +98,44 @@ export function CandidateDocumentItems({
    * field, typed it and came back. The same boxes are now one click away, here.
    */
   const runVisa = async () => {
-    if (pending) return;
-    setPending("visa");
+    let found;
     try {
-      const found = (await visaFormGaps([candidateId])).filter((g) => g.fields.length > 0);
-      if (found.length > 0) {
-        setGaps(found);
-        return;
-      }
-      saveFile(await generateCandidateVisaForm(candidateId));
+      found = (await visaFormGaps([candidateId])).filter((g) => g.fields.length > 0);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Visa form failed");
-    } finally {
-      setPending(null);
+      return;
     }
-  };
 
-  const run = async (doc: (typeof DOCS)[number]) => {
-    if (doc.key === "visa") return runVisa();
-    if (pending) return;
-    setPending(doc.key);
-    try {
-      // Saved rather than opened in a tab. A tab goes straight to the print dialog, which is how
-      // these are used most of the time — but a blob URL has no filename, so the one document the
-      // desk does keep arrives in Downloads named after the URL's identifier and is indistinguishable
-      // from every other one. A saved file is named after the candidate and is still one double-click
-      // from the same print dialog.
-      saveFile(await doc.generate(candidateId));
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : `${doc.label} failed`);
-    } finally {
-      setPending(null);
+    if (found.length > 0) {
+      askForVisaDetails({
+        gaps: found,
+        onFilled: () =>
+          void download("Visa form", () => generateCandidateVisaForm(candidateId)),
+      });
+      return;
     }
+
+    await download("Visa form", () => generateCandidateVisaForm(candidateId));
   };
 
   const incomplete = (doc: Doc) => doc === "visa" && missing.length > 0;
 
   return (
     <>
-      <VisaDetailsDialog
-        open={gaps.length > 0}
-        gaps={gaps}
-        onOpenChange={(next) => {
-          if (!next) {
-            setGaps([]);
-            setPending(null);
-          }
-        }}
-        onFilled={() => {
-          setGaps([]);
-          void (async () => {
-            try {
-              saveFile(await generateCandidateVisaForm(candidateId));
-            } catch (err) {
-              toast.error(err instanceof Error ? err.message : "Visa form failed");
-            } finally {
-              setPending(null);
-            }
-          })();
-        }}
-      />
-
       {items.map((doc) => (
         <DropdownMenuItem
           key={doc.key}
-          disabled={pending !== null}
           // Live, not greyed out: pressing it is how the missing details get filled in. The
           // label still says there are some, so nobody expects a finished form.
           title={incomplete(doc.key) ? `Still needed: ${missing.join(", ")}` : undefined}
-          onSelect={(e) => {
-            // The menu would close on select and unmount the row before the PDF arrives, taking
-            // the spinner and the error toast's context with it.
-            e.preventDefault();
-            void run(doc);
+          onSelect={() => {
+            // No preventDefault. The menu closes, which is the whole point — what it used to be
+            // held open for now lives outside it.
+            if (doc.key === "visa") void runVisa();
+            else void download(doc.label, () => doc.generate(candidateId));
           }}
         >
-          {pending === doc.key ? (
-            <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
-          ) : (
-            <doc.icon className="mr-2 h-4 w-4 shrink-0" />
-          )}
+          <doc.icon className="mr-2 h-4 w-4 shrink-0" />
           {incomplete(doc.key) ? "Visa form — fill in details" : doc.label}
         </DropdownMenuItem>
       ))}

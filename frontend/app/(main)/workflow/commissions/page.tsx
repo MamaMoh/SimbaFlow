@@ -24,6 +24,7 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { identityColumns } from "@/components/data-table/identity-columns";
 
 export default function CommissionsPage() {
   const router = useRouter();
@@ -52,10 +53,7 @@ export default function CommissionsPage() {
           />
         ),
       },
-      {
-        accessorKey: "passportNumber",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-      },
+      ...identityColumns<CommissionBoardRow>(),
       {
         accessorKey: "countryOfTravel",
         header: ({ column }) => <DataTableColumnHeader column={column} title="Country" />,

@@ -27,6 +27,7 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { identityColumns } from "@/components/data-table/identity-columns";
 
 export default function ExceptionsListPage() {
   const router = useRouter();
@@ -57,10 +58,7 @@ export default function ExceptionsListPage() {
           />
         ),
       },
-      {
-        accessorKey: "passportNumber",
-        header: "Passport",
-      },
+      ...identityColumns<ExceptionCaseListItem>(),
       {
         accessorKey: "type",
         header: "Type",

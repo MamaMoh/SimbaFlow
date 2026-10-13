@@ -21,13 +21,14 @@ import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { EmbassyRowActions } from "@/components/workflow/embassy-row-actions";
 import { embassyApi, useEmbassyBoard, type EmbassyBoardRow } from "@/lib/api/embassy";
-import { generateBulkVisaForms, visaFormGaps, type VisaFormGap } from "@/lib/api/candidates";
-import { VisaDetailsDialog } from "@/components/workflow/visa-details-dialog";
+import { generateBulkVisaForms, visaFormGaps } from "@/lib/api/candidates";
+import { useVisaDetails } from "@/components/workflow/visa-details-host";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { Download, FileText, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
+import { identityColumns } from "@/components/data-table/identity-columns";
 import { selectionColumn } from "@/components/data-table/selection-column";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
@@ -41,12 +42,9 @@ export default function EmbassyBoardPage() {
   const [search, setSearch] = useState("");
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState<"tasheer" | "enjaze" | null>(null);
-  // What the selected candidates are still missing. Non-empty means the dialog is open asking
-  // for it; printing resumes on its own once it is saved.
-  const [gaps, setGaps] = useState<VisaFormGap[]>([]);
-  // Kept apart from the enjaze gaps: the same dialog, a shorter list, and a different thing
-  // waiting on the other side of it.
-  const [tasheerGaps, setTasheerGaps] = useState<VisaFormGap[]>([]);
+  // The form that asks for missing details is mounted above every page; this is how a board
+  // asks for it, with what to do once it has been filled in.
+  const askForVisaDetails = useVisaDetails();
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useEmbassyBoard({
     search: search || undefined,
@@ -64,10 +62,7 @@ export default function EmbassyBoardPage() {
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
         ),
       },
-      {
-        accessorKey: "passportNumber",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-      },
+      ...identityColumns<EmbassyBoardRow>(),
       {
         accessorKey: "partnerName",
         header: "Partner",
@@ -204,7 +199,16 @@ export default function EmbassyBoardPage() {
         .filter((g) => g.fields.length > 0);
       if (found.length > 0) {
         setBusy(null);
-        setTasheerGaps(found);
+        // The same form, a shorter list — only the E numbers — and a different thing waiting on
+        // the other side of it.
+        askForVisaDetails({
+          gaps: found,
+          onFilled: () => {
+            mutate();
+            void buildTasheer(selectedIds);
+          },
+          onCancelled: () => mutate(),
+        });
         return;
       }
     } catch (e) {
@@ -244,7 +248,16 @@ export default function EmbassyBoardPage() {
       const found = (await visaFormGaps(selectedIds)).filter((g) => g.fields.length > 0);
       if (found.length > 0) {
         setBusy(null);
-        setGaps(found);
+        askForVisaDetails({
+          gaps: found,
+          onFilled: () => {
+            mutate();
+            void buildEnjaze(selectedIds);
+          },
+          // Saved without printing: the typing is on the record, so the board reloads to show
+          // it, but no batch is built.
+          onCancelled: () => mutate(),
+        });
         return;
       }
     } catch (e) {
@@ -279,28 +292,6 @@ export default function EmbassyBoardPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         }
-      />
-
-      <VisaDetailsDialog
-        open={gaps.length > 0}
-        gaps={gaps}
-        onOpenChange={(next) => !next && setGaps([])}
-        onFilled={() => {
-          setGaps([]);
-          mutate();
-          void buildEnjaze(selectedIds);
-        }}
-      />
-
-      <VisaDetailsDialog
-        open={tasheerGaps.length > 0}
-        gaps={tasheerGaps}
-        onOpenChange={(next) => !next && setTasheerGaps([])}
-        onFilled={() => {
-          setTasheerGaps([]);
-          mutate();
-          void buildTasheer(selectedIds);
-        }}
       />
 
       {error && (

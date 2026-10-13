@@ -12,9 +12,8 @@ import {
   generateCandidateVisaForm,
   generateCandidateContract,
   visaFormGaps,
-  type VisaFormGap,
 } from "@/lib/api/candidates";
-import { VisaDetailsDialog } from "@/components/workflow/visa-details-dialog";
+import { useVisaDetails } from "@/components/workflow/visa-details-host";
 import { CandidateImage } from "@/components/candidates/candidate-image";
 import { useAvailableActions, useWorkflowState } from "@/lib/api/workflow";
 import { FormSection } from "@/components/candidates/form-section";
@@ -63,9 +62,10 @@ export default function CandidateDetailPage() {
   const { hasPermission } = usePermissions();
   const [generatingCv, setGeneratingCv] = useState(false);
   const [generatingVisa, setGeneratingVisa] = useState(false);
-  const [visaGaps, setVisaGaps] = useState<VisaFormGap[]>([]);
   const [generatingContract, setGeneratingContract] = useState(false);
   const [showEmpty, setShowEmpty] = useState(false);
+
+  const askForVisaDetails = useVisaDetails();
 
   const { candidate, isLoading, mutate: mutateCandidate } = useCandidate(id);
   const { documents, mutate: mutateDocs } = useCandidateDocuments(id);
@@ -169,7 +169,19 @@ export default function CandidateDetailPage() {
     try {
       const found = (await visaFormGaps([candidate.id])).filter((g) => g.fields.length > 0);
       if (found.length > 0) {
-        setVisaGaps(found);
+        askForVisaDetails({
+          gaps: found,
+          onFilled: () => {
+            mutateCandidate();
+            void buildVisa();
+          },
+          // Saved without printing, or closed. The typing is on the record either way, so the
+          // page reloads it — but no document is produced and the button has to stop spinning.
+          onCancelled: () => {
+            mutateCandidate();
+            setGeneratingVisa(false);
+          },
+        });
         return;
       }
     } catch (err) {
@@ -340,22 +352,6 @@ export default function CandidateDetailPage() {
           </div>
         </div>
       </div>
-
-      <VisaDetailsDialog
-        open={visaGaps.length > 0}
-        gaps={visaGaps}
-        onOpenChange={(next) => {
-          if (!next) {
-            setVisaGaps([]);
-            setGeneratingVisa(false);
-          }
-        }}
-        onFilled={() => {
-          setVisaGaps([]);
-          mutateCandidate();
-          void buildVisa();
-        }}
-      />
 
       <StageProgress
         currentStageId={state?.stageId}

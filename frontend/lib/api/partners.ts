@@ -38,6 +38,7 @@ export type PartnerCandidateRow = {
   id: string;
   fullName: string;
   passportNumber: string;
+  labourId?: string | null;
   stage: string | null;
   countryOfTravel: string | null;
   registeredAt: string;
@@ -57,6 +58,7 @@ export type PartnerBilling = {
     candidateId: string;
     candidateName: string;
     passportNumber: string;
+    labourId?: string | null;
     status: string;
     totalFeesAmount: number;
     totalPaidAmount: number;

@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { indexColumn } from "@/components/data-table/index-column";
+import { identityColumns } from "@/components/data-table/identity-columns";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 
 type WorkflowViewTableProps = {
@@ -162,10 +163,7 @@ export function WorkflowViewTable({
         <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
       ),
     },
-    {
-      accessorKey: "passportNumber",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
-    },
+    ...identityColumns<ViewCandidateDto>(),
     {
       id: "stage",
       header: "Stage / Status",
