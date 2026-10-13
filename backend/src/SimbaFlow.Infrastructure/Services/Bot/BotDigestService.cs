@@ -1,11 +1,9 @@
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SimbaFlow.Application.Common.Interfaces;
-using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Entities.Tenancy;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.Domain.Services;
@@ -90,24 +88,19 @@ public sealed class BotDigestService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var platform = scope.ServiceProvider.GetRequiredService<IPlatformDbContext>();
-        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var tenantFactory = scope.ServiceProvider.GetRequiredService<ITenantBotDbContextFactory>();
 
         var today = BotDigestRules.LocalDate(DateTime.UtcNow);
 
         // Only agencies with somebody listening.
-        var tenantIds = await users.Users
-            .Where(u => u.BotLinked && u.TelegramChatId != null && !u.IsDeleted && u.TenantId != null)
-            .Select(u => u.TenantId!.Value)
-            .Distinct()
-            .ToListAsync(ct);
+        var tenantIds = await BotRecipients.TenantsWithListenersAsync(platform, ct);
 
         foreach (var tenantId in tenantIds)
         {
             if (ct.IsCancellationRequested) return;
             try
             {
-                await SendForTenantAsync(platform, users, tenantFactory, tenantId, today, ct);
+                await SendForTenantAsync(platform, tenantFactory, tenantId, today, ct);
             }
             catch (Exception ex)
             {
@@ -118,7 +111,6 @@ public sealed class BotDigestService : BackgroundService
 
     private async Task SendForTenantAsync(
         IPlatformDbContext platform,
-        UserManager<ApplicationUser> users,
         ITenantBotDbContextFactory tenantFactory,
         Guid tenantId,
         DateOnly today,
@@ -158,11 +150,9 @@ public sealed class BotDigestService : BackgroundService
 
         // Muted people are left alone. A stage list is not applied: the digest is about the
         // agency's morning, not about one board.
-        var recipients = await users.Users
-            .Where(u => u.TenantId == tenantId && u.BotLinked && u.TelegramChatId != null
-                        && !u.IsDeleted && !u.BotMuted)
-            .Select(u => new { u.Id, u.TelegramChatId, u.PreferredLanguage })
-            .ToListAsync(ct);
+        var recipients = (await BotRecipients.ForTenantAsync(platform, tenantId, ct))
+            .Where(r => !r.Muted)
+            .ToList();
 
         if (recipients.Count == 0) return;
 
@@ -172,21 +162,24 @@ public sealed class BotDigestService : BackgroundService
                 recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase);
             var text = BotMessages.Digest(registered, overdue, expiring, openCases, amharic);
 
-            var delivery = new NotificationDelivery
+            foreach (var chatId in recipient.ChatIds)
             {
-                TenantId = tenantId,
-                UserId = recipient.Id,
-                Channel = BotChannel.Telegram,
-                EventType = DigestEventType,
-                PayloadSummary = text.Length > 512 ? text[..512] : text,
-                Status = DeliveryStatus.Pending,
-            };
-            platform.NotificationDeliveries.Add(delivery);
+                var delivery = new NotificationDelivery
+                {
+                    TenantId = tenantId,
+                    UserId = recipient.UserId,
+                    Channel = BotChannel.Telegram,
+                    EventType = DigestEventType,
+                    PayloadSummary = text.Length > 512 ? text[..512] : text,
+                    Status = DeliveryStatus.Pending,
+                };
+                platform.NotificationDeliveries.Add(delivery);
 
-            var externalId = await _telegram.SendMessageAsync(recipient.TelegramChatId!, text, ct);
-            delivery.Status = externalId is null ? DeliveryStatus.Failed : DeliveryStatus.Sent;
-            delivery.ExternalMessageId = externalId;
-            delivery.SentAt = DateTime.UtcNow;
+                var externalId = await _telegram.SendMessageAsync(chatId, text, ct);
+                delivery.Status = externalId is null ? DeliveryStatus.Failed : DeliveryStatus.Sent;
+                delivery.ExternalMessageId = externalId;
+                delivery.SentAt = DateTime.UtcNow;
+            }
         }
 
         await platform.SaveChangesAsync(ct);

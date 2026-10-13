@@ -66,8 +66,10 @@ public sealed class NotificationPushService : INotificationPushService
     /// <summary>The message already in the chat for this candidate, and where they started.</summary>
     private sealed record OpenThread(string MessageId, string? FirstStageName);
 
-    private static string CacheKey(Guid tenantId, Guid candidateId, Guid userId) =>
-        $"bot:stage:{tenantId}:{candidateId}:{userId}";
+    // Keyed per chat, not per person: the running message that gets edited in place is a
+    // message in one chat, and two of somebody's phones each hold their own.
+    private static string CacheKey(Guid tenantId, Guid candidateId, string chatId) =>
+        $"bot:stage:{tenantId}:{candidateId}:{chatId}";
 
     public async Task PushStageChangedAsync(StageChangePush push, CancellationToken ct = default)
     {
@@ -76,13 +78,7 @@ public sealed class NotificationPushService : INotificationPushService
         if (await BotSwitch.IsOffAsync(_platform, push.TenantId, ct))
             return;
 
-        var recipients = await _userManager.Users
-            .Where(u => u.TenantId == push.TenantId && u.BotLinked && u.TelegramChatId != null && !u.IsDeleted)
-            .Select(u => new
-            {
-                u.Id, u.UserName, u.TelegramChatId, u.PreferredLanguage, u.BotMuted, u.BotWatchStages,
-            })
-            .ToListAsync(ct);
+        var recipients = await BotRecipients.ForTenantAsync(_platform, push.TenantId, ct);
 
         foreach (var recipient in recipients)
         {
@@ -94,51 +90,50 @@ public sealed class NotificationPushService : INotificationPushService
 
             // Muted, or watching other stages. Checked before the delivery row is written: a
             // message nobody wanted is not a delivery that failed.
-            if (!BotSubscription.Wants(recipient.BotMuted, recipient.BotWatchStages, push.ToStageName))
+            if (!BotSubscription.Wants(recipient.Muted, recipient.WatchStages, push.ToStageName))
                 continue;
 
             var amharic = string.Equals(recipient.PreferredLanguage, "am", StringComparison.OrdinalIgnoreCase);
-            var key = CacheKey(push.TenantId, push.CandidateId, recipient.Id);
-            var open = _cache.Get<OpenThread>(key);
 
-            // Keep the journey's starting point, so after six hops the one line still reads
-            // "New Contracts → Commission" rather than "Arrival → Commission".
-            var fromStage = open?.FirstStageName ?? push.FromStageName;
-
-            var body = BotMessages.StageMoved(
-                push.CandidateName, push.PassportNumber, fromStage, push.ToStageName,
-                push.ChangedByUserName, amharic);
-
-            var delivery = new NotificationDelivery
+            // One delivery row per chat. A person with two phones where one send failed is not
+            // "sent" and not "failed", and a single row would have to pick one of those.
+            foreach (var chatId in recipient.ChatIds)
             {
-                TenantId = push.TenantId,
-                UserId = recipient.Id,
-                Channel = BotChannel.Telegram,
-                EventType = "CandidateStageChanged",
-                PayloadSummary = body.Length > 512 ? body[..512] : body,
-                Status = DeliveryStatus.Pending
-            };
-            _platform.NotificationDeliveries.Add(delivery);
+                var key = CacheKey(push.TenantId, push.CandidateId, chatId);
+                var open = _cache.Get<OpenThread>(key);
 
-            try
-            {
-                if (string.IsNullOrWhiteSpace(recipient.TelegramChatId))
+                // Keep the journey's starting point, so after six hops the one line still reads
+                // "New Contracts → Commission" rather than "Arrival → Commission".
+                var fromStage = open?.FirstStageName ?? push.FromStageName;
+
+                var body = BotMessages.StageMoved(
+                    push.CandidateName, push.PassportNumber, fromStage, push.ToStageName,
+                    push.ChangedByUserName, amharic);
+
+                var delivery = new NotificationDelivery
                 {
-                    delivery.Status = DeliveryStatus.Skipped;
-                }
-                else
+                    TenantId = push.TenantId,
+                    UserId = recipient.UserId,
+                    Channel = BotChannel.Telegram,
+                    EventType = "CandidateStageChanged",
+                    PayloadSummary = body.Length > 512 ? body[..512] : body,
+                    Status = DeliveryStatus.Pending
+                };
+                _platform.NotificationDeliveries.Add(delivery);
+
+                try
                 {
-                    string? messageId = null;
+                    string? messageId;
 
                     if (open is not null &&
-                        await _telegram.EditMessageTextAsync(recipient.TelegramChatId, open.MessageId, body, ct))
+                        await _telegram.EditMessageTextAsync(chatId, open.MessageId, body, ct))
                     {
                         messageId = open.MessageId;
                     }
                     else
                     {
                         // No thread open, or Telegram refused the edit (too old, or unchanged text).
-                        messageId = await _telegram.SendMessageAsync(recipient.TelegramChatId, body, ct);
+                        messageId = await _telegram.SendMessageAsync(chatId, body, ct);
                     }
 
                     delivery.Status = messageId is null ? DeliveryStatus.Failed : DeliveryStatus.Sent;
@@ -153,10 +148,21 @@ public sealed class NotificationPushService : INotificationPushService
                             new MemoryCacheEntryOptions { SlidingExpiration = CoalesceWindow });
                     }
                 }
+                catch (Exception ex)
+                {
+                    delivery.Status = DeliveryStatus.Failed;
+                    delivery.Error = BotNotificationRules.SanitizeDeliveryError(
+                        ex.Message, _options.CurrentValue.BotToken);
+                    _logger.LogWarning(ex, "Telegram stage push failed for user {UserId}", recipient.UserId);
+                }
+            }
 
-                // The web app's own toast is unaffected by any of the above: someone sitting in
-                // front of a board still wants every step as it happens.
-                await _broadcaster.SendPersonalNotificationAsync(recipient.Id.ToString(), new PersonalNotificationMessage(
+            // The web app's own toast is unaffected by any of the above: someone sitting in
+            // front of a board still wants every step as it happens. Once per person, however
+            // many phones they carry.
+            try
+            {
+                await _broadcaster.SendPersonalNotificationAsync(recipient.UserId.ToString(), new PersonalNotificationMessage(
                     Title: "Stage update",
                     Body: $"{push.CandidateName} → {push.ToStageName ?? "a new stage"}",
                     ActionUrl: "/candidates",
@@ -164,10 +170,8 @@ public sealed class NotificationPushService : INotificationPushService
             }
             catch (Exception ex)
             {
-                delivery.Status = DeliveryStatus.Failed;
-                delivery.Error = BotNotificationRules.SanitizeDeliveryError(
-                    ex.Message, _options.CurrentValue.BotToken);
-                _logger.LogWarning(ex, "Telegram stage push failed for user {UserId}", recipient.Id);
+                // A hub that will not take the message must not stop the next person's phone.
+                _logger.LogWarning(ex, "In-app notification failed for user {UserId}", recipient.UserId);
             }
         }
 

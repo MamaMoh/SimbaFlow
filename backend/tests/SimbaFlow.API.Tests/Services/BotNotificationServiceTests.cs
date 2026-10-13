@@ -67,8 +67,7 @@ public class BotNotificationServiceTests
 
         var first = await link.ConsumeLinkCodeAsync("chat-1", code);
         first.IsSuccess.Should().BeTrue();
-        user.BotLinked.Should().BeTrue();
-        user.TelegramChatId.Should().Be("chat-1");
+        db.BotChatLinks.Should().ContainSingle(l => l.UserId == user.Id && l.ChatId == "chat-1" && !l.IsDeleted);
 
         var second = await link.ConsumeLinkCodeAsync("chat-2", code);
         second.IsSuccess.Should().BeFalse();
@@ -148,7 +147,7 @@ public class BotNotificationServiceTests
     }
 
     [Fact]
-    public async Task Unlink_ClearsTelegramChatId()
+    public async Task Unlink_DropsEveryChatOnTheAccount()
     {
         await using var db = CreatePlatformDb();
         var user = new ApplicationUser
@@ -158,16 +157,17 @@ public class BotNotificationServiceTests
             Email = "linked@example.com",
             FirstName = "Linked",
             LastName = "User",
-            BotLinked = true,
-            TelegramChatId = "chat-99"
         };
         db.Users.Add(user);
+        db.BotChatLinks.AddRange(
+            new BotChatLink { UserId = user.Id, ChatId = "chat-99" },
+            new BotChatLink { UserId = user.Id, ChatId = "chat-100" });
         await db.SaveChangesAsync();
 
         var link = new BotLinkService(db, new MemoryCache(new MemoryCacheOptions()), NullLogger<BotLinkService>.Instance);
         var result = await link.UnlinkCurrentUserAsync(user.Id);
+
         result.IsSuccess.Should().BeTrue();
-        user.BotLinked.Should().BeFalse();
-        user.TelegramChatId.Should().BeNull();
+        db.BotChatLinks.Where(l => l.UserId == user.Id && !l.IsDeleted).Should().BeEmpty();
     }
 }

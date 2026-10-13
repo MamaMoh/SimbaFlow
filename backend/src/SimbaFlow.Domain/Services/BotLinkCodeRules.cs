@@ -27,6 +27,16 @@ public static class BotLinkCodeRules
     /// <summary>Failed attempts allowed from one chat before it must wait.</summary>
     public const int MaxAttemptsPerChat = 5;
 
+    /// <summary>
+    /// Telegram accounts one person may have linked at once.
+    ///
+    /// More than one is the point — an owner carries the office number and their own, and both
+    /// have to ring. A ceiling all the same, because every notification is sent once per linked
+    /// chat and an account quietly accumulating old handsets multiplies that traffic for nobody's
+    /// benefit.
+    /// </summary>
+    public const int MaxChatsPerUser = 5;
+
     /// <summary>How long a chat is refused after using up its attempts.</summary>
     public static readonly TimeSpan AttemptWindow = TimeSpan.FromMinutes(15);
 

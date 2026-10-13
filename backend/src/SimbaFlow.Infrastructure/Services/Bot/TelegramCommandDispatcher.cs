@@ -55,6 +55,23 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         _logger = logger;
     }
 
+    /// <summary>
+    /// Whose account this chat speaks for.
+    ///
+    /// Was a lookup for the one chat id stored on the account. Several chats now point at one
+    /// account, so the chat is what is matched and the account is what comes back — the bot still
+    /// answers with exactly one person's agency, role and permissions, which is the part that
+    /// must not become ambiguous.
+    /// </summary>
+    private async Task<ApplicationUser?> ChatOwnerAsync(string chatId, CancellationToken ct)
+    {
+        var userId = await _botLinkService.ResolveUserIdAsync(chatId, ct);
+        if (userId is null) return null;
+
+        return await _userManager.Users.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == userId.Value && !x.IsDeleted, ct);
+    }
+
     public async Task HandleAsync(TelegramUpdate update, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(update.Text))
@@ -74,7 +91,8 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 return;
             }
 
-            var result = await _botLinkService.ConsumeLinkCodeAsync(update.ChatId, code, ct);
+            var result = await _botLinkService.ConsumeLinkCodeAsync(
+                update.ChatId, code, update.Username, update.DisplayName, ct);
             if (!result.IsSuccess)
             {
                 await _telegram.SendMessageAsync(update.ChatId,
@@ -83,8 +101,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 return;
             }
 
-            var linked = await _userManager.Users.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.TelegramChatId == update.ChatId && x.BotLinked && !x.IsDeleted, ct);
+            var linked = await ChatOwnerAsync(update.ChatId, ct);
             var agencyName = linked?.TenantId is Guid linkedTenant
                 ? await _platform.Tenants.AsNoTracking()
                     .Where(t => t.Id == linkedTenant).Select(t => t.Name).FirstOrDefaultAsync(ct)
@@ -100,8 +117,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
         if (parsed.Command == BotCommand.Start)
         {
-            var known = await _userManager.Users.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.TelegramChatId == update.ChatId && x.BotLinked && !x.IsDeleted, ct);
+            var known = await ChatOwnerAsync(update.ChatId, ct);
 
             // Telling someone who is already linked to go and link is the bot not knowing who it
             // is talking to — /start is the button Telegram shows on every reopen.
@@ -116,9 +132,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             return;
         }
 
-        var user = await _userManager.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.TelegramChatId == update.ChatId && x.BotLinked && !x.IsDeleted, ct);
+        var user = await ChatOwnerAsync(update.ChatId, ct);
         if (user is null)
         {
             await _telegram.SendMessageAsync(update.ChatId,
@@ -126,6 +140,10 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 ct);
             return;
         }
+
+        // Somebody is using this chat, so it is not one of the stale links the owner's roster is
+        // there to find. Throttled inside the service to roughly one write an hour.
+        await _botLinkService.TouchAsync(update.ChatId, update.Username, update.DisplayName, ct);
 
         // The agency's own off switch. /unlink still answers: somebody whose agency has turned
         // the bot off should still be able to disconnect their chat rather than be stuck.
@@ -149,8 +167,15 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 return;
             }
 
-            await _botLinkService.UnlinkCurrentUserAsync(user.Id, ct);
-            await _telegram.SendMessageAsync(update.ChatId, BotMessages.Unlinked(unlinkAm), ct);
+            // This chat only. Somebody with the office phone and their own disconnecting one of
+            // them must not silence the other, which is exactly what unlinking the whole account
+            // would have done.
+            await _botLinkService.UnlinkChatAsync(update.ChatId, ct);
+
+            var stillLinked = await _platform.BotChatLinks.AsNoTracking()
+                .CountAsync(l => l.UserId == user.Id && !l.IsDeleted, ct);
+            await _telegram.SendMessageAsync(
+                update.ChatId, BotMessages.Unlinked(unlinkAm, stillLinked), ct);
             return;
         }
 

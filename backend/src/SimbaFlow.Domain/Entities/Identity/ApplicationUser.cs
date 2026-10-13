@@ -49,8 +49,10 @@ public class ApplicationUser : IdentityUser<Guid>
     public string PreferredLanguage { get; set; } = "en";
 
     // ──── Bot Integration ────
-    public bool BotLinked { get; set; }
-    public string? TelegramChatId { get; set; }
+    //
+    // Which Telegram chats belong to this account lives in BotChatLinks, one row per chat.
+    // It was a single column here, which meant a second phone replaced the first instead of
+    // joining it. See <see cref="Tenancy.BotChatLink"/>.
 
     /// <summary>
     /// Silence without disconnecting.

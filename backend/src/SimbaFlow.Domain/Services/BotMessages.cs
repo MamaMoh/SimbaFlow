@@ -421,11 +421,27 @@ public static class BotMessages
     public static string UnlinkConfirm(bool amharic) => amharic
         ? "ይህን ውይይት ከመለያዎ ልለያየው? <code>/unlink yes</code> ይላኩ።\n\nከዚያ በኋላ ማሳወቂያ አይደርስዎትም፤ እንደገና ለማገናኘት አዲስ ኮድ ያስፈልጋል።"
         : "Disconnect this chat from your account? Send <code>/unlink yes</code>.\n\n"
-          + "Notifications stop, and linking again needs a fresh code from Settings.";
+          + "Notifications stop on this phone, and linking again needs a fresh code from Settings.";
 
-    public static string Unlinked(bool amharic) => amharic
-        ? "ተለያይቷል። ለማገናኘት ከSimbaFlow ቅንብሮች አዲስ ኮድ ይውሰዱ።"
-        : "Disconnected. To link again, take a fresh code from Settings in SimbaFlow.";
+    /// <summary>
+    /// Says which chat went, and what is left.
+    ///
+    /// An account may have several phones linked, and <c>/unlink</c> disconnects the one it was
+    /// sent from. "Disconnected" on its own would read as the whole account having gone quiet,
+    /// which for somebody carrying two numbers is the wrong thing to believe.
+    /// </summary>
+    public static string Unlinked(bool amharic, int remaining = 0)
+    {
+        if (remaining <= 0)
+            return amharic
+                ? "ተለያይቷል። ለማገናኘት ከSimbaFlow ቅንብሮች አዲስ ኮድ ይውሰዱ።"
+                : "Disconnected. To link again, take a fresh code from Settings in SimbaFlow.";
+
+        return amharic
+            ? $"ይህ ውይይት ተለያይቷል። መለያዎ ላይ {remaining} ሌላ ቴሌግራም አሁንም ተገናኝቷል።"
+            : $"This chat is disconnected. Your account still has "
+              + $"{PluralText.Count(remaining, "other Telegram account")} linked.";
+    }
 
     /// <summary>The agency has switched the bot off for everyone.</summary>
     public static string BotTurnedOff(bool amharic) => amharic

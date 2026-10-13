@@ -50,6 +50,7 @@ public class PlatformDbContext
     public DbSet<TenantInfo> Tenants => Set<TenantInfo>();
     public DbSet<SystemConfiguration> SystemConfigurations => Set<SystemConfiguration>();
     public DbSet<BotRegistrationChallenge> BotRegistrationChallenges => Set<BotRegistrationChallenge>();
+    public DbSet<BotChatLink> BotChatLinks => Set<BotChatLink>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
 
@@ -86,8 +87,6 @@ public class PlatformDbContext
                 .HasConversion(
                     v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                     v => string.IsNullOrEmpty(v) ? null : System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null));
-
-            entity.HasIndex(u => u.TelegramChatId);
 
             entity.HasOne(u => u.Department)
                 .WithMany(d => d.Users)
@@ -149,6 +148,18 @@ public class PlatformDbContext
             entity.HasIndex(x => x.Code).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.ExpiresAt });
             entity.Property(x => x.Code).HasMaxLength(12).IsRequired();
+        });
+
+        modelBuilder.Entity<BotChatLink>(entity =>
+        {
+            entity.ToTable("BotChatLinks");
+            // One chat, one account: the bot answers with somebody's permissions, so a chat that
+            // resolved to two people would be an access-control question with no answer.
+            entity.HasIndex(x => x.ChatId).IsUnique().HasFilter("\"IsDeleted\" = false");
+            entity.HasIndex(x => x.UserId);
+            entity.Property(x => x.ChatId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.TelegramUsername).HasMaxLength(64);
+            entity.Property(x => x.DisplayName).HasMaxLength(128);
         });
 
         modelBuilder.Entity<NotificationDelivery>(entity =>

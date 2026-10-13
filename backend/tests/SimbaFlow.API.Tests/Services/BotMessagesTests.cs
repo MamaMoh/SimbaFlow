@@ -219,6 +219,32 @@ public class BotMessagesTests
             AssertParsesAsTelegramHtml(page);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void UnlinkingOneOfSeveralPhonesSaysWhatIsLeft(bool amharic)
+    {
+        // "Disconnected." on its own reads as the whole account having gone quiet. For somebody
+        // carrying the office number and their own, that is the wrong thing to believe — and the
+        // wrong belief leads them to link again when nothing was lost.
+        var last = BotMessages.Unlinked(amharic);
+        var oneOfTwo = BotMessages.Unlinked(amharic, remaining: 1);
+
+        oneOfTwo.Should().NotBe(last);
+        oneOfTwo.Should().Contain("1");
+        AssertParsesAsTelegramHtml(last);
+        AssertParsesAsTelegramHtml(oneOfTwo);
+        AssertParsesAsTelegramHtml(BotMessages.Unlinked(amharic, remaining: 3));
+    }
+
+    [Fact]
+    public void TheLastPhoneGoingReadsAsTheAccountGoingQuiet()
+    {
+        BotMessages.Unlinked(false).Should().Contain("fresh code");
+        // A negative can only come from a miscount, and must not print as "-1 other".
+        BotMessages.Unlinked(false, remaining: -1).Should().Be(BotMessages.Unlinked(false));
+    }
+
     [Fact]
     public void AnAgencysOwnNamesCannotBreakAMessage()
     {

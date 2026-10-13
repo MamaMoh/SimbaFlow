@@ -16,6 +16,25 @@ export type BotStatus = {
   lastConnectedAt?: string | null;
 };
 
+/** One of my own linked Telegram accounts. */
+export type BotChatLink = {
+  id: string;
+  telegramUsername?: string | null;
+  displayName?: string | null;
+  linkedAt: string;
+  lastSeenAt?: string | null;
+};
+
+/** A linked Telegram account with the person it belongs to, for the owner's roster. */
+export type AgencyBotChatLink = BotChatLink & {
+  userId: string;
+  userName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  isActive: boolean;
+  muted: boolean;
+};
+
 export type DeliveryItem = {
   id: string;
   tenantId: string;
@@ -51,6 +70,27 @@ export function useBotDeliveries(enabled = true) {
   );
 }
 
+/** My own linked phones. Several are allowed; the card shows each one separately. */
+export function useBotLinks(enabled = true) {
+  return useSWR<BotChatLink[]>(enabled ? "/api/proxy/bot/links" : null, fetcher, {
+    revalidateOnFocus: false,
+  });
+}
+
+/**
+ * Everyone in the agency who can be reached on Telegram.
+ *
+ * Owner and platform team only — the server refuses the rest, so this is not asked for unless
+ * the signed-in user is one of them.
+ */
+export function useAgencyBotLinks(enabled = true) {
+  return useSWR<AgencyBotChatLink[]>(
+    enabled ? "/api/proxy/bot/agency/links" : null,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+}
+
 export const botApi = {
   async testConnection() {
     const res = await fetch("/api/proxy/bot/test", { method: "POST" });
@@ -62,6 +102,16 @@ export const botApi = {
   },
   async unlink() {
     const res = await fetch("/api/proxy/bot/link", { method: "DELETE" });
+    return res.json();
+  },
+  /** One of my own, by id — the other phones stay linked. */
+  async removeLink(id: string) {
+    const res = await fetch(`/api/proxy/bot/links/${id}`, { method: "DELETE" });
+    return res.json();
+  },
+  /** Somebody else's, as the agency owner. */
+  async removeAgencyLink(id: string) {
+    const res = await fetch(`/api/proxy/bot/agency/links/${id}`, { method: "DELETE" });
     return res.json();
   },
 };

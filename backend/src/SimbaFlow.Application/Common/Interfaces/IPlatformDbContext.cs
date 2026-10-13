@@ -24,6 +24,7 @@ public interface IPlatformDbContext
     DbSet<TenantInfo> Tenants { get; }
     DbSet<SystemConfiguration> SystemConfigurations { get; }
     DbSet<BotRegistrationChallenge> BotRegistrationChallenges { get; }
+    DbSet<BotChatLink> BotChatLinks { get; }
     DbSet<NotificationDelivery> NotificationDeliveries { get; }
     DbSet<ExchangeRate> ExchangeRates { get; }
     DbSet<PartnerAgency> PartnerAgencies { get; }

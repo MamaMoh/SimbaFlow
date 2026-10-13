@@ -88,11 +88,24 @@ public sealed class TelegramGateway : ITelegramGateway
 
             var chatId = chatIdProp.GetInt64().ToString();
             var text = message.TryGetProperty("text", out var textProp) ? textProp.GetString() : null;
-            var fromName = message.TryGetProperty("from", out var fromProp) && fromProp.TryGetProperty("username", out var userProp)
+            var hasFrom = message.TryGetProperty("from", out var fromProp);
+            var fromName = hasFrom && fromProp.TryGetProperty("username", out var userProp)
                 ? userProp.GetString()
                 : null;
 
-            list.Add(new TelegramUpdate(updateId, chatId, text, fromName));
+            // Telegram never tells a bot the phone number, so the handle and the name are all
+            // there is to show an owner looking down a list of who is linked.
+            var displayName = hasFrom
+                ? string.Join(' ', new[]
+                    {
+                        fromProp.TryGetProperty("first_name", out var firstProp) ? firstProp.GetString() : null,
+                        fromProp.TryGetProperty("last_name", out var lastProp) ? lastProp.GetString() : null,
+                    }.Where(part => !string.IsNullOrWhiteSpace(part)))
+                : null;
+
+            list.Add(new TelegramUpdate(
+                updateId, chatId, text, fromName,
+                string.IsNullOrWhiteSpace(displayName) ? null : displayName));
         }
 
         return list;
@@ -253,4 +266,5 @@ public sealed class TelegramGateway : ITelegramGateway
 }
 
 public sealed record TelegramBotIdentity(long Id, string Username, string FirstName);
-public sealed record TelegramUpdate(long UpdateId, string ChatId, string? Text, string? Username);
+public sealed record TelegramUpdate(
+    long UpdateId, string ChatId, string? Text, string? Username, string? DisplayName = null);

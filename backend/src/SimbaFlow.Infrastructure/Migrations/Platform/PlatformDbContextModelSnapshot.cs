@@ -348,9 +348,6 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<string>("AllowedIpRanges")
                         .HasColumnType("text");
 
-                    b.Property<bool>("BotLinked")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("BotMuted")
                         .HasColumnType("boolean");
 
@@ -451,9 +448,6 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
-                    b.Property<string>("TelegramChatId")
-                        .HasColumnType("text");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid");
 
@@ -483,8 +477,6 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
-
-                    b.HasIndex("TelegramChatId");
 
                     b.ToTable("AspNetUsers", "public");
                 });
@@ -1288,6 +1280,66 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.HasIndex("UserId1");
 
                     b.ToTable("StaffProfiles", "public");
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Tenancy.BotChatLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChatId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LinkedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("TelegramUsername")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChatId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BotChatLinks", "public");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Tenancy.BotRegistrationChallenge", b =>

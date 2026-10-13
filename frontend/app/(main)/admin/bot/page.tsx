@@ -8,10 +8,19 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
 import { AgencyBotSwitch } from "@/components/bot/agency-bot-switch";
+import { AgencyBotLinks } from "@/components/bot/agency-bot-links";
 
 export default function BotAdminPage() {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, isAgencyOwner, isSuperAdmin } = usePermissions();
   const canManage = hasPermission("bot.configure") || hasPermission("system.admin");
+  /**
+   * Who is linked is the owner's business and nobody else's inside the agency.
+   *
+   * `bot.configure` can be granted from the roles screen; a list of which of your colleagues can
+   * be reached on their own phone is not something to hand out with a tick box. The server
+   * refuses the rest regardless — this is so nobody is shown a panel that will only error.
+   */
+  const canSeeLinks = isAgencyOwner || isSuperAdmin || hasPermission("system.admin");
   const canUseBot = hasPermission("bot.use") || canManage;
   const canViewDeliveries =
     hasPermission("notification.configure") || hasPermission("system.admin");
@@ -83,6 +92,8 @@ export default function BotAdminPage() {
       <AgencyBotSwitch />
 
       {canUseBot ? <BotLinkCard /> : null}
+
+      {canSeeLinks ? <AgencyBotLinks /> : null}
 
       <div className="rounded-lg border bg-card p-4 shadow-sm space-y-4">
         <div className="flex items-start justify-between gap-4">

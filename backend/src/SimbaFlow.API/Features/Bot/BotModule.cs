@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Options;
 using SimbaFlow.Infrastructure.Services.Bot;
 
@@ -11,6 +12,19 @@ namespace SimbaFlow.API.Features.Bot;
 
 public class BotModule : ICarterModule
 {
+    private const string OwnerOnly =
+        "Who is linked to the agency's bot is shown to the agency owner and the platform team.";
+
+    /// <summary>
+    /// The agency's owner, or the platform team. <c>AgencyOwner</c> is a role that cannot be
+    /// granted from the roles screen, which is what makes it mean "answers for this agency"
+    /// rather than "was given a tick box by somebody inside it".
+    /// </summary>
+    private static bool IsAgencyOwner(ICurrentUserService currentUser) =>
+        currentUser.IsSuperAdmin
+        || AgencyRoles.Owns(currentUser.Roles)
+        || currentUser.HasPermission("system.admin");
+
     public void AddRoutes(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/bot")
@@ -133,6 +147,73 @@ public class BotModule : ICarterModule
                 return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
 
             var result = await linkService.UnlinkCurrentUserAsync(userId);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // ──── My own linked phones ────
+        //
+        // An account may have several. The card used to show none of them, so a second phone
+        // silently replacing the first was invisible from the web application.
+        group.MapGet("/links", async (
+            ICurrentUserService currentUser,
+            IBotLinkService linkService,
+            CancellationToken ct) =>
+        {
+            if (!currentUser.HasPermission("bot.use") || !Guid.TryParse(currentUser.UserId, out var userId))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+
+            var result = await linkService.ListForUserAsync(userId, ct);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapDelete("/links/{id:guid}", async (
+            Guid id,
+            ICurrentUserService currentUser,
+            IBotLinkService linkService,
+            CancellationToken ct) =>
+        {
+            if (!currentUser.HasPermission("bot.use") || !Guid.TryParse(currentUser.UserId, out var userId))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+
+            var result = await linkService.RemoveOwnLinkAsync(userId, id, ct);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        // ──── Everyone the agency's bot talks to ────
+        //
+        // The owner's own bot is answering these people with their agency's data, so the owner is
+        // the one who has to be able to see the list and cut a link — somebody who has left, or a
+        // phone that was lost. Deliberately not behind a permission: `bot.configure` is grantable
+        // from inside the agency, and who is reachable on their own phone is not a roster to hand
+        // out with a tick box. The platform team reaches it too, for support.
+        group.MapGet("/agency/links", async (
+            ICurrentUserService currentUser,
+            IBotLinkService linkService,
+            CancellationToken ct) =>
+        {
+            if (!IsAgencyOwner(currentUser))
+                return Results.Json(new { isSuccess = false, error = OwnerOnly }, statusCode: 403);
+            if (currentUser.TenantId is not Guid tenantId)
+                return Results.Json(
+                    new { isSuccess = false, error = "No agency is selected." }, statusCode: 400);
+
+            var result = await linkService.ListForAgencyAsync(tenantId, ct);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapDelete("/agency/links/{id:guid}", async (
+            Guid id,
+            ICurrentUserService currentUser,
+            IBotLinkService linkService,
+            CancellationToken ct) =>
+        {
+            if (!IsAgencyOwner(currentUser))
+                return Results.Json(new { isSuccess = false, error = OwnerOnly }, statusCode: 403);
+            if (currentUser.TenantId is not Guid tenantId)
+                return Results.Json(
+                    new { isSuccess = false, error = "No agency is selected." }, statusCode: 400);
+
+            var result = await linkService.RemoveAgencyLinkAsync(tenantId, id, ct);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
