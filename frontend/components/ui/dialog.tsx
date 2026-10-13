@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { hereAndLooking } from "@/lib/ui/presence";
 
 function Dialog({
   ...props
@@ -77,6 +78,56 @@ export function usePopperInteractionGuard() {
 }
 
 /**
+ * Whether the person is actually here, looking at this page.
+ *
+ * A dialog closes when you click away from it, which is right — but only while you are in the
+ * page to click away from. Going to another tab or another application to copy something is not
+ * clicking away, and neither is the click that brings the window back: that one belongs to the
+ * window, not to whatever happened to be under the pointer. Both used to take the form with
+ * them, which on this app means going to another site for an E number and returning to an empty
+ * board, with the typing gone and no way to tell what had happened.
+ *
+ * Deliberately not about this dialog's own focus. Nothing here asks where focus is inside the
+ * page; it asks whether the page itself has it, which is the question the person is really
+ * answering when they alt-tab away.
+ */
+export function useHereAndLooking() {
+  const returnedAt = React.useRef(0);
+  const wasAway = React.useRef(false);
+
+  React.useEffect(() => {
+    const left = () => {
+      wasAway.current = true;
+    };
+    const back = () => {
+      // Only counts as a return if we had actually gone. A plain window focus event with no
+      // preceding blur would otherwise open the grace period for free.
+      if (wasAway.current) returnedAt.current = Date.now();
+      wasAway.current = false;
+    };
+    const onVisibility = () =>
+      document.visibilityState === "hidden" ? left() : back();
+
+    // Two different things, and both happen: switching tabs changes visibility without the
+    // window losing focus, and switching applications loses focus without changing visibility.
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", left);
+    window.addEventListener("focus", back);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", left);
+      window.removeEventListener("focus", back);
+    };
+  }, []);
+
+  return () =>
+    hereAndLooking({
+      focused: document.hasFocus(),
+      sinceReturn: returnedAt.current === 0 ? Infinity : Date.now() - returnedAt.current,
+    });
+}
+
+/**
  * Whether anything has been typed into the dialog that is currently open.
  *
  * Reset every time a dialog mounts, which is what makes it per-dialog without a ref: the hook
@@ -130,9 +181,14 @@ function DialogContent({
 }) {
   const cameFromPopper = usePopperInteractionGuard();
   const typedIn = useTypedIn();
+  const hereAndLooking = useHereAndLooking();
 
-  /** There is work in here to lose, and the caller asked for it to be kept. */
-  const holdOpen = () => !dismissible && typedIn();
+  /**
+   * Reasons not to take this dismissal: there is work in here the caller asked to keep, the
+   * click was really on a Select's list, or the person is not in the page at all.
+   */
+  const holdOpen = () =>
+    (!dismissible && typedIn()) || cameFromPopper() || !hereAndLooking();
 
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -140,15 +196,17 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         onPointerDownOutside={(event) => {
-          if (holdOpen() || cameFromPopper()) event.preventDefault();
+          if (holdOpen()) event.preventDefault();
           onPointerDownOutside?.(event);
         }}
         onInteractOutside={(event) => {
-          if (holdOpen() || cameFromPopper()) event.preventDefault();
+          if (holdOpen()) event.preventDefault();
           onInteractOutside?.(event);
         }}
         onEscapeKeyDown={(event) => {
-          if (holdOpen()) event.preventDefault();
+          // Escape is unambiguous and comes from the keyboard of somebody who is here, so the
+          // away guard has no part in it — only the unsaved-work one.
+          if (!dismissible && typedIn()) event.preventDefault();
           onEscapeKeyDown?.(event);
         }}
         // A modal dialog has no business closing because focus moved — which is what a Select

@@ -5,7 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { usePopperInteractionGuard } from "@/components/ui/dialog";
+import { usePopperInteractionGuard, useHereAndLooking } from "@/components/ui/dialog";
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;
@@ -65,6 +65,10 @@ function SheetContent({
   overlayClassName?: string;
 }) {
   const cameFromPopper = usePopperInteractionGuard();
+  const hereAndLooking = useHereAndLooking();
+
+  /** A Select's list, or a person who is not in the page — neither is clicking away. */
+  const holdOpen = () => cameFromPopper() || !hereAndLooking();
 
   const baseClasses =
     "bg-background fixed z-50 flex flex-col gap-4 shadow-lg will-change-transform will-change-opacity transition-transform transition-opacity ease-in-out duration-300 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 data-[state=closed]:pointer-events-none";
@@ -104,11 +108,11 @@ function SheetContent({
         data-slot="sheet-content"
         className={cn(baseClasses, sideClasses[side], className)}
         onPointerDownOutside={(event) => {
-          if (cameFromPopper()) event.preventDefault();
+          if (holdOpen()) event.preventDefault();
           onPointerDownOutside?.(event);
         }}
         onInteractOutside={(event) => {
-          if (cameFromPopper()) event.preventDefault();
+          if (holdOpen()) event.preventDefault();
           onInteractOutside?.(event);
         }}
         onFocusOutside={(event) => event.preventDefault()}
