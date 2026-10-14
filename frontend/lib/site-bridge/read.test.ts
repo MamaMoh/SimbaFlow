@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { EPRO_CANDIDATE, EPRO_SPONSOR, type SiteManifest } from "./manifest";
-import { readFromText, tidyPhone, toIsoDate } from "./read";
+import { bestRead, readFromText, tidyPhone, toIsoDate } from "./read";
 
 /**
  * Every value in this file is invented. The pages these maps were written against hold real
@@ -189,4 +189,131 @@ test("a portal that prints the whole name in one box still fills three", () => {
   assert.equal(values.firstName, "HIWOT");
   assert.equal(values.middleName, "TADESSE");
   assert.equal(values.lastName, "GEBRU");
+});
+
+/**
+ * The same page as it actually arrives on the clipboard.
+ *
+ * The portal renders each label in its own cell with the value in the cell beneath, so copying
+ * the page gives label line, value line, and no colon anywhere. Around it come the maintenance
+ * banner, the navigation and the section headings, none of which are fields.
+ *
+ * Invented throughout, as above.
+ */
+const EPRO_PAGE_WITHOUT_COLONS = `
+نعتذر عن تعطل الخدمة مؤقتا
+EN
+Dashboard
+Organizations
+HR Pool
+Partnership Contracts
+Employment Requests
+
+Preview
+View Candidate
+Personal Information
+Surname
+GEBRU
+Given Names
+HIWOT TADESSE
+Gender
+Female
+Date of Birth
+1994-05-12
+Marital Status
+Married
+Religion
+Muslim
+Job
+House Maid
+Education level
+Preparatory School
+Skills
+Baby Sitting & Cleaning
+ID Number
+AGENCY0001
+Mobile Number
++251911000000
+Languages
+Arabic
+Number Of Children
+0
+E-Mail
+hiwot.example@example.com
+Work Experience
+Saudi Arabia - 6 years
+
+Passport Information
+Passport Number
+EQ0000001
+Passport Issue Place
+Addis Abeba
+Passport Issue Date
+2024-02-01
+Passport Expiry Date
+2034-01-31
+
+Address
+Country
+Ethiopia
+City
+Dessie
+
+Relative Information
+Relative name
+MUNIR ALEMU
+Relative kinship
+Husband
+Relative phone
+0911222333
+Relative address
+Kombolcha
+`;
+
+test("a portal that prints no colons is still a page we can read", () => {
+  // The candidate page puts the label in one cell and the value in the cell under it. Copied,
+  // that is two plain lines with nothing between them, and a parse that insists on a colon reads
+  // the whole page as not a page at all — which is what the desk saw: a paste that recognised
+  // nothing and a Fill button that stayed grey.
+  const { values, found } = readFromText(EPRO_PAGE_WITHOUT_COLONS, EPRO_CANDIDATE);
+
+  assert.ok(found.length >= 15, `recognised only ${found.length} fields`);
+  assert.equal(values.firstName, "HIWOT");
+  assert.equal(values.middleName, "TADESSE");
+  assert.equal(values.lastName, "GEBRU");
+  assert.equal(values.dateOfBirth, "1994-05-12");
+  assert.equal(values.passportNumber, "EQ0000001");
+  assert.equal(values.passportIssueDate, "2024-02-01");
+  assert.equal(values.passportExpiryDate, "2034-01-31");
+  assert.equal(values.passportPlaceOfIssue, "Addis Abeba");
+  assert.equal(values.phoneNumber, "+251911000000");
+  assert.equal(values.email, "hiwot.example@example.com");
+  assert.equal(values.qualification, "Preparatory School");
+  assert.equal(values.relativeName, "MUNIR ALEMU");
+  assert.equal(values.relativeCity, "Kombolcha");
+});
+
+test("a section heading that shares a field's name takes no value", () => {
+  // "Address" heads the section and has nothing under it but the next label. Read as a field it
+  // would file the candidate's address as the word "Country", which is the kind of wrong that
+  // survives review because it looks like something.
+  const { values } = readFromText(EPRO_PAGE_WITHOUT_COLONS, EPRO_CANDIDATE);
+  assert.equal(values.address, undefined);
+  assert.equal(values.country, "Ethiopia");
+  assert.equal(values.city, "Dessie");
+});
+
+test("the colonless page is recognised as the candidate page and not the contract block", () => {
+  const best = bestRead(EPRO_PAGE_WITHOUT_COLONS, [EPRO_CANDIDATE, EPRO_SPONSOR]);
+  assert.equal(best?.manifest.id, EPRO_CANDIDATE.id);
+});
+
+test("a bare word in prose is not a label", () => {
+  // Only a label standing alone on its own line counts. A page that mentions the word in a
+  // sentence has not printed a field.
+  const { found } = readFromText(
+    "The gender of the applicant is recorded elsewhere.\nSee the Job description attached.\n",
+    EPRO_CANDIDATE,
+  );
+  assert.equal(found.length, 0);
 });

@@ -49,6 +49,11 @@ const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * address into the candidate's own address field, which is wrong in a way nobody would catch by
  * reading the result. So overlapping hits are resolved in favour of the longest label that
  * starts earliest, and a known label beats a stranger of the same length.
+ *
+ * Not every portal prints the colon. The candidate page puts the label on one line and the value
+ * on the next and nothing between them, so a label standing alone on its own line counts too.
+ * Only known labels are read that way: a page of bare lines gives nothing to tell a label from a
+ * value, and guessing there would invent fields out of people's names.
  */
 function labelHits(text: string, fields: ReadField[]): Hit[] {
   const all: Hit[] = [];
@@ -59,6 +64,18 @@ function labelHits(text: string, fields: ReadField[]): Hit[] {
     const pattern = new RegExp(`${escape(field.label).replace(/\s+/g, "\\s+")}\\s*:`, "gi");
     for (let m = pattern.exec(text); m; m = pattern.exec(text)) {
       all.push({ start: m.index, end: m.index + m[0].length, label: field.label, field });
+    }
+
+    // The same label with no colon, holding a line on its own. Its own line and no more: a label
+    // sharing a line with its value is the colon case above, and a label found mid-sentence is
+    // prose. Whitespace inside the label stays on one line for the same reason.
+    const bare = new RegExp(
+      `(?:^|\\n)[ \\t]*(${escape(field.label).replace(/\s+/g, "[ \\t]+")})[ \\t]*(?=\\n|$)`,
+      "gi",
+    );
+    for (let m = bare.exec(text); m; m = bare.exec(text)) {
+      const start = m.index + m[0].indexOf(m[1]);
+      all.push({ start, end: start + m[1].length, label: field.label, field });
     }
   }
 
