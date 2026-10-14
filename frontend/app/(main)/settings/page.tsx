@@ -6,6 +6,7 @@ import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
 import { IntakeDefaultsCard } from "@/components/settings/intake-defaults-card";
+import { PortalAnswersCard } from "@/components/settings/portal-answers-card";
 import { LogoUpload } from "@/components/branding/logo-upload";
 import { useAgencyBranding } from "@/lib/api/branding";
 
@@ -98,6 +99,10 @@ export default function SettingsPage() {
       </div>
 
       {canAdmin ? <IntakeDefaultsCard /> : null}
+
+      {/* Readable by anyone who can see settings: filling a form needs these, and only
+          changing them is restricted. */}
+      {canReadSettings ? <PortalAnswersCard canEdit={canManageSettings} /> : null}
     </div>
   );
 }

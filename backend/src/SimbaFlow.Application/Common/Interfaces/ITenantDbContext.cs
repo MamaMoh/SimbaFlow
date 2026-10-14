@@ -23,6 +23,7 @@ public interface ITenantDbContext
     // Agency intake defaults (one row per tenant schema)
     DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults { get; }
     DbSet<AgencySkill> AgencySkills { get; }
+    DbSet<AgencyPortalAnswer> AgencyPortalAnswers { get; }
 
     // Workflow
     DbSet<WorkflowDefinition> WorkflowDefinitions { get; }

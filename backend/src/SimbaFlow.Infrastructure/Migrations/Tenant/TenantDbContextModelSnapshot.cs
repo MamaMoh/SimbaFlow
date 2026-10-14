@@ -1420,6 +1420,68 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.ToTable("agency_intake_defaults", (string)null);
                 });
 
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Tenancy.AgencyPortalAnswer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("label");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("SiteId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("site_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("updated_by");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agency_portal_answers");
+
+                    b.HasIndex("SiteId", "Label")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agency_portal_answers_site_id_label")
+                        .HasFilter("is_deleted = FALSE");
+
+                    b.ToTable("agency_portal_answers", (string)null);
+                });
+
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Tenancy.AgencySkill", b =>
                 {
                     b.Property<Guid>("Id")

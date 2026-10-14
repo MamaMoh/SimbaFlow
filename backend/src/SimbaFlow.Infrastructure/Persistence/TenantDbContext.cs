@@ -42,6 +42,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
     // Agency intake defaults (one row per tenant schema)
     public DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults => Set<AgencyIntakeDefaults>();
     public DbSet<AgencySkill> AgencySkills => Set<AgencySkill>();
+    public DbSet<AgencyPortalAnswer> AgencyPortalAnswers => Set<AgencyPortalAnswer>();
 
     // Workflow
     public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
@@ -168,6 +169,19 @@ public class TenantDbContext : DbContext, ITenantDbContext
                 .HasFilter("built_in_key IS NOT NULL AND is_deleted = FALSE");
             entity.Property(s => s.Name).HasMaxLength(128);
             entity.Property(s => s.BuiltInKey).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<AgencyPortalAnswer>(entity =>
+        {
+            entity.ToTable("agency_portal_answers");
+            // One answer per box. The filter is what lets a deleted row be replaced rather than
+            // blocking the agency from ever answering that box again.
+            entity.HasIndex(a => new { a.SiteId, a.Label })
+                .IsUnique()
+                .HasFilter("is_deleted = FALSE");
+            entity.Property(a => a.SiteId).HasMaxLength(64).IsRequired();
+            entity.Property(a => a.Label).HasMaxLength(128).IsRequired();
+            entity.Property(a => a.Value).HasMaxLength(256);
         });
 
         // Workflow
