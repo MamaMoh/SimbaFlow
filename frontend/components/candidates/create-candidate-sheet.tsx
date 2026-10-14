@@ -30,11 +30,14 @@ import {
   Loader2,
   Plus,
   ScanLine,
+  ClipboardPaste,
   BookOpen,
   Maximize2,
   ArrowLeft,
   AlertTriangle,
 } from "lucide-react";
+import { PasteFromPortal } from "@/components/site-bridge/paste-from-portal";
+import type { FieldKey } from "@/lib/site-bridge/manifest";
 import { cn } from "@/lib/utils";
 import { FormSection } from "@/components/candidates/form-section";
 import { ImageLightbox } from "@/components/candidates/candidate-image";
@@ -821,6 +824,7 @@ export function CandidateApplicationForm({
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [fullPhotoFile, setFullPhotoFile] = useState<File | null>(null);
   const [passportFile, setPassportFile] = useState<File | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrStatus, setOcrStatus] = useState("");
   const [ocrPercent, setOcrPercent] = useState(0);
@@ -941,6 +945,73 @@ export function CandidateApplicationForm({
       setOcrStatus("");
       setOcrPercent(0);
     }
+  };
+
+  /**
+   * A page copied off the portal, landing in the boxes.
+   *
+   * The parse hands over canonical values — ISO dates, "Female", a name split into its three
+   * Ethiopian parts — and this is where they are spelt the way this form spells them: a gender
+   * is "1" here, and a religion or an occupation has to be one of the options on the select or
+   * the box shows empty with the value invisibly set.
+   *
+   * Only non-empty values are written. A paste that is missing the religion should leave the
+   * religion alone, not blank what somebody already chose.
+   */
+  const applyPasted = (values: Partial<Record<FieldKey, string>>) => {
+    const put = (name: any, value?: string, validate = false) => {
+      if (value) setValue(name, value, validate ? { shouldValidate: true } : undefined);
+    };
+
+    put("firstName", values.firstName, true);
+    put("middleName", values.middleName);
+    put("lastName", values.lastName, true);
+    put("passportNumber", values.passportNumber, true);
+    put("dateOfBirth", values.dateOfBirth, true);
+    put("gender", normalizeGender(values.gender), true);
+    put("maritalStatus", matchOption(MARITAL_STATUSES, values.maritalStatus), true);
+    put("religion", matchOption(RELIGIONS, values.religion));
+    put("occupation", matchOption(OCCUPATIONS, values.occupation), true);
+    put("qualification", values.qualification);
+    put("numberOfChildren", values.numberOfChildren);
+    put("passportPlaceOfIssue", values.passportPlaceOfIssue);
+    put("passportIssueDate", values.passportIssueDate);
+    put("passportExpiryDate", values.passportExpiryDate);
+    put("phoneNumber", values.phoneNumber);
+    put("email", values.email);
+    put("address", values.address);
+    put("city", values.city);
+    put("country", values.country);
+    put("region", values.region);
+    put("subcity", values.subcity);
+    put("woreda", values.woreda);
+    put("otherLanguages", values.otherLanguages);
+    put("visaNumber", values.visaNumber);
+    put("eNumber", values.eNumber);
+    put("sponsorName", values.sponsorName);
+    put("sponsorIdNumber", values.sponsorIdNumber);
+    put("sponsorPhone", values.sponsorPhone);
+    put("sponsorAddress", values.sponsorAddress);
+    put("agentName", values.agentName);
+    put("relativeName", values.relativeName);
+    put("relativeKinship", values.relativeKinship);
+    put("relativePhone", values.relativePhone);
+    put("relativeCity", values.relativeCity);
+
+    // "Saudi Arabia - 6 years" is one posting, and only worth adding when nothing has been
+    // typed into the table yet — a paste should not push somebody's rows down.
+    const rows = getValues("workExperiences") ?? [];
+    const empty = rows.every((r: any) => !r?.country && !r?.occupation && !r?.years);
+    if (values.worksIn && empty) {
+      workExperience.replace([
+        { country: values.worksIn, occupation: values.occupation ?? "", years: values.experienceAbroadYears ?? "" },
+      ]);
+    }
+
+    const count = Object.values(values).filter(Boolean).length;
+    toast.success(`Filled ${count} fields from the portal`, {
+      description: "Check them against the page before saving — a portal page can be out of date.",
+    });
   };
 
   const onPassportFileChange = (file: File | null) => {
@@ -1610,6 +1681,24 @@ export function CandidateApplicationForm({
                   )}
                   {ocrBusy ? "Scanning…" : "Scan & fill form"}
                 </Button>
+                {/* The other way of not typing this form out by hand, and the one that works
+                    when there is no booklet to photograph but the candidate is already on the
+                    portal. */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => setPasteOpen(true)}
+                >
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  Paste from portal
+                </Button>
+                <PasteFromPortal
+                  open={pasteOpen}
+                  onOpenChange={setPasteOpen}
+                  onApply={applyPasted}
+                />
                 {ocrBusy ? (
                   <div className="flex min-w-[200px] flex-1 items-center gap-2">
                     <Progress value={ocrPercent} className="h-2 flex-1 bg-emerald-100" />

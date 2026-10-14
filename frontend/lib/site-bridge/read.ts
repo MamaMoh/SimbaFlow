@@ -1,0 +1,240 @@
+import {
+  type FieldKey,
+  type ReadField,
+  type SiteManifest,
+  type ValueKind,
+} from "./manifest";
+
+/**
+ * Pulling a candidate out of a page that has been copied to the clipboard.
+ *
+ * Driven by the portal's own labels rather than by the shape of the values. A regex for "ten
+ * digits beginning 19" finds the visa number right up until the day a sponsor ID happens to look
+ * the same, and then it fills the wrong box silently. "Visa Number:" means the visa number on
+ * every page that prints it, and when the portal stops printing it the field simply comes back
+ * empty — which is a thing the person can see.
+ *
+ * The parse never fills anything on its own. It returns what it found, what it did not, and what
+ * it saw but does not understand, and a person confirms. That last list is the useful one: it is
+ * how a label we have not mapped yet makes itself known instead of being silently dropped.
+ */
+
+export type ReadResult = {
+  values: Partial<Record<FieldKey, string>>;
+  found: { key: FieldKey; label: string; value: string }[];
+  missing: { key: FieldKey; label: string }[];
+  /** Labels on the page with no field of ours behind them. */
+  unrecognised: { label: string; value: string }[];
+};
+
+type Hit = {
+  start: number;
+  end: number;
+  label: string;
+  field?: ReadField;
+};
+
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Where every label sits in the text, known ones and strangers alike.
+ *
+ * Strangers are collected for a reason beyond reporting them: they are boundaries. A value runs
+ * until the next label starts, so an unmapped "Skills:" sitting between two mapped labels has to
+ * be found, or the field before it swallows both the label and its value.
+ *
+ * Labels also sit inside one another — "Address" is a label and so is "Relative address", and
+ * the short one matches in the middle of the long one. Left alone that puts the relative's
+ * address into the candidate's own address field, which is wrong in a way nobody would catch by
+ * reading the result. So overlapping hits are resolved in favour of the longest label that
+ * starts earliest, and a known label beats a stranger of the same length.
+ */
+function labelHits(text: string, fields: ReadField[]): Hit[] {
+  const all: Hit[] = [];
+
+  for (const field of fields) {
+    // Whitespace in a label is flexible because a copied page may wrap or tab where it printed
+    // a single space.
+    const pattern = new RegExp(`${escape(field.label).replace(/\s+/g, "\\s+")}\\s*:`, "gi");
+    for (let m = pattern.exec(text); m; m = pattern.exec(text)) {
+      all.push({ start: m.index, end: m.index + m[0].length, label: field.label, field });
+    }
+  }
+
+  // A stranger has to look like a label and not merely contain a colon: at the start of a line,
+  // or after the run of space a column layout leaves behind. Without that, `10:30` reads as a
+  // label. A `//` after the colon is a URL rather than an empty field.
+  const generic = /(?:^|\n|\t|\u00a0| {2,})\s*([A-Za-z][A-Za-z0-9 .'/-]{0,40}?)\s*:/g;
+  for (let m = generic.exec(text); m; m = generic.exec(text)) {
+    const start = m.index + m[0].indexOf(m[1]);
+    const end = m.index + m[0].length;
+    if (text.slice(end, end + 2) === "//") continue;
+    all.push({ start, end, label: m[1].trim() });
+  }
+
+  all.sort(
+    (a, b) =>
+      a.start - b.start ||
+      b.end - b.start - (a.end - a.start) ||
+      (a.field ? 0 : 1) - (b.field ? 0 : 1),
+  );
+
+  const kept: Hit[] = [];
+  for (const hit of all) {
+    if (kept.some((k) => hit.start < k.end && hit.end > k.start)) continue;
+    kept.push(hit);
+  }
+  return kept;
+}
+
+/** Portals print one value per label; a copied page turns the layout into newlines and tabs. */
+const tidy = (value: string) => value.replace(/\s+/g, " ").trim();
+
+/**
+ * The value, and nothing that merely follows it.
+ *
+ * A value runs until the next *label*, but a page is not only labels: it has headings. "Passport
+ * Expiry Date:" is followed by the date, a blank line and the word "Address", which heads the
+ * next section and carries no colon to be recognised by. Taken whole, the expiry date reads
+ * "2034-01-31 Address".
+ *
+ * Every portal here prints one value per label, on the label's own line or the one under it, so
+ * the first line with anything on it is the value and the rest is somebody else's.
+ */
+const firstLine = (slice: string) =>
+  slice.split("\n").map((l) => l.trim()).find((l) => l.length > 0) ?? "";
+
+/**
+ * A date as the record holds it, which is ISO.
+ *
+ * Slash dates with no part above twelve are genuinely ambiguous, and this reads them day-first —
+ * the convention on the portals these pages come from. A date that cannot be understood is
+ * handed back untouched rather than guessed at, so it reaches the confirm step looking wrong
+ * instead of arriving in the record looking plausible.
+ */
+export function toIsoDate(raw: string): string {
+  const value = raw.trim();
+
+  const iso = value.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (iso) {
+    const [, y, m, d] = iso;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  const slash = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (slash) {
+    const [, a, b, y] = slash;
+    const dayFirst = Number(a) > 12 ? true : Number(b) > 12 ? false : true;
+    const day = dayFirst ? a : b;
+    const month = dayFirst ? b : a;
+    if (Number(day) > 31 || Number(month) > 12) return value;
+    return `${y}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  return value;
+}
+
+/** Digits and a leading +, because a portal prints spaces and brackets that nothing wants. */
+export const tidyPhone = (raw: string) => {
+  const kept = raw.replace(/[^\d+]/g, "");
+  return kept.startsWith("+") ? `+${kept.slice(1).replace(/\+/g, "")}` : kept.replace(/\+/g, "");
+};
+
+function normalise(value: string, kind?: ValueKind): string {
+  const clean = tidy(value);
+  if (kind === "date") return toIsoDate(clean);
+  if (kind === "phone") return tidyPhone(clean);
+  if (kind === "number") return clean.replace(/[^\d]/g, "");
+  return clean;
+}
+
+/**
+ * The shapes a portal presents that are not fields of ours.
+ *
+ * Ethiopian names are given, father, grandfather, and a passport splits them as given names and
+ * a surname — so "HIWOT TADESSE" / "GEBRU" is first, middle, last in that order. The insurance
+ * form asks for precisely those three under precisely those names, which is the whole of the
+ * transform between the two sites.
+ */
+function expand(key: FieldKey, value: string, into: Partial<Record<FieldKey, string>>): void {
+  if (key === "givenNames") {
+    const parts = value.split(/\s+/).filter(Boolean);
+    if (parts.length > 0) into.firstName = parts[0];
+    if (parts.length > 1) into.middleName = parts.slice(1).join(" ");
+    return;
+  }
+
+  if (key === "workExperienceSummary") {
+    // "Saudi Arabia - 6 years"
+    const m = value.match(/^(.*?)\s*[-–]\s*(\d+)\s*year/i);
+    if (m) {
+      into.worksIn = m[1].trim();
+      into.experienceAbroadYears = m[2];
+    } else {
+      into.worksIn = value;
+    }
+    return;
+  }
+
+  into[key] = value;
+}
+
+export function readFromText(text: string, manifest: SiteManifest): ReadResult {
+  const fields = manifest.fields as ReadField[];
+  const source = text.replace(/\r\n?/g, "\n").replace(/ /g, " ");
+  const hits = labelHits(source, fields);
+
+  const values: Partial<Record<FieldKey, string>> = {};
+  const found: ReadResult["found"] = [];
+  const unrecognised: ReadResult["unrecognised"] = [];
+  const seen = new Set<FieldKey>();
+
+  hits.forEach((hit, i) => {
+    const until = hits[i + 1]?.start ?? source.length;
+    const raw = firstLine(source.slice(hit.end, until));
+    if (!hit.field) {
+      const value = tidy(raw);
+      if (value) unrecognised.push({ label: hit.label, value });
+      return;
+    }
+
+    const value = normalise(raw, hit.field.kind);
+    // A label printed twice — once in a summary and once in detail — keeps its first value.
+    // Later ones are usually the emptier of the two.
+    if (!value || seen.has(hit.field.key)) return;
+
+    seen.add(hit.field.key);
+    expand(hit.field.key, value, values);
+    found.push({ key: hit.field.key, label: hit.field.label, value });
+  });
+
+  const missing = fields
+    .filter((f) => !seen.has(f.key))
+    .map((f) => ({ key: f.key, label: f.label }));
+
+  return { values, found, missing, unrecognised };
+}
+
+/**
+ * Which page this is, worked out from the page itself.
+ *
+ * Asking the person to say whether they copied the candidate page or the contract page is asking
+ * them to think about our filing rather than their work, and to be wrong occasionally. The
+ * labels on the page already answer it: whichever map recognises more of them is the one.
+ *
+ * Ties and near-ties go to neither — a paste that matches two maps equally is usually a paste of
+ * something else entirely, and a confident wrong answer is worse here than no answer.
+ */
+export function bestRead(
+  text: string,
+  manifests: SiteManifest[],
+): { manifest: SiteManifest; result: ReadResult } | null {
+  const scored = manifests
+    .filter((m) => m.direction === "read")
+    .map((manifest) => ({ manifest, result: readFromText(text, manifest) }))
+    .sort((a, b) => b.result.found.length - a.result.found.length);
+
+  const best = scored[0];
+  if (!best || best.result.found.length === 0) return null;
+  return best;
+}
