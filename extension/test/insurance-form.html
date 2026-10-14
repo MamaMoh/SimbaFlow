@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Add Insured (harness)</title>
+<style>
+ body{font:13px system-ui;padding:16px;max-width:900px}
+ .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+ .field{display:flex;flex-direction:column;width:200px}
+ .field label{font-size:11px;color:#444;margin-bottom:3px}
+ input,select{padding:5px;border:1px solid #ccc;border-radius:4px}
+</style></head>
+<body>
+<h3>Add Insured</h3>
+<div class="row">
+  <div class="field"><label>Title</label><select><option></option><option>Mr.</option><option>Ms.</option><option>Mrs.</option></select></div>
+  <div class="field"><label>First Name</label><input placeholder="First Name"></div>
+  <div class="field"><label>Father Name</label><input placeholder="Father Name"></div>
+  <div class="field"><label>Grand Father Name</label><input placeholder="Grand Father Name"></div>
+</div>
+<div class="row">
+  <div class="field"><label>Gender</label><select><option></option><option>Male</option><option>Female</option></select></div>
+  <div class="field"><label>Date Of Birth</label><input type="date"></div>
+  <div class="field"><label>Passport Number</label><input placeholder="Passport Number"></div>
+  <div class="field"><label>Labor ID</label><input placeholder="Labor ID"></div>
+</div>
+<div class="row">
+  <div class="field"><label>Phone</label><input placeholder="Phone"></div>
+  <div class="field"><label>Email</label><input placeholder="Email"></div>
+  <div class="field"><label>Woreda</label><input placeholder="Woreda"></div>
+  <div class="field"><label>Sub City</label><input placeholder="Sub city"></div>
+</div>
+<div class="row">
+  <!-- Region is a custom widget: a text box pretending to be a dropdown. -->
+  <div class="field"><label>Region</label><input placeholder="Region" role="combobox" readonly></div>
+  <div class="field"><label>Country</label><input value="Ethiopia"></div>
+  <div class="field"><label>Effective Date</label><input type="date" value="2026-10-14"></div>
+  <div class="field"><label>Country Of Destination</label><select><option></option><option>Saudi Arabia</option><option>Kuwait</option></select></div>
+</div>
+<div class="row">
+  <label><input type="checkbox" id="declare"> I hereby declare the information is true</label>
+  <button type="submit" id="go">Add Member</button>
+</div>
+<script src="../page-functions.js"></script>
+</body></html>

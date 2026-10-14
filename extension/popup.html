@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fill from SimbaFlow</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <strong>SimbaFlow</strong>
+      <span id="form-name" class="muted">looking at this page…</span>
+    </header>
+
+    <section id="search-area" hidden>
+      <input id="search" type="search" placeholder="Name, passport or labour ID" autocomplete="off" />
+      <ul id="results"></ul>
+    </section>
+
+    <section id="plan-area" hidden>
+      <div id="chosen"></div>
+      <p id="counts" class="muted"></p>
+      <button id="fill" type="button">Fill this form</button>
+      <p class="muted small">
+        Nothing is submitted. Check the form, then press its own button yourself.
+      </p>
+      <ul id="outcome"></ul>
+      <button id="back" type="button" class="link">Choose somebody else</button>
+    </section>
+
+    <p id="message" class="muted"></p>
+    <script src="page-functions.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
