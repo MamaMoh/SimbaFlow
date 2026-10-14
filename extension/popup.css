@@ -191,6 +191,9 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 }
 .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
 .btn svg { width: 15px; height: 15px; }
+.btn-icon { display: inline-flex; }
+/* The hint line shares its row with a spinner while a search is in flight. */
+#search-hint svg { width: 11px; height: 11px; vertical-align: -1px; margin-right: 3px; }
 .btn-primary { background: var(--primary); color: var(--primary-foreground); }
 .btn-primary:hover:not(:disabled) { opacity: 0.9; }
 .btn-outline { background: transparent; border-color: var(--border); color: inherit; }

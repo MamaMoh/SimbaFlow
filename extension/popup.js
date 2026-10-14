@@ -109,21 +109,31 @@ function showEmpty(title, detail, action) {
   show("empty");
 }
 
-/** "Hiwot Tadesse" → "HT". Two letters, because three in a 34px circle is a smudge. */
-const initialsOf = (name) =>
-  String(name || "")
+/**
+ * "Hiwot Tadesse" → "HT". Two letters, because three in a 34px circle is a smudge.
+ *
+ * Falls back to the passport rather than returning nothing: a record with no name on it is rare
+ * and an empty circle beside a passport number reads as a broken screen rather than a thin one.
+ */
+const initialsOf = (name, fallback = "") => {
+  const letters = String(name || "")
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+  return letters || String(fallback).slice(0, 2).toUpperCase() || "—";
+};
 
 const icon = (paths) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 
 const TICK = icon('<path d="M20 6 9 17l-5-5"/>');
+const SPINNER = `<svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+  stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-6.2-8.6"/></svg>`;
 const BANG = icon('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>');
+const DOWN = icon('<path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/>');
 
 /* ─── starting up ───────────────────────────────────────────────────────────── */
 
@@ -179,7 +189,7 @@ $("search").addEventListener("input", (e) => {
     $("search-hint").textContent = "Type a name, or part of a passport number.";
     return;
   }
-  $("search-hint").textContent = "Searching…";
+  $("search-hint").innerHTML = `${SPINNER} Searching…`;
   searchTimer = setTimeout(() => void search(term), 250);
 });
 
@@ -225,7 +235,7 @@ async function search(term) {
       li.dataset.id = c.id;
       li.setAttribute("role", "option");
       li.innerHTML = `
-        <span class="avatar">${initialsOf(name)}</span>
+        <span class="avatar">${initialsOf(name, c.passportNumber)}</span>
         <span class="who">
           <span class="who-name"></span>
           <span class="who-sub"></span>
@@ -255,7 +265,7 @@ async function choose(candidateId) {
 
     $("chosen").textContent = state.candidate.name;
     $("chosen-sub").textContent = state.candidate.passportNumber || "No passport on file";
-    $("initials").textContent = initialsOf(state.candidate.name);
+    $("initials").textContent = initialsOf(state.candidate.name, state.candidate.passportNumber);
     $("outcome").innerHTML = "";
     $("fill-label").textContent = "Fill this form";
     $("fill").disabled = false;
@@ -296,6 +306,7 @@ const WHY = {
 
 $("fill").addEventListener("click", async () => {
   $("fill").disabled = true;
+  $("fill-icon").innerHTML = SPINNER;
   $("fill-label").textContent = "Filling…";
   try {
     const results = await onActiveTab("fill", [state.plan.steps]);
@@ -335,6 +346,7 @@ $("fill").addEventListener("click", async () => {
     say(err.message || "Could not fill the form.");
     $("fill-label").textContent = "Fill this form";
   } finally {
+    $("fill-icon").innerHTML = DOWN;
     $("fill").disabled = false;
   }
 });

@@ -19,6 +19,7 @@ const css = readFileSync(join(ext, "popup.css"), "utf8").replace(
   `url("data:font/woff2;base64,${readFileSync(join(ext, "fonts/Geist-Variable.woff2")).toString("base64")}") format("woff2-variations")`,
 );
 
+const version = JSON.parse(readFileSync(join(ext, "manifest.json"), "utf8")).version;
 const html = readFileSync(join(ext, "popup.html"), "utf8");
 const body = html.slice(html.indexOf("<body>") + 6, html.indexOf("</body>"))
   .replace('<script src="popup.js"></script>', "");
@@ -37,7 +38,7 @@ const PLAN = {
 const STUB = `
 <script>
 window.chrome = {
-  runtime: { getManifest: () => ({ version: "0.2.0" }) },
+  runtime: { getManifest: () => ({ version: "${version}" }) },
   storage: { local: { get: async () => ({}) } },
   tabs: { query: async () => [{ id: 1 }], create: async () => {} },
   scripting: {
@@ -78,9 +79,11 @@ window.fetch = async (url) => {
   }
   if (url.includes("/candidates")) {
     return json({ data: { items: [
-      { id: "1", firstName: "Hiwot", middleName: "Tadesse", lastName: "Gebru", passportNumber: "EQ0000001", labourId: "LAB0000123" },
-      { id: "2", firstName: "Meron", middleName: "Abate", lastName: "Desta", passportNumber: "EQ0000002", labourId: "LAB0000124" },
-      { id: "3", firstName: "Sara", middleName: "Nuru", lastName: "Hailu", passportNumber: "EQ0000003" },
+      // fullName, because that is what the list endpoint actually returns — a stub that sends
+      // the three parts would have hidden the bug where every row came back nameless.
+      { id: "1", fullName: "Hiwot Tadesse Gebru", passportNumber: "EQ0000001", labourId: "LAB0000123" },
+      { id: "2", fullName: "Meron Abate Desta", passportNumber: "EQ0000002", labourId: "LAB0000124" },
+      { id: "3", fullName: "Sara Nuru Hailu", passportNumber: "EQ0000003" },
     ]}});
   }
   return json({ data: [] });
