@@ -1,0 +1,31 @@
+# What a line ends with, decided here rather than by whoever last opened the file.
+#
+# This repository grew up across Windows and macOS and ended with 108 of its 1091 files on CRLF
+# and the rest on LF, with no pattern to which was which. The cost is not tidiness: an editor
+# that rewrites a file's endings turns a three-line change into a diff of the whole file, and a
+# diff nobody can read is a change nobody reviews. That happened to middleware.ts, which is
+# exactly the sort of file where it matters most.
+#
+# text=auto still lets Windows check files out with CRLF locally; eol=lf is what is stored.
+* text=auto eol=lf
+
+# PowerShell is a Windows tool and its scripts are conventionally CRLF.
+*.ps1 text eol=crlf
+
+# A shell script with CRLF does not run: the interpreter on the shebang line comes back with a
+# carriage return attached to its name.
+*.sh text eol=lf
+
+# Never rewritten, never diffed as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.traineddata binary
