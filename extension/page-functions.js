@@ -119,6 +119,10 @@
   const describe = () => ({
     url: location.origin + location.pathname,
     frames: window.frames.length,
+    // The page's own words as well as its boxes. A page that is read rather than filled — a
+    // candidate record on a portal, say — has almost no controls on it, and reporting only
+    // those made a wrong page look like a broken extension instead of the wrong page.
+    pageLabels: collectLabels(),
     controls: fillableControls().map((el) => ({
       tag: el.tagName.toLowerCase(),
       type: el.type || null,

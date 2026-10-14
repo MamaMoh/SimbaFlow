@@ -151,9 +151,15 @@ async function start() {
 
     if (!state.manifest) {
       $("form-name").textContent = "No form recognised";
+      // A page with almost no boxes on it is a page to read, not one to fill — a candidate
+      // record on a portal looks exactly like this. Saying so beats "not a form I know", which
+      // reads as a fault rather than as the wrong page.
+      const boxes = (await onActiveTab("describe"))?.controls?.length ?? 0;
       showEmpty(
-        "This is not a form I know",
-        "Open the insurance or visa application and click here again. If you are on it already, the labels differ from the ones on file — copy them below and they can be corrected.",
+        boxes < 5 ? "There is nothing to fill on this page" : "This is not a form I know",
+        boxes < 5
+          ? "This looks like a page to read rather than a form. To bring a candidate into SimbaFlow, copy the whole page and paste it into Candidates → New."
+          : "Open the insurance or visa application and click here again. If you are on it already, the labels differ from the ones on file — copy them below and they can be corrected.",
       );
       return;
     }
