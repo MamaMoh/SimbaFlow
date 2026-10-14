@@ -15,7 +15,9 @@
     "test:e2e:report": "playwright show-report",
     "start": "cross-env NODE_OPTIONS=--max-old-space-size=4096 PORT=3000 HOSTNAME=localhost node .next/standalone/server.js",
     "start:next": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next start",
-    "postbuild": "mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/static && (test -d public && cp -R public .next/standalone/public || true)"
+    "postbuild": "mkdir -p .next/standalone/.next && cp -R .next/static .next/standalone/.next/static && (test -d public && cp -R public .next/standalone/public || true)",
+    "build:extension": "node scripts/build-extension-zip.mjs",
+    "prebuild": "node scripts/build-extension-zip.mjs"
   },
   "dependencies": {
     "@fullcalendar/daygrid": "^6.1.19",

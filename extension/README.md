@@ -72,8 +72,17 @@ builds `test/harness.generated.html`: the fixture in `test/insurance-form.html` 
 Unlisted on the Chrome Web Store, linked from inside SimbaFlow. Unlisted means it has a URL but
 does not appear in search, which is right for a tool your agencies use and the public does not.
 
-Still to do before that:
+Ready: the icons are in `icons/` (regenerate them with `python3 icons/make-icons.py`), and the
+privacy policy is served publicly at `https://app.laba.et/privacy`, from
+`frontend/app/privacy/page.tsx`. It describes what this extension actually does — if the
+extension changes, that page changes with it.
 
-- Icons (16, 48, 128) — Chrome uses a default without them, the store will not.
-- A privacy policy URL, accurate about what the extension reads.
-- A one-time $5 developer account.
+Still to do:
+
+- A one-time $5 Chrome developer account.
+- Upload `frontend/public/simbaflow-form-filler.zip`, which `npm run build` regenerates from
+  this folder.
+- Set `NEXT_PUBLIC_EXTENSION_STORE_URL` to the listing. The settings screen then offers
+  "Add to Chrome" instead of the download and the three manual steps.
+
+Until then SimbaFlow hands out the zip itself, from Settings → Browser helper.

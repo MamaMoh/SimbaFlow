@@ -28,7 +28,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Define public routes that do not require authentication
-  const publicRoutes = ["/login", "/forgot-password", "/reset-password", "/accident-reporting"];
+  // /privacy is the browser extension's policy. It has to be readable without signing in: the
+  // Chrome Web Store will not list an extension whose policy is behind a login, and a policy only
+  // the people who already have the thing can read is not a policy.
+  const publicRoutes = ["/login", "/forgot-password", "/reset-password", "/accident-reporting", "/privacy"];
   // Allow access to error pages without authentication
   const isErrorPage = pathname.startsWith('/error/') || pathname === '/not-found';
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route)) || isErrorPage;
@@ -131,7 +134,9 @@ export const config = {
      * - _next/webpack-hmr (hot module reload)
      * - favicon.ico, sitemap.xml, robots.txt
      * - Static files (images, fonts, etc.)
+     * - .zip, which is how the browser extension is handed out: a download that redirects
+     *   to the login page saves an HTML file with a .zip on the end of its name.
      */
-    '/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sitemap.xml|robots.txt|theme-init\\.js|.*\\.(?:jpg|jpeg|gif|png|svg|ico|webp|woff|woff2|ttf|eot|js|css)$).*)',
+    '/((?!_next/static|_next/image|_next/webpack-hmr|favicon.ico|sitemap.xml|robots.txt|theme-init\\.js|.*\\.(?:jpg|jpeg|gif|png|svg|ico|webp|woff|woff2|ttf|eot|js|css|zip)$).*)',
   ],
 };

@@ -29,3 +29,6 @@
 *.ttf binary
 *.eot binary
 *.traineddata binary
+
+# Packed extension: a binary, never diffed or rewritten.
+*.zip binary

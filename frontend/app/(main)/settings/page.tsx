@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
 import { IntakeDefaultsCard } from "@/components/settings/intake-defaults-card";
 import { PortalAnswersCard } from "@/components/settings/portal-answers-card";
+import { BrowserHelperCard } from "@/components/settings/browser-helper-card";
 import { LogoUpload } from "@/components/branding/logo-upload";
 import { useAgencyBranding } from "@/lib/api/branding";
 
@@ -103,6 +104,10 @@ export default function SettingsPage() {
       {/* Readable by anyone who can see settings: filling a form needs these, and only
           changing them is restricted. */}
       {canReadSettings ? <PortalAnswersCard canEdit={canManageSettings} /> : null}
+
+      {/* Not gated on settings permissions: the people who fill these forms all day are the
+          ones who need this, and installing it changes nothing about the agency. */}
+      <BrowserHelperCard />
     </div>
   );
 }
