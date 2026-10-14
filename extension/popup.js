@@ -39,10 +39,28 @@ async function api(path) {
   return res.json();
 }
 
-async function onActiveTab(func, args = []) {
+/**
+ * Runs one of the page functions in the tab in front of the person.
+ *
+ * The file goes in first and the call follows, rather than sending a function across on its own.
+ * That is what lets filling and diagnosing share one definition of what a box is called — send
+ * them separately and each gets its own copy, which drift, and then the diagnosis describes a
+ * page the filler never saw.
+ */
+async function onActiveTab(call, args = []) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.id) throw new Error("No page to fill");
-  const [out] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func, args });
+
+  await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    files: ["page-functions.js"],
+  });
+
+  const [out] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: (name, passed) => window.__simbaflow[name](...passed),
+    args: [call, args],
+  });
   return out?.result;
 }
 
@@ -74,7 +92,7 @@ async function start() {
   try {
     const [{ data: manifests }, pageLabels] = await Promise.all([
       api("/api/site-maps"),
-      onActiveTab(collectLabelsOnPage),
+      onActiveTab("collectLabels"),
     ]);
 
     state.manifest = bestManifest(manifests ?? [], pageLabels ?? []);
@@ -156,7 +174,7 @@ async function choose(candidateId) {
 $("fill").addEventListener("click", async () => {
   $("fill").disabled = true;
   try {
-    const results = await onActiveTab(fillOnPage, [state.plan.steps]);
+    const results = await onActiveTab("fill", [state.plan.steps]);
     const filled = results.filter((r) => r.status === "filled").length;
     const kept = results.filter((r) => r.status === "kept").length;
     const left = results.filter((r) => !["filled", "kept"].includes(r.status));
@@ -189,6 +207,24 @@ $("fill").addEventListener("click", async () => {
     say(err.message || "Could not fill the form.");
   } finally {
     $("fill").disabled = false;
+  }
+});
+
+/**
+ * What this page calls its boxes, on the clipboard.
+ *
+ * "Not on this page" about a box that is visibly on the page has exactly two causes — the label
+ * is printed differently from what the map expects, or the box is somewhere this cannot reach —
+ * and from outside they look identical. Rather than describing a form over a screenshot, this
+ * hands over the page's own words so the map can be corrected against them.
+ */
+$("labels").addEventListener("click", async () => {
+  try {
+    const page = await onActiveTab("describe");
+    await navigator.clipboard.writeText(JSON.stringify(page, null, 1));
+    say(`Copied ${page.controls.length} boxes. Paste it to whoever is fixing the form.`);
+  } catch (err) {
+    say(err.message || "Could not read the page.");
   }
 });
 

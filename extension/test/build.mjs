@@ -14,7 +14,7 @@ const fixture = readFileSync(join(here, "insurance-form.html"), "utf8");
 
 const out = fixture.replace(
   '<script src="../page-functions.js"></script>',
-  `<script>\n${source}\nwindow.fillOnPage = fillOnPage;\nwindow.collectLabelsOnPage = collectLabelsOnPage;\n</script>`,
+  `<script>\n${source}\n</script>`,
 );
 
 writeFileSync(join(here, "harness.generated.html"), out);
