@@ -26,8 +26,16 @@ async function simbaflowOrigin() {
 
 async function api(path) {
   const res = await fetch((await simbaflowOrigin()) + path, { credentials: "include" });
-  if (res.status === 401) throw new Error("SIGNED_OUT");
+
+  // Signed out does not arrive as a 401. SimbaFlow's middleware redirects to the login page
+  // before it reaches the branch that would return one, so a fetch follows the redirect and
+  // comes back with that page and a 200 on it. Parsing that as JSON fails with a complaint
+  // about a "<", which tells the person nothing about having been signed out.
+  if (res.status === 401 || res.redirected) throw new Error("SIGNED_OUT");
   if (!res.ok) throw new Error(`SimbaFlow said ${res.status}`);
+  if (!(res.headers.get("content-type") || "").includes("application/json"))
+    throw new Error("SIGNED_OUT");
+
   return res.json();
 }
 
