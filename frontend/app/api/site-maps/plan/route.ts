@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiClient } from "@/lib/api/client";
 import { getCachedServerSession } from "@/lib/api/session-cache";
 import { manifestById, type FieldKey } from "@/lib/site-bridge/manifest";
+import { joinName } from "@/lib/site-bridge/names";
 import { fillPlan, type CandidateValues } from "@/lib/site-bridge/write";
 
 /**
@@ -89,6 +90,14 @@ function toValues(c: Record<string, unknown>): CandidateValues {
   values.passportIssueDate = day(c.passportIssueDate);
   values.passportExpiryDate = day(c.passportExpiryDate);
   values.nationality = text(c.nationality) || text(c.country);
+
+  // Assembled, not stored: SimbaFlow holds the parts, and a form with a single name box wants
+  // them back together. Built from the same rule that divides them, so the two cannot disagree.
+  values.fullName = joinName({
+    firstName: text(c.firstName),
+    middleName: text(c.middleName),
+    lastName: text(c.lastName),
+  });
 
   return values;
 }

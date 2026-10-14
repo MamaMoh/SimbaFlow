@@ -1,3 +1,4 @@
+import { splitFullName, splitGivenNames } from "./names";
 import {
   type FieldKey,
   type ReadField,
@@ -155,12 +156,26 @@ function normalise(value: string, kind?: ValueKind): string {
  * a surname — so "HIWOT TADESSE" / "GEBRU" is first, middle, last in that order. The insurance
  * form asks for precisely those three under precisely those names, which is the whole of the
  * transform between the two sites.
+ *
+ * The dividing itself lives in names.ts, shared with the registration form, so that a name typed
+ * into SimbaFlow's one box and a name pasted from a portal divide at the same place.
  */
 function expand(key: FieldKey, value: string, into: Partial<Record<FieldKey, string>>): void {
   if (key === "givenNames") {
-    const parts = value.split(/\s+/).filter(Boolean);
-    if (parts.length > 0) into.firstName = parts[0];
-    if (parts.length > 1) into.middleName = parts.slice(1).join(" ");
+    const { firstName, middleName } = splitGivenNames(value);
+    if (firstName) into.firstName = firstName;
+    if (middleName) into.middleName = middleName;
+    return;
+  }
+
+  // A portal that prints the whole name in one box. Divided by the same rule the registration
+  // form uses on its own name box, so a candidate typed in by hand and one pasted from a portal
+  // end up filed identically.
+  if (key === "fullName") {
+    const { firstName, middleName, lastName } = splitFullName(value);
+    if (firstName) into.firstName = firstName;
+    if (middleName) into.middleName = middleName;
+    if (lastName) into.lastName = lastName;
     return;
   }
 

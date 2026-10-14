@@ -84,6 +84,13 @@ export const FIELD_KEYS = [
   "experienceAbroadYears",
   // derived for a form that asks for it, never stored
   "title",
+  /**
+   * The whole name in one box, as SimbaFlow asks for it and as some portals print it.
+   *
+   * Real in both directions: split into the three parts on the way in, and assembled from them
+   * on the way out for a form that wants one box rather than four.
+   */
+  "fullName",
   // portal shapes, expanded on the way in
   "givenNames",
   "workExperienceSummary",

@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { PasteFromPortal } from "@/components/site-bridge/paste-from-portal";
 import type { FieldKey } from "@/lib/site-bridge/manifest";
+import { splitFullName } from "@/lib/site-bridge/names";
 import { cn } from "@/lib/utils";
 import { FormSection } from "@/components/candidates/form-section";
 import { ImageLightbox } from "@/components/candidates/candidate-image";
@@ -897,10 +898,12 @@ export function CandidateApplicationForm({
 
   const setFullName = (value: string) => {
     setNameText(value);
-    const parts = value.trim().split(/\s+/).filter(Boolean);
-    setValue("firstName", parts[0] ?? "", { shouldValidate: true });
-    setValue("middleName", parts.slice(1, -1).join(" "));
-    setValue("lastName", parts.length > 1 ? parts[parts.length - 1] : "", { shouldValidate: true });
+    // The same rule the paste parser and the form filler use, so a name typed here and a name
+    // pasted from a portal divide at the same place.
+    const { firstName, middleName, lastName } = splitFullName(value);
+    setValue("firstName", firstName, { shouldValidate: true });
+    setValue("middleName", middleName);
+    setValue("lastName", lastName, { shouldValidate: true });
   };
 
   const applyPassportOcr = async (file: File) => {

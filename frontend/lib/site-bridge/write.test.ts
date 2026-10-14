@@ -7,6 +7,7 @@ import {
   formsWithStandingAnswers,
   standingAnswers,
 } from "./manifest";
+import { joinName } from "./names";
 import { readFromText } from "./read";
 import { asLines, displayDate, fillPlan, phoneSpellings, titleFor } from "./write";
 
@@ -323,4 +324,25 @@ test("the settings screen is offered exactly the boxes that are the agency's to 
     formsWithStandingAnswers().map((f) => f.site.id),
     ["visa-application"],
   );
+});
+
+test("a form with one name box is given the name assembled", () => {
+  // The other half of the same rule: SimbaFlow holds three parts, and a portal that wants one
+  // box gets them back together rather than the first name alone.
+  const oneBox = {
+    id: "one-box",
+    title: "A portal with one name box",
+    hosts: [],
+    direction: "write" as const,
+    fields: [{ label: "Full Name", key: "fullName" as const }],
+  };
+
+  const assembled = joinName({ firstName: "HIWOT", middleName: "TADESSE", lastName: "GEBRU" });
+  const plan = fillPlan({ ...CANDIDATE, fullName: assembled }, oneBox);
+  assert.equal(plan.steps[0]?.value, "HIWOT TADESSE GEBRU");
+
+  // And with nothing to assemble it is reported rather than filled with a blank.
+  const empty = fillPlan({ fullName: "" }, oneBox);
+  assert.equal(empty.steps.length, 0);
+  assert.deepEqual(empty.missing.map((m) => m.label), ["Full Name"]);
 });

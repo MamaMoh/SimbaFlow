@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { EPRO_CANDIDATE, EPRO_SPONSOR } from "./manifest";
+import { EPRO_CANDIDATE, EPRO_SPONSOR, type SiteManifest } from "./manifest";
 import { readFromText, tidyPhone, toIsoDate } from "./read";
 
 /**
@@ -168,4 +168,25 @@ test("dates that cannot be understood are handed back untouched", () => {
 test("a phone keeps its digits and loses its decoration", () => {
   assert.equal(tidyPhone("+251 911 000 000"), "+251911000000");
   assert.equal(tidyPhone("(091) 122-2333"), "0911222333");
+});
+
+test("a portal that prints the whole name in one box still fills three", () => {
+  // SimbaFlow asks for a name in one box; most portals want the parts. Whichever way a page
+  // prints it, what lands on the record is the same three fields.
+  const page = "Full Name:\nHIWOT TADESSE GEBRU\nPassport Number:\nEQ0000001\n";
+  const oneBox: SiteManifest = {
+    id: "one-box",
+    title: "A portal with one name box",
+    hosts: [],
+    direction: "read",
+    fields: [
+      { label: "Full Name", key: "fullName" },
+      { label: "Passport Number", key: "passportNumber" },
+    ],
+  };
+
+  const { values } = readFromText(page, oneBox);
+  assert.equal(values.firstName, "HIWOT");
+  assert.equal(values.middleName, "TADESSE");
+  assert.equal(values.lastName, "GEBRU");
 });
