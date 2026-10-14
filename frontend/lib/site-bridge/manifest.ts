@@ -301,7 +301,10 @@ export const VISA_APPLICATION: SiteManifest = {
     { label: "Arabic Family Name" },
     { label: "First Name", key: "firstName" },
     { label: "Second/Father Name", key: "middleName" },
-    { label: "Other/G.Father Name", key: "lastName" },
+    // Other/G.Father Name is deliberately absent. An Ethiopian name has three parts and this
+    // form has four boxes for them; the agency puts the grandfather's name in Last/Family Name,
+    // which leaves this one for something we do not hold. Filling it with the grandfather's name
+    // again put the same word in two boxes of a visa application.
     // The form wants four names and an Ethiopian one has three. Confirmed with the agency: the
     // family name is the grandfather's, so it repeats the box above rather than being left to a
     // person to work out on every application.

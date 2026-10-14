@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Visa paired rows (fixture)</title>
+<style>
+ body{font:13px system-ui;padding:16px}
+ .pair{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+ .pair label{width:130px;text-align:right;color:#444}
+ input{padding:5px;border:1px solid #ccc;border-radius:14px;width:190px}
+</style></head>
+<body>
+<!--
+  The visa application lays a row out as label, box, label, box — two fields sharing one line
+  with nothing nesting them. That is what put the expiry date into Place of Birth: the walk back
+  from the second box stepped over the first box and kept reading, and found the first box's
+  label.
+
+  Reproduced here exactly, because it is the shape that broke it.
+-->
+<fieldset><legend>Personal Information</legend>
+  <div class="pair">
+    <label>Passport Number *</label><input>
+    <label>Passport Type *</label><input>
+  </div>
+  <div class="pair">
+    <label>Issuing Country *</label><input>
+    <label>Date of Issue *</label><input>
+  </div>
+  <div class="pair">
+    <label>Date of Expiry *</label><input>
+    <label>Place of Birth *</label><input>
+  </div>
+  <div class="pair">
+    <label>Date of Birth *</label><input>
+    <label>ID Number</label><input>
+  </div>
+</fieldset>
+<script src="../page-functions.js"></script>
+</body></html>

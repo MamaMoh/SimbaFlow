@@ -67,10 +67,22 @@
       ["INPUT", "SELECT", "TEXTAREA"].includes(n.tagName) ||
       n.querySelector?.("input, select, textarea");
 
+    /**
+     * The text before this box, stopping at the box before it.
+     *
+     * Walking past a previous control was wrong and quietly so. These portals lay a row out as
+     * label, box, label, box — so "Place of Birth" sits between the expiry box and its own, and
+     * carrying on past that box picked up "Date of Expiry" as a name for Place of Birth. The
+     * expiry date then landed in the place-of-birth box, which reads as a filled form and is a
+     * date where a town should be.
+     *
+     * Whatever is on the far side of another box belongs to that box.
+     */
     const backFrom = (node) => {
       let prev = node?.previousElementSibling;
       for (let hops = 0; prev && hops < 3; hops += 1) {
-        if (!isControl(prev)) out.push(prev.textContent);
+        if (isControl(prev)) return;
+        out.push(prev.textContent);
         prev = prev.previousElementSibling;
       }
     };

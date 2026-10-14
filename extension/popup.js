@@ -217,7 +217,10 @@ async function search(term) {
     $("search-hint").textContent = items.length === 1 ? "One match." : `${items.length} matches.`;
 
     for (const c of items) {
-      const name = [c.firstName, c.middleName, c.lastName].filter(Boolean).join(" ");
+      // The list gives one assembled name, not the three parts — asking for parts it does not
+      // send left every row showing a passport number and an empty circle where a person was.
+      const name =
+        c.fullName || [c.firstName, c.middleName, c.lastName].filter(Boolean).join(" ");
       const li = document.createElement("li");
       li.dataset.id = c.id;
       li.setAttribute("role", "option");

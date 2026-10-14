@@ -5,17 +5,22 @@
  * file system in a preview pane does not fetch sibling scripts. Inlining the actual file — never
  * a copy of it — keeps the thing under test the thing that ships.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 const here = dirname(new URL(import.meta.url).pathname);
 const source = readFileSync(join(here, "..", "page-functions.js"), "utf8");
-const fixture = readFileSync(join(here, "insurance-form.html"), "utf8");
 
-const out = fixture.replace(
-  '<script src="../page-functions.js"></script>',
-  `<script>\n${source}\n</script>`,
-);
+// Every fixture in here, not one: each is a page shape that broke something once, and a shape
+// that broke something once is the shape to keep testing.
+for (const name of readdirSync(here)) {
+  if (!name.endsWith(".html") || name.endsWith(".generated.html")) continue;
 
-writeFileSync(join(here, "harness.generated.html"), out);
-console.log("harness.generated.html written");
+  const out = readFileSync(join(here, name), "utf8").replace(
+    '<script src="../page-functions.js"></script>',
+    `<script>\n${source}\n</script>`,
+  );
+  const built = name.replace(/\.html$/, ".generated.html");
+  writeFileSync(join(here, built), out);
+  console.log(`${built} written`);
+}

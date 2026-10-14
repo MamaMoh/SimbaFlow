@@ -233,14 +233,12 @@ test("the house the candidate is going to is the sponsor's", () => {
   assert.equal(visaStep("Phone Number")?.value, "+966500000000");
 });
 
-test("the three Latin name boxes follow the form's own order", () => {
-  const plan = fillPlan(FOR_VISA, VISA_APPLICATION);
-  const order = plan.steps.map((s) => s.label);
+test("the Latin name boxes follow the form's own order", () => {
+  const order = fillPlan(FOR_VISA, VISA_APPLICATION).steps.map((s) => s.label);
   assert.ok(order.indexOf("First Name") < order.indexOf("Second/Father Name"));
-  assert.ok(order.indexOf("Second/Father Name") < order.indexOf("Other/G.Father Name"));
+  assert.ok(order.indexOf("Second/Father Name") < order.indexOf("Last/Family Name"));
   assert.equal(visaStep("First Name")?.value, "HIWOT");
   assert.equal(visaStep("Second/Father Name")?.value, "TADESSE");
-  assert.equal(visaStep("Other/G.Father Name")?.value, "GEBRU");
 });
 
 test("a Saudi number is not an Ethiopian one", () => {
@@ -267,10 +265,17 @@ test("the visa form's email is the office's, not the candidate's", () => {
   assert.ok(without.missing.some((m) => m.label === "Email Address"));
 });
 
-test("the family name is the grandfather's, in both boxes that ask for it", () => {
-  // The form wants four names and an Ethiopian one has three.
-  assert.equal(visaStep("Other/G.Father Name")?.value, "GEBRU");
+test("the grandfather's name goes in one box, not two", () => {
+  // The form wants four names and an Ethiopian one has three. The agency puts the grandfather
+  // in Last/Family Name, which leaves Other/G.Father Name for something we do not hold —
+  // filling it as well put the same word twice on a visa application.
   assert.equal(visaStep("Last/Family Name")?.value, "GEBRU");
+  assert.equal(visaStep("Other/G.Father Name"), undefined);
+  assert.ok(
+    !fillPlan(FOR_VISA, VISA_APPLICATION).missing.some(
+      (m) => m.label === "Other/G.Father Name",
+    ),
+  );
 });
 
 test("an agency that files differently gets its own answer", () => {
