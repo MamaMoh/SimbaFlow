@@ -65,7 +65,23 @@ node test/build.mjs
 
 builds `test/harness.generated.html`: the fixture in `test/insurance-form.html` with the real
 `page-functions.js` inlined, so what is tested is what ships. Open it in a browser and run
-`fillOnPage([...])` from the console.
+`window.__simbaflow.fill([...])` from the console.
+
+## Looking at the popup
+
+```bash
+node test/build-popup-preview.mjs
+```
+
+builds `test/popup-preview.generated.html`: the real popup.html, popup.css and popup.js with the
+extension APIs and SimbaFlow stubbed, so the interface can be reviewed in a normal tab without
+installing anything. What is reviewed is the actual rendering code rather than a mock-up of it,
+which is how two layout bugs were found — a list missing the class its own stylesheet targeted,
+and a row that never became a row.
+
+The popup uses SimbaFlow's own design tokens, copied from `frontend/app/globals.css`, and the
+app's typeface, bundled in `fonts/` because an extension cannot fetch one. Geist is under the SIL
+Open Font License; the licence ships beside it.
 
 ## Publishing
 

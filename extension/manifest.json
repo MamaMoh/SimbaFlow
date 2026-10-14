@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SimbaFlow Form Filler",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Fills a candidate's details into the insurance and visa portals, from the record already held in SimbaFlow.",
   "permissions": [
     "activeTab",

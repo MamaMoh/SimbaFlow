@@ -1,29 +1,252 @@
-:root { color-scheme: light dark; }
+/**
+ * The same surface as SimbaFlow, in a 360px window.
+ *
+ * The tokens below are copied from the app's globals.css rather than approximated, and the
+ * typeface is the app's own — bundled, because an extension cannot fetch a font and a popup
+ * that falls back to the system face stops looking like the thing it belongs to.
+ *
+ * Light and dark both, following the browser, because that is what the app does.
+ */
+
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/Geist-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-display: block;
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --border: oklch(0.922 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --accent: oklch(0.97 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+
+  --brand: #006633;
+  --good: #0f7a43;
+  --attention: #9a5b00;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --border: oklch(0.269 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --accent: oklch(0.269 0 0);
+    --ring: oklch(0.556 0 0);
+
+    --brand: #27a567;
+    --good: #4ade80;
+    --attention: #fbbf24;
+
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
 body {
-  width: 340px;
+  width: 360px;
   margin: 0;
-  padding: 12px;
-  font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
 }
-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
-.muted { color: color-mix(in srgb, currentColor 55%, transparent); }
-.small { font-size: 11px; }
+
+/* ── masthead ─────────────────────────────────────────────────────────────── */
+
+.masthead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mark { width: 22px; height: 22px; color: var(--brand); flex: none; }
+.titles { display: flex; flex-direction: column; min-width: 0; }
+.brand { font-weight: 600; letter-spacing: -0.01em; }
+.sub {
+  color: var(--muted-foreground);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── body ─────────────────────────────────────────────────────────────────── */
+
+main { padding: 14px 16px; }
+.stack > * + * { margin-top: 12px; }
+.hint { color: var(--muted-foreground); font-size: 11px; margin: 0; }
+p { margin: 0; }
+
+/* ── search ───────────────────────────────────────────────────────────────── */
+
+.search { position: relative; }
+.search svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 15px;
+  height: 15px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
 input[type="search"] {
-  width: 100%; box-sizing: border-box; padding: 6px 8px;
-  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  border-radius: 6px; background: transparent; color: inherit;
+  width: 100%;
+  padding: 8px 10px 8px 31px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--background);
+  color: inherit;
+  font: inherit;
+  outline: none;
 }
-ul { list-style: none; margin: 8px 0 0; padding: 0; max-height: 220px; overflow-y: auto; }
-#results li { padding: 6px 8px; border-radius: 6px; cursor: pointer; }
-#results li:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
-#results .sub { font-size: 11px; }
-button {
-  width: 100%; padding: 7px 10px; margin-top: 8px; cursor: pointer;
-  border-radius: 6px; border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  background: color-mix(in srgb, currentColor 8%, transparent); color: inherit; font: inherit;
+input[type="search"]:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px var(--accent); }
+input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
+
+.results { list-style: none; margin: 10px 0 0; padding: 0; max-height: 232px; overflow-y: auto; }
+.results li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
 }
-button.link { border: 0; background: none; text-decoration: underline; width: auto; padding: 4px 0; }
-button:disabled { opacity: .5; cursor: default; }
-#chosen { font-weight: 600; }
-#outcome li { padding: 2px 0; font-size: 11px; }
-#outcome .bad { color: #b4532a; }
+.results li:hover,
+.results li[aria-selected="true"] { background: var(--accent); }
+.avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+  color: var(--brand);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+/* Block, because these are spans: left inline the name and the passport run together on one
+   line and the row stops looking like a row. */
+.who { min-width: 0; display: flex; flex-direction: column; }
+.who-name { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who-sub { display: block; color: var(--muted-foreground); font-size: 11px; }
+
+/* ── chosen person ────────────────────────────────────────────────────────── */
+
+.person { display: flex; align-items: center; gap: 10px; }
+.person .avatar { width: 34px; height: 34px; font-size: 12px; }
+.person-name { font-weight: 600; letter-spacing: -0.01em; }
+.person-sub { color: var(--muted-foreground); font-size: 11px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+.chip.good { background: color-mix(in srgb, var(--good) 13%, transparent); color: var(--good); }
+.chip.attention { background: color-mix(in srgb, var(--attention) 15%, transparent); color: var(--attention); }
+.chip svg { width: 12px; height: 12px; }
+
+/* ── buttons ──────────────────────────────────────────────────────────────── */
+
+.btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 12px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, opacity 120ms;
+}
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+.btn svg { width: 15px; height: 15px; }
+.btn-primary { background: var(--primary); color: var(--primary-foreground); }
+.btn-primary:hover:not(:disabled) { opacity: 0.9; }
+.btn-outline { background: transparent; border-color: var(--border); color: inherit; }
+.btn-outline:hover:not(:disabled) { background: var(--accent); }
+.btn-ghost { background: transparent; color: var(--muted-foreground); font-size: 12px; padding: 6px; }
+.btn-ghost:hover { color: var(--foreground); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+
+.spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── outcome ──────────────────────────────────────────────────────────────── */
+
+.outcome { border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); overflow: hidden; }
+.outcome-head {
+  padding: 8px 10px;
+  background: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.outcome ul { list-style: none; margin: 0; padding: 0; max-height: 190px; overflow-y: auto; }
+.outcome li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; }
+.outcome li + li { border-top: 1px solid var(--border); }
+.outcome .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.outcome .why { color: var(--muted-foreground); font-size: 11px; flex: none; }
+
+/* ── empty states ─────────────────────────────────────────────────────────── */
+
+.empty { text-align: center; padding: 10px 4px 4px; }
+.empty svg { width: 30px; height: 30px; color: var(--muted-foreground); opacity: 0.65; }
+.empty-title { font-weight: 500; margin-top: 8px; }
+
+/* ── footer ───────────────────────────────────────────────────────────────── */
+
+.foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.foot a, .linkish {
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.foot a:hover, .linkish:hover { color: var(--foreground); }
+.foot-links { display: flex; gap: 12px; }

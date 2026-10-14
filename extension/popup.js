@@ -1,5 +1,5 @@
 /**
- * The whole extension.
+ * The popup.
  *
  * It knows three things: how to ask SimbaFlow what a form wants, how to find a box on a page by
  * the label printed beside it, and how to type into one. It does not know what a sponsor is,
@@ -17,7 +17,9 @@ const DEFAULT_ORIGIN = "https://app.laba.et";
 const $ = (id) => document.getElementById(id);
 const say = (text) => ($("message").textContent = text ?? "");
 
-let state = { manifest: null, candidate: null, plan: null };
+const state = { manifest: null, candidate: null, plan: null, results: [] };
+
+/* ─── talking to SimbaFlow ──────────────────────────────────────────────────── */
 
 async function simbaflowOrigin() {
   const stored = await chrome.storage.local.get("origin");
@@ -49,12 +51,9 @@ async function api(path) {
  */
 async function onActiveTab(call, args = []) {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) throw new Error("No page to fill");
+  if (!tab?.id) throw new Error("There is no page here to fill.");
 
-  await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    files: ["page-functions.js"],
-  });
+  await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["page-functions.js"] });
 
   const [out] = await chrome.scripting.executeScript({
     target: { tabId: tab.id },
@@ -64,7 +63,7 @@ async function onActiveTab(call, args = []) {
   return out?.result;
 }
 
-/* ─── popup ─────────────────────────────────────────────────────────────────── */
+/* ─── which form is this ────────────────────────────────────────────────────── */
 
 const normLabel = (s) =>
   String(s || "")
@@ -88,7 +87,50 @@ function bestManifest(manifests, pageLabels) {
   return best && best.hits >= 3 ? best.manifest : null;
 }
 
+/* ─── screens ───────────────────────────────────────────────────────────────── */
+
+function show(which) {
+  for (const name of ["empty", "search", "plan"]) {
+    $(`state-${name}`).hidden = name !== which;
+  }
+}
+
+function showEmpty(title, detail, action) {
+  $("empty-title").textContent = title;
+  $("empty-detail").textContent = detail ?? "";
+  const button = $("empty-action");
+  if (action) {
+    button.textContent = action.label;
+    button.hidden = false;
+    button.onclick = action.onClick;
+  } else {
+    button.hidden = true;
+  }
+  show("empty");
+}
+
+/** "Hiwot Tadesse" → "HT". Two letters, because three in a 34px circle is a smudge. */
+const initialsOf = (name) =>
+  String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
+const icon = (paths) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+
+const TICK = icon('<path d="M20 6 9 17l-5-5"/>');
+const BANG = icon('<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>');
+
+/* ─── starting up ───────────────────────────────────────────────────────────── */
+
 async function start() {
+  $("version").textContent = `Version ${chrome.runtime.getManifest().version}`;
+  $("privacy").href = `${await simbaflowOrigin()}/privacy`;
+
   try {
     const [{ data: manifests }, pageLabels] = await Promise.all([
       api("/api/site-maps"),
@@ -96,34 +138,67 @@ async function start() {
     ]);
 
     state.manifest = bestManifest(manifests ?? [], pageLabels ?? []);
+
     if (!state.manifest) {
-      $("form-name").textContent = "not a form I know";
-      say("Open the insurance or visa form first, then click here again.");
+      $("form-name").textContent = "No form recognised";
+      showEmpty(
+        "This is not a form I know",
+        "Open the insurance or visa application and click here again. If you are on it already, the labels differ from the ones on file — copy them below and they can be corrected.",
+      );
       return;
     }
 
     $("form-name").textContent = state.manifest.title;
-    $("search-area").hidden = false;
+    show("search");
     $("search").focus();
-    say("");
   } catch (err) {
     if (err.message === "SIGNED_OUT") {
-      say("Sign in to SimbaFlow first, then click here again.");
+      $("form-name").textContent = "Not signed in";
+      showEmpty("Sign in to SimbaFlow first", "This uses the session in this browser.", {
+        label: "Open SimbaFlow",
+        onClick: async () => chrome.tabs.create({ url: await simbaflowOrigin() }),
+      });
       return;
     }
-    say(err.message || "Could not reach SimbaFlow.");
+    $("form-name").textContent = "Could not start";
+    showEmpty("SimbaFlow could not be reached", err.message ?? "");
   }
 }
 
+/* ─── finding somebody ──────────────────────────────────────────────────────── */
+
 let searchTimer;
+let highlighted = -1;
+
 $("search").addEventListener("input", (e) => {
   const term = e.target.value.trim();
   clearTimeout(searchTimer);
+  highlighted = -1;
   if (term.length < 2) {
     $("results").innerHTML = "";
+    $("search-hint").textContent = "Type a name, or part of a passport number.";
     return;
   }
+  $("search-hint").textContent = "Searching…";
   searchTimer = setTimeout(() => void search(term), 250);
+});
+
+$("search").addEventListener("keydown", (e) => {
+  const rows = [...$("results").querySelectorAll("li[data-id]")];
+  if (rows.length === 0) return;
+
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    highlighted =
+      e.key === "ArrowDown"
+        ? Math.min(highlighted + 1, rows.length - 1)
+        : Math.max(highlighted - 1, 0);
+    rows.forEach((row, i) => row.setAttribute("aria-selected", String(i === highlighted)));
+    rows[highlighted].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter" && highlighted >= 0) {
+    e.preventDefault();
+    void choose(rows[highlighted].dataset.id);
+  }
 });
 
 async function search(term) {
@@ -132,22 +207,39 @@ async function search(term) {
       `/api/proxy/candidates?page=1&pageSize=8&search=${encodeURIComponent(term)}`,
     );
     const items = body?.data?.items ?? [];
-    $("results").innerHTML = "";
+    const list = $("results");
+    list.innerHTML = "";
+
     if (items.length === 0) {
-      $("results").innerHTML = `<li class="muted">Nobody by that name.</li>`;
+      $("search-hint").textContent = "Nobody by that name.";
       return;
     }
+    $("search-hint").textContent = items.length === 1 ? "One match." : `${items.length} matches.`;
+
     for (const c of items) {
-      const li = document.createElement("li");
       const name = [c.firstName, c.middleName, c.lastName].filter(Boolean).join(" ");
-      li.innerHTML = `<div>${name}</div><div class="sub muted">${c.passportNumber ?? ""}</div>`;
+      const li = document.createElement("li");
+      li.dataset.id = c.id;
+      li.setAttribute("role", "option");
+      li.innerHTML = `
+        <span class="avatar">${initialsOf(name)}</span>
+        <span class="who">
+          <span class="who-name"></span>
+          <span class="who-sub"></span>
+        </span>`;
+      li.querySelector(".who-name").textContent = name;
+      li.querySelector(".who-sub").textContent =
+        [c.passportNumber, c.labourId].filter(Boolean).join(" · ") || "No passport on file";
       li.addEventListener("click", () => void choose(c.id));
-      $("results").appendChild(li);
+      list.appendChild(li);
     }
   } catch (err) {
-    say(err.message === "SIGNED_OUT" ? "Sign in to SimbaFlow first." : "Search failed.");
+    $("search-hint").textContent =
+      err.message === "SIGNED_OUT" ? "Signed out — open SimbaFlow and sign in." : "Search failed.";
   }
 }
+
+/* ─── what will go in ───────────────────────────────────────────────────────── */
 
 async function choose(candidateId) {
   try {
@@ -156,58 +248,101 @@ async function choose(candidateId) {
     );
     state.candidate = body.data.candidate;
     state.plan = body.data.plan;
+    state.results = [];
 
-    $("search-area").hidden = true;
-    $("plan-area").hidden = false;
     $("chosen").textContent = state.candidate.name;
-    const ready = state.plan.steps.length;
-    const gaps = state.plan.missing.length;
-    $("counts").textContent = gaps
-      ? `${ready} boxes ready · ${gaps} the record cannot fill`
-      : `${ready} boxes ready`;
+    $("chosen-sub").textContent = state.candidate.passportNumber || "No passport on file";
+    $("initials").textContent = initialsOf(state.candidate.name);
     $("outcome").innerHTML = "";
+    $("fill-label").textContent = "Fill this form";
+    $("fill").disabled = false;
+
+    renderChips([
+      { text: `${state.plan.steps.length} ready`, tone: "" },
+      ...(state.plan.missing.length
+        ? [{ text: `${state.plan.missing.length} not on file`, tone: "attention", icon: BANG }]
+        : []),
+    ]);
+
+    show("plan");
+    say("");
   } catch (err) {
     say(err.message || "Could not build the form.");
   }
 }
 
+function renderChips(chips) {
+  $("counts").innerHTML = "";
+  for (const chip of chips) {
+    const span = document.createElement("span");
+    span.className = `chip ${chip.tone ?? ""}`.trim();
+    span.innerHTML = (chip.icon ?? "") + "<span></span>";
+    span.querySelector("span").textContent = chip.text;
+    $("counts").appendChild(span);
+  }
+}
+
+const WHY = {
+  dropdown: "choose it yourself",
+  nooption: "no matching option",
+  locked: "cannot be typed into",
+  rejected: "the form refused it",
+  notfound: "not on this page",
+  absent: "not held in SimbaFlow",
+};
+
 $("fill").addEventListener("click", async () => {
   $("fill").disabled = true;
+  $("fill-label").textContent = "Filling…";
   try {
     const results = await onActiveTab("fill", [state.plan.steps]);
+    state.results = results;
+
     const filled = results.filter((r) => r.status === "filled").length;
     const kept = results.filter((r) => r.status === "kept").length;
-    const left = results.filter((r) => !["filled", "kept"].includes(r.status));
+    const left = [
+      ...results.filter((r) => !["filled", "kept"].includes(r.status)),
+      ...state.plan.missing.map((m) => ({ label: m.label, status: "absent" })),
+    ];
 
-    $("counts").textContent = `${filled} filled${kept ? `, ${kept} left as they were` : ""}`;
+    renderChips([
+      { text: `${filled} filled`, tone: "good", icon: TICK },
+      ...(kept ? [{ text: `${kept} left as they were`, tone: "" }] : []),
+      ...(left.length ? [{ text: `${left.length} need you`, tone: "attention", icon: BANG }] : []),
+    ]);
+
     $("outcome").innerHTML = "";
-    for (const r of left) {
-      const li = document.createElement("li");
-      li.className = "bad";
-      const why =
-        r.status === "dropdown"
-          ? "dropdown — choose it yourself"
-          : r.status === "nooption"
-            ? "no matching option"
-            : r.status === "locked"
-              ? "the form will not let this be typed"
-            : r.status === "rejected"
-              ? "the form refused it"
-              : "not on this page";
-      li.textContent = `${r.label} — ${why}`;
-      $("outcome").appendChild(li);
+    if (left.length > 0) {
+      const box = document.createElement("div");
+      box.className = "outcome";
+      box.innerHTML = `<div class="outcome-head">For you to finish</div><ul></ul>`;
+      const list = box.querySelector("ul");
+      for (const item of left) {
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="what"></span><span class="why"></span>`;
+        li.querySelector(".what").textContent = item.label;
+        li.querySelector(".why").textContent = WHY[item.status] ?? item.status;
+        list.appendChild(li);
+      }
+      $("outcome").appendChild(box);
     }
-    for (const m of state.plan.missing) {
-      const li = document.createElement("li");
-      li.className = "bad";
-      li.textContent = `${m.label} — not held in SimbaFlow`;
-      $("outcome").appendChild(li);
-    }
+
+    $("fill-label").textContent = "Fill again";
   } catch (err) {
     say(err.message || "Could not fill the form.");
+    $("fill-label").textContent = "Fill this form";
   } finally {
     $("fill").disabled = false;
   }
+});
+
+$("back").addEventListener("click", () => {
+  show("search");
+  $("search").value = "";
+  $("results").innerHTML = "";
+  $("search-hint").textContent = "Type a name, or part of a passport number.";
+  highlighted = -1;
+  $("search").focus();
 });
 
 /**
@@ -222,18 +357,10 @@ $("labels").addEventListener("click", async () => {
   try {
     const page = await onActiveTab("describe");
     await navigator.clipboard.writeText(JSON.stringify(page, null, 1));
-    say(`Copied ${page.controls.length} boxes. Paste it to whoever is fixing the form.`);
+    say(`Copied ${page.controls.length} boxes to the clipboard.`);
   } catch (err) {
     say(err.message || "Could not read the page.");
   }
-});
-
-$("back").addEventListener("click", () => {
-  $("plan-area").hidden = true;
-  $("search-area").hidden = false;
-  $("search").value = "";
-  $("results").innerHTML = "";
-  $("search").focus();
 });
 
 void start();
