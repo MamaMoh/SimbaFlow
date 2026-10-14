@@ -23,6 +23,8 @@ export type FillStep = {
   /** Absent for a box the agency answers the same way every time. */
   key?: FieldKey;
   label: string;
+  /** The box's own id or name on their form, where we know it. Tried before the label. */
+  match?: string[];
   kind: ValueKind;
   /**
    * The canonical value: ISO for a date, international for a phone. A native date input only
@@ -117,11 +119,17 @@ const SYNONYMS: Record<string, string[]> = {
   female: ["Female", "F", "FEMALE", "Ms."],
   male: ["Male", "M", "MALE", "Mr."],
   ethiopia: ["Ethiopia", "ETHIOPIA", "ET", "ETH"],
-  // The occupation an Ethiopian agency registers and the one a Saudi visa form offers are the
-  // same job under different names, and the form will not take ours.
-  "house maid": ["House Maid", "House Worker", "Housemaid", "Domestic Worker", "Housemaid/Cleaner"],
-  housemaid: ["House Maid", "House Worker", "Housemaid", "Domestic Worker"],
   air: ["Air", "By Air", "Airplane", "Flight"],
+  "by air": ["By Air", "Air", "Airplane", "Flight"],
+  // A consular form offers two answers where the record holds the denomination. Mapping the
+  // other way round — guessing a denomination from "Non-Muslim" — is not possible and is not
+  // wanted; this direction only ever loses detail the form did not ask for.
+  muslim: ["Islam", "Muslim"],
+  islam: ["Islam", "Muslim"],
+  christian: ["Non-Muslim", "Christian"],
+  orthodox: ["Non-Muslim", "Christian", "Orthodox"],
+  protestant: ["Non-Muslim", "Christian", "Protestant"],
+  catholic: ["Non-Muslim", "Christian", "Catholic"],
   normal: ["Normal", "Ordinary", "Regular"],
   "saudi arabia": ["Saudi Arabia", "SAUDI ARABIA", "KSA", "Saudi", "SA"],
   "united arab emirates": ["United Arab Emirates", "UAE", "U.A.E", "Dubai"],
@@ -157,9 +165,11 @@ export function fillPlan(
     const fromRecord =
       field.key === "title"
         ? titleFor(values)
-        : field.key
-          ? String(values[field.key] ?? "").trim()
-          : "";
+        : field.key === "birthYear"
+          ? String(values.dateOfBirth ?? "").trim().slice(0, 4)
+          : field.key
+            ? String(values[field.key] ?? "").trim()
+            : "";
 
     // The candidate first, then what this agency has chosen, then what the map ships. That
     // order matters on the fields where more than one exists: a candidate whose passport is not
@@ -191,6 +201,7 @@ export function fillPlan(
     steps.push({
       key: field.key,
       label: field.label,
+      match: field.match,
       kind,
       value,
       display,

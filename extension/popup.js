@@ -308,6 +308,7 @@ const WHY = {
   rejected: "the form refused it",
   notfound: "not on this page",
   absent: "not held in SimbaFlow",
+  check: "written into a date picker — make sure it reads right",
 };
 
 $("fill").addEventListener("click", async () => {
@@ -320,24 +321,31 @@ $("fill").addEventListener("click", async () => {
 
     const filled = results.filter((r) => r.status === "filled").length;
     const kept = results.filter((r) => r.status === "kept").length;
+    // Filled, and still wanting a pair of eyes. A date written into a box the picker owns is in
+    // our spelling rather than the form's, so it is counted as done and listed anyway — the one
+    // place where saying nothing would be the dangerous thing.
+    const check = results.filter((r) => r.status === "check");
     const left = [
-      ...results.filter((r) => !["filled", "kept"].includes(r.status)),
+      ...results.filter((r) => !["filled", "kept", "check"].includes(r.status)),
       ...state.plan.missing.map((m) => ({ label: m.label, status: "absent" })),
     ];
 
     renderChips([
-      { text: `${filled} filled`, tone: "good", icon: TICK },
+      { text: `${filled + check.length} filled`, tone: "good", icon: TICK },
       ...(kept ? [{ text: `${kept} left as they were`, tone: "" }] : []),
+      ...(check.length ? [{ text: `${check.length} to check`, tone: "attention" }] : []),
       ...(left.length ? [{ text: `${left.length} need you`, tone: "attention", icon: BANG }] : []),
     ]);
 
     $("outcome").innerHTML = "";
-    if (left.length > 0) {
+    const section = (head, items) => {
+      if (items.length === 0) return;
       const box = document.createElement("div");
       box.className = "outcome";
-      box.innerHTML = `<div class="outcome-head">For you to finish</div><ul></ul>`;
+      box.innerHTML = `<div class="outcome-head"></div><ul></ul>`;
+      box.querySelector(".outcome-head").textContent = head;
       const list = box.querySelector("ul");
-      for (const item of left) {
+      for (const item of items) {
         const li = document.createElement("li");
         li.innerHTML = `<span class="what"></span><span class="why"></span>`;
         li.querySelector(".what").textContent = item.label;
@@ -345,7 +353,9 @@ $("fill").addEventListener("click", async () => {
         list.appendChild(li);
       }
       $("outcome").appendChild(box);
-    }
+    };
+    section("Worth a look before you submit", check);
+    section("For you to finish", left);
 
     $("fill-label").textContent = "Fill again";
   } catch (err) {

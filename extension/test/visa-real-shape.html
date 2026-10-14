@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Visa application, as it really is (fixture)</title>
+<style>
+ body{font:13px system-ui;padding:16px;max-width:900px}
+ .row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+ .col{flex:1}
+ .col.lbl{flex:0 0 150px;text-align:right;color:#444}
+ .picker{display:flex;border:1px solid #ccc;border-radius:4px;overflow:hidden}
+ .picker input{border:0;flex:1}
+ .picker .cal{padding:4px 8px;background:#eee;cursor:pointer}
+ input,select{padding:5px;border:1px solid #ccc;border-radius:4px;width:100%}
+ .hidden{display:none}
+</style></head>
+<body>
+<!--
+  The real shape of the visa application, taken from what the form reported about itself.
+  Three things in here are the three things that broke it, and each is here because it broke it:
+
+    1. The date boxes are read-only inputs inside a picker's own wrapper, and the row is laid
+       out label, box, label, box. The walk back from Place of Birth stepped over the picker's
+       wrapper and took "Date of Expiry" as its name, so the expiry date was written into the
+       town box and the date box stayed empty.
+
+    2. The form carries sections it is not using and hides them. "Issuing Country" is on the
+       page twice and the hidden one is an empty dropdown, so filling it looked like a form
+       that refused us while the real box sat on "Select".
+
+    3. Number of Entries is filled in by the form itself once a visa type is chosen, and is
+       empty until that comes back.
+
+  Ids are the form's own, including the lower-case last letter of PASSPORT_EXPIRY_DATe.
+-->
+<fieldset><legend>Visa Information</legend>
+  <div class="row">
+    <div class="col lbl"><label>Visa Type</label></div>
+    <div class="col"><select id="VisaKind" name="VisaKind"><option></option><option>Work</option><option>Umrah</option></select></div>
+    <div class="col lbl"><label>Number of Entries</label></div>
+    <div class="col"><select id="NUMBER_OF_ENTRIES" name="NUMBER_OF_ENTRIES"><option>Select</option></select></div>
+  </div>
+</fieldset>
+
+<fieldset class="hidden"><legend>Tourism Visa</legend>
+  <div class="row">
+    <div class="col lbl"><label>Residence or Visa Number</label></div>
+    <div class="col"><input id="TourismEVisaIqamaOrVisaNo" name="TourismEVisaIqamaOrVisaNo"></div>
+    <div class="col lbl"><label>Issuing Country</label></div>
+    <div class="col"><select id="TourismEVisaIssuingCountryCode" name="TourismEVisaIssuingCountryCode"></select></div>
+  </div>
+</fieldset>
+
+<fieldset><legend>Personal Information</legend>
+  <div class="row">
+    <div class="col lbl"><label>First Name</label></div>
+    <div class="col"><input id="EFIRSTNAME" name="EFIRSTNAME"></div>
+    <div class="col lbl"><label>Second/Father Name</label></div>
+    <div class="col"><input id="EFATHER" name="EFATHER"></div>
+  </div>
+  <div class="row">
+    <div class="col lbl"><label>Other/G.Father Name</label></div>
+    <div class="col"><input id="EGRAND" name="EGRAND"></div>
+    <div class="col lbl"><label>Last/Family Name</label></div>
+    <div class="col"><input id="EFAMILY" name="EFAMILY"></div>
+  </div>
+  <div class="row">
+    <div class="col lbl"><label>Passport Number</label></div>
+    <div class="col"><input id="PASSPORTnumber" name="PASSPORTnumber"></div>
+    <div class="col lbl"><label>Issuing Country</label></div>
+    <div class="col"><select id="PASSPORT_ISSUE_PLACE" name="PASSPORT_ISSUE_PLACE"><option></option><option>Eritrea</option><option>Ethiopia</option></select></div>
+  </div>
+  <div class="row">
+    <div class="col lbl"><label>Date of Issue</label></div>
+    <div class="col"><div class="picker"><input id="PASSPORT_ISSUE_DATE" name="PASSPORT_ISSUE_DATE" readonly><span class="cal">&#128197;</span></div></div>
+    <div class="col lbl"><label>Date of Expiry</label></div>
+    <div class="col"><div class="picker"><input id="PASSPORT_EXPIRY_DATe" name="PASSPORT_EXPIRY_DATe" readonly><span class="cal">&#128197;</span></div></div>
+  </div>
+  <div class="row">
+    <div class="col lbl"><label>Place of Birth</label></div>
+    <div class="col"><input id="BIRTH_PLACE" name="BIRTH_PLACE"></div>
+    <div class="col lbl"><label>Date of Birth</label></div>
+    <div class="col"><div class="picker"><input id="BIRTH_DATE" name="BIRTH_DATE" readonly><span class="cal">&#128197;</span></div></div>
+  </div>
+  <div class="row">
+    <div class="col lbl"><label>ID Number</label></div>
+    <div class="col"><input id="PersonId" name="PersonId"></div>
+    <div class="col lbl"><label>Religion</label></div>
+    <div class="col"><select id="RELIGION" name="RELIGION"><option></option><option>Islam</option><option>Non-Muslim</option></select></div>
+  </div>
+  <div class="row">
+    <div class="col lbl"><label>Occupation</label></div>
+    <div class="col"><input id="OccupationName" name="OccupationName"></div>
+    <div class="col lbl"><label>Gender</label></div>
+    <div class="col"><select id="Sex" name="Sex"><option></option><option>Female</option><option>Male</option></select></div>
+  </div>
+</fieldset>
+
+<script>
+  // The form goes to the server for the entry count once a visa type is chosen. A second of it,
+  // which is the second the filler used to report the box as having no matching option.
+  document.getElementById("VisaKind").addEventListener("change", () => {
+    setTimeout(() => {
+      document.getElementById("NUMBER_OF_ENTRIES").innerHTML =
+        "<option>Select</option><option>Single</option><option>Multiple</option>";
+    }, 400);
+  });
+</script>
+<script src="../page-functions.js"></script>
+</body></html>

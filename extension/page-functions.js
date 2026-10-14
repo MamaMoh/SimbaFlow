@@ -135,18 +135,56 @@
     })),
   });
 
-  const fill = (steps) => {
+  /**
+   * On screen, as far as this can tell.
+   *
+   * These forms carry every section they might ever need and hide the ones that do not apply —
+   * the tourism block, the dependant block, the investor block. Hidden boxes keep their labels,
+   * so "Issuing Country" is on this page three times and only one of them is the passport's. The
+   * hidden ones are also empty: their dropdowns have no options in them at all, so filling one
+   * is not merely the wrong box, it is a box that cannot be filled, reported as a form that
+   * refused us while the visible dropdown sits untouched on "Select".
+   */
+  const onScreen = (el) => el.getClientRects().length > 0;
+
+  const fill = async (steps) => {
     const used = new Set();
     const indexed = fillableControls().map((el) => ({ el, labels: labelsOf(el) }));
+
+    /**
+     * The box this step names, by the form's own id or name where the map carries one.
+     *
+     * Not an optimisation. A label has to be found by walking the markup around a box, and that
+     * walk is a guess: on a row laid out as label, box, label, box, with a date picker's own
+     * wrappers in between, it reaches past the box before and takes its label. That is how the
+     * expiry date came to be written into Place of Birth — the walk had handed Place of Birth
+     * the name "Date of Expiry", and both boxes looked right to everything downstream.
+     *
+     * An id is not a guess.
+     */
+    const byHandle = (step) => {
+      for (const handle of step.match || []) {
+        const hit = indexed.find(
+          (c) => !used.has(c.el) && (c.el.id === handle || c.el.getAttribute("name") === handle),
+        );
+        if (hit) return hit.el;
+      }
+      return null;
+    };
 
     const find = (label) => {
       const want = norm(label);
       const free = indexed.filter((c) => !used.has(c.el));
-      const hit =
-        free.find((c) => c.labels.includes(want)) ||
-        free.find((c) => c.labels.some((l) => l.startsWith(want))) ||
-        free.find((c) => c.labels.some((l) => l.includes(want)));
-      return hit?.el ?? null;
+      // Whatever is on screen first, and only then anything at all. A page that hides the half
+      // of itself that does not apply still answers to every label on it.
+      for (const pool of [free.filter((c) => onScreen(c.el)), free]) {
+        const hit =
+          pool.find((c) => c.labels.includes(want)) ||
+          pool.find((c) => c.labels.some((l) => l.startsWith(want))) ||
+          pool.find((c) => c.labels.some((l) => l.includes(want)));
+        if (hit) return hit.el;
+      }
+      return null;
     };
 
     // React and Angular listen for the events a real keystroke raises, not for `.value =`.
@@ -182,46 +220,59 @@
       return false;
     };
 
-    const results = [];
-    for (const step of steps) {
-      const el = find(step.label);
-      if (!el) {
-        results.push({ label: step.label, status: "notfound" });
-        continue;
-      }
-      used.add(el);
+    const spellingsFor = (step) => [step.value, step.display, ...(step.alternatives || [])];
 
-      if (step.keepTheirs && String(el.value || "").trim()) {
-        results.push({ label: step.label, status: "kept" });
-        continue;
-      }
+    const attempt = (step, el) => {
+      if (step.keepTheirs && String(el.value || "").trim()) return "kept";
 
-      if (el.tagName === "SELECT") {
-        const ok = choose(el, [step.value, step.display, ...(step.alternatives || [])]);
-        results.push({ label: step.label, status: ok ? "filled" : "nooption" });
-        continue;
-      }
+      if (el.tagName === "SELECT") return choose(el, spellingsFor(step)) ? "filled" : "nooption";
 
       // A dropdown that is not a <select> is somebody's own widget with its own idea of state.
       // Typing into it would leave a box that reads correctly and has selected nothing — worse
       // than an empty box, because it looks done.
-      if (step.kind === "select" || el.getAttribute("role") === "combobox") {
-        results.push({ label: step.label, status: "dropdown" });
-        continue;
-      }
+      if (step.kind === "select" || el.getAttribute("role") === "combobox") return "dropdown";
 
-      if (el.readOnly) {
-        results.push({ label: step.label, status: "locked" });
-        continue;
-      }
-
+      const locked = el.readOnly;
       put(el, el.type === "date" ? step.value : step.display || step.value);
-      results.push({
-        label: step.label,
-        status: String(el.value || "").trim() ? "filled" : "rejected",
-      });
+      if (!String(el.value || "").trim()) return "rejected";
+
+      /**
+       * A date box on this form is read-only because a picker owns it, not because the form
+       * will not take a date. Writing into it works and saves the picker's four clicks — but
+       * the picker also decides how a date is spelt, and we have written our own spelling into
+       * a box nobody can retype. So it is handed back as something to look at rather than
+       * counted as done: a date silently off by a month is worse on a visa application than an
+       * empty box, which at least stops the form.
+       */
+      return locked ? "check" : "filled";
+    };
+
+    const results = steps.map((step) => {
+      const el = byHandle(step) || find(step.label);
+      if (!el) return { label: step.label, status: "notfound" };
+      used.add(el);
+      return { label: step.label, status: attempt(step, el), el };
+    });
+
+    /**
+     * The dropdowns this form fills in for itself.
+     *
+     * Number of Entries, Visa Validity and Duration Of Stay are empty until Visa Type has been
+     * chosen and the form has been to the server about it. We choose the visa type in the same
+     * pass, so on the first go round those three have nothing in them and come back as boxes
+     * with no matching option — which reads as a map that is wrong rather than a page that is
+     * not ready. Asking once more, a moment later, is the whole fix.
+     */
+    const pending = results.filter((r) => r.status === "nooption" && r.el?.tagName === "SELECT");
+    if (pending.length > 0) {
+      await new Promise((done) => setTimeout(done, 1200));
+      for (const result of pending) {
+        const step = steps.find((s) => s.label === result.label);
+        if (step && choose(result.el, spellingsFor(step))) result.status = "filled";
+      }
     }
-    return results;
+
+    return results.map(({ label, status }) => ({ label, status }));
   };
 
   window.__simbaflow = { collectLabels, describe, fill };

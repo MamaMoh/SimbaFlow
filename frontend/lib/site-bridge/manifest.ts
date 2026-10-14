@@ -84,6 +84,8 @@ export const FIELD_KEYS = [
   "experienceAbroadYears",
   // derived for a form that asks for it, never stored
   "title",
+  /** The year out of the date of birth, for a form with a year dropdown beside the date box. */
+  "birthYear",
   /**
    * The whole name in one box, as SimbaFlow asks for it and as some portals print it.
    *
@@ -122,6 +124,19 @@ export type ReadField = {
 /** One box on their form, and what we put in it. */
 export type WriteField = {
   label: string;
+  /**
+   * The box's own `id` or `name` on their form, when we have been shown the page and know it.
+   *
+   * The printed label is the right thing to match on in general — it is what a person sees, and
+   * it survives the markup being rebuilt. But it is a guess about the markup: it assumes the
+   * label sits where the walk can find it, and on a form that lays a row out as label, box,
+   * label, box, inside wrappers a date picker has built, that assumption fails quietly and puts
+   * the expiry date into Place of Birth.
+   *
+   * Where the form has been inspected, the id is not a guess. The label stays as the fallback,
+   * so a form that renames its ids still fills.
+   */
+  match?: string[];
   /**
    * Absent when the form asks for something we do not hold. The box is then reported as needing
    * a person rather than quietly skipped, which is the difference between "we cannot fill this"
@@ -290,64 +305,93 @@ export const VISA_APPLICATION: SiteManifest = {
   direction: "write",
   fields: [
     // ── Visa information ──
-    { label: "Visa Type", key: "visaType", kind: "select", fixed: "Work" },
-    { label: "Current Nationality", key: "nationality", kind: "select", fixed: "Ethiopia" },
-    { label: "Nearest Saudi Mission", kind: "select", fixed: "Addis Ababa" },
-    { label: "Number of Entries", kind: "select", fixed: "Single" },
-    { label: "Visa Validity", kind: "select", fixed: "90 Days" },
-    { label: "Duration Of Stay", kind: "select", fixed: "90" },
-    { label: "Occupation", key: "occupation", kind: "select" },
+    { label: "Visa Type", match: ["VisaKind"], key: "visaType", kind: "select", fixed: "Work" },
+    {
+      label: "Current Nationality",
+      match: ["NATIONALITY"],
+      key: "nationality",
+      kind: "select",
+      fixed: "Ethiopia",
+    },
+    { label: "Nearest Saudi Mission", match: ["EmbassyCode"], kind: "select", fixed: "Addis Ababa" },
+    // These three are filled by the form itself once Visa Type is chosen, and are empty until
+    // that round trip comes back. The filler asks again after a moment rather than reporting
+    // them as boxes with no matching option, which is what they look like for the first second.
+    { label: "Number of Entries", match: ["NUMBER_OF_ENTRIES"], kind: "select", fixed: "Single" },
+    { label: "Visa Validity", match: ["Number_Entry_Day"], kind: "select", fixed: "90 Days" },
+    { label: "Duration Of Stay", match: ["RESIDENCY_IN_KSA"], kind: "select", fixed: "90" },
+    // A text box on this form, not a dropdown — the dropdown beside it is the occupation
+    // classification, which is a different question and is left to the person.
+    { label: "Occupation", match: ["OccupationName"], key: "occupation" },
 
     // ── Personal information ──
     // The Arabic name is four boxes and we hold none of it. Transliterating an Ethiopian name
     // into Arabic is not a thing to do automatically on a visa application — a wrong spelling
     // here is a name that does not match the passport at the border.
-    { label: "Arabic First Name" },
-    { label: "Arabic Father Name" },
-    { label: "Arabic Grand Name" },
-    { label: "Arabic Family Name" },
-    { label: "First Name", key: "firstName" },
-    { label: "Second/Father Name", key: "middleName" },
-    // Other/G.Father Name is deliberately absent. An Ethiopian name has three parts and this
-    // form has four boxes for them; the agency puts the grandfather's name in Last/Family Name,
-    // which leaves this one for something we do not hold. Filling it with the grandfather's name
-    // again put the same word in two boxes of a visa application.
-    // The form wants four names and an Ethiopian one has three. Confirmed with the agency: the
-    // family name is the grandfather's, so it repeats the box above rather than being left to a
-    // person to work out on every application.
-    { label: "Last/Family Name", key: "lastName" },
-    { label: "Passport Number", key: "passportNumber" },
-    { label: "Passport Type", key: "passportType", kind: "select", fixed: "Normal" },
-    { label: "Issuing Country", key: "country", kind: "select", fixed: "Ethiopia" },
-    { label: "Date of Issue", key: "passportIssueDate", kind: "date" },
-    { label: "Date of Expiry", key: "passportExpiryDate", kind: "date" },
-    { label: "Place of Birth", key: "placeOfBirth" },
-    { label: "Date of Birth", key: "dateOfBirth", kind: "date" },
-    { label: "ID Number", key: "nationalId" },
-    { label: "RELIGION", key: "religion", kind: "select" },
-    { label: "Marital Status", key: "maritalStatus", kind: "select" },
-    { label: "Gender", key: "gender", kind: "select" },
-    { label: "Qualification", key: "qualification" },
-    { label: "Source of Degree", fixed: "none" },
+    { label: "Arabic First Name", match: ["AFIRSTNAME"] },
+    { label: "Arabic Father Name", match: ["AFATHER"] },
+    { label: "Arabic Grand Name", match: ["AGRAND"] },
+    { label: "Arabic Family Name", match: ["AFAMILY"] },
+    { label: "First Name", match: ["EFIRSTNAME"], key: "firstName" },
+    { label: "Second/Father Name", match: ["EFATHER"], key: "middleName" },
+    // Other/G.Father Name — EGRAND — is deliberately absent. The form wants four names and an
+    // Ethiopian one has three. Confirmed with the agency: the family name is the grandfather's,
+    // so filling this one too would put the same word in two boxes of a visa application.
+    { label: "Last/Family Name", match: ["EFAMILY"], key: "lastName" },
+    { label: "Passport Number", match: ["PASSPORTnumber"], key: "passportNumber" },
+    {
+      label: "Passport Type",
+      match: ["PASSPORType"],
+      key: "passportType",
+      kind: "select",
+      fixed: "Normal",
+    },
+    // Matched by id and not by label alone: a second box on this form carries the same printed
+    // label inside the tourism-visa section, which is hidden and has no options in it at all.
+    {
+      label: "Issuing Country",
+      match: ["PASSPORT_ISSUE_PLACE"],
+      key: "country",
+      kind: "select",
+      fixed: "Ethiopia",
+    },
+    { label: "Date of Issue", match: ["PASSPORT_ISSUE_DATE"], key: "passportIssueDate", kind: "date" },
+    // Their own spelling of the id, lower-case final letter and all. Copied exactly on purpose.
+    {
+      label: "Date of Expiry",
+      match: ["PASSPORT_EXPIRY_DATe"],
+      key: "passportExpiryDate",
+      kind: "date",
+    },
+    { label: "Place of Birth", match: ["BIRTH_PLACE"], key: "placeOfBirth" },
+    { label: "Year of Birth", match: ["BirthYearDDL"], key: "birthYear", kind: "select" },
+    { label: "Date of Birth", match: ["BIRTH_DATE"], key: "dateOfBirth", kind: "date" },
+    { label: "ID Number", match: ["PersonId"], key: "nationalId" },
+    { label: "Religion", match: ["RELIGION"], key: "religion", kind: "select" },
+    { label: "Marital Status", match: ["SOCIAL_STATUS"], key: "maritalStatus", kind: "select" },
+    { label: "Gender", match: ["Sex"], key: "gender", kind: "select" },
+    { label: "Qualification", match: ["DEGREE"], key: "qualification" },
+    { label: "Source of Degree", match: ["DEGREE_SOURCE"], fixed: "none" },
     // The house the candidate is going to, which is the sponsor's.
-    { label: "KSA Home Address", key: "sponsorAddress" },
+    { label: "KSA Home Address", match: ["ADDRESS_HOME"], key: "sponsorAddress" },
     // The agency's address, not the candidate's — confirmed with the agency, and the box has a
     // tooltip saying so. Filling it from the candidate would put a housemaid's gmail address on
     // a consular application as the office contact.
-    { label: "Email Address", key: "agencyEmail" },
+    { label: "Email Address", match: ["Personal_Email"], key: "agencyEmail" },
 
     // ── Sponsor information ──
-    { label: "Sponsor Name", key: "sponsorName" },
-    { label: "Sponsor ID Number", key: "sponsorIdNumber" },
-    { label: "Sponsor Address", key: "sponsorAddress" },
-    { label: "Phone Number", key: "sponsorPhone", kind: "phone" },
-    { label: "Transport Mode", kind: "select", fixed: "Air" },
-    { label: "Purpose", fixed: "Work" },
+    { label: "Sponsor Name", match: ["SPONSER_NAME"], key: "sponsorName" },
+    { label: "Sponsor ID Number", match: ["SPONSER_NUMBER"], key: "sponsorIdNumber" },
+    { label: "Sponsor Address", match: ["SPONSER_ADDRESS"], key: "sponsorAddress" },
+    { label: "Phone Number", match: ["SPONSER_PHONE"], key: "sponsorPhone", kind: "phone" },
+    { label: "Transport Mode", match: ["COMING_THROUGH"], kind: "select", fixed: "By Air" },
+    { label: "Purpose", match: ["porpose"], fixed: "Work" },
   ],
   note:
-    "DocumentNumber, Classify Occupations, Port of Entry, Expected Entry Date To KSA and Flight " +
-    "Number are left to the person: the first two were unclear on the form and the last three " +
-    "belong to a booking that may not exist yet.",
+    "Classify Occupations, Port of Entry, Expected Entry Date To KSA and Flight Number are left " +
+    "to the person: the first belongs to a list this does not map, and the rest belong to a " +
+    "booking that may not exist yet. The three date boxes are pickers that cannot be typed in, " +
+    "so what is written into them is reported for checking rather than counted as done.",
 };
 
 export const SITE_MANIFESTS: SiteManifest[] = [

@@ -187,7 +187,7 @@ test("the agency's standing answers fill the boxes that are not about the candid
   assert.equal(visaStep("Number of Entries")?.value, "Single");
   assert.equal(visaStep("Visa Validity")?.value, "90 Days");
   assert.equal(visaStep("Duration Of Stay")?.value, "90");
-  assert.equal(visaStep("Transport Mode")?.value, "Air");
+  assert.equal(visaStep("Transport Mode")?.value, "By Air");
   assert.equal(visaStep("Purpose")?.value, "Work");
   assert.equal(visaStep("Source of Degree")?.value, "none");
 });
@@ -221,11 +221,43 @@ test("the declaration is not in the plan at all", () => {
   assert.ok(!labels.some((l) => l.includes("traveled to other countries")));
 });
 
-test("the occupation we register is offered under the name the visa form uses", () => {
+test("the occupation goes in as we hold it, because the box takes words", () => {
+  // Written as a dropdown to begin with, on the assumption that a government form would offer a
+  // list. It does — a separate one, of occupation classifications, which is a different question
+  // and is left to the person. The box labelled Occupation takes free text, and a plan that
+  // called it a dropdown had the filler refuse to type into it.
   const step = visaStep("Occupation");
-  assert.equal(step?.kind, "select");
-  assert.ok(step?.alternatives.includes("House Worker"));
-  assert.ok(step?.alternatives.includes("House Maid"));
+  assert.equal(step?.kind, "text");
+  assert.equal(step?.value, "House Maid");
+});
+
+test("every box on the visa form is addressed by the form's own name for it", () => {
+  // The label is what a person sees and is the right thing to match on in general, but finding
+  // a box by its label means walking the markup around it and guessing. On this form that guess
+  // handed Place of Birth the name "Date of Expiry", and the expiry date was written into the
+  // town box while the date box stayed empty. The ids are not a guess.
+  const unaddressed = VISA_APPLICATION.fields.filter((f) => !("match" in f) || !f.match?.length);
+  assert.deepEqual(unaddressed, []);
+});
+
+test("a denomination becomes one of the two answers the form offers", () => {
+  // The form asks Islam or Non-Muslim. The record holds the denomination, which is more than
+  // the form asked for and must not be handed over as-is or the box stays empty.
+  assert.ok(visaStep("Religion")?.alternatives.includes("Islam"));
+  assert.ok(
+    fillPlan({ ...FOR_VISA, religion: "Orthodox" }, VISA_APPLICATION)
+      .steps.find((s) => s.label === "Religion")
+      ?.alternatives.includes("Non-Muslim"),
+  );
+});
+
+test("a form with a year box beside the date box gets the year", () => {
+  assert.equal(visaStep("Year of Birth")?.value, "1994");
+  assert.equal(
+    fillPlan({ ...FOR_VISA, dateOfBirth: "" }, VISA_APPLICATION)
+      .missing.some((m) => m.label === "Year of Birth"),
+    true,
+  );
 });
 
 test("the house the candidate is going to is the sponsor's", () => {
