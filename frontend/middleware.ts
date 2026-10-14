@@ -43,7 +43,28 @@ export async function middleware(request: NextRequest) {
   
   // Identify API routes that require authentication
   const isApiRoute = pathname.startsWith("/api/");
-  
+
+  /**
+   * How a request that has no session is turned away.
+   *
+   * A page is sent to the login screen. An API route is answered in JSON, because a fetch
+   * follows a redirect without saying so and hands the caller the login page with a 200 on it —
+   * which is then parsed as JSON and fails on the first "<". What the person sees is a complaint
+   * about a bracket rather than being told they are signed out.
+   *
+   * There was already a branch returning 401 for an API route, but it sat below the redirects
+   * and so could never be reached. Turning away in one place is what stops that happening again:
+   * the three exits below cannot disagree about what an API route gets.
+   */
+  const turnAway = () => {
+    if (isApiRoute) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  };
+
   try {
     // Retrieve authentication token with timeout to prevent request blocking
     const token = await Promise.race([
@@ -73,40 +94,28 @@ const loginUrl = new URL("/login", request.url);
       }
     }
     
-    // Redirect to login when token is invalid or missing
-    if ((isTokenError || !hasAccessToken) && !isPublicRoute) {
-const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
+    // Turn away when the token is invalid or missing
+    if (isTokenError || !hasAccessToken) {
+      return turnAway();
     }
     
     // Determine authentication status from token validation
     const isAuthenticated = token && !isTokenError && hasAccessToken;
     
-    // Redirect unauthenticated users to login page
-    if (!isAuthenticated && !isPublicRoute) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
+    // Turn away anyone without a session
+    if (!isAuthenticated) {
+      return turnAway();
     }
     
     // Redirect authenticated users away from authentication pages
     if (isAuthenticated && isPublicRoute) {
       return NextResponse.redirect(new URL("/overview", request.url));
     }
-    
-    // Enforce authentication for API routes
-    if (isApiRoute && !isAuthenticated) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    
-  } catch (error) {
-    // Handle authentication errors by redirecting to login
-    if (!isPublicRoute) {
-const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  } catch {
+    // Reading the token failed or took longer than the second it is given. The session cannot
+    // be established either way, so this is turned away like any other request without one —
+    // and an API caller is told so in JSON rather than handed a login page.
+    return turnAway();
   }
   
   // Allow authenticated requests to proceed
