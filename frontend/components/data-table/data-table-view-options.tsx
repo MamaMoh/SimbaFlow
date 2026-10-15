@@ -60,7 +60,10 @@ export function DataTableViewOptions<TData>({
               aria-label="Toggle columns"
               variant="outline"
               size="sm"
-              className="ml-auto hidden h-8 lg:flex"
+              // Was `hidden lg:flex`, which took the only way of arranging a table away from
+              // exactly the screen that needs it most — the narrower the window, the more it
+              // matters which six columns are on it.
+              className="ml-auto flex h-8"
             >
               <SlidersHorizontalIcon className="mr-2 h-4 w-4" />
               View
