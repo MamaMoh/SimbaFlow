@@ -382,6 +382,7 @@ export default function CandidatesPage() {
             candidateName={row.original.fullName}
             stageName={row.original.currentStageName?.trim() || "Intake"}
             canDelete={row.original.canDelete !== false}
+            status={row.original.status}
             isGeneratingCv={generatingCvId === row.original.id}
             onGenerateCv={handleGenerateCv}
             onDelete={handleDelete}

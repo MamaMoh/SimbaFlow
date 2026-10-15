@@ -164,6 +164,25 @@ public class DeleteCandidateHandler : IRequestHandler<DeleteCandidateCommand, Re
         candidate.Status = CandidateStatus.Archived;
         candidate.DeletedAt = DateTime.UtcNow;
         candidate.DeletedBy = _currentUser.UserName;
+
+        // On the timeline, so a restored candidate's history says when they were removed and by whom.
+        if (Guid.TryParse(_currentUser.UserId, out var userId))
+        {
+            _context.WorkflowEvents.Add(new Domain.Entities.Workflow.WorkflowEvent
+            {
+                CandidateId = candidate.Id,
+                SequenceNumber = await CandidateEventSequence.NextAsync(_context, candidate.Id, cancellationToken),
+                EventType = WorkflowEventType.Archived,
+                FromStageId = candidate.CurrentStageId,
+                FromStageName = candidate.CurrentStageName,
+                ToStageId = candidate.CurrentStageId,
+                ToStageName = candidate.CurrentStageName,
+                UserId = userId,
+                UserName = _currentUser.UserName ?? "unknown",
+                Notes = "Removed",
+            });
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

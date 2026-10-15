@@ -340,6 +340,19 @@ export async function withdrawFromPipeline(candidateId: string, reason?: string)
   }
 }
 
+/** Bring a candidate back from the Inactive list: an Unfit result or a removal, undone. */
+export async function reactivateCandidate(candidateId: string, reason?: string): Promise<void> {
+  const res = await fetch(`/api/proxy/candidates/${candidateId}/reactivate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.error || "Could not reactivate the candidate");
+  }
+}
+
 export async function deleteCandidate(id: string): Promise<void> {
   const res = await fetch(`/api/proxy/candidates/${id}`, { method: "DELETE" });
   if (!res.ok) {
