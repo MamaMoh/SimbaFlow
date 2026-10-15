@@ -26,6 +26,7 @@ public interface IPlatformDbContext
     DbSet<BotRegistrationChallenge> BotRegistrationChallenges { get; }
     DbSet<BotChatLink> BotChatLinks { get; }
     DbSet<NotificationDelivery> NotificationDeliveries { get; }
+    DbSet<ReportSchedule> ReportSchedules { get; }
     DbSet<ExchangeRate> ExchangeRates { get; }
     DbSet<PartnerAgency> PartnerAgencies { get; }
     DbSet<SimbaFlow.Domain.Entities.Billing.SubscriptionInvoice> SubscriptionInvoices { get; }

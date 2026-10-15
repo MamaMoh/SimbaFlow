@@ -52,6 +52,7 @@ public class PlatformDbContext
     public DbSet<BotRegistrationChallenge> BotRegistrationChallenges => Set<BotRegistrationChallenge>();
     public DbSet<BotChatLink> BotChatLinks => Set<BotChatLink>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+    public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
 
     // Partner catalog (platform)
@@ -170,6 +171,18 @@ public class PlatformDbContext
             entity.Property(x => x.PayloadSummary).HasMaxLength(512).IsRequired();
             entity.Property(x => x.ExternalMessageId).HasMaxLength(128);
             entity.Property(x => x.Error).HasMaxLength(1024);
+        });
+
+        modelBuilder.Entity<ReportSchedule>(entity =>
+        {
+            entity.ToTable("ReportSchedules");
+            entity.HasIndex(x => x.TenantId);
+            entity.HasIndex(x => new { x.IsActive, x.NextRunAt });
+            entity.Property(x => x.ReportKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Format).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Recipients).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.LastStatus).HasMaxLength(32);
+            entity.Property(x => x.LastError).HasMaxLength(1024);
         });
 
         modelBuilder.Entity<PartnerAgency>(entity =>
