@@ -516,7 +516,14 @@ export function DataTableToolbar<TData>({
           </div>
 
         {/* Right section: actions */}
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {/*
+          Allowed to shrink, which `shrink-0` was not. Kept from shrinking, this row moved onto
+          its own line and then ran off the right of the card anyway, taking Create with it —
+          the same button off the same edge, one line lower. Shrinking lets its own wrap do the
+          work, and `justify-end` keeps it against the right while it still fits beside the
+          search box.
+        */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
           {deleteRowsAction && table.getSelectedRowModel().rows.length > 0 ? (
             <AppTooltip content={tooltips.delete}>
               <Button

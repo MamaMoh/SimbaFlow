@@ -71,7 +71,7 @@ function UserInfo() {
   const username = isHydrated ? getUsername() : "";
 
   return (
-    <div className="flex flex-col space-y-0.5 max-w-full">
+    <div className="flex max-w-full flex-col space-y-px">
       <p className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
         {displayName}
       </p>
@@ -204,7 +204,7 @@ function NavItemWithCollapse({
             <Button
               variant="ghost"
               className={cn(
-                "group relative w-full rounded-xl transition-all duration-300 cursor-pointer",
+                "group relative h-8 w-full rounded-lg transition-all duration-300 cursor-pointer",
                 "hover:bg-primary/5 dark:hover:bg-primary/10 border border-transparent hover:border-white/20",
                 actualIsOpen && "bg-white/50 dark:bg-white/10 border-white/20",
                 isCollapsed
@@ -229,7 +229,7 @@ function NavItemWithCollapse({
                 {/* Icon wrapper for parent item */}
                 <span
                   className={cn(
-                    " flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 transition-transform group-hover:translate-x-0.5",
+                    " flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-300 transition-transform group-hover:translate-x-0.5",
                     actualIsOpen
                       ? "bg-primary/10 text-primary"
                       : "bg-white/40 dark:bg-white/5 text-foreground/80",
@@ -322,7 +322,7 @@ function NavItemWithCollapse({
             <Button
               variant="ghost"
               className={cn(
-                "group relative w-full rounded-xl transition-all duration-300 cursor-pointer",
+                "group relative h-8 w-full rounded-lg transition-all duration-300 cursor-pointer",
                 "hover:bg-primary/5 dark:hover:bg-primary/10 border border-transparent hover:border-white/20",
                 isCollapsed
                   ? "md:justify-center md:px-2"
@@ -344,7 +344,7 @@ function NavItemWithCollapse({
               {/* Icon wrapper for leaf item */}
               <span
                 className={cn(
-                  " flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-300 transition-transform group-hover:translate-x-0.5",
+                  " flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-300 transition-transform group-hover:translate-x-0.5",
                   isActive
                     ? "bg-primary/10 text-primary"
                     : "bg-white/40 dark:bg-white/5 text-foreground/80",
@@ -514,7 +514,11 @@ export function Sidebar({ className }: SidebarProps) {
           </div>
           <div className="h-px bg-gradient-to-r from-transparent via-white/40 dark:via-border/40 to-transparent shadow-sm" />
 
-          <nav className="flex-1 space-y-1 p-4 overflow-y-auto modern-scrollbar">
+          {/* Tighter than it was: `space-y-1` and `p-4` put a visible gap between every entry,
+              and a list of fifteen destinations with a gap between each one pushes the ones at
+              the bottom off the screen. The hover and active backgrounds already separate them;
+              the gaps were separating things that were not in danger of being read as one. */}
+          <nav className="modern-scrollbar flex-1 space-y-px overflow-y-auto px-2 py-3">
             {navItems.map((item) => (
               <NavItemWithCollapse
                 key={item.name}
