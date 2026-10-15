@@ -165,6 +165,7 @@ async function start() {
     }
 
     $("form-name").textContent = state.manifest.title;
+    void setUpPaste();
     show("search");
     $("search").focus();
   } catch (err) {
@@ -366,6 +367,79 @@ $("fill").addEventListener("click", async () => {
     $("fill").disabled = false;
   }
 });
+
+/* ─── filling on paste ──────────────────────────────────────────────────────── */
+
+/**
+ * The switch that lets this site fill on paste.
+ *
+ * Copy to insurance in SimbaFlow puts a candidate on the clipboard; pasting it into the form
+ * fills every box. That needs a listener already on the page when the paste happens, which the
+ * toolbar's one-click access cannot provide — so it is offered here, on a form this already
+ * recognises, and the browser asks the person to allow this one site. Turning it off hands the
+ * access back. background.js keeps the listening in step with whatever the browser has granted.
+ */
+async function setUpPaste() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  let origin;
+  try {
+    origin = new URL(tab?.url ?? "").origin;
+  } catch {
+    return;
+  }
+  if (!/^https?:/.test(origin)) return;
+
+  const pattern = `${origin}/*`;
+  const host = new URL(origin).host;
+  const toggle = $("paste-switch");
+  const describe = (on) => {
+    $("paste-sub").textContent = on
+      ? `On for ${host}. Copy a candidate in SimbaFlow, then paste into this form.`
+      : `Copy a candidate in SimbaFlow and paste here to fill every box. Asks to allow ${host}.`;
+  };
+
+  toggle.checked = await chrome.permissions.contains({ origins: [pattern] });
+  describe(toggle.checked);
+  $("paste").hidden = false;
+
+  toggle.addEventListener("change", () => {
+    const on = toggle.checked;
+    toggle.disabled = true;
+    // Asked for inside the click itself: the browser only shows its permission prompt while the
+    // gesture that asked for it is still current, so nothing may be awaited before this line.
+    const asked = on
+      ? chrome.permissions.request({ origins: [pattern] })
+      : chrome.permissions.remove({ origins: [pattern] });
+
+    void asked
+      .then(async (granted) => {
+        const nowOn = on ? granted : !granted;
+        toggle.checked = nowOn;
+        describe(nowOn);
+        await chrome.runtime.sendMessage({ type: "paste-sites:sync" });
+        // Registered scripts reach the next page load. This one is already open, so it is told
+        // directly — on, by putting the listener in now; off, by telling the one already there.
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id, allFrames: true },
+          func: (off) => {
+            window.__simbaflowPasteOff = off;
+          },
+          args: [!nowOn],
+        });
+        if (nowOn) {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id, allFrames: true },
+            files: ["page-functions.js", "paste.js"],
+          });
+        }
+        say("");
+      })
+      .catch((err) => say(err?.message || "Could not change that."))
+      .finally(() => {
+        toggle.disabled = false;
+      });
+  });
+}
 
 $("back").addEventListener("click", () => {
   show("search");

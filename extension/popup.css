@@ -223,6 +223,55 @@ input[type="search"]::-webkit-search-cancel-button { cursor: pointer; }
 .outcome .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .outcome .why { color: var(--muted-foreground); font-size: 11px; flex: none; }
 
+/* ── fill on paste ────────────────────────────────────────────────────────── */
+
+.paste { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.paste-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.paste-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: calc(var(--radius) - 2px);
+  display: grid;
+  place-items: center;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.paste-icon svg { width: 15px; height: 15px; }
+.paste-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.paste-title { font-weight: 500; }
+.paste-sub { color: var(--muted-foreground); font-size: 11px; }
+
+/* The app's switch: a pill that goes the brand colour when on. */
+.switch {
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 120ms;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  transition: transform 120ms;
+}
+.switch:checked { background: var(--brand); }
+.switch:checked::after { transform: translateX(14px); }
+.switch:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
+.switch:disabled { opacity: 0.55; cursor: default; }
+
 /* ── empty states ─────────────────────────────────────────────────────────── */
 
 .empty { text-align: center; padding: 10px 4px 4px; }

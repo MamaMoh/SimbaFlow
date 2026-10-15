@@ -23,7 +23,7 @@ import { Eye, Lock, Send, ShieldCheck, Ban, KeyRound } from "lucide-react";
  * at the worst moment. Change this to whichever address is actually watched.
  */
 const CONTACT = "support@laba.et";
-const UPDATED = "14 October 2026";
+const UPDATED = "15 October 2026";
 
 export const metadata: Metadata = {
   title: "Privacy — SimbaFlow Form Filler",
@@ -99,15 +99,16 @@ export default function PrivacyPage() {
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           <Glance icon={Eye} title="What it sees">
-            The page you are on, only at the moment you click its button. Nothing else, and no
-            other tab.
+            The page you are on when you click its button, and a site you switch on yourself
+            for pasting. Nothing else.
           </Glance>
           <Glance icon={Send} title="What it sends">
             Nothing to anyone but your own SimbaFlow. No analytics, no third parties, nothing
             sold.
           </Glance>
           <Glance icon={Lock} title="What it stores">
-            One setting, if you change it. No candidate data, no password, no history.
+            One setting, if you change it, and the sites you switched on. No candidate data, no
+            password, no history.
           </Glance>
         </div>
 
@@ -117,8 +118,17 @@ export default function PrivacyPage() {
               <strong className="text-foreground">The page you are on, only when you ask.</strong>{" "}
               The extension has no standing access to any portal. When you click its toolbar
               button, the browser grants it access to that one tab, for that one action. It does
-              not run in the background, it does not watch other tabs, and it holds no list of
-              sites it is allowed on.
+              not watch other tabs.
+            </p>
+            <p>
+              <strong className="text-foreground">A paste, on a site you switch on.</strong> To
+              fill a form by pasting a candidate copied in SimbaFlow, you turn on{" "}
+              <em>Fill when I paste here</em> in the extension on that form, and your browser asks
+              you to allow that one site. From then on the extension listens on that site for a
+              paste. It looks only at what you paste: anything that is not a candidate copied from
+              SimbaFlow is left exactly as it was, and it reads nothing else on the page except the
+              labels that tell it whether this is the right form. Turning the switch off, or
+              removing the site in your browser&rsquo;s extension settings, takes the access away.
             </p>
             <p>
               <strong className="text-foreground">Your SimbaFlow account.</strong> It reads from
@@ -142,14 +152,19 @@ export default function PrivacyPage() {
             <p>
               Candidate details travel from SimbaFlow to the form in front of you and stop there.
               They are not sent to us, stored by the extension, or kept once the tab is closed.
+              <strong className="text-foreground"> Copy to insurance</strong> puts one
+              candidate&rsquo;s details on your computer&rsquo;s clipboard, as the copy command
+              does with anything; a copy stops working after twenty minutes, so an old one cannot
+              fill a form with the wrong person.
             </p>
           </Section>
 
           <Section title="What it stores">
             <p>
-              One thing, and only if you change it: the address of the SimbaFlow server to use,
-              which exists so the extension can be pointed at a test installation. No candidate
-              data, no credentials, no record of what was filled. It holds no password or key of
+              Two things. The address of the SimbaFlow server to use, only if you change it, which
+              exists so the extension can be pointed at a test installation; and the sites you
+              turned on for pasting, which your browser keeps as the permission you granted. No
+              candidate data, no credentials, no record of what was filled. It holds no password or key of
               its own — it uses the session your browser already has.
             </p>
           </Section>
@@ -178,6 +193,7 @@ export default function PrivacyPage() {
                 ["activeTab", "To fill the form in the tab you are looking at, at the moment you click the button."],
                 ["scripting", "To put the values into that page's boxes."],
                 ["storage", "To remember the server address described above."],
+                ["Optional: a site you allow", "Asked for only when you turn on filling by paste for a form, and only for that form's site. Lets it notice a paste there."],
                 ["Access to this site", "To ask SimbaFlow what a form wants and which candidate you chose."],
               ].map(([name, why]) => (
                 <div key={name} className="grid gap-1 p-3.5 sm:grid-cols-[150px_1fr] sm:gap-4">
