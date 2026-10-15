@@ -5,9 +5,14 @@ using SimbaFlow.Application.Common.Models;
 
 namespace SimbaFlow.API.Features.SampleData;
 
-public record RemoveSampleDataCommand : IRequest<Result<int>>, IRequirePermission
+/// <summary>
+/// Owner-only for the same reason as adding it: this is a hard delete across the pipeline.
+/// </summary>
+public record RemoveSampleDataCommand : IRequest<Result<int>>, IRequirePermission, IRequireAgencyOwner
 {
     public string RequiredPermission => "candidate.delete";
+
+    public string OwnerOnlyMessage => "Sample data is removed by the agency owner or the platform team.";
 }
 
 /// <summary>

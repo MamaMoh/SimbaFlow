@@ -100,7 +100,9 @@ export default function SettingsPage() {
         {canUseBot ? <BotLinkCard /> : null}
       </div>
 
-      {canAdmin ? <IntakeDefaultsCard /> : null}
+      {/* settings.write, like the save behind it. Gated on system.admin, the agency owner — the
+          person who holds settings.write to set these — never saw the card. */}
+      {canManageSettings ? <IntakeDefaultsCard /> : null}
 
       {canReadSettings ? <OfficesCard canEdit={canManageSettings} /> : null}
 

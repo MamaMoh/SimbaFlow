@@ -516,8 +516,15 @@ public class GetCandidateDocumentsHandler : IRequestHandler<GetCandidateDocument
     }
 }
 
-public record GetCandidateTimelineQuery(Guid CandidateId) : IRequest<Result<List<TimelineEntryDto>>>, IAuditedRead
+/// <summary>
+/// A candidate's history: every stage they passed through, who moved them and the notes left on
+/// the way. It shipped with no permission at all, so any signed-in account, the notifications
+/// manager included, could read it by id.
+/// </summary>
+public record GetCandidateTimelineQuery(Guid CandidateId)
+    : IRequest<Result<List<TimelineEntryDto>>>, IRequirePermission, IAuditedRead
 {
+    public string RequiredPermission => "candidate.read";
     public string AuditEntityType => "Candidate";
     public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
 }

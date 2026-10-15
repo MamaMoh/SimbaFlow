@@ -30,7 +30,7 @@ public record ProvisionTenantCommand(
     List<string>? LicensedCountries = null,
     string? Address = null,
     string? City = null,
-    string? Country = null) : IRequest<Result<Guid>>;
+    string? Country = null) : IRequest<Result<Guid>>, IRequirePlatformAdmin;
 
 /// <summary>
 /// The slug is not just a label — it becomes the tenant's PostgreSQL schema name, which is
