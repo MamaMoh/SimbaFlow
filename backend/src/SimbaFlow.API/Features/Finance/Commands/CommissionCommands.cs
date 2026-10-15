@@ -4,7 +4,9 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Finance;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Persistence;
+using SimbaFlow.Infrastructure.Services;
 
 namespace SimbaFlow.API.Features.Finance.Commands;
 
@@ -25,15 +27,26 @@ public class UpsertCommissionFeesHandler : IRequestHandler<UpsertCommissionFeesC
 {
     private readonly ITenantDbContext _context;
     private readonly IExchangeRateService _fx;
+    private readonly IJournalPostingService _journal;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpsertCommissionFeesHandler(ITenantDbContext context, IExchangeRateService fx)
+    public UpsertCommissionFeesHandler(
+        ITenantDbContext context,
+        IExchangeRateService fx,
+        IJournalPostingService journal,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _fx = fx;
+        _journal = journal;
+        _currentUser = currentUser;
     }
 
     public async Task<Result> Handle(UpsertCommissionFeesCommand request, CancellationToken ct)
     {
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return Result.Failure("Unauthenticated", 401);
+
         var commission = await _context.Commissions
             .Include(c => c.Fees)
             .Include(c => c.Payments)
@@ -94,6 +107,9 @@ public class UpsertCommissionFeesHandler : IRequestHandler<UpsertCommissionFeesC
         // Keep navigation in sync for recalc
         commission.Fees = existingFees.Concat(newFees).ToList();
         CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+
+        // Charging fees is when the agency earns its fee and starts owing the pass-through money.
+        await _journal.SyncCommissionFeesAsync(commission, userId, cancellationToken: ct);
         await _context.SaveChangesAsync(ct);
         return Result.Success();
     }
@@ -113,6 +129,8 @@ public record RecordPaymentCommand(
 
 public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result<Guid>>
 {
+    public const decimal OverpaymentTolerance = 1m;
+
     private readonly ITenantDbContext _context;
     private readonly IExchangeRateService _fx;
     private readonly IJournalPostingService _journal;
@@ -177,6 +195,15 @@ public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result
         if (amountEtb <= 0)
             return Result<Guid>.Failure("Converted ETB amount must be > 0", 400);
 
+        // A payment above what is owed would leave the candidate in credit with nothing to show
+        // for it. Up to one birr over is let through so a foreign-currency payment of the full
+        // balance is not refused for its rounding.
+        CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+        if (amountEtb > commission.BalanceAmount + OverpaymentTolerance)
+            return Result<Guid>.Failure(
+                $"This payment ({amountEtb:N2} ETB) is more than the balance owed ({commission.BalanceAmount:N2} ETB).",
+                400);
+
         if (_context is not TenantDbContext db)
             return Result<Guid>.Failure("Database transaction unavailable", 500);
 
@@ -194,7 +221,8 @@ public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result
                 Method = method,
                 Reference = request.Reference?.Trim(),
                 Notes = request.Notes?.Trim(),
-                RecordedByUserId = userId
+                RecordedByUserId = userId,
+                ReceiptNumber = await _journal.AllocateReceiptNumberAsync(ct)
             };
 
             _context.Payments.Add(payment);
@@ -215,7 +243,76 @@ public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result
     }
 }
 
-public record OpenDisputeCommand(Guid CommissionId, string Reason)
+public record VoidPaymentCommand(Guid PaymentId, string Reason)
+    : IRequest<Result>, IRequirePermission
+{
+    public string RequiredPermission => "accounting.post";
+}
+
+/// <summary>
+/// Takes a payment back: posts the reverse of its journal entry, marks it voided with who and
+/// why, and recalculates what the candidate owes. Nothing is deleted.
+/// </summary>
+public class VoidPaymentHandler : IRequestHandler<VoidPaymentCommand, Result>
+{
+    private readonly ITenantDbContext _context;
+    private readonly IJournalPostingService _journal;
+    private readonly ICurrentUserService _currentUser;
+
+    public VoidPaymentHandler(
+        ITenantDbContext context, IJournalPostingService journal, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _journal = journal;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result> Handle(VoidPaymentCommand request, CancellationToken ct)
+    {
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return Result.Failure("Unauthenticated", 401);
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return Result.Failure("A reason is required to void a payment", 400);
+
+        var payment = await _context.Payments
+            .FirstOrDefaultAsync(p => p.Id == request.PaymentId && !p.IsDeleted, ct);
+        if (payment is null)
+            return Result.Failure("Payment not found", 404);
+        if (payment.VoidedAt is not null)
+            return Result.Failure("Payment is already voided", 400);
+
+        var commission = await _context.Commissions
+            .Include(c => c.Fees)
+            .Include(c => c.Payments)
+            .Include(c => c.Disputes)
+            .FirstOrDefaultAsync(c => c.Id == payment.CommissionId && !c.IsDeleted, ct);
+        if (commission is null)
+            return Result.Failure("Commission not found", 404);
+
+        if (payment.JournalEntryId is Guid entryId)
+        {
+            var reversal = await _journal.ReverseAsync(
+                entryId,
+                $"Void of payment {payment.ReceiptNumber ?? payment.Id.ToString()}",
+                JournalPostingService.SourceTypePaymentVoid,
+                payment.Id,
+                userId,
+                ct);
+            payment.VoidJournalEntryId = reversal.Id;
+        }
+
+        payment.VoidedAt = DateTime.UtcNow;
+        payment.VoidedByUserId = userId;
+        payment.VoidReason = request.Reason.Trim();
+
+        CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+        await _context.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+}
+
+public record OpenDisputeCommand(Guid CommissionId, string Reason, decimal? AmountEtb = null)
     : IRequest<Result<Guid>>, IRequirePermission
 {
     public string RequiredPermission => "commission.update";
@@ -252,11 +349,21 @@ public class OpenDisputeHandler : IRequestHandler<OpenDisputeCommand, Result<Gui
         if (commission.Disputes.Any(d => !d.IsDeleted && d.Status == DisputeStatus.Open))
             return Result<Guid>.Failure("An open dispute already exists for this commission", 409);
 
+        decimal? amount = request.AmountEtb is decimal a
+            ? Math.Round(a, 2, MidpointRounding.AwayFromZero)
+            : null;
+        if (amount is <= 0)
+            return Result<Guid>.Failure("The disputed amount must be greater than 0", 400);
+        if (amount > commission.BalanceAmount)
+            return Result<Guid>.Failure(
+                $"The disputed amount is more than the balance owed ({commission.BalanceAmount:N2} ETB)", 400);
+
         var dispute = new Dispute
         {
             CommissionId = commission.Id,
             Status = DisputeStatus.Open,
             Reason = request.Reason.Trim(),
+            DisputedAmountEtb = amount,
             OpenedAt = DateTime.UtcNow,
             OpenedByUserId = userId
         };
@@ -270,20 +377,33 @@ public class OpenDisputeHandler : IRequestHandler<OpenDisputeCommand, Result<Gui
     }
 }
 
-public record ResolveDisputeCommand(Guid DisputeId, string ResolutionNotes)
+/// <param name="Outcome">Enforced (default), Waived or Adjusted.</param>
+/// <param name="AdjustmentAmountEtb">For Adjusted: how much of the balance to write off.</param>
+public record ResolveDisputeCommand(
+    Guid DisputeId,
+    string ResolutionNotes,
+    string? Outcome = null,
+    decimal? AdjustmentAmountEtb = null)
     : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "commission.update";
 }
 
+/// <summary>
+/// Closes a dispute with its outcome. Waived and Adjusted write money off the balance and post
+/// Dr fee waivers (4900) / Cr receivable; Enforced leaves the balance as it is.
+/// </summary>
 public class ResolveDisputeHandler : IRequestHandler<ResolveDisputeCommand, Result>
 {
     private readonly ITenantDbContext _context;
+    private readonly IJournalPostingService _journal;
     private readonly ICurrentUserService _currentUser;
 
-    public ResolveDisputeHandler(ITenantDbContext context, ICurrentUserService currentUser)
+    public ResolveDisputeHandler(
+        ITenantDbContext context, IJournalPostingService journal, ICurrentUserService currentUser)
     {
         _context = context;
+        _journal = journal;
         _currentUser = currentUser;
     }
 
@@ -313,7 +433,50 @@ public class ResolveDisputeHandler : IRequestHandler<ResolveDisputeCommand, Resu
         if (commission is null)
             return Result.Failure("Commission not found", 404);
 
+        var outcome = DisputeOutcome.Enforced;
+        if (!string.IsNullOrWhiteSpace(request.Outcome)
+            && !Enum.TryParse(request.Outcome, true, out outcome))
+            return Result.Failure($"Invalid outcome: {request.Outcome}", 400);
+
+        CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+        var balance = Math.Max(0, commission.BalanceAmount);
+        decimal writeOff;
+        switch (outcome)
+        {
+            case DisputeOutcome.Waived:
+                writeOff = Math.Min(dispute.DisputedAmountEtb ?? balance, balance);
+                break;
+            case DisputeOutcome.Adjusted:
+                if (request.AdjustmentAmountEtb is not decimal adj || adj <= 0)
+                    return Result.Failure("An adjusted outcome needs the amount to write off", 400);
+                writeOff = Math.Round(adj, 2, MidpointRounding.AwayFromZero);
+                if (writeOff > balance)
+                    return Result.Failure(
+                        $"The adjustment is more than the balance owed ({balance:N2} ETB)", 400);
+                break;
+            default:
+                writeOff = 0;
+                break;
+        }
+
+        if (writeOff > 0)
+        {
+            var entry = await _journal.PostAsync(
+                $"Dispute {outcome.ToString().ToLowerInvariant()}: commission {commission.Id}",
+                JournalPostingService.SourceTypeDisputeAdjustment,
+                dispute.Id,
+                [
+                    new JournalLineSpec(LedgerAccounts.FeeWaivers, writeOff, 0, dispute.Reason),
+                    new JournalLineSpec(LedgerAccounts.Receivable, 0, writeOff, dispute.Reason),
+                ],
+                userId,
+                cancellationToken: ct);
+            dispute.AdjustmentJournalEntryId = entry?.Id;
+        }
+
         dispute.Status = DisputeStatus.Resolved;
+        dispute.Outcome = outcome;
+        dispute.AdjustmentAmountEtb = writeOff;
         dispute.ResolvedAt = DateTime.UtcNow;
         dispute.ResolutionNotes = request.ResolutionNotes.Trim();
         dispute.ResolvedByUserId = userId;

@@ -158,7 +158,10 @@ public record CommissionPaymentDto(
     string Method,
     string? Reference,
     string? Notes,
-    Guid? JournalEntryId);
+    Guid? JournalEntryId,
+    string? ReceiptNumber,
+    DateTime? VoidedAt,
+    string? VoidReason);
 
 public record CommissionDisputeDto(
     Guid Id,
@@ -166,7 +169,10 @@ public record CommissionDisputeDto(
     string Reason,
     DateTime OpenedAt,
     DateTime? ResolvedAt,
-    string? ResolutionNotes);
+    string? ResolutionNotes,
+    decimal? DisputedAmountEtb,
+    string? Outcome,
+    decimal AdjustmentAmountEtb);
 
 public record CommissionDetailDto(
     Guid Id,
@@ -180,6 +186,7 @@ public record CommissionDetailDto(
     DateTime OpenedAt,
     decimal TotalFeesAmount,
     decimal TotalPaidAmount,
+    decimal TotalAdjustedAmount,
     decimal BalanceAmount,
     List<CommissionFeeDto> Fees,
     List<CommissionPaymentDto> Payments,
@@ -222,14 +229,17 @@ public class GetCommissionByIdHandler
             .OrderByDescending(p => p.PaidAt)
             .Select(p => new CommissionPaymentDto(
                 p.Id, p.Amount, p.Currency, p.ExchangeRateToEtb, p.AmountEtb, p.PaidAt,
-                p.Method.ToString(), p.Reference, p.Notes, p.JournalEntryId))
+                p.Method.ToString(), p.Reference, p.Notes, p.JournalEntryId,
+                p.ReceiptNumber, p.VoidedAt, p.VoidReason))
             .ToListAsync(ct);
 
         var disputes = await _context.Disputes.AsNoTracking()
             .Where(d => d.CommissionId == request.Id && !d.IsDeleted)
             .OrderByDescending(d => d.OpenedAt)
             .Select(d => new CommissionDisputeDto(
-                d.Id, d.Status.ToString(), d.Reason, d.OpenedAt, d.ResolvedAt, d.ResolutionNotes))
+                d.Id, d.Status.ToString(), d.Reason, d.OpenedAt, d.ResolvedAt, d.ResolutionNotes,
+                d.DisputedAmountEtb, d.Outcome.HasValue ? d.Outcome.Value.ToString() : null,
+                d.AdjustmentAmountEtb))
             .ToListAsync(ct);
 
         return Result<CommissionDetailDto>.Success(new CommissionDetailDto(
@@ -246,10 +256,112 @@ public class GetCommissionByIdHandler
             row.Commission.OpenedAt,
             row.Commission.TotalFeesAmount,
             row.Commission.TotalPaidAmount,
+            row.Commission.TotalAdjustedAmount,
             row.Commission.BalanceAmount,
             fees,
             payments,
             disputes));
+    }
+}
+
+public record PaymentReceiptDto(
+    Guid PaymentId,
+    string ReceiptNumber,
+    string AgencyName,
+    string? AgencyAddress,
+    string? AgencyPhone,
+    string? AgencyLicenseNumber,
+    string CandidateName,
+    string PassportNumber,
+    string? PartnerName,
+    DateTime PaidAt,
+    decimal Amount,
+    string Currency,
+    decimal ExchangeRateToEtb,
+    decimal AmountEtb,
+    string Method,
+    string? Reference,
+    string? Notes,
+    string RecordedBy,
+    decimal TotalFeesEtb,
+    decimal TotalPaidEtb,
+    decimal BalanceEtb,
+    DateTime? VoidedAt,
+    string? VoidReason);
+
+public record GetPaymentReceiptQuery(Guid PaymentId)
+    : IRequest<Result<PaymentReceiptDto>>, IRequirePermission
+{
+    public string RequiredPermission => "commission.read";
+}
+
+/// <summary>What the printed receipt shows. A voided payment still prints, marked void.</summary>
+public class GetPaymentReceiptHandler : IRequestHandler<GetPaymentReceiptQuery, Result<PaymentReceiptDto>>
+{
+    private readonly ITenantDbContext _context;
+    private readonly IPlatformDbContext _platform;
+    private readonly ICurrentUserService _currentUser;
+
+    public GetPaymentReceiptHandler(
+        ITenantDbContext context, IPlatformDbContext platform, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _platform = platform;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result<PaymentReceiptDto>> Handle(GetPaymentReceiptQuery request, CancellationToken ct)
+    {
+        var row = await (
+            from p in _context.Payments.AsNoTracking()
+            join c in _context.Commissions.AsNoTracking() on p.CommissionId equals c.Id
+            join cand in _context.Candidates.AsNoTracking() on c.CandidateId equals cand.Id
+            where p.Id == request.PaymentId && !p.IsDeleted && !c.IsDeleted
+            select new { Payment = p, Commission = c, Candidate = cand }).FirstOrDefaultAsync(ct);
+
+        if (row is null)
+            return Result<PaymentReceiptDto>.Failure("Payment not found", 404);
+
+        var tenant = _currentUser.TenantId is Guid tenantId
+            ? await _platform.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId, ct)
+            : null;
+        var recordedBy = await _platform.ApplicationUsers.AsNoTracking()
+            .Where(u => u.Id == row.Payment.RecordedByUserId)
+            .Select(u => new { u.FirstName, u.MiddleName, u.LastName })
+            .FirstOrDefaultAsync(ct);
+
+        var pay = row.Payment;
+        var person = row.Candidate;
+        return Result<PaymentReceiptDto>.Success(new PaymentReceiptDto(
+            pay.Id,
+            pay.ReceiptNumber ?? pay.Id.ToString()[..8].ToUpperInvariant(),
+            tenant?.Name ?? "",
+            string.Join(", ", new[] { tenant?.Address, tenant?.City, tenant?.Country }
+                .Where(x => !string.IsNullOrWhiteSpace(x))),
+            tenant?.ContactPhone,
+            tenant?.LicenseNumber,
+            string.IsNullOrEmpty(person.MiddleName)
+                ? $"{person.FirstName} {person.LastName}"
+                : $"{person.FirstName} {person.MiddleName} {person.LastName}",
+            person.PassportNumber,
+            row.Commission.PartnerName ?? person.PartnerName,
+            pay.PaidAt,
+            pay.Amount,
+            pay.Currency,
+            pay.ExchangeRateToEtb,
+            pay.AmountEtb,
+            pay.Method.ToString(),
+            pay.Reference,
+            pay.Notes,
+            recordedBy is null
+                ? ""
+                : string.Join(" ", new[] { recordedBy.FirstName, recordedBy.MiddleName, recordedBy.LastName }
+                    .Where(x => !string.IsNullOrWhiteSpace(x))),
+            row.Commission.TotalFeesAmount,
+            row.Commission.TotalPaidAmount,
+            row.Commission.BalanceAmount,
+            pay.VoidedAt,
+            pay.VoidReason));
     }
 }
 

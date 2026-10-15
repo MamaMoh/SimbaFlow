@@ -9,6 +9,9 @@ public class ReadAuditLog
     public Guid Id { get; set; } = Guid.NewGuid();
     public string? UserId { get; set; }
 
+    /// <summary>The agency the read happened in. See <see cref="AuditLog.TenantId"/>.</summary>
+    public Guid? TenantId { get; set; }
+
     /// <summary>If impersonated, the admin who initiated the session.</summary>
     public string? ImpersonatedByUserId { get; set; }
 

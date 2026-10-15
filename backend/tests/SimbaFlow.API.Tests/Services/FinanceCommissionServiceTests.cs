@@ -65,25 +65,9 @@ public class FinanceCommissionServiceTests
         };
         db.Commissions.Add(commission);
 
-        db.Accounts.AddRange(
-            new Account
-            {
-                Code = FinanceSeedService.CashBankCode,
-                Name = "Cash / Bank",
-                Type = AccountType.Asset,
-                IsSystem = true,
-                IsActive = true
-            },
-            new Account
-            {
-                Code = FinanceSeedService.CommissionRevenueCode,
-                Name = "Commission Revenue",
-                Type = AccountType.Revenue,
-                IsSystem = true,
-                IsActive = true
-            });
-
         await db.SaveChangesAsync();
+        await new FinanceSeedService(NullLogger<FinanceSeedService>.Instance)
+            .EnsureDefaultChartOfAccountsAsync(db);
 
         var fx = Substitute.For<IExchangeRateService>();
         fx.ResolveRateToEtbAsync(Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
@@ -108,8 +92,8 @@ public class FinanceCommissionServiceTests
     [Fact]
     public async Task UpsertFees_SetsTotalsAndOpenStatus_TEST50()
     {
-        var (db, _, _, commission, fx, _) = await CreateSutAsync();
-        var handler = new UpsertCommissionFeesHandler(db, fx);
+        var (db, user, _, commission, fx, journal) = await CreateSutAsync();
+        var handler = new UpsertCommissionFeesHandler(db, fx, journal, user);
 
         var result = await handler.Handle(new UpsertCommissionFeesCommand(commission.Id,
         [
@@ -143,7 +127,7 @@ public class FinanceCommissionServiceTests
     public async Task RecordPayment_PostsBalancedJournalAndPartialStatus_TEST52()
     {
         var (db, user, _, commission, fx, journal) = await CreateSutAsync();
-        await new UpsertCommissionFeesHandler(db, fx).Handle(
+        await new UpsertCommissionFeesHandler(db, fx, journal, user).Handle(
             new UpsertCommissionFeesCommand(commission.Id,
             [new FeeLineInput("AgencyFee", null, 1000m, "ETB", 0)]),
             CancellationToken.None);
@@ -176,7 +160,7 @@ public class FinanceCommissionServiceTests
     public async Task RecordPayment_SettlesWhenPaidInFull_TEST53()
     {
         var (db, user, _, commission, fx, journal) = await CreateSutAsync();
-        await new UpsertCommissionFeesHandler(db, fx).Handle(
+        await new UpsertCommissionFeesHandler(db, fx, journal, user).Handle(
             new UpsertCommissionFeesCommand(commission.Id,
             [new FeeLineInput("AgencyFee", null, 500m, "ETB", 0)]),
             CancellationToken.None);
@@ -195,7 +179,7 @@ public class FinanceCommissionServiceTests
     public async Task UpsertFees_BlockedWhenSettled_TEST54()
     {
         var (db, user, _, commission, fx, journal) = await CreateSutAsync();
-        await new UpsertCommissionFeesHandler(db, fx).Handle(
+        await new UpsertCommissionFeesHandler(db, fx, journal, user).Handle(
             new UpsertCommissionFeesCommand(commission.Id,
             [new FeeLineInput("AgencyFee", null, 100m, "ETB", 0)]),
             CancellationToken.None);
@@ -203,7 +187,7 @@ public class FinanceCommissionServiceTests
             new RecordPaymentCommand(commission.Id, 100m, "ETB", "Cash", null, null, null),
             CancellationToken.None);
 
-        var result = await new UpsertCommissionFeesHandler(db, fx).Handle(
+        var result = await new UpsertCommissionFeesHandler(db, fx, journal, user).Handle(
             new UpsertCommissionFeesCommand(commission.Id,
             [new FeeLineInput("AgencyFee", null, 200m, "ETB", 0)]),
             CancellationToken.None);
@@ -215,8 +199,8 @@ public class FinanceCommissionServiceTests
     [Fact]
     public async Task OpenDispute_SetsDisputed_AndResolveRecalcs_TEST55()
     {
-        var (db, user, _, commission, fx, _) = await CreateSutAsync();
-        await new UpsertCommissionFeesHandler(db, fx).Handle(
+        var (db, user, _, commission, fx, journal) = await CreateSutAsync();
+        await new UpsertCommissionFeesHandler(db, fx, journal, user).Handle(
             new UpsertCommissionFeesCommand(commission.Id,
             [new FeeLineInput("AgencyFee", null, 300m, "ETB", 0)]),
             CancellationToken.None);
@@ -232,7 +216,7 @@ public class FinanceCommissionServiceTests
             new OpenDisputeCommand(commission.Id, "Another"), CancellationToken.None);
         second.IsSuccess.Should().BeFalse();
 
-        var resolve = await new ResolveDisputeHandler(db, user).Handle(
+        var resolve = await new ResolveDisputeHandler(db, journal, user).Handle(
             new ResolveDisputeCommand(open.Data!, "Agreed settlement"), CancellationToken.None);
         resolve.IsSuccess.Should().BeTrue();
 
@@ -244,7 +228,7 @@ public class FinanceCommissionServiceTests
     public async Task NonEtbPayment_UsesFxRate_TEST56()
     {
         var (db, user, _, commission, fx, journal) = await CreateSutAsync();
-        await new UpsertCommissionFeesHandler(db, fx).Handle(
+        await new UpsertCommissionFeesHandler(db, fx, journal, user).Handle(
             new UpsertCommissionFeesCommand(commission.Id,
             [new FeeLineInput("AgencyFee", null, 5500m, "ETB", 0)]),
             CancellationToken.None);

@@ -8,6 +8,7 @@ using SimbaFlow.Domain.Enums;
 using SimbaFlow.Domain.Events;
 using System.Text.Json;
 using SimbaFlow.API.Features.Partners;
+using SimbaFlow.API.Features.Offices;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
@@ -29,7 +30,8 @@ public record RegisterCandidateCommand(
     string? PartnerName,
     Guid? PartnerAgencyId,
     string? ContractDate,
-    CandidateIntakePayload? Intake = null) : IRequest<Result<Guid>>, IRequirePermission
+    CandidateIntakePayload? Intake = null,
+    Guid? OfficeId = null) : IRequest<Result<Guid>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.create";
 }
@@ -67,6 +69,10 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
         if (!partnerCheck.IsValid)
             return Result<Guid>.Failure(partnerCheck.Error!, 400);
 
+        var office = await OfficeAssignment.ForNewCandidateAsync(_context, request.OfficeId, cancellationToken);
+        if (!office.IsValid)
+            return Result<Guid>.Failure(office.Error!, 400);
+
         if (!string.IsNullOrEmpty(request.LabourId))
         {
             var labourIdExists = await _context.Candidates
@@ -100,6 +106,7 @@ public class RegisterCandidateHandler : IRequestHandler<RegisterCandidateCommand
             CountryOfTravel = request.CountryOfTravel,
             PartnerName = request.PartnerName,
             PartnerAgencyId = request.PartnerAgencyId,
+            OfficeId = office.OfficeId,
             ContractDate = string.IsNullOrEmpty(request.ContractDate) ? null : DateOnly.Parse(request.ContractDate),
             Status = CandidateStatus.Active,
             CurrentStageId = initialStage?.Id,

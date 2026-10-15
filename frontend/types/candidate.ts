@@ -59,6 +59,7 @@ export interface Candidate {
   countryOfTravel?: string;
   partnerName?: string;
   partnerAgencyId?: string | null;
+  officeId?: string | null;
   contractDate?: string;
   photoPath?: string;
   fullPhotoPath?: string;

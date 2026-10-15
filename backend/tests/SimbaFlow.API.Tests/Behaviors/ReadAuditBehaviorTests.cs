@@ -59,6 +59,17 @@ public class ReadAuditBehaviorTests
     }
 
     [Fact]
+    public async Task ARead_RecordsTheAgencyItHappenedIn()
+    {
+        var tenant = Guid.NewGuid();
+        _currentUser.TenantId.Returns(tenant);
+
+        await Run(new GetCandidateByIdQuery(Guid.NewGuid()), Result<CandidateDetailDto>.Success(null!));
+
+        _readAudit.Received(1).LogAccess(Arg.Is<ReadAuditEntry>(e => e.TenantId == tenant));
+    }
+
+    [Fact]
     public async Task TheCandidateList_LogsOnceWithoutAnId()
     {
         await Run(

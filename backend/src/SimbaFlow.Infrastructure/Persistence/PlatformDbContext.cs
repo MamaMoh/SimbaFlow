@@ -52,6 +52,7 @@ public class PlatformDbContext
     public DbSet<BotRegistrationChallenge> BotRegistrationChallenges => Set<BotRegistrationChallenge>();
     public DbSet<BotChatLink> BotChatLinks => Set<BotChatLink>();
     public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+    public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
     public DbSet<ExchangeRate> ExchangeRates => Set<ExchangeRate>();
 
     // Partner catalog (platform)
@@ -76,9 +77,22 @@ public class PlatformDbContext
 
         modelBuilder.HasDefaultSchema("public");
 
+        // The audit trail page reads one agency's rows, newest first.
+        modelBuilder.Entity<AuditLog>(entity =>
+            entity.HasIndex(a => new { a.TenantId, a.Timestamp }));
+        modelBuilder.Entity<ReadAuditLog>(entity =>
+            entity.HasIndex(a => new { a.TenantId, a.AccessedAt }));
+
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
+        });
+
+        // Lookups are always "this agency's (or the default's) latest rate for a pair on or
+        // before a date".
+        modelBuilder.Entity<ExchangeRate>(entity =>
+        {
+            entity.HasIndex(r => new { r.TenantId, r.FromCurrency, r.ToCurrency, r.EffectiveDate });
         });
 
         modelBuilder.Entity<ApplicationUser>(entity =>
@@ -170,6 +184,18 @@ public class PlatformDbContext
             entity.Property(x => x.PayloadSummary).HasMaxLength(512).IsRequired();
             entity.Property(x => x.ExternalMessageId).HasMaxLength(128);
             entity.Property(x => x.Error).HasMaxLength(1024);
+        });
+
+        modelBuilder.Entity<ReportSchedule>(entity =>
+        {
+            entity.ToTable("ReportSchedules");
+            entity.HasIndex(x => x.TenantId);
+            entity.HasIndex(x => new { x.IsActive, x.NextRunAt });
+            entity.Property(x => x.ReportKey).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Format).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.Recipients).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.LastStatus).HasMaxLength(32);
+            entity.Property(x => x.LastError).HasMaxLength(1024);
         });
 
         modelBuilder.Entity<PartnerAgency>(entity =>

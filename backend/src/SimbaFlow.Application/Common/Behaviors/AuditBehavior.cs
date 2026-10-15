@@ -53,7 +53,8 @@ public class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TR
                 Success: true,
                 DurationMs: (int)stopwatch.ElapsedMilliseconds,
                 IpAddress: _currentUser.IpAddress,
-                UserAgent: _currentUser.UserAgent), cancellationToken);
+                UserAgent: _currentUser.UserAgent,
+                TenantId: _currentUser.TenantId), cancellationToken);
 
             return response;
         }
@@ -72,7 +73,8 @@ public class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TR
                 Success: false,
                 DurationMs: (int)stopwatch.ElapsedMilliseconds,
                 IpAddress: _currentUser.IpAddress,
-                UserAgent: _currentUser.UserAgent), cancellationToken);
+                UserAgent: _currentUser.UserAgent,
+                TenantId: _currentUser.TenantId), cancellationToken);
 
             throw;
         }

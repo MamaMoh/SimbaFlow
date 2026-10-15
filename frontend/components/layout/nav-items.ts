@@ -151,6 +151,12 @@ export const navigation: NavItem[] = [
     claims: ["accounting.read", "system.admin"],
   },
   {
+    name: "Expenses",
+    href: "/finance/expenses",
+    icon: require("lucide-react").Receipt,
+    claims: ["accounting.read", "system.admin"],
+  },
+  {
     name: "Exchange rates",
     href: "/finance/rates",
     icon: require("lucide-react").ArrowLeftRight,
@@ -192,6 +198,13 @@ export const navigation: NavItem[] = [
         claims: ["system.admin"],
       },
     ],
+  },
+  {
+    // Who changed or opened what in this agency. Owners and auditors hold audit.read.
+    name: "Audit trail",
+    href: "/audit",
+    icon: require("lucide-react").ScrollText,
+    claims: ["audit.read", "system.admin"],
   },
   {
     name: "Partners",

@@ -44,7 +44,8 @@ public class ReadAuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest
                 EntityId: id,
                 Action: action,
                 IpAddress: _currentUser.IpAddress,
-                UserAgent: _currentUser.UserAgent));
+                UserAgent: _currentUser.UserAgent,
+                TenantId: _currentUser.TenantId));
         }
 
         return response;

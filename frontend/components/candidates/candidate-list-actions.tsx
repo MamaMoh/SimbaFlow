@@ -18,6 +18,7 @@ import {
   FileText,
   Loader2,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { CopyToFormItem } from "@/components/workflow/copy-to-form-item";
+import { reactivateCandidate } from "@/lib/api/candidates";
 
 type CandidateListActionsProps = {
   candidateId: string;
@@ -37,6 +39,11 @@ type CandidateListActionsProps = {
    * candidate starts in, and the page has no way to know which stage an agency made its first.
    */
   canDelete: boolean;
+  /**
+   * Active, Inactive (an Unfit medical) or Archived (removed). The last two are on the Inactive
+   * list and offer Reactivate.
+   */
+  status?: string;
   onGenerateCv: (id: string) => void;
   onDelete: (id: string, name: string, stage: string) => void;
   onWorkflowChanged?: () => void;
@@ -58,6 +65,7 @@ export function CandidateListActions({
   candidateName,
   stageName,
   canDelete: stageAllowsDelete,
+  status,
   onGenerateCv,
   onDelete,
   onWorkflowChanged,
@@ -73,6 +81,35 @@ export function CandidateListActions({
   const canDelete = hasPermission("candidate.delete") && stageAllowsDelete;
   const { actions, mutate } = useAvailableActions(candidateId);
   const [pendingRuleId, setPendingRuleId] = useState<string | null>(null);
+  const [reactivating, setReactivating] = useState(false);
+
+  // Restoring a removed record takes the permission that removed it; undoing an Unfit takes the
+  // embassy desk's, which recorded it, or the right to edit the candidate. The server checks the same.
+  const removed = status === "Archived";
+  const inactive = !!status && status !== "Active";
+  const canReactivate =
+    inactive &&
+    (removed
+      ? hasPermission("candidate.delete")
+      : hasPermission("candidate.update") || hasPermission("embassy.update"));
+
+  const reactivate = async () => {
+    setReactivating(true);
+    try {
+      await reactivateCandidate(candidateId);
+      toast.success(
+        removed
+          ? `${candidateName} is back on the list`
+          : `${candidateName} is active again, with the medical set back to Booked`
+      );
+      mutate();
+      onWorkflowChanged?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not reactivate the candidate");
+    } finally {
+      setReactivating(false);
+    }
+  };
 
   const workflowMoves = actions.filter((a) => a.isEnabled);
 
@@ -90,11 +127,11 @@ export function CandidateListActions({
     }
   };
 
-  const busy = !!isGeneratingCv || !!pendingRuleId;
+  const busy = !!isGeneratingCv || !!pendingRuleId || reactivating;
 
   // Nothing to offer: no trigger. A ⋯ that opens onto an empty panel reads as a broken row rather
   // than as a row this person is only meant to look at.
-  if (!canRead && !canUpdate && !canDelete && workflowMoves.length === 0) return null;
+  if (!canRead && !canUpdate && !canDelete && !canReactivate && workflowMoves.length === 0) return null;
 
   return (
     <DropdownMenu modal={false}>
@@ -131,6 +168,11 @@ export function CandidateListActions({
             <Pencil className="h-4 w-4 mr-2" /> Edit
           </DropdownMenuItem>
         )}
+        {canReactivate && (
+          <DropdownMenuItem onClick={() => void reactivate()}>
+            <RotateCcw className="h-4 w-4 mr-2" /> Reactivate
+          </DropdownMenuItem>
+        )}
         {canDelete && (
           <DropdownMenuItem
             onClick={() => onDelete(candidateId, candidateName, stageName)}
@@ -140,7 +182,7 @@ export function CandidateListActions({
           </DropdownMenuItem>
         )}
         {(canRead || workflowMoves.length > 0) &&
-        (canRead || canUpdate || canDelete) ? (
+        (canRead || canUpdate || canDelete || canReactivate) ? (
           <DropdownMenuSeparator />
         ) : null}
         {canRead && (

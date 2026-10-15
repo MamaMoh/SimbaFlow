@@ -209,6 +209,14 @@ public class CandidateModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // Bring a candidate back from the Inactive list: an Unfit result or a removal, undone
+        group.MapPost("/{candidateId:guid}/reactivate", async (
+            Guid candidateId, WithdrawBody? body, ISender sender) =>
+        {
+            var result = await sender.Send(new ReactivateCandidateCommand(candidateId, body?.Reason));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // Generate the MoLS standard employment contract
         group.MapPost("/{candidateId:guid}/contract", async (Guid candidateId, ISender sender) =>
         {
