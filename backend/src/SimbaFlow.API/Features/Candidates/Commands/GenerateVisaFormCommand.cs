@@ -8,9 +8,11 @@ using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
-public record GenerateVisaFormCommand(Guid CandidateId) : IRequest<Result<GeneratedPdf>>, IRequirePermission
+public record GenerateVisaFormCommand(Guid CandidateId) : IRequest<Result<GeneratedPdf>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
 }
 
 public class GenerateVisaFormHandler : IRequestHandler<GenerateVisaFormCommand, Result<GeneratedPdf>>

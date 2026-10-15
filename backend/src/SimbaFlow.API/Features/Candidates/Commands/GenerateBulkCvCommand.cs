@@ -8,9 +8,11 @@ using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
-public record GenerateBulkCvCommand(List<Guid> CandidateIds) : IRequest<Result<byte[]>>, IRequirePermission
+public record GenerateBulkCvCommand(List<Guid> CandidateIds) : IRequest<Result<byte[]>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => CandidateIds;
 }
 
 public class GenerateBulkCvHandler : IRequestHandler<GenerateBulkCvCommand, Result<byte[]>>

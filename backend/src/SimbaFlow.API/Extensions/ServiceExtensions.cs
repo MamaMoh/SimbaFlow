@@ -26,6 +26,7 @@ public static class ServiceExtensions
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(PerformanceLogBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ReadAuditBehavior<,>));
         });
         services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
