@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "SimbaFlow Form Filler",
-  "version": "0.8.0",
-  "description": "Fills candidate details from SimbaFlow into the insurance and visa portals, from the toolbar or by pasting.",
+  "version": "0.9.0",
+  "description": "Fills candidate details from SimbaFlow into the insurance, visa and LMIS forms, from the toolbar or by pasting.",
   "permissions": [
     "activeTab",
     "scripting",

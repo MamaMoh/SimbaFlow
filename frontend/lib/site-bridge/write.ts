@@ -4,6 +4,7 @@ import {
   type ValueKind,
   type WriteField,
 } from "./manifest";
+import { SAUDI_CITIES } from "./contract";
 
 /**
  * Turning a candidate into instructions for somebody else's form.
@@ -139,6 +140,11 @@ const SYNONYMS: Record<string, string[]> = {
   jordan: ["Jordan", "JORDAN", "JO"],
   lebanon: ["Lebanon", "LEBANON", "LB"],
 };
+
+// The employer's city, for a city dropdown: whichever way that list happens to spell it.
+for (const { name, spellings: others } of SAUDI_CITIES) {
+  SYNONYMS[name.toLowerCase()] ??= [name, ...others.filter((s) => /^[\x20-\x7e]+$/.test(s))];
+}
 
 function spellings(value: string): string[] {
   const key = value.trim().toLowerCase();

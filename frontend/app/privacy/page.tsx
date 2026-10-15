@@ -93,7 +93,7 @@ export default function PrivacyPage() {
           <p className="text-muted-foreground max-w-xl text-sm leading-relaxed">
             The SimbaFlow Form Filler is a browser extension for agency staff. It types a
             candidate&rsquo;s details — the ones the agency already holds — into the insurance and
-            visa portals, so nobody copies sixteen boxes by hand for each person.
+            visa portals and the LMIS contract form, so nobody copies sixteen boxes by hand for each person.
           </p>
         </div>
 
@@ -152,7 +152,8 @@ export default function PrivacyPage() {
             <p>
               Candidate details travel from SimbaFlow to the form in front of you and stop there.
               They are not sent to us, stored by the extension, or kept once the tab is closed.
-              <strong className="text-foreground"> Copy to insurance</strong> puts one
+              <strong className="text-foreground"> Copy to insurance</strong> and{" "}
+              <strong className="text-foreground">Copy to LMIS contract</strong> put one
               candidate&rsquo;s details on your computer&rsquo;s clipboard, as the copy command
               does with anything; a copy stops working after twenty minutes, so an old one cannot
               fill a form with the wrong person.

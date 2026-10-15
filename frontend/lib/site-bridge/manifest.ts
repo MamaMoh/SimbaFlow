@@ -62,8 +62,11 @@ export const FIELD_KEYS = [
   "region",
   "subcity",
   "woreda",
-  // travel
+  // travel and contract
   "countryOfTravel",
+  "contractDate",
+  /** The contract date plus the contract period. Worked out, never stored. */
+  "contractEndDate",
   // sponsor and visa
   "visaNumber",
   "eNumber",
@@ -72,6 +75,8 @@ export const FIELD_KEYS = [
   "sponsorIdNumber",
   "sponsorPhone",
   "sponsorAddress",
+  /** The one Saudi city the sponsor's address names, in English, for a city dropdown. */
+  "sponsorCity",
   "agentName",
   "agencyEmail",
   // relative
@@ -417,11 +422,49 @@ export const VISA_APPLICATION: SiteManifest = {
     "so what is written into them is reported for checking rather than counted as done.",
 };
 
+/**
+ * LMIS — the Create Contract dialog on a labourer's record.
+ *
+ * Opened from the labourer, so the name, phone and labour ID are already on it; what it asks
+ * for is the contract and the employer. All of it is on the candidate except two boxes.
+ *
+ * Alternative Phone Number and House Number are the employer's and SimbaFlow holds neither —
+ * the Musaned contract page gives one number and an address with no house number in it. They
+ * are left for the person rather than filled with the candidate's own, which would put an
+ * Ethiopian mobile on a Saudi employer's contract.
+ *
+ * Employer city is the city named in the sponsor's address. The dropdown is LMIS's own widget
+ * rather than a plain list, so it is named for the person to pick rather than chosen for them.
+ */
+export const LMIS_CONTRACT: SiteManifest = {
+  id: "lmis-contract",
+  title: "LMIS — create contract",
+  hosts: [],
+  direction: "write",
+  fields: [
+    { label: "Beginning of Contract", key: "contractDate", kind: "date" },
+    { label: "Ending of Contract", key: "contractEndDate", kind: "date" },
+    { label: "Passport Number", key: "passportNumber" },
+    { label: "Visa Number", key: "visaNumber" },
+    { label: "Employer city", key: "sponsorCity", kind: "select" },
+    { label: "Employer Full Name", key: "sponsorName" },
+    { label: "Employer Phone number", key: "sponsorPhone", kind: "phone" },
+    { label: "Alternative Phone Number" },
+    { label: "House Number" },
+  ],
+  repeatButton: "Create Contract",
+  note:
+    "Ending of Contract is the contract date plus the contract period (two years when none is " +
+    "recorded). Alternative Phone Number and House Number are the employer's, which SimbaFlow " +
+    "does not hold.",
+};
+
 export const SITE_MANIFESTS: SiteManifest[] = [
   EPRO_CANDIDATE,
   EPRO_SPONSOR,
   INSURANCE_MEMBER,
   VISA_APPLICATION,
+  LMIS_CONTRACT,
 ];
 
 export function manifestById(id: string): SiteManifest | undefined {

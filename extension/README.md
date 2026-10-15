@@ -1,7 +1,7 @@
 # SimbaFlow Form Filler
 
-Fills a candidate's details into the insurance and visa portals, from the record already held in
-SimbaFlow.
+Fills a candidate's details into the insurance and visa portals and the LMIS Create Contract
+form, from the record already held in SimbaFlow.
 
 ## What it knows, and what it does not
 
@@ -23,6 +23,9 @@ The second way in. On the Candidates or LMIS board, right-click a candidate and 
 insurance**. SimbaFlow puts that candidate on the clipboard as a finished fill — the same plan
 the toolbar would have fetched — and pasting it into the insurance form fills every box at once.
 A batch of twenty is right-click, copy, switch tab, paste, check, Add Member, twenty times.
+**Copy to LMIS contract** does the same for the Create Contract dialog on a labourer's LMIS
+record: the contract dates, passport, visa and employer. Employer city is LMIS's own dropdown
+widget, so the card names the city to pick instead of picking it.
 
 - The payload is one line, `simbaflow-fill:1:` and base64 JSON, written by
   `frontend/lib/site-bridge/clipboard.ts` and read by `paste.js`. That file's test pins the exact
