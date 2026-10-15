@@ -74,7 +74,7 @@ public class AssignRolesHandler : IRequestHandler<AssignRolesCommand, Result<boo
         var forbidden = UserAccessGuard.RolesCallerMayNotGrant(_currentUser, roleNamesToAssign);
         if (forbidden.Count > 0)
             return Result<bool>.Failure(
-                $"You cannot assign {string.Join(" or ", forbidden)} — that is a platform role.", 403);
+                $"You cannot assign {string.Join(" or ", forbidden)}. That role is given by the platform team.", 403);
 
         // Get current roles
         var currentRoles = await _userManager.GetRolesAsync(user);

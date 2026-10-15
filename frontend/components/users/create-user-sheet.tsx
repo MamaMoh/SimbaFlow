@@ -27,7 +27,7 @@ import { User, Shield, Key, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { getActingTenantId } from "@/lib/tenant/acting-tenant";
-import { AGENCY_ROLES, PLATFORM_ROLES } from "@/lib/users/roles";
+import { PLATFORM_ROLES, grantableAgencyRoles } from "@/lib/users/roles";
 
 const PLATFORM_ONLY = "__platform__";
 
@@ -253,7 +253,7 @@ export function CreateUserSheet({ open, onOpenChange, onCreated }: CreateUserShe
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(selectedTenant === PLATFORM_ONLY ? PLATFORM_ROLES : AGENCY_ROLES).map(role => (
+                  {(selectedTenant === PLATFORM_ONLY ? PLATFORM_ROLES : grantableAgencyRoles(isSuperAdmin)).map(role => (
                     <SelectItem key={role} value={role}>{role}</SelectItem>
                   ))}
                 </SelectContent>

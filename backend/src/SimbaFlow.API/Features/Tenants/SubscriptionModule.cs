@@ -314,6 +314,29 @@ public class SubscriptionModule : ICarterModule
             if (tenant is null)
                 return Results.Ok(new { isSuccess = true, data = (object?)null });
 
+            // Everyone is told when the agency is suspended, because that is why their pages have
+            // stopped working. What it costs and what is owed is for the people who pay it.
+            if (!SeesSubscriptionBilling(user))
+            {
+                return Results.Ok(new
+                {
+                    isSuccess = true,
+                    data = new
+                    {
+                        agency = tenant.Name,
+                        status = tenant.SubscriptionStatus.ToString(),
+                        hasAccess = SubscriptionRules.HasAccess(tenant.SubscriptionStatus),
+                        cycle = tenant.BillingCycle.ToString(),
+                        amount = 0m,
+                        currency = "",
+                        nextPaymentDue = (DateOnly?)null,
+                        daysUntilDue = (int?)null,
+                        notice = "None",
+                        outstanding = Array.Empty<object>(),
+                    },
+                });
+            }
+
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
             var outstanding = await db.SubscriptionInvoices.AsNoTracking()
                 .Where(i => i.TenantId == tenantId && !i.IsDeleted && i.Status == InvoiceStatus.Issued)
@@ -341,4 +364,13 @@ public class SubscriptionModule : ICarterModule
             });
         }).RequireAuthorization();
     }
+
+    /// <summary>
+    /// The agency owner, and finance — the desk that posts payments. Not every role holding
+    /// accounting.read: the auditor and the office manager read the books without paying the bills.
+    /// </summary>
+    public static bool SeesSubscriptionBilling(ICurrentUserService user) =>
+        user.IsSuperAdmin
+        || AgencyRoles.Owns(user.Roles)
+        || user.HasPermission("accounting.post");
 }

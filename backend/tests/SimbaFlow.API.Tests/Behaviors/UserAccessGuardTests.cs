@@ -101,12 +101,32 @@ public class UserAccessGuardTests
         UserAccessGuard.CanGrantRole(caller, role).Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData("AgencyOwner")]
+    [InlineData("agencyowner")]
+    public void TenantAdmin_CannotGrant_AgencyOwner(string role)
+    {
+        // An owner who could make a second owner could be removed by them.
+        var caller = Caller(superAdmin: false, tenantId: TenantA, "AgencyOwner");
+        UserAccessGuard.CanGrantRole(caller, role).Should().BeFalse();
+    }
+
+    [Fact]
+    public void AnOwnersRoleCannotBeTakenAwayFromInsideTheAgency()
+    {
+        // AssignRoles asks the same question of the target's current roles before replacing them.
+        var caller = Caller(superAdmin: false, tenantId: TenantA, "AgencyOwner");
+        UserAccessGuard.RolesCallerMayNotGrant(caller, ["AgencyOwner"])
+            .Should().BeEquivalentTo(["AgencyOwner"]);
+    }
+
     [Fact]
     public void SuperAdmin_CanGrant_AnyRole()
     {
         var caller = Caller(superAdmin: true, tenantId: null);
         UserAccessGuard.CanGrantRole(caller, "SuperAdmin").Should().BeTrue();
         UserAccessGuard.CanGrantRole(caller, "PlatformAdmin").Should().BeTrue();
+        UserAccessGuard.CanGrantRole(caller, "AgencyOwner").Should().BeTrue();
     }
 
     [Fact]

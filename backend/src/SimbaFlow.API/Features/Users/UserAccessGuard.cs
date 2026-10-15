@@ -1,5 +1,6 @@
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Users;
 
@@ -49,9 +50,15 @@ public static class UserAccessGuard
     /// Note this is asked about the role name, not about the target user: granting SuperAdmin to
     /// someone inside your own tenant is exactly the escalation being prevented, and CanManage
     /// would happily allow it.
+    ///
+    /// AgencyOwner is the platform team's to hand out as well. An owner could make a second owner,
+    /// and the second could then take the role off the first: the agency is answered for by one
+    /// account, set when it is provisioned, and moving that is not a staff-screen edit.
     /// </summary>
     public static bool CanGrantRole(ICurrentUserService caller, string roleName) =>
-        caller.IsSuperAdmin || !PlatformRoles.Contains(roleName);
+        caller.IsSuperAdmin
+        || (!PlatformRoles.Contains(roleName)
+            && !string.Equals(roleName, AgencyRoles.Owner, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// True if this role belongs to the platform rather than to one agency — and so is the only

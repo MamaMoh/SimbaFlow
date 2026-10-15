@@ -86,7 +86,7 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
         var forbidden = UserAccessGuard.RolesCallerMayNotGrant(_currentUser, rolesToAssign);
         if (forbidden.Count > 0)
             return Result<Guid>.Failure(
-                $"You cannot assign {string.Join(" or ", forbidden)} — that is a platform role.", 403);
+                $"You cannot assign {string.Join(" or ", forbidden)}. That role is given by the platform team.", 403);
 
         // SECURITY: only a platform SuperAdmin may grant SuperAdmin or place a user in an
         // arbitrary tenant. Tenant admins can only create ordinary users in their OWN tenant.

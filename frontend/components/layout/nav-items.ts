@@ -260,10 +260,10 @@ export const navigation: NavItem[] = [
     href: "/settings",
     scope: "both",
     icon: require("lucide-react").Settings,
-    // Anyone who can link their own Telegram account needs to reach Settings; the page
-    // itself still gates the admin-only sections on system.admin. settings.read belongs here
-    // too — it is the permission the page is actually named after.
-    claims: ["system.admin", "bot.use", "settings.read"],
+    // Everyone. The browser helper, which the people filling forms all day need, is on this
+    // page, and it was hidden from the clerk, the case executive, finance and the auditor
+    // because none of them hold bot.use or settings.read. Each card still gates itself.
+
   },
 ];
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AccessDenied } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
@@ -48,10 +47,6 @@ export default function SettingsPage() {
     setJustUploaded((current) => ({ ...current, [kind]: path }));
     void mutate();
   };
-
-  if (!canReadSettings && !canUseBot) {
-    return <AccessDenied resource="settings" />;
-  }
 
   return (
     <div className="flex flex-col gap-6">

@@ -35,12 +35,12 @@ public static class RolePermissionSeeder
             "travel.read", "travel.update",
             "arrival.read", "arrival.update", "arrival.exception",
             "commission.read", "commission.create", "commission.update",
-            "accounting.read", "accounting.post", "accounting.reconcile",
+            "accounting.read", "accounting.post",
             "staff.read", "staff.create", "staff.update", "staff.terminate",
             "partner.read", "partner.create", "partner.update",
             // The agency owner administers their own tenant's bot: configure the connection,
             // monitor deliveries, and link their own Telegram account.
-            "notification.configure", "notification.send",
+            "notification.configure",
             "bot.configure", "bot.use",
             "report.view", "report.export", "report.schedule",
             "audit.read",
@@ -59,7 +59,9 @@ public static class RolePermissionSeeder
             "lmis.read", "lmis.update", "lmis.document",
             "travel.read", "travel.update",
             "arrival.read", "arrival.update", "arrival.exception",
-            "commission.read",
+            // Adding someone who has arrived to Commission opens their commission record. The office
+            // manager runs the arrivals desk, so they hold it; the field agent no longer does.
+            "commission.read", "commission.create",
             "accounting.read",
             "staff.read",
             // Partner agreements are negotiated and maintained by the office manager, so
@@ -83,7 +85,7 @@ public static class RolePermissionSeeder
         ["FinanceOfficer"] = [
             "candidate.read",
             "commission.read", "commission.create", "commission.update",
-            "accounting.read", "accounting.post", "accounting.reconcile",
+            "accounting.read", "accounting.post",
             "report.view", "report.export",
         ],
         ["FieldAgent"] = [
@@ -113,7 +115,7 @@ public static class RolePermissionSeeder
             "report.view", "report.export",
         ],
         ["NotificationManager"] = [
-            "notification.configure", "notification.send",
+            "notification.configure",
             // Configuring the bot without being able to use it meant this role could set the
             // connection up and then not link its own Telegram account to test it.
             "bot.configure", "bot.use",
@@ -130,6 +132,23 @@ public static class RolePermissionSeeder
         [PlatformRoles.SuperAdmin] = GrantEverything,
         [PlatformRoles.PlatformAdmin] = GrantEverything,
     };
+
+    /// <summary>
+    /// What to grant and what to take away so a built-in role holds exactly the map's list.
+    ///
+    /// This used to only add. Taking a permission off a role here then changed new installs and
+    /// nothing already running, so the map and production quietly disagreed. Built-in roles are
+    /// system roles, which the roles screen refuses to edit, so the map is their only source and
+    /// following it exactly overwrites nobody's choice. Grants for a permission retired from the
+    /// catalogue are not in the desired set either, and go with the rest.
+    /// </summary>
+    public static (IReadOnlyCollection<Guid> ToAdd, IReadOnlySet<Guid> ToRemove) Reconcile(
+        IReadOnlySet<Guid> desired, IEnumerable<Guid> existing)
+    {
+        var current = existing.ToHashSet();
+        return (desired.Where(id => !current.Contains(id)).ToList(),
+                current.Where(id => !desired.Contains(id)).ToHashSet());
+    }
 
     public static async Task SeedRolePermissionsAsync(IServiceProvider serviceProvider)
     {
@@ -152,21 +171,33 @@ public static class RolePermissionSeeder
                 : mappedCodes;
 
             var existingMappings = await context.RolePermissions
+                .IgnoreQueryFilters()
                 .Where(rp => rp.RoleId == role.Id)
-                .Select(rp => rp.PermissionId)
-                .ToHashSetAsync();
+                .ToListAsync();
 
-            foreach (var code in permissionCodes)
+            var desired = permissionCodes
+                .Where(allPermissions.ContainsKey)
+                .Select(code => allPermissions[code])
+                .ToHashSet();
+
+            var (toAdd, toRemove) = Reconcile(desired, existingMappings.Select(rp => rp.PermissionId));
+
+            foreach (var permId in toAdd)
             {
-                if (!allPermissions.TryGetValue(code, out var permId)) continue;
-                if (existingMappings.Contains(permId)) continue;
-
                 context.RolePermissions.Add(new RolePermission
                 {
                     RoleId = role.Id,
                     PermissionId = permId,
                     GrantedBy = "System",
                 });
+            }
+
+            if (toRemove.Count > 0)
+            {
+                context.RolePermissions.RemoveRange(
+                    existingMappings.Where(rp => toRemove.Contains(rp.PermissionId)));
+                logger.LogInformation("Removed {Count} permissions from {Role} that it no longer holds",
+                    toRemove.Count, roleName);
             }
         }
 

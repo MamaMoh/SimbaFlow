@@ -26,6 +26,17 @@ export const AGENCY_ROLES = [
   "NotificationManager",
 ] as const;
 
+/**
+ * The agency's owner. Given by the platform team when the agency is provisioned, and moved only by
+ * them: an owner who could make a second owner could be removed by that second owner.
+ */
+export const OWNER_ROLE = "AgencyOwner";
+
+/** The agency roles this person may hand out: all of them for the platform team, else all but owner. */
+export function grantableAgencyRoles(isPlatformTeam: boolean): readonly string[] {
+  return isPlatformTeam ? AGENCY_ROLES : AGENCY_ROLES.filter((r) => r !== OWNER_ROLE);
+}
+
 export function isPlatformRole(role: string | undefined | null): boolean {
   return !!role && (PLATFORM_ROLES as readonly string[]).includes(role);
 }
