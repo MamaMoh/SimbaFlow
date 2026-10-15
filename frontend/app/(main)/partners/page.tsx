@@ -16,6 +16,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,7 +69,10 @@ export default function PartnersPage() {
   const canCreateCatalog = hasPermission("partner.create") || isSuperAdmin;
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // The same search box and the same funnels as every other board. This list arrives whole —
+  // there is no page two — so the rows in hand are all the rows there are, and the filters are
+  // answered here rather than asked of the API.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
   const [createOpen, setCreateOpen] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [tab, setTab] = useState<"catalog" | "linked">("linked");
@@ -80,7 +85,19 @@ export default function PartnersPage() {
   const { data, error, mutate } = useSWR(canRead ? catalogUrl : null, fetcher, {
     revalidateOnFocus: false,
   });
-  const partners = useTableRows<PartnerRow>(data?.data);
+  const all = useTableRows<PartnerRow>(data?.data);
+  const partners = useMemo(
+    () =>
+      applyColumnFilters(all, filters, {
+        name: "text",
+        country: "text",
+        contactPhone: "text",
+        foreignLicenseId: "text",
+        status: "text",
+        agreementStart: "date",
+      }),
+    [all, filters],
+  );
 
   const unlinkPartner = async (linkId: string, name: string) => {
     setUnlinkingId(linkId);
@@ -117,6 +134,7 @@ export default function PartnersPage() {
       },
       {
         accessorKey: "name",
+        meta: { filter: { field: "name", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Partner (Arab agency)" />
         ),
@@ -130,12 +148,14 @@ export default function PartnersPage() {
       },
       {
         accessorKey: "country",
+        meta: { filter: { field: "country", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Country" />
         ),
       },
       {
         accessorKey: "contactPhone",
+        meta: { filter: { field: "contactPhone", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Phone" />
         ),
@@ -145,6 +165,7 @@ export default function PartnersPage() {
       },
       {
         accessorKey: "foreignLicenseId",
+        meta: { filter: { field: "foreignLicenseId", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Foreign license" />
         ),
@@ -152,6 +173,7 @@ export default function PartnersPage() {
       },
       {
         accessorKey: "status",
+        meta: { filter: { field: "status", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Status" />
         ),
@@ -167,6 +189,7 @@ export default function PartnersPage() {
       base.push(
         {
           accessorKey: "agreementStart",
+          meta: { filter: { field: "agreementStart", kind: "date" } },
           header: ({ column }) => (
             <DataTableColumnHeader column={column} title="Agreement" />
           ),
@@ -247,53 +270,9 @@ export default function PartnersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Partners"
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {canCreateCatalog ? (
-              <Button
-                size="sm"
-                className="h-8 gap-1.5 bg-green-800 hover:bg-green-900 text-white"
-                onClick={() => setCreateOpen(true)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Register partner
-              </Button>
-            ) : null}
-            {canLink ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1.5"
-                onClick={() => setLinkOpen(true)}
-              >
-                <Link2 className="h-3.5 w-3.5" />
-                Link to my agency
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
+      <PageHeader title="Partners" />
 
       {tab === "linked" && !noAgencyChosen ? <CapacityStrip enabled={canRead} /> : null}
-
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant={tab === "linked" ? "default" : "outline"}
-          onClick={() => setTab("linked")}
-        >
-          Linked to my agency
-        </Button>
-        <Button
-          size="sm"
-          variant={tab === "catalog" ? "default" : "outline"}
-          onClick={() => setTab("catalog")}
-        >
-          All my partners
-        </Button>
-      </div>
 
       {error ? (
         <LoadError message="Could not load partners" onRetry={() => mutate()} />
@@ -318,6 +297,55 @@ export default function PartnersPage() {
           enableGlobalFilter
           searchPlaceholder="Search partners…"
           paginated
+          filters={filters}
+          onFiltersChange={setFilters}
+          toolbarEndActions={
+            /* Which half of the catalogue is on screen. It was a pair of buttons under the
+               header; it is this board's own switch, so it sits where every other board's
+               does. */
+            <div className="flex rounded-md border p-0.5" role="group" aria-label="Which partners">
+              {(["linked", "catalog"] as const).map((which) => (
+                <button
+                  key={which}
+                  type="button"
+                  onClick={() => setTab(which)}
+                  className={
+                    "rounded px-2.5 py-1 text-xs font-medium transition " +
+                    (tab === which
+                      ? "bg-green-800 text-white"
+                      : "text-muted-foreground hover:text-foreground")
+                  }
+                >
+                  {which === "linked" ? "Linked to my agency" : "All my partners"}
+                </button>
+              ))}
+            </div>
+          }
+          createAction={
+            <div className="flex items-center gap-2">
+              {canLink ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5"
+                  onClick={() => setLinkOpen(true)}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  Link to my agency
+                </Button>
+              ) : null}
+              {canCreateCatalog ? (
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5 bg-green-800 text-white hover:bg-green-900"
+                  onClick={() => setCreateOpen(true)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Register partner
+                </Button>
+              ) : null}
+            </div>
+          }
         />
       </div>
       )}

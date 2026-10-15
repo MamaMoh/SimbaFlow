@@ -12,6 +12,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,8 +38,23 @@ export default function ExchangeRatesPage() {
   const canView = hasPermission("accounting.read") || hasPermission("system.admin");
   const canPost = hasPermission("accounting.post") || hasPermission("system.admin");
 
-  const { rates, isLoading, error, mutate } = useExchangeRates({ toCurrency: "ETB" });
+  const { rates: all, isLoading, error, mutate } = useExchangeRates({ toCurrency: "ETB" });
   const [sorting, setSorting] = useState<SortingState>([]);
+  // The same search box and the same funnels as every other board. The rates arrive whole —
+  // there is no page two — so the rows in hand are all the rows there are, and the filters are
+  // answered here rather than asked of the API.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
+  const rates = useMemo(
+    () =>
+      applyColumnFilters(all, filters, {
+        fromCurrency: "text",
+        toCurrency: "text",
+        rate: "number",
+        effectiveDate: "date",
+        source: "text",
+      }),
+    [all, filters],
+  );
   const [open, setOpen] = useState(false);
   const [fromCurrency, setFromCurrency] = useState("USD");
   const [rate, setRate] = useState("1");
@@ -51,23 +68,28 @@ export default function ExchangeRatesPage() {
       indexColumn<ExchangeRateRow>(),
       {
         accessorKey: "fromCurrency",
+        meta: { filter: { field: "fromCurrency", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="From" />,
       },
       {
         accessorKey: "toCurrency",
+        meta: { filter: { field: "toCurrency", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="To" />,
       },
       {
         accessorKey: "rate",
+        meta: { filter: { field: "rate", kind: "number" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Rate" />,
         cell: ({ getValue }) => Number(getValue()).toFixed(6),
       },
       {
         accessorKey: "effectiveDate",
+        meta: { filter: { field: "effectiveDate", kind: "date" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Effective" />,
       },
       {
         accessorKey: "source",
+        meta: { filter: { field: "source", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Source" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
@@ -86,9 +108,11 @@ export default function ExchangeRatesPage() {
     columns,
     state: {
       sorting,
+      globalFilter,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -137,17 +161,7 @@ export default function ExchangeRatesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Exchange rates"
-        actions={
-          canPost ? (
-            <Button size="sm" className="h-8 gap-1.5" onClick={() => setOpen(true)}>
-              <Plus className="h-3.5 w-3.5" />
-              Add rate
-            </Button>
-          ) : null
-        }
-      />
+      <PageHeader title="Exchange rates" />
 
       {error ? (
         <LoadError
@@ -163,6 +177,23 @@ export default function ExchangeRatesPage() {
             layout={layout}
             table={table}
             paginated
+            enableGlobalFilter
+            searchPlaceholder="Search rates…"
+            exportFileName="exchange-rates"
+            filters={filters}
+            onFiltersChange={setFilters}
+            createAction={
+              canPost ? (
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5 bg-green-800 text-white hover:bg-green-900"
+                  onClick={() => setOpen(true)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add rate
+                </Button>
+              ) : null
+            }
             emptyMessage="No exchange rates yet. Add one before recording a payment in another currency."
           />
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useParams } from "next/navigation";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import {
@@ -10,16 +10,19 @@ import {
 } from "@/lib/api/workflow";
 import { WorkflowViewTable } from "@/components/workflow/workflow-view-table";
 import { AccessDenied, LoadError, PageAlert } from "@/components/ui/page-alert";
-import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 
 export default function WorkflowViewPage() {
   const { stageId: stageParam } = useParams<{ stageId: string }>();
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView =
     hasPermission("workflow.view") || hasPermission("system.admin");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const board = useBoardQuery();
 
   const {
     stages,
@@ -39,7 +42,11 @@ export default function WorkflowViewPage() {
     isLoading: loadingView,
     error: viewError,
     mutate,
-  } = useViewCandidates(stage?.id, { search: search || undefined, pageSize: 50 });
+  } = useViewCandidates(stage?.id, {
+    search: board.search || undefined,
+    filters: board.filterParam,
+    pageSize: 50,
+  });
 
   const statusTracks = useMemo(() => {
     if (!stage) return [];
@@ -110,14 +117,6 @@ export default function WorkflowViewPage() {
         title={stage.name}
         description={stage.description || undefined}
         count={totalCount}
-        actions={
-          <Input
-            className="max-w-xs"
-            placeholder="Search in this stage…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        }
       />
 
       {viewError && (
@@ -147,6 +146,8 @@ export default function WorkflowViewPage() {
             candidates={candidates}
             onMutate={() => mutate()}
             statusTracks={statusTracks}
+            layoutKey={`stage-${stage.id}`}
+            search={board}
           />
         )}
       </div>

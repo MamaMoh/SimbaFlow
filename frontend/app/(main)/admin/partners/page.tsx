@@ -13,6 +13,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,13 +36,28 @@ export default function AdminPartnersPage() {
   const canManage = isSuperAdmin;
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // The same search box and the same funnels as every other board. The catalogue arrives whole
+  // — there is no page two — so the rows in hand are all the rows there are, and the filters
+  // are answered here rather than asked of the API.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
   const [createOpen, setCreateOpen] = useState(false);
 
   const { data: partnerData, error, mutate } = usePartners({
     enabled: canManage,
   });
-  const partners = useTableRows<PartnerRow>(partnerData);
+  const all = useTableRows<PartnerRow>(partnerData);
+  const partners = useMemo(
+    () =>
+      applyColumnFilters(all, filters, {
+        name: "text",
+        country: "text",
+        contactPhone: "text",
+        foreignLicenseId: "text",
+        contactEmail: "text",
+        status: "text",
+      }),
+    [all, filters],
+  );
 
   const columns: ColumnDef<PartnerRow>[] = useMemo(
     () => [
@@ -55,18 +72,21 @@ export default function AdminPartnersPage() {
       },
       {
         accessorKey: "name",
+        meta: { filter: { field: "name", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Partner agency" />
         ),
       },
       {
         accessorKey: "country",
+        meta: { filter: { field: "country", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Country" />
         ),
       },
       {
         accessorKey: "contactPhone",
+        meta: { filter: { field: "contactPhone", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Phone" />
         ),
@@ -76,6 +96,7 @@ export default function AdminPartnersPage() {
       },
       {
         accessorKey: "foreignLicenseId",
+        meta: { filter: { field: "foreignLicenseId", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Foreign license" />
         ),
@@ -83,6 +104,7 @@ export default function AdminPartnersPage() {
       },
       {
         accessorKey: "contactEmail",
+        meta: { filter: { field: "contactEmail", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Contact" />
         ),
@@ -120,6 +142,7 @@ export default function AdminPartnersPage() {
       },
       {
         accessorKey: "status",
+        meta: { filter: { field: "status", kind: "text" } },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Status" />
         ),
@@ -170,16 +193,6 @@ export default function AdminPartnersPage() {
       <PageHeader
         title="Partner catalog"
         description="Shared by every agency on the platform"
-        actions={
-          <Button
-            size="sm"
-            className="h-8 gap-1.5 bg-green-800 hover:bg-green-900 text-white"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add partner
-          </Button>
-        }
       />
 
       {error ? (
@@ -196,6 +209,19 @@ export default function AdminPartnersPage() {
           enableGlobalFilter
           searchPlaceholder="Search catalog…"
           paginated
+          exportFileName="partner-catalog"
+          filters={filters}
+          onFiltersChange={setFilters}
+          createAction={
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-green-800 text-white hover:bg-green-900"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add partner
+            </Button>
+          }
         />
       </div>
 

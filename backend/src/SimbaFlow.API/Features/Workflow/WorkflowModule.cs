@@ -72,9 +72,11 @@ public class WorkflowModule : ICarterModule
 
         // Get candidates in a specific stage view
         group.MapGet("/views/{stageId:guid}/candidates", async (
-            Guid stageId, int? page, int? pageSize, string? search, ISender sender) =>
+            Guid stageId, int? page, int? pageSize, string? search, string? filters,
+            ISender sender) =>
         {
-            var query = new GetViewCandidatesQuery(stageId, page ?? 1, pageSize ?? 20, search);
+            var query = new GetViewCandidatesQuery(
+                stageId, page ?? 1, pageSize ?? 20, search, filters);
             var result = await sender.Send(query);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });

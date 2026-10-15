@@ -14,6 +14,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,7 +54,10 @@ export default function RolesPage() {
   const canManage = isSuperAdmin;
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // The same search box and the same funnels as every other board. This list arrives whole —
+  // there is no page two — so the rows in hand are all the rows there are, and the filters are
+  // answered here rather than asked of the API.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -60,7 +65,14 @@ export default function RolesPage() {
   const { data, mutate } = useSWR(isSuperAdmin ? "/api/proxy/roles" : null, fetcher, {
     revalidateOnFocus: false,
   });
-  const roles = useTableRows<RoleRow>(data?.data);
+  const all = useTableRows<RoleRow>(data?.data);
+  const roles = useMemo(
+    () => applyColumnFilters(all, filters, { name: "text", description: "text",
+      userCount: "number", isActive: "text" },
+      // Status is shown as a word and held as a yes or no, so it is matched against the word.
+      (row, field) => (field === "isActive" ? (row.isActive ? "Active" : "Inactive") : (row as any)[field])),
+    [all, filters],
+  );
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -87,6 +99,9 @@ export default function RolesPage() {
     },
     {
       accessorKey: "name",
+      // Permissions has no funnel: the cell counts a list rather than showing a column, and
+      // "contains 4" is not a question anybody is asking of it.
+      meta: { filter: { field: "name", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Role name" />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -100,6 +115,7 @@ export default function RolesPage() {
     },
     {
       accessorKey: "description",
+      meta: { filter: { field: "description", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
       cell: ({ getValue }) => (
         <span className="text-sm text-muted-foreground">{(getValue() as string) || "—"}</span>
@@ -116,6 +132,7 @@ export default function RolesPage() {
     },
     {
       accessorKey: "userCount",
+      meta: { filter: { field: "userCount", kind: "number" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Users" />,
       cell: ({ getValue }) => (
         <div className="flex items-center gap-1">
@@ -126,6 +143,7 @@ export default function RolesPage() {
     },
     {
       accessorKey: "isActive",
+      meta: { filter: { field: "isActive", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ getValue }) => (
         <Badge variant={getValue() ? "default" : "outline"} className={getValue() ? "bg-green-100 text-green-800" : ""}>
@@ -204,9 +222,16 @@ export default function RolesPage() {
           enableGlobalFilter={true}
           searchPlaceholder="Search roles…"
           paginated={true}
-          toolbarEndActions={
+          exportFileName="roles"
+          filters={filters}
+          onFiltersChange={setFilters}
+          createAction={
             canManage ? (
-              <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
+              <Button
+                size="sm"
+                className="h-8 bg-green-800 text-white hover:bg-green-900"
+                onClick={() => setCreateOpen(true)}
+              >
                 <span className="mr-1">+</span> Create role
               </Button>
             ) : null

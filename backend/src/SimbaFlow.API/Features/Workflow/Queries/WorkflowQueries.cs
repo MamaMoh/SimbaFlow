@@ -4,6 +4,7 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.Infrastructure.Workflow;
+using SimbaFlow.API.Features.Candidates.Queries;
 
 namespace SimbaFlow.API.Features.Workflow.Queries;
 
@@ -146,7 +147,7 @@ public record PaginatedViewResult(
     int TotalPages);
 
 public record GetViewCandidatesQuery(
-    Guid StageId, int Page, int PageSize, string? Search)
+    Guid StageId, int Page, int PageSize, string? Search, string? Filters = null)
     : IRequest<Result<PaginatedViewResult>>, IRequirePermission
 {
     public string RequiredPermission => "workflow.view";
@@ -176,6 +177,10 @@ public class GetViewCandidatesHandler : IRequestHandler<GetViewCandidatesQuery, 
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
+
+        // The funnels under the headings. Applied after the search box, so the two narrow
+        // together rather than one replacing the other.
+        query = CandidateFilters.Narrow(query, request.Filters);
 
         var candidates = await query
             .OrderByDescending(c => c.RegisteredAt)

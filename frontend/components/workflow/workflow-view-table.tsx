@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   useReactTable,
@@ -15,6 +15,8 @@ import { withdrawFromPipeline } from "@/lib/api/candidates";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { MarkReadyDialog } from "@/components/workflow/mark-ready-dialog";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import type { ColumnFilter } from "@/lib/data-table/column-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { CandidateStatusBadge } from "@/components/workflow/candidate-status-badge";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
@@ -39,6 +41,21 @@ type WorkflowViewTableProps = {
   isLoading?: boolean;
   onMutate: () => void;
   statusTracks?: string[];
+  /**
+   * The board this table is standing in for, so the arrangement is remembered per stage.
+   *
+   * Every agency-added stage shares this one component but not its columns — the status
+   * tracks differ per stage — so one remembered arrangement for all of them would put a
+   * column somebody moved on one stage onto a stage that does not have it.
+   */
+  layoutKey?: string;
+  /** The toolbar's search box and the funnel row, both answered by the API. */
+  search: {
+    globalFilter: string;
+    setGlobalFilter: (next: string) => void;
+    filters: ColumnFilter[];
+    setFilters: (next: ColumnFilter[]) => void;
+  };
 };
 
 function RowActions({
@@ -151,6 +168,8 @@ export function WorkflowViewTable({
   isLoading,
   onMutate,
   statusTracks = [],
+  layoutKey = "stage",
+  search,
 }: WorkflowViewTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -158,6 +177,10 @@ export function WorkflowViewTable({
     indexColumn<ViewCandidateDto>(),
     {
       accessorKey: "fullName",
+      // The field name the server's whitelist knows this column by. Stage/Status and the
+      // per-stage tracks have none: they live in a document on the candidate rather than in a
+      // column, and a funnel that quietly matched nothing would be worse than no funnel.
+      meta: { filter: { field: "fullName", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
       cell: ({ row }) => (
         <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -184,11 +207,13 @@ export function WorkflowViewTable({
     ),
     {
       accessorKey: "countryOfTravel",
+      meta: { filter: { field: "countryOfTravel", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Country" />,
       cell: ({ getValue }) => (getValue() as string | null) || "—",
     },
     {
       accessorKey: "partnerName",
+      meta: { filter: { field: "partnerName", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
       cell: ({ getValue }) => (getValue() as string | null) || "—",
     },
@@ -201,11 +226,32 @@ export function WorkflowViewTable({
     },
   ];
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(
+    () => columns.map((c: any) => c.id ?? c.accessorKey),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [statusTracks.join("|")],
+  );
+
+  // How this person arranged this stage, remembered on this computer.
+  const layout = useTableLayout({ table: layoutKey, columnIds });
+
   const table = useReactTable({
     data: candidates,
     columns,
-    state: { sorting },
+    state: {
+      sorting,
+      globalFilter: search.globalFilter,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: search.setGlobalFilter,
     onSortingChange: setSorting,
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -218,9 +264,14 @@ export function WorkflowViewTable({
 
   return (
     <DataTable
-            rowClickOpensActions
+      rowClickOpensActions
       table={table}
-      enableGlobalFilter={false}
+      layout={layout}
+      enableGlobalFilter
+      searchPlaceholder="Search name, passport or labour ID…"
+      exportFileName={layoutKey}
+      filters={search.filters}
+      onFiltersChange={search.setFilters}
       paginated={true}
       emptyMessage="No candidates in this stage yet — they appear here once registered or transitioned in."
     />

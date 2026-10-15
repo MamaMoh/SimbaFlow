@@ -85,7 +85,7 @@ export function useWorkflowDefinition(enabled = true) {
 
 export function useViewCandidates(
   stageId: string | undefined,
-  params?: { page?: number; pageSize?: number; search?: string }
+  params?: { page?: number; pageSize?: number; search?: string; filters?: string }
 ) {
   const page = params?.page ?? 1;
   const pageSize = params?.pageSize ?? 50;
@@ -94,6 +94,7 @@ export function useViewCandidates(
     pageSize: String(pageSize),
   });
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
 
   const key = stageId
     ? `/api/proxy/workflow/views/${stageId}/candidates?${qs.toString()}`

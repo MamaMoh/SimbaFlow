@@ -14,6 +14,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,14 +64,38 @@ export default function TenantsPage() {
   const { isSuperAdmin, isLoading: permsLoading } = usePermissions();
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // The same search box and the same funnels as every other board. This list arrives whole —
+  // there is no page two — so the rows in hand are all the rows there are, and the filters are
+  // answered here rather than asked of the API.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
   const [createOpen, setCreateOpen] = useState(false);
   const [editAgencyId, setEditAgencyId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, mutate } = useSWR("/api/proxy/tenants", fetcher, { revalidateOnFocus: false });
-  const agencies = useTableRows<AgencyRow>(data?.data);
+  const all = useTableRows<AgencyRow>(data?.data);
+  const agencies = useMemo(
+    () =>
+      applyColumnFilters(
+        all,
+        filters,
+        {
+          name: "text",
+          slug: "text",
+          agencyLevel: "number",
+          contactEmail: "text",
+          status: "text",
+          provisionedAt: "date",
+        },
+        // Status is held as a number and shown as a word, so it is matched against the word.
+        (row, field) =>
+          field === "status"
+            ? (STATUS_MAP[row.status]?.label ?? "Unknown")
+            : (row as unknown as Record<string, unknown>)[field],
+      ),
+    [all, filters],
+  );
 
   const handleStatusChange = async (id: string, status: number) => {
     const res = await fetch(`/api/proxy/tenants/${id}/status`, {
@@ -110,6 +136,7 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "name",
+      meta: { filter: { field: "name", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Agency name" />,
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -120,11 +147,13 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "slug",
+      meta: { filter: { field: "slug", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="URL identifier" />,
       cell: ({ getValue }) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{getValue() as string}</code>,
     },
     {
       accessorKey: "agencyLevel",
+      meta: { filter: { field: "agencyLevel", kind: "number" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Level" />,
       cell: ({ row }) => {
         const level = row.original.agencyLevel ?? "—";
@@ -141,10 +170,12 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "contactEmail",
+      meta: { filter: { field: "contactEmail", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Contact email" />,
     },
     {
       accessorKey: "status",
+      meta: { filter: { field: "status", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ getValue }) => {
         const status = getValue() as number;
@@ -154,6 +185,7 @@ export default function TenantsPage() {
     },
     {
       accessorKey: "provisionedAt",
+      meta: { filter: { field: "provisionedAt", kind: "date" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
       cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
     },
@@ -246,8 +278,15 @@ export default function TenantsPage() {
           enableGlobalFilter={true}
           searchPlaceholder="Search agencies…"
           paginated={true}
-          toolbarEndActions={
-            <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
+          exportFileName="agencies"
+          filters={filters}
+          onFiltersChange={setFilters}
+          createAction={
+            <Button
+              size="sm"
+              className="h-8 bg-green-800 text-white hover:bg-green-900"
+              onClick={() => setCreateOpen(true)}
+            >
               <span className="mr-1">+</span> Create agency
             </Button>
           }

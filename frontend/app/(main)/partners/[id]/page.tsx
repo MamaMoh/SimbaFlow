@@ -13,6 +13,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { indexColumn } from "@/components/data-table/index-column";
 import { identityColumns } from "@/components/data-table/identity-columns";
@@ -60,11 +62,45 @@ export default function PartnerDetailPage() {
   const candidates = usePartnerCandidates(id, !permsLoading && canRead);
   const billing = usePartnerBilling(id, !permsLoading && canSeeBilling);
 
+  // Two tables on this page, so two of everything: each tab keeps its own search box and its
+  // own funnels, because they are lists of different things. Both arrive whole — there is no
+  // page two — so the filters are answered here rather than asked of the API.
+  const people = useBoardQuery();
+  const money = useBoardQuery();
+
+  const candidateRows = useMemo(
+    () =>
+      applyColumnFilters(candidates.data?.items ?? [], people.filters, {
+        fullName: "text",
+        passportNumber: "text",
+        labourId: "text",
+        stage: "text",
+        countryOfTravel: "text",
+        registeredAt: "date",
+      }),
+    [candidates.data, people.filters],
+  );
+
+  const billingRows = useMemo(
+    () =>
+      applyColumnFilters(billing.data?.items ?? [], money.filters, {
+        candidateName: "text",
+        passportNumber: "text",
+        labourId: "text",
+        status: "text",
+        totalFeesAmount: "number",
+        totalPaidAmount: "number",
+        balanceAmount: "number",
+      }),
+    [billing.data, money.filters],
+  );
+
   const candidateColumns = useMemo<ColumnDef<PartnerCandidateRow>[]>(
     () => [
       indexColumn<PartnerCandidateRow>(),
       {
         accessorKey: "fullName",
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Candidate" />,
         cell: ({ row }) => (
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -73,16 +109,19 @@ export default function PartnerDetailPage() {
       ...identityColumns<PartnerCandidateRow>(),
       {
         accessorKey: "stage",
-        header: "Stage",
+        meta: { filter: { field: "stage", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Stage" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "countryOfTravel",
-        header: "Destination",
+        meta: { filter: { field: "countryOfTravel", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Destination" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "registeredAt",
+        meta: { filter: { field: "registeredAt", kind: "date" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Registered" />,
         cell: ({ getValue }) => {
           const v = getValue() as string;
@@ -98,6 +137,7 @@ export default function PartnerDetailPage() {
       indexColumn<PartnerBilling["items"][number]>(),
       {
         accessorKey: "candidateName",
+        meta: { filter: { field: "candidateName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Candidate" />,
         cell: ({ row }) => (
           <NameCell
@@ -109,7 +149,8 @@ export default function PartnerDetailPage() {
       ...identityColumns<PartnerBilling["items"][number]>(),
       {
         accessorKey: "status",
-        header: "Status",
+        meta: { filter: { field: "status", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ getValue }) => {
           const s = String(getValue() || "");
           return <StatusBadge tone={commissionTone(s)} value={s} />;
@@ -117,6 +158,7 @@ export default function PartnerDetailPage() {
       },
       {
         accessorKey: "totalFeesAmount",
+        meta: { filter: { field: "totalFeesAmount", kind: "number" } },
         header: () => <div className="text-right">Fees (ETB)</div>,
         cell: ({ getValue }) => (
           <div className="text-right tabular-nums">{etb(Number(getValue() || 0))}</div>
@@ -124,6 +166,7 @@ export default function PartnerDetailPage() {
       },
       {
         accessorKey: "totalPaidAmount",
+        meta: { filter: { field: "totalPaidAmount", kind: "number" } },
         header: () => <div className="text-right">Paid</div>,
         cell: ({ getValue }) => (
           <div className="text-right tabular-nums">{etb(Number(getValue() || 0))}</div>
@@ -131,6 +174,7 @@ export default function PartnerDetailPage() {
       },
       {
         accessorKey: "balanceAmount",
+        meta: { filter: { field: "balanceAmount", kind: "number" } },
         header: () => <div className="text-right">Outstanding</div>,
         cell: ({ getValue }) => (
           <div className="text-right font-medium tabular-nums">
@@ -163,12 +207,14 @@ export default function PartnerDetailPage() {
   });
 
   const candidateTable = useReactTable({
-    data: candidates.data?.items ?? [],
+    data: candidateRows,
     columns: candidateColumns,
     state: {
+      globalFilter: people.globalFilter,
       columnOrder: candidateLayout.columnOrder,
       columnVisibility: candidateLayout.columnVisibility,
     },
+    onGlobalFilterChange: people.setGlobalFilter,
     onColumnOrderChange: candidateLayout.setColumnOrder,
     onColumnVisibilityChange: candidateLayout.setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
@@ -179,12 +225,14 @@ export default function PartnerDetailPage() {
   });
 
   const billingTable = useReactTable({
-    data: billing.data?.items ?? [],
+    data: billingRows,
     columns: billingColumns,
     state: {
+      globalFilter: money.globalFilter,
       columnOrder: billingLayout.columnOrder,
       columnVisibility: billingLayout.columnVisibility,
     },
+    onGlobalFilterChange: money.setGlobalFilter,
     onColumnOrderChange: billingLayout.setColumnOrder,
     onColumnVisibilityChange: billingLayout.setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
@@ -278,6 +326,11 @@ export default function PartnerDetailPage() {
                   table={candidateTable}
                   layout={candidateLayout}
                   paginated
+                  enableGlobalFilter
+                  searchPlaceholder="Search name, passport or labour ID…"
+                  exportFileName="partner-candidates"
+                  filters={people.filters}
+                  onFiltersChange={people.setFilters}
                   emptyMessage="No candidates placed through this partner yet."
                 />
               )}
@@ -301,6 +354,11 @@ export default function PartnerDetailPage() {
                     table={billingTable}
                     layout={billingLayout}
                     paginated
+                    enableGlobalFilter
+                    searchPlaceholder="Search name, passport or labour ID…"
+                    exportFileName="partner-billing"
+                    filters={money.filters}
+                    onFiltersChange={money.setFilters}
                     emptyMessage="No commissions for this partner yet — they appear once an arrived candidate is added to Commission."
                   />
                 )}
