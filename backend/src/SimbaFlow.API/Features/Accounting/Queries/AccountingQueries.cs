@@ -127,7 +127,8 @@ public record ExchangeRateDto(
     string ToCurrency,
     decimal Rate,
     DateOnly EffectiveDate,
-    string? Source);
+    string? Source,
+    bool IsAgencyRate);
 
 public record GetExchangeRatesQuery(
     string? FromCurrency = null,
@@ -138,18 +139,29 @@ public record GetExchangeRatesQuery(
     public string RequiredPermission => "accounting.read";
 }
 
+/// <summary>
+/// The signed-in agency's own rates alongside the platform defaults it falls back to. Another
+/// agency's rates are never listed.
+/// </summary>
 public class GetExchangeRatesHandler
     : IRequestHandler<GetExchangeRatesQuery, Result<List<ExchangeRateDto>>>
 {
     private readonly IPlatformDbContext _platform;
+    private readonly ICurrentUserService _currentUser;
 
-    public GetExchangeRatesHandler(IPlatformDbContext platform) => _platform = platform;
+    public GetExchangeRatesHandler(IPlatformDbContext platform, ICurrentUserService currentUser)
+    {
+        _platform = platform;
+        _currentUser = currentUser;
+    }
 
     public async Task<Result<List<ExchangeRateDto>>> Handle(
         GetExchangeRatesQuery request, CancellationToken ct)
     {
         var take = Math.Clamp(request.Take, 1, 500);
-        var query = _platform.ExchangeRates.AsNoTracking().Where(r => !r.IsDeleted);
+        var tenantId = _currentUser.TenantId;
+        var query = _platform.ExchangeRates.AsNoTracking()
+            .Where(r => !r.IsDeleted && (r.TenantId == null || r.TenantId == tenantId));
 
         if (!string.IsNullOrWhiteSpace(request.FromCurrency))
         {
@@ -171,7 +183,8 @@ public class GetExchangeRatesHandler
             .ThenBy(r => r.FromCurrency)
             .Take(take)
             .Select(r => new ExchangeRateDto(
-                r.Id, r.FromCurrency, r.ToCurrency, r.Rate, r.EffectiveDate, r.Source))
+                r.Id, r.FromCurrency, r.ToCurrency, r.Rate, r.EffectiveDate, r.Source,
+                r.TenantId != null))
             .ToListAsync(ct);
 
         return Result<List<ExchangeRateDto>>.Success(items);

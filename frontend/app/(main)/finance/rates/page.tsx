@@ -88,6 +88,11 @@ export default function ExchangeRatesPage() {
         header: ({ column }) => <DataTableColumnHeader column={column} title="Effective" />,
       },
       {
+        id: "scope",
+        accessorFn: (row) => (row.isAgencyRate ? "Your agency" : "Platform default"),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Set by" />,
+      },
+      {
         accessorKey: "source",
         meta: { filter: { field: "source", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Source" />,
@@ -205,7 +210,8 @@ export default function ExchangeRatesPage() {
           <SheetHeader>
             <SheetTitle>Add exchange rate</SheetTitle>
             <SheetDescription>
-              Replaces any existing rate for the same pair and date.
+              Saved for your agency only. It replaces your own rate for the same pair and date,
+              and is used instead of the platform default from that date on.
             </SheetDescription>
           </SheetHeader>
           <div className="px-6 space-y-3">

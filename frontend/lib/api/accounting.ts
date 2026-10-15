@@ -47,6 +47,8 @@ export type ExchangeRateRow = {
   rate: number;
   effectiveDate: string;
   source: string | null;
+  /** True for this agency's own rate; false for a platform default it falls back to. */
+  isAgencyRate: boolean;
 };
 
 const fetcher = async <T>(url: string): Promise<T> => {

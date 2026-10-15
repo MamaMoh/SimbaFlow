@@ -1442,6 +1442,9 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<string>("Source")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ToCurrency")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1453,6 +1456,8 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "FromCurrency", "ToCurrency", "EffectiveDate");
 
                     b.ToTable("ExchangeRates", "public");
                 });

@@ -81,6 +81,13 @@ public class PlatformDbContext
             entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
         });
 
+        // Lookups are always "this agency's (or the default's) latest rate for a pair on or
+        // before a date".
+        modelBuilder.Entity<ExchangeRate>(entity =>
+        {
+            entity.HasIndex(r => new { r.TenantId, r.FromCurrency, r.ToCurrency, r.EffectiveDate });
+        });
+
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
             entity.Property(u => u.AllowedIpRanges)
