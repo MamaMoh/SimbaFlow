@@ -46,6 +46,10 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
         _currentUserService = currentUserService;
     }
 
+    private bool IsPlatformSupport() =>
+        !_currentUserService.TenantId.HasValue
+        && _currentUserService.Roles.Contains(SimbaFlow.Domain.Services.PlatformRoles.Support, StringComparer.OrdinalIgnoreCase);
+
     private bool IsPlatformAdmin() =>
         !_currentUserService.TenantId.HasValue
         && _currentUserService.Roles.Contains("PlatformAdmin", StringComparer.OrdinalIgnoreCase);
@@ -71,6 +75,12 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
         if (_currentUserService.IsSuperAdmin || IsPlatformAdmin())
         {
             // Administers accounts across the platform; sees them all.
+        }
+        else if (IsPlatformSupport())
+        {
+            // The support desk helps agency staff, so it sees every agency's accounts and none of
+            // the platform's own.
+            query = query.Where(u => u.TenantId != null);
         }
         else if (_currentUserService.TenantId is Guid callerTenant)
         {

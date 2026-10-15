@@ -14,9 +14,11 @@ public class TenantModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
+        // Reading is the whole platform team's, support desk included; every change below asks
+        // for a platform administrator as well.
         var group = app.MapGroup("/api/tenants")
             .WithTags("Tenants")
-            .RequireAuthorization("SuperAdmin");
+            .RequireAuthorization("PlatformStaff");
 
         group.MapGet("/agency-levels", () =>
         {
@@ -105,13 +107,15 @@ public class TenantModule : ICarterModule
             return result.IsSuccess
                 ? Results.Created($"/api/tenants/{result.Data}", result)
                 : Results.Json(result, statusCode: result.StatusCode);
-        });
+        }).RequireAuthorization("SuperAdmin");
 
         group.MapPut("/{id:guid}", async (
             Guid id,
             UpdateTenantRequest request,
             IPlatformDbContext context,
-            UserManager<ApplicationUser> userManager) =>
+            UserManager<ApplicationUser> userManager,
+            IAuditService audit,
+            ICurrentUserService currentUser) =>
         {
             var tenant = await context.Tenants
                 .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
@@ -232,8 +236,42 @@ public class TenantModule : ICarterModule
                 }
             }
 
+            if (request.MaxUsers is int maxUsers && maxUsers < 1)
+                return Results.Json(new { isSuccess = false, error = "The user limit must be at least 1." }, statusCode: 400);
+
             await context.SaveChangesAsync();
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "UpdateAgency", id, "Tenant", id.ToString(),
+                new { request.Name, request.MaxUsers, request.AgencyLevel, request.LicenseNumber, request.LicenseExpiresAt });
             return Results.Ok(new { isSuccess = true });
+        }).RequireAuthorization("SuperAdmin");
+
+        // The welcome email again — the link lasts a day, and owners lose emails. The support desk
+        // can send it too: helping someone in is their job.
+        group.MapPost("/{id:guid}/resend-invite", async (
+            Guid id,
+            IPlatformDbContext context,
+            AccountInvite invite,
+            IAuditService audit,
+            ICurrentUserService currentUser,
+            CancellationToken ct) =>
+        {
+            var tenant = await context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
+            if (tenant is null)
+                return Results.Json(new { isSuccess = false, error = "Agency not found." }, statusCode: 404);
+
+            var owner = await context.ApplicationUsers
+                .Where(u => u.TenantId == id && !u.IsDeleted)
+                .OrderBy(u => u.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+            if (owner is null)
+                return Results.Json(new { isSuccess = false, error = "This agency has no owner account." }, statusCode: 404);
+
+            if (!await invite.SendAsync(owner, tenant.Name, ct))
+                return Results.Json(new { isSuccess = false, error = "The email could not be sent. Check the mail settings, or reset the owner's password from Staff." },
+                    statusCode: 502);
+
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "ResendOwnerInvite", id, "User", owner.Id.ToString(), ct: ct);
+            return Results.Ok(new { isSuccess = true, data = new { sentTo = owner.Email } });
         });
 
         group.MapPut("/{id:guid}/status", async (Guid id, UpdateTenantStatusRequest request, ISender sender) =>
@@ -241,7 +279,7 @@ public class TenantModule : ICarterModule
             var command = new UpdateTenantStatusCommand(id, request.Status);
             var result = await sender.Send(command);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
-        });
+        }).RequireAuthorization("SuperAdmin");
 
         // There is no DELETE. It used to hide the agency's row and leave its schema, files and
         // accounts behind with no way to export or undo. See OffboardingModule.

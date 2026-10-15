@@ -32,6 +32,7 @@ public class OffboardingModule : ICarterModule
             IPlatformDbContext db,
             ITenantSchemaResolver schemas,
             ICurrentUserService currentUser,
+            IAuditService audit,
             CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
@@ -75,6 +76,8 @@ public class OffboardingModule : ICarterModule
             await db.SaveChangesAsync(ct);
             schemas.InvalidateCache(id);
 
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "OffboardAgency", id, "Tenant", id.ToString(),
+                new { tenant.OffboardingReason }, ct);
             return Results.Ok(new { isSuccess = true, data = new { tenant.OffboardedAt, signedOut = sessions.Count } });
         });
 
@@ -82,6 +85,8 @@ public class OffboardingModule : ICarterModule
             Guid id,
             IPlatformDbContext db,
             ITenantLifecycleService lifecycle,
+            IAuditService audit,
+            ICurrentUserService currentUser,
             CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
@@ -109,6 +114,7 @@ public class OffboardingModule : ICarterModule
 
             tenant.LastExportedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(ct);
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "ExportAgency", id, "Tenant", id.ToString(), ct: ct);
 
             var name = $"{tenant.Slug}-export-{DateTime.UtcNow:yyyyMMdd-HHmm}.zip";
             return Results.File(file, "application/zip", name);
@@ -120,6 +126,8 @@ public class OffboardingModule : ICarterModule
             IPlatformDbContext db,
             ITenantLifecycleService lifecycle,
             ITenantSchemaResolver schemas,
+            IAuditService audit,
+            ICurrentUserService currentUser,
             CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, ct);
@@ -163,6 +171,8 @@ public class OffboardingModule : ICarterModule
             await db.SaveChangesAsync(ct);
             schemas.InvalidateCache(id);
 
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "PurgeAgency", id, "Tenant", id.ToString(),
+                new { filesDestroyed = files, usersRemoved = users.Count }, ct);
             return Results.Ok(new { isSuccess = true, data = new { filesDestroyed = files, usersRemoved = users.Count } });
         });
     }

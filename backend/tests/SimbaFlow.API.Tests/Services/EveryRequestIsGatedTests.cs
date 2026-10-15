@@ -24,6 +24,7 @@ public class EveryRequestIsGatedTests
         typeof(IRequirePermission),
         typeof(IRequireAnyPermission),
         typeof(IRequirePlatformAdmin),
+        typeof(IRequirePlatformStaff),
         typeof(IRequireAgencyOwner),
     ];
 
@@ -62,8 +63,15 @@ public class EveryRequestIsGatedTests
         query.RequiredPermission.Should().Be("candidate.read");
     }
 
+    [Fact]
+    public void TheAgencyListIsOpenToTheWholePlatformTeam()
+    {
+        // The support desk needs to see which agencies are struggling, so the list is staff-wide;
+        // changing an agency stays with the platform administrators below.
+        typeof(IRequirePlatformStaff).IsAssignableFrom(typeof(GetTenantsQuery)).Should().BeTrue();
+    }
+
     [Theory]
-    [InlineData(typeof(GetTenantsQuery))]
     [InlineData(typeof(ProvisionTenantCommand))]
     [InlineData(typeof(UpdateTenantStatusCommand))]
     public void AgencyAdministrationIsThePlatformTeams(Type request)

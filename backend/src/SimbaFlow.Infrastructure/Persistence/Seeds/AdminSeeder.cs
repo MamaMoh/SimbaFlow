@@ -37,6 +37,8 @@ public static class AdminSeeder
         // configuration only. No candidate or pipeline access, so support staff can administer
         // the platform without being able to read any agency's people.
         ("PlatformAdmin", "Platform user accounts and system configuration"),
+        // The support desk: sees and helps every agency, changes none of them. See PlatformRoles.Support.
+        ("PlatformSupport", "Platform support: agency health, accounts, announcements and help requests"),
     ];
 
     public static async Task SeedDefaultAdminAsync(IServiceProvider serviceProvider)

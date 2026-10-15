@@ -32,6 +32,10 @@ public interface IPlatformDbContext
     DbSet<SimbaFlow.Domain.Entities.Billing.SubscriptionInvoice> SubscriptionInvoices { get; }
     DbSet<PartnerLink> PartnerLinks { get; }
     DbSet<ErrorEvent> ErrorEvents { get; }
+    DbSet<SimbaFlow.Domain.Entities.Platform.Announcement> Announcements { get; }
+    DbSet<SimbaFlow.Domain.Entities.Platform.SupportTicket> SupportTickets { get; }
+    DbSet<SimbaFlow.Domain.Entities.Platform.SupportMessage> SupportMessages { get; }
+    DbSet<SimbaFlow.Domain.Entities.Platform.PlatformAccessGrant> PlatformAccessGrants { get; }
     DbSet<PartnerAgreementDocument> PartnerAgreementDocuments { get; }
     DbSet<StaffProfile> StaffProfiles { get; }
     DbSet<StaffIdentifier> StaffIdentifiers { get; }

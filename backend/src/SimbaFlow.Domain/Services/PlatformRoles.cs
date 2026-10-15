@@ -22,4 +22,20 @@ public static class PlatformRoles
 
     public static bool Includes(string? roleName) =>
         roleName is not null && All.Contains(roleName, StringComparer.Ordinal);
+
+    /// <summary>
+    /// The platform's support desk: helps agencies without holding the platform.
+    ///
+    /// Deliberately not in <see cref="All"/>. It sees every agency's health, accounts, billing
+    /// (read only), errors and help requests, can reset a password or end a session, and can post
+    /// announcements — but cannot work inside an agency, read its candidates, change billing,
+    /// suspend, offboard or purge. Belongs to no agency, like the two roles above.
+    /// </summary>
+    public const string Support = "PlatformSupport";
+
+    /// <summary>Everyone on the platform team: the two full roles and the support desk.</summary>
+    public static readonly string[] Staff = [SuperAdmin, PlatformAdmin, Support];
+
+    public static bool IsStaff(IEnumerable<string> roleNames) =>
+        roleNames.Any(r => Staff.Contains(r, StringComparer.Ordinal));
 }
