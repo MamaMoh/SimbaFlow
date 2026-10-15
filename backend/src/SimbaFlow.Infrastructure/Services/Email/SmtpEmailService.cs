@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using SimbaFlow.Application.Common.Interfaces;
+using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Infrastructure.Options;
 
 namespace SimbaFlow.Infrastructure.Services.Email;
@@ -27,7 +28,15 @@ public sealed class SmtpEmailService : IEmailService
 
     public bool IsConfigured => _options.CurrentValue.IsConfigured;
 
-    public async Task<bool> SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
+    public Task<bool> SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default)
+        => SendAsync(toEmail, subject, htmlBody, [], ct);
+
+    public async Task<bool> SendAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        IReadOnlyList<EmailAttachment> attachments,
+        CancellationToken ct = default)
     {
         var o = _options.CurrentValue;
 
@@ -43,7 +52,10 @@ public sealed class SmtpEmailService : IEmailService
             message.From.Add(new MailboxAddress(o.SenderName, o.Sender));
             message.To.Add(MailboxAddress.Parse(toEmail));
             message.Subject = subject;
-            message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
+            var body = new BodyBuilder { HtmlBody = htmlBody };
+            foreach (var file in attachments)
+                body.Attachments.Add(file.FileName, file.Content, ContentType.Parse(file.ContentType));
+            message.Body = body.ToMessageBody();
 
             using var client = new SmtpClient();
             var security = o.MailPort == 465

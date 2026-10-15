@@ -33,6 +33,11 @@ public static class ServiceExtensions
         // Infrastructure (EF Core + Identity + JWT + services)
         services.AddInfrastructure(configuration);
 
+        // Scheduled report emails
+        services.AddScoped<SimbaFlow.API.Features.Reports.Schedules.IScheduledReportSender,
+            SimbaFlow.API.Features.Reports.Schedules.ScheduledReportSender>();
+        services.AddHostedService<SimbaFlow.API.Features.Reports.Schedules.ScheduledReportService>();
+
         // SignalR
         services.AddSignalR();
         services.AddScoped<ISignalRBroadcaster, SignalRBroadcaster>();

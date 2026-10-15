@@ -1,3 +1,5 @@
+using SimbaFlow.Application.Common.Models;
+
 namespace SimbaFlow.Application.Common.Interfaces;
 
 public interface IEmailService
@@ -10,4 +12,12 @@ public interface IEmailService
     /// (registering an agency, requesting a reset) must not 500 because the mail host is down.
     /// </summary>
     Task<bool> SendAsync(string toEmail, string subject, string htmlBody, CancellationToken ct = default);
+
+    /// <summary>As <see cref="SendAsync(string, string, string, CancellationToken)"/>, with files attached.</summary>
+    Task<bool> SendAsync(
+        string toEmail,
+        string subject,
+        string htmlBody,
+        IReadOnlyList<EmailAttachment> attachments,
+        CancellationToken ct = default);
 }
