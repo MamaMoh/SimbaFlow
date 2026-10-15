@@ -40,4 +40,19 @@ public interface IJournalPostingService
         Commission commission,
         Guid postedByUserId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds an entry that undoes <paramref name="originalEntryId"/> line for line (debits become
+    /// credits). The original stays on the ledger, so the history shows both.
+    /// </summary>
+    Task<JournalEntry> ReverseAsync(
+        Guid originalEntryId,
+        string description,
+        string sourceType,
+        Guid? sourceId,
+        Guid postedByUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Next receipt number for this agency (RC-000001, …). Saved with the caller's changes.</summary>
+    Task<string> AllocateReceiptNumberAsync(CancellationToken cancellationToken = default);
 }

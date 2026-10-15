@@ -8,7 +8,8 @@ import { CommissionStatusBadge } from "@/components/finance/commission-status-ba
 import { FeeBreakdownEditor } from "@/components/finance/fee-breakdown-editor";
 import { RecordPaymentSheet } from "@/components/finance/record-payment-sheet";
 import { DisputePanel } from "@/components/finance/dispute-panel";
-import { formatEtb, useCommission } from "@/lib/api/commissions";
+import { VoidPaymentDialog } from "@/components/finance/void-payment-dialog";
+import { formatEtb, useCommission, type CommissionPayment } from "@/lib/api/commissions";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,6 +27,7 @@ export default function CommissionDetailPage({
 
   const { commission, isLoading, error, mutate } = useCommission(canView ? id : undefined);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [voiding, setVoiding] = useState<CommissionPayment | null>(null);
 
   if (permsLoading || isLoading) {
     return (
@@ -147,19 +149,32 @@ export default function CommissionDetailPage({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Receipt</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>ETB</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Reference</TableHead>
                   <TableHead>Journal</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {commission.payments.map((p) => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} className={p.voidedAt ? "text-muted-foreground" : undefined}>
+                    <TableCell className="whitespace-nowrap">
+                      {p.receiptNumber || "—"}
+                      {p.voidedAt ? (
+                        <span
+                          className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800"
+                          title={p.voidReason ?? undefined}
+                        >
+                          Void
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell>{new Date(p.paidAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="tabular-nums">
+                    <TableCell className={p.voidedAt ? "tabular-nums line-through" : "tabular-nums"}>
                       {p.amount.toFixed(2)} {p.currency}
                       {p.currency !== "ETB" ? (
                         <span className="ml-1 text-xs text-muted-foreground">
@@ -181,6 +196,25 @@ export default function CommissionDetailPage({
                       ) : (
                         "—"
                       )}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-right">
+                      <Link
+                        href={`/print/receipts/${p.id}`}
+                        target="_blank"
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        Receipt
+                      </Link>
+                      {canPost && !p.voidedAt ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2 h-7 text-red-700 hover:text-red-800"
+                          onClick={() => setVoiding(p)}
+                        >
+                          Void
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -207,6 +241,12 @@ export default function CommissionDetailPage({
         disabledReason={paymentBlock}
         balance={commission.balanceAmount}
         onRecorded={() => mutate()}
+      />
+
+      <VoidPaymentDialog
+        payment={voiding}
+        onOpenChange={(open) => !open && setVoiding(null)}
+        onVoided={() => mutate()}
       />
     </div>
   );

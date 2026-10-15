@@ -63,6 +63,19 @@ public class CommissionModule : ICarterModule
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        group.MapPost("/payments/{paymentId:guid}/void", async (
+            Guid paymentId, VoidPaymentRequest body, ISender sender) =>
+        {
+            var result = await sender.Send(new VoidPaymentCommand(paymentId, body.Reason));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapGet("/payments/{paymentId:guid}/receipt", async (Guid paymentId, ISender sender) =>
+        {
+            var result = await sender.Send(new GetPaymentReceiptQuery(paymentId));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapPost("/{id:guid}/disputes", async (Guid id, OpenDisputeRequest body, ISender sender) =>
         {
             var result = await sender.Send(new OpenDisputeCommand(id, body.Reason));
@@ -96,4 +109,5 @@ public record RecordPaymentRequest(
     string? Reference,
     string? Notes);
 public record OpenDisputeRequest(string Reason);
+public record VoidPaymentRequest(string Reason);
 public record ResolveDisputeRequest(string ResolutionNotes);

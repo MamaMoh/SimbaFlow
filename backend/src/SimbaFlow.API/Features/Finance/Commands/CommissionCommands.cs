@@ -5,6 +5,7 @@ using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Finance;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.Infrastructure.Persistence;
+using SimbaFlow.Infrastructure.Services;
 
 namespace SimbaFlow.API.Features.Finance.Commands;
 
@@ -219,7 +220,8 @@ public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result
                 Method = method,
                 Reference = request.Reference?.Trim(),
                 Notes = request.Notes?.Trim(),
-                RecordedByUserId = userId
+                RecordedByUserId = userId,
+                ReceiptNumber = await _journal.AllocateReceiptNumberAsync(ct)
             };
 
             _context.Payments.Add(payment);
@@ -237,6 +239,75 @@ public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+}
+
+public record VoidPaymentCommand(Guid PaymentId, string Reason)
+    : IRequest<Result>, IRequirePermission
+{
+    public string RequiredPermission => "accounting.post";
+}
+
+/// <summary>
+/// Takes a payment back: posts the reverse of its journal entry, marks it voided with who and
+/// why, and recalculates what the candidate owes. Nothing is deleted.
+/// </summary>
+public class VoidPaymentHandler : IRequestHandler<VoidPaymentCommand, Result>
+{
+    private readonly ITenantDbContext _context;
+    private readonly IJournalPostingService _journal;
+    private readonly ICurrentUserService _currentUser;
+
+    public VoidPaymentHandler(
+        ITenantDbContext context, IJournalPostingService journal, ICurrentUserService currentUser)
+    {
+        _context = context;
+        _journal = journal;
+        _currentUser = currentUser;
+    }
+
+    public async Task<Result> Handle(VoidPaymentCommand request, CancellationToken ct)
+    {
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return Result.Failure("Unauthenticated", 401);
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            return Result.Failure("A reason is required to void a payment", 400);
+
+        var payment = await _context.Payments
+            .FirstOrDefaultAsync(p => p.Id == request.PaymentId && !p.IsDeleted, ct);
+        if (payment is null)
+            return Result.Failure("Payment not found", 404);
+        if (payment.VoidedAt is not null)
+            return Result.Failure("Payment is already voided", 400);
+
+        var commission = await _context.Commissions
+            .Include(c => c.Fees)
+            .Include(c => c.Payments)
+            .Include(c => c.Disputes)
+            .FirstOrDefaultAsync(c => c.Id == payment.CommissionId && !c.IsDeleted, ct);
+        if (commission is null)
+            return Result.Failure("Commission not found", 404);
+
+        if (payment.JournalEntryId is Guid entryId)
+        {
+            var reversal = await _journal.ReverseAsync(
+                entryId,
+                $"Void of payment {payment.ReceiptNumber ?? payment.Id.ToString()}",
+                JournalPostingService.SourceTypePaymentVoid,
+                payment.Id,
+                userId,
+                ct);
+            payment.VoidJournalEntryId = reversal.Id;
+        }
+
+        payment.VoidedAt = DateTime.UtcNow;
+        payment.VoidedByUserId = userId;
+        payment.VoidReason = request.Reason.Trim();
+
+        CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+        await _context.SaveChangesAsync(ct);
+        return Result.Success();
     }
 }
 

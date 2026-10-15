@@ -44,3 +44,12 @@ public class ResolveDisputeValidator : AbstractValidator<ResolveDisputeCommand>
         RuleFor(x => x.ResolutionNotes).NotEmpty().MaximumLength(4000);
     }
 }
+
+public class VoidPaymentValidator : AbstractValidator<VoidPaymentCommand>
+{
+    public VoidPaymentValidator()
+    {
+        RuleFor(x => x.PaymentId).NotEmpty();
+        RuleFor(x => x.Reason).NotEmpty().MaximumLength(1000);
+    }
+}

@@ -311,6 +311,9 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.Property(p => p.ExchangeRateToEtb).HasPrecision(18, 8);
             entity.Property(p => p.Currency).HasMaxLength(8);
             entity.Property(p => p.Reference).HasMaxLength(256);
+            entity.Property(p => p.ReceiptNumber).HasMaxLength(32);
+            entity.Property(p => p.VoidReason).HasMaxLength(1000);
+            entity.Ignore(p => p.IsVoided);
             entity.HasOne(p => p.JournalEntry)
                 .WithMany()
                 .HasForeignKey(p => p.JournalEntryId)

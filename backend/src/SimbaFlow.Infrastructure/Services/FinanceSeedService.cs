@@ -141,10 +141,20 @@ public sealed class FinanceSeedService : IFinanceSeedService
                 posted++;
         }
 
-        if (posted > 0)
+        // Payments taken before receipts were numbered get numbers in the order they were paid.
+        var unnumbered = await context.Payments
+            .Where(p => !p.IsDeleted && p.ReceiptNumber == null)
+            .OrderBy(p => p.PaidAt)
+            .ToListAsync(ct);
+        foreach (var payment in unnumbered)
+            payment.ReceiptNumber = await journal.AllocateReceiptNumberAsync(ct);
+
+        if (posted > 0 || unnumbered.Count > 0)
         {
             await context.SaveChangesAsync(ct);
-            _logger.LogInformation("Backfilled {Count} accrual journal entries", posted);
+            _logger.LogInformation(
+                "Backfilled {Count} accrual journal entries and {Receipts} receipt numbers",
+                posted, unnumbered.Count);
         }
     }
 

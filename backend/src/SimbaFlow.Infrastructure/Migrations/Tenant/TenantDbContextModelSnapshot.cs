@@ -1046,6 +1046,10 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("integer")
                         .HasColumnName("next_journal_number");
 
+                    b.Property<int>("NextReceiptNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("next_receipt_number");
+
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -1271,6 +1275,11 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("paid_at");
 
+                    b.Property<string>("ReceiptNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("receipt_number");
+
                     b.Property<Guid>("RecordedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("recorded_by_user_id");
@@ -1293,6 +1302,23 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("text")
                         .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("VoidJournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("void_journal_entry_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_payments");

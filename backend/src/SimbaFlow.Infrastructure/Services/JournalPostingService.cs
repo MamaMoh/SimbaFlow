@@ -10,6 +10,7 @@ public sealed class JournalPostingService : IJournalPostingService
 {
     public const string SourceTypeCommissionPayment = "CommissionPayment";
     public const string SourceTypeCommissionFees = "CommissionFees";
+    public const string SourceTypePaymentVoid = "CommissionPaymentVoid";
 
     /// <summary>
     /// Payments posted before fees were accrued credited revenue directly. The backfill reverses
@@ -165,7 +166,35 @@ public sealed class JournalPostingService : IJournalPostingService
         return entry;
     }
 
-    private async Task<string> AllocateEntryNumberAsync(CancellationToken cancellationToken)
+    public async Task<JournalEntry> ReverseAsync(
+        Guid originalEntryId,
+        string description,
+        string sourceType,
+        Guid? sourceId,
+        Guid postedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var lines = await _context.JournalLines.AsNoTracking()
+            .Where(l => l.JournalEntryId == originalEntryId && !l.IsDeleted)
+            .Select(l => new JournalLineSpec(l.Account!.Code, l.Credit, l.Debit, l.Memo))
+            .ToListAsync(cancellationToken);
+
+        if (lines.Count == 0)
+            throw new InvalidOperationException($"Journal entry {originalEntryId} has no lines to reverse.");
+
+        return (await PostAsync(description, sourceType, sourceId, lines, postedByUserId,
+            cancellationToken: cancellationToken))!;
+    }
+
+    public async Task<string> AllocateReceiptNumberAsync(CancellationToken cancellationToken = default)
+    {
+        var counter = await CounterAsync(cancellationToken);
+        var seq = counter.NextReceiptNumber;
+        counter.NextReceiptNumber = seq + 1;
+        return $"RC-{seq:D6}";
+    }
+
+    private async Task<FinanceCounter> CounterAsync(CancellationToken cancellationToken)
     {
         // A context may post several entries before saving; the tracked counter carries the sequence.
         var counter = _context.FinanceCounters.Local.FirstOrDefault(c => !c.IsDeleted)
@@ -173,10 +202,16 @@ public sealed class JournalPostingService : IJournalPostingService
 
         if (counter is null)
         {
-            counter = new FinanceCounter { NextJournalNumber = 1 };
+            counter = new FinanceCounter();
             _context.FinanceCounters.Add(counter);
         }
 
+        return counter;
+    }
+
+    private async Task<string> AllocateEntryNumberAsync(CancellationToken cancellationToken)
+    {
+        var counter = await CounterAsync(cancellationToken);
         var seq = counter.NextJournalNumber;
         counter.NextJournalNumber = seq + 1;
 

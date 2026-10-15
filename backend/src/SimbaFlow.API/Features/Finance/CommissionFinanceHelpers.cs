@@ -8,7 +8,7 @@ internal static class CommissionFinanceHelpers
     public static void RecalcTotalsAndStatus(Commission commission)
     {
         var fees = commission.Fees?.Where(f => !f.IsDeleted).ToList() ?? [];
-        var payments = commission.Payments?.Where(p => !p.IsDeleted).ToList() ?? [];
+        var payments = commission.Payments?.Where(p => !p.IsDeleted && p.VoidedAt == null).ToList() ?? [];
         var disputes = commission.Disputes?.Where(d => !d.IsDeleted).ToList() ?? [];
 
         commission.TotalFeesAmount = Math.Round(fees.Sum(f => f.AmountEtb), 2, MidpointRounding.AwayFromZero);
