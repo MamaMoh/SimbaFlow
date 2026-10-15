@@ -11,9 +11,11 @@ namespace SimbaFlow.API.Features.Candidates.Commands;
 /// The enjaze forms for a set of candidates, as one printable document.
 /// </summary>
 public record GenerateBulkVisaFormsCommand(List<Guid> CandidateIds)
-    : IRequest<Result<byte[]>>, IRequirePermission
+    : IRequest<Result<byte[]>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => CandidateIds;
 }
 
 public class GenerateBulkVisaFormsHandler

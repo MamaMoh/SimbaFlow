@@ -20,9 +20,11 @@ namespace SimbaFlow.API.Features.Candidates.Commands;
 /// </summary>
 public record DownloadCandidateDocumentsCommand(
     List<Guid> CandidateIds,
-    List<int> DocumentTypes) : IRequest<Result<byte[]>>, IRequirePermission
+    List<int> DocumentTypes) : IRequest<Result<byte[]>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => CandidateIds;
 }
 
 public class DownloadCandidateDocumentsHandler

@@ -14,9 +14,11 @@ namespace SimbaFlow.API.Features.Candidates.Queries;
 /// Schema isolation still held the tenant boundary; the role boundary was not held at all.
 /// </summary>
 public record GetCandidateDocumentQuery(Guid CandidateId, Guid DocumentId)
-    : IRequest<Result<CandidateDocumentFileDto>>, IRequirePermission
+    : IRequest<Result<CandidateDocumentFileDto>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
 }
 
 public record CandidateDocumentFileDto(Stream Content, string ContentType, string FileName);

@@ -18,9 +18,11 @@ namespace SimbaFlow.API.Features.Candidates.Commands;
 /// from the real one in whatever has been edited since.
 /// </summary>
 public record GenerateContractCommand(Guid CandidateId)
-    : IRequest<Result<GeneratedPdf>>, IRequirePermission
+    : IRequest<Result<GeneratedPdf>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
 }
 
 public class GenerateContractHandler : IRequestHandler<GenerateContractCommand, Result<GeneratedPdf>>

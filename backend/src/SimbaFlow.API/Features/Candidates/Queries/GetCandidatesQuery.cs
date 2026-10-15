@@ -20,9 +20,11 @@ public record GetCandidatesQuery(
     string? Occupation = null,
     // The filter row under the headings, as it arrived: still a string, because what may be
     // filtered is this board's business and not the endpoint's.
-    string? Filters = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
+    string? Filters = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [];
 }
 
 public record PaginatedCandidateResult(
@@ -302,9 +304,11 @@ public class GetCandidateFilterOptionsHandler
 /// <summary>One posting abroad as the candidate page and the form read it.</summary>
 public record CandidateWorkExperienceDto(string Country, string? Occupation, int? Years);
 
-public record GetCandidateByIdQuery(Guid Id) : IRequest<Result<CandidateDetailDto>>, IRequirePermission
+public record GetCandidateByIdQuery(Guid Id) : IRequest<Result<CandidateDetailDto>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [Id];
 }
 
 public record CandidateDetailDto(
@@ -481,9 +485,11 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
 }
 
 public record GetCandidateDocumentsQuery(Guid CandidateId)
-    : IRequest<Result<List<CandidateDocumentDto>>>, IRequirePermission
+    : IRequest<Result<List<CandidateDocumentDto>>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
 }
 
 public record CandidateDocumentDto(Guid Id, string OriginalFileName, string ContentType, int DocumentType, long FileSizeBytes, DateTime UploadedAt);
@@ -507,7 +513,11 @@ public class GetCandidateDocumentsHandler : IRequestHandler<GetCandidateDocument
     }
 }
 
-public record GetCandidateTimelineQuery(Guid CandidateId) : IRequest<Result<List<TimelineEntryDto>>>;
+public record GetCandidateTimelineQuery(Guid CandidateId) : IRequest<Result<List<TimelineEntryDto>>>, IAuditedRead
+{
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
+}
 
 public record TimelineEntryDto(Guid Id, int EventType, string? FromStageName, string? ToStageName, string UserName, DateTime Timestamp, string? Notes);
 

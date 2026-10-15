@@ -7,9 +7,11 @@ using SimbaFlow.Domain.Enums;
 namespace SimbaFlow.API.Features.Candidates.Queries;
 
 public record GetCandidateMediaQuery(Guid CandidateId, string Kind)
-    : IRequest<Result<CandidateMediaDto>>, IRequirePermission
+    : IRequest<Result<CandidateMediaDto>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
+    public string AuditEntityType => "Candidate";
+    public IReadOnlyCollection<Guid> AuditEntityIds => [CandidateId];
 }
 
 public record CandidateMediaDto(byte[] Bytes, string ContentType, string FileName);
