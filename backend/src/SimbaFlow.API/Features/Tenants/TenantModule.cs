@@ -91,6 +91,10 @@ public class TenantModule : ICarterModule
                     OwnerFirstName = owner?.FirstName,
                     OwnerLastName = owner?.LastName,
                     OwnerEmail = owner?.Email,
+                    tenant.OffboardedAt,
+                    tenant.OffboardedBy,
+                    tenant.OffboardingReason,
+                    tenant.LastExportedAt,
                 }
             });
         });
@@ -239,20 +243,8 @@ public class TenantModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        group.MapDelete("/{id:guid}", async (Guid id, IPlatformDbContext context) =>
-        {
-            var tenant = await context.Tenants
-                .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted);
-
-            if (tenant is null)
-                return Results.Json(new { isSuccess = false, error = "Tenant not found" }, statusCode: 404);
-
-            tenant.IsDeleted = true;
-            tenant.SubscriptionStatus = Domain.Enums.TenantStatus.Deactivated;
-            await context.SaveChangesAsync();
-
-            return Results.NoContent();
-        });
+        // There is no DELETE. It used to hide the agency's row and leave its schema, files and
+        // accounts behind with no way to export or undo. See OffboardingModule.
     }
 }
 

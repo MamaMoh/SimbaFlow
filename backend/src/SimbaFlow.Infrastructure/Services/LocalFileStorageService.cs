@@ -130,6 +130,20 @@ public class LocalFileStorageService : IFileStorageService
         return Task.CompletedTask;
     }
 
+    public Task DestroyAsync(string relativePath, CancellationToken cancellationToken = default)
+    {
+        var fullPath = GetFullPath(relativePath);
+        if (File.Exists(fullPath))
+            File.Delete(fullPath);
+
+        var thumbPath = GetThumbnailPath(fullPath);
+        if (File.Exists(thumbPath))
+            File.Delete(thumbPath);
+
+        _logger.LogInformation("File destroyed: {RelativePath}", relativePath);
+        return Task.CompletedTask;
+    }
+
     public Task<string?> GetThumbnailAsync(string relativePath, CancellationToken cancellationToken = default)
     {
         var extension = Path.GetExtension(relativePath).ToLowerInvariant();

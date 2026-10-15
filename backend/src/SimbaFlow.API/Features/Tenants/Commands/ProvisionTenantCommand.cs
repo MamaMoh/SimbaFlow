@@ -68,29 +68,20 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
     private readonly IPlatformDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<ApplicationRole> _roleManager;
-    private readonly ITenantSchemaMigrator _tenantMigrator;
-    private readonly IWorkflowDefinitionUpgrader _workflowUpgrader;
-    private readonly IFinanceSeedService _financeSeed;
-    private readonly IConfiguration _configuration;
+    private readonly ITenantLifecycleService _lifecycle;
     private readonly ILogger<ProvisionTenantHandler> _logger;
 
     public ProvisionTenantHandler(
         IPlatformDbContext context,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
-        ITenantSchemaMigrator tenantMigrator,
-        IWorkflowDefinitionUpgrader workflowUpgrader,
-        IFinanceSeedService financeSeed,
-        IConfiguration configuration,
+        ITenantLifecycleService lifecycle,
         ILogger<ProvisionTenantHandler> logger)
     {
         _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
-        _tenantMigrator = tenantMigrator;
-        _workflowUpgrader = workflowUpgrader;
-        _financeSeed = financeSeed;
-        _configuration = configuration;
+        _lifecycle = lifecycle;
         _logger = logger;
     }
 
@@ -171,25 +162,7 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
 
         try
         {
-            await _tenantMigrator.EnsureSchemaAndMigrateAsync(schemaName, cancellationToken);
-
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                // Skipping the seed quietly left the agency with tables and no workflow, which
-                // fails later as "no stages" rather than here as "not configured".
-                throw new InvalidOperationException(
-                    "No DefaultConnection is configured, so the agency's schema cannot be seeded.");
-            }
-
-            await WorkflowSeeder.SeedDefaultWorkflowIntoSchemaAsync(
-                connectionString, schemaName, tenant.Id, cancellationToken);
-            await _workflowUpgrader.EnsureUnit3ArtifactsIntoSchemaAsync(
-                connectionString, schemaName, tenant.Id, cancellationToken);
-            await _workflowUpgrader.EnsureUnit4ArtifactsIntoSchemaAsync(
-                connectionString, schemaName, tenant.Id, cancellationToken);
-            await _financeSeed.EnsureUnit5ArtifactsIntoSchemaAsync(
-                connectionString, schemaName, tenant.Id, cancellationToken);
+            await _lifecycle.PrepareSchemaAsync(schemaName, tenant.Id, cancellationToken);
             _logger.LogInformation(
                 "Seeded default workflow for schema {Schema} (level {Level}: ≤{PerCountry}/country, countries cap {CountryCap})",
                 schemaName, tenant.AgencyLevel, maxPartnersPerCountry,

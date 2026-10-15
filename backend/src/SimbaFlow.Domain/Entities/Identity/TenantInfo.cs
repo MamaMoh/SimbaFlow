@@ -99,4 +99,29 @@ public class TenantInfo : BaseEntity
     /// of a document when no letterhead has been uploaded, so a document is never left bare.
     /// </summary>
     public string? LogoPath { get; set; }
+
+    // ──── Offboarding ────
+
+    /// <summary>
+    /// When the agency was offboarded: deactivated on purpose, as opposed to suspended for
+    /// payment. Null while the agency is in service. Cleared again if it is brought back.
+    /// </summary>
+    public DateTime? OffboardedAt { get; set; }
+
+    public string? OffboardedBy { get; set; }
+
+    /// <summary>Why the agency left, in the words of whoever offboarded it.</summary>
+    public string? OffboardingReason { get; set; }
+
+    /// <summary>
+    /// When the agency's data was last exported. Purging asks for an export taken after
+    /// offboarding, so nothing is destroyed that nobody kept a copy of.
+    /// </summary>
+    public DateTime? LastExportedAt { get; set; }
+
+    /// <summary>
+    /// When the agency's schema and files were destroyed. The row stays as the record that the
+    /// agency existed and was removed; nothing else of it does.
+    /// </summary>
+    public DateTime? PurgedAt { get; set; }
 }

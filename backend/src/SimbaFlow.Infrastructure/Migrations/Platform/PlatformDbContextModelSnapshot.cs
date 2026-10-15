@@ -720,6 +720,9 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastExportedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("LetterheadPath")
                         .HasColumnType("text");
 
@@ -752,11 +755,23 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<DateOnly?>("NextPaymentDue")
                         .HasColumnType("date");
 
+                    b.Property<DateTime?>("OffboardedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OffboardedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("OffboardingReason")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("ProvisionedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ProvisionedBy")
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("PurgedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
