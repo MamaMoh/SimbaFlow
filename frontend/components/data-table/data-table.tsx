@@ -116,8 +116,6 @@ type PaginationProps = Omit<
 
 export interface DataTableProps<TData, TValue> {
   table: any;
-  filterableColumns?: any[];
-  searchableColumns?: any[];
   enableGlobalFilter?: boolean;
   newRowLink?: string;
   deleteRowsAction?: React.MouseEventHandler<HTMLButtonElement>;
@@ -125,8 +123,17 @@ export interface DataTableProps<TData, TValue> {
   viewHidden?: boolean;
   paginationProps?: PaginationProps;
   toolbarEndActions?: React.ReactNode;
-  /** Filename stem for the toolbar's CSV export; omit to hide the button. */
+  /** Filename stem for the toolbar's CSV export; omit to leave CSV out of the Export menu. */
   exportFileName?: string;
+  /**
+   * Extra items under Export — the paperwork download, where a board has one.
+   *
+   * `DropdownMenuItem`s, supplied by the board, because what else there is to take off a board
+   * differs per board and the toolbar has no business knowing.
+   */
+  exportActions?: React.ReactNode;
+  /** The board's Create button, drawn last in the toolbar. */
+  createAction?: React.ReactNode;
   /** Navigate/act when a row body is clicked (ignores clicks on buttons, links, inputs). */
   onRowClick?: (row: TData) => void;
   /**
@@ -140,10 +147,7 @@ export interface DataTableProps<TData, TValue> {
    */
   rowClickOpensActions?: boolean;
   isFullscreen?: boolean;
-  onToggleFullscreen?: () => void;
-  onPrint?: (allData: any[], selectedRows: any[]) => void;
   searchPlaceholder?: string;
-  useFilterPopover?: boolean;
   /**
    * A filter box under each column heading. On by default — every table in the app has one.
    * Set false where the rows are already narrowed by something else.
@@ -167,8 +171,6 @@ export function DataTable<TData, TValue>(
 ) {
   const {
     table,
-    filterableColumns = [],
-    searchableColumns = [],
     enableGlobalFilter = false,
     newRowLink,
     deleteRowsAction,
@@ -177,13 +179,12 @@ export function DataTable<TData, TValue>(
     paginationProps = {},
     toolbarEndActions,
   exportFileName,
+  exportActions,
+  createAction,
   onRowClick,
   rowClickOpensActions = false,
     isFullscreen,
-    onToggleFullscreen,
-    onPrint,
     searchPlaceholder,
-    useFilterPopover = false,
     columnFilters = true,
     emptyMessage = "No records to display yet.",
     emptyState,
@@ -204,25 +205,18 @@ export function DataTable<TData, TValue>(
       {!viewHidden && (
         <DataTableToolbar
           exportFileName={exportFileName}
+          exportActions={exportActions}
+          createAction={createAction}
           table={table}
           layout={layout}
-          filterableColumns={filterableColumns}
-          searchableColumns={searchableColumns}
           enableGlobalFilter={enableGlobalFilter}
           newRowLink={newRowLink}
           deleteRowsAction={deleteRowsAction}
           toolbarEndActions={toolbarEndActions}
-          onToggleFullscreen={onToggleFullscreen}
-          isFullscreen={isFullscreen}
-          onPrint={onPrint}
           searchPlaceholder={searchPlaceholder}
-          useFilterPopover={useFilterPopover}
           tooltips={{
             delete: "Delete selected rows",
             new: "Add a new record",
-            print: "Print table",
-            fullscreen: isFullscreen ? "Exit fullscreen" : "Enter fullscreen",
-            reset: "Reset filters",
           }}
         />
       )}

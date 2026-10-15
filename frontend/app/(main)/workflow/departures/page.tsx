@@ -186,7 +186,7 @@ export default function DepartureBoardPage() {
               layout={layout}
             rowClickOpensActions
         exportFileName="departures"
-            toolbarEndActions={
+            exportActions={
               <BulkDownloadButton
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}

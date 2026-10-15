@@ -170,7 +170,7 @@ export default function CaseExecutiveBoardPage() {
             layout={layout}
             rowClickOpensActions
         exportFileName="case-executive"
-            toolbarEndActions={
+            exportActions={
               <BulkDownloadButton
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}

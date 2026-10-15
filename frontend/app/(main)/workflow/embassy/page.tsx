@@ -32,6 +32,7 @@ import { indexColumn } from "@/components/data-table/index-column";
 import { identityColumns } from "@/components/data-table/identity-columns";
 import { selectionColumn } from "@/components/data-table/selection-column";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 export default function EmbassyBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
@@ -327,35 +328,37 @@ export default function EmbassyBoardPage() {
             rowClickOpensActions
             exportFileName="embassy"
             table={table}
-            toolbarEndActions={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+            exportActions={
+              <>
+                {/* The Tasheer sheet and the enjaze pack are both ways of taking this board
+                    somewhere else, so they sit with the CSV rather than beside it. */}
+                <DropdownMenuItem
                   disabled={busy !== null || selectedIds.length === 0}
-                  onClick={() => void exportTasheer()}
-                  className="gap-1.5"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    void exportTasheer();
+                  }}
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  {busy === "tasheer" ? "Exporting…" : `Tasheer list${selectedIds.length ? ` (${selectedIds.length})` : ""}`}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
+                  <Download className="mr-2 h-4 w-4" />
+                  {busy === "tasheer"
+                    ? "Exporting…"
+                    : `Tasheer list${selectedIds.length ? ` (${selectedIds.length})` : ""}`}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   disabled={busy !== null || selectedIds.length === 0}
-                  onClick={() => void printEnjaze()}
-                  className="gap-1.5"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    void printEnjaze();
+                  }}
                 >
-                  <FileText className="h-3.5 w-3.5" />
+                  <FileText className="mr-2 h-4 w-4" />
                   {busy === "enjaze" ? "Building…" : "Print enjaze"}
-                </Button>
+                </DropdownMenuItem>
                 <BulkDownloadButton
                   candidateIds={selectedIds}
                   onDownloaded={() => setRowSelection({})}
                 />
-              </div>
+              </>
             }
             enableGlobalFilter={false}
             paginated

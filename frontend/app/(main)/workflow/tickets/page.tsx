@@ -163,7 +163,7 @@ export default function TicketBoardPage() {
               layout={layout}
             rowClickOpensActions
         exportFileName="tickets"
-            toolbarEndActions={
+            exportActions={
               <BulkDownloadButton
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}

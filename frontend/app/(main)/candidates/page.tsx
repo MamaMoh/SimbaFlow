@@ -610,73 +610,6 @@ export default function CandidatesPage() {
           paginated={true}
           toolbarEndActions={
             <div className="flex flex-wrap items-center gap-2">
-              {/* Each of these narrows the query, not the rows already fetched, and each option
-                  carries the count the database gives it — so an empty result is visible as a
-                  zero before it is chosen rather than as a blank table afterwards. */}
-              <DbFilter
-                label="Destination"
-                value={countryFilter}
-                onChange={setCountryFilter}
-                options={filters.countries.map((c) => ({
-                  value: c.value,
-                  label: c.value,
-                  count: c.count,
-                }))}
-              />
-              <DbFilter
-                label="Partner"
-                value={partnerFilter}
-                onChange={setPartnerFilter}
-                options={filters.partners.map((p) => ({
-                  value: p.id,
-                  label: p.name,
-                  count: p.count,
-                }))}
-              />
-              <DbFilter
-                label="Occupation"
-                value={occupationFilter}
-                onChange={setOccupationFilter}
-                options={filters.occupations.map((o) => ({
-                  value: o.value,
-                  label: o.value,
-                  count: o.count,
-                }))}
-              />
-              <div className="flex items-center gap-1 rounded-md border px-2 py-0.5">
-                <span className="text-xs text-muted-foreground">Age</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={99}
-                  inputMode="numeric"
-                  aria-label="Minimum age"
-                  value={ageRange.min}
-                  onChange={(e) => setAgeRange((r) => ({ ...r, min: e.target.value }))}
-                  className="h-6 w-12 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-                />
-                <span className="text-xs text-muted-foreground">–</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={99}
-                  inputMode="numeric"
-                  aria-label="Maximum age"
-                  value={ageRange.max}
-                  onChange={(e) => setAgeRange((r) => ({ ...r, max: e.target.value }))}
-                  className="h-6 w-12 border-0 px-1 text-xs shadow-none focus-visible:ring-0"
-                />
-                {(ageRange.min || ageRange.max) && (
-                  <button
-                    type="button"
-                    aria-label="Clear age filter"
-                    onClick={() => setAgeRange({ min: "", max: "" })}
-                    className="rounded px-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
               <div className="flex rounded-md border p-0.5" role="group" aria-label="Filter by status">
                 {(["active", "inactive", "all"] as const).map((s) => (
                   <button
@@ -694,6 +627,7 @@ export default function CandidatesPage() {
                   </button>
                 ))}
               </div>
+              {/* Only while rows are ticked, so it is not part of the resting toolbar. */}
               {selectedIds.length > 0 ? (
                 <Button
                   size="sm"
@@ -710,20 +644,24 @@ export default function CandidatesPage() {
                   Generate CVs ({selectedIds.length})
                 </Button>
               ) : null}
-              <BulkDownloadButton
-                candidateIds={selectedIds}
-                onDownloaded={() => setRowSelection({})}
-              />
-              {canCreate ? (
-                <Button
-                  size="sm"
-                  className="h-8 bg-green-800 hover:bg-green-900 text-white"
-                  onClick={() => router.push("/candidates/new")}
-                >
-                  <span className="mr-1">+</span> Create
-                </Button>
-              ) : null}
             </div>
+          }
+          exportActions={
+            <BulkDownloadButton
+              candidateIds={selectedIds}
+              onDownloaded={() => setRowSelection({})}
+            />
+          }
+          createAction={
+            canCreate ? (
+              <Button
+                size="sm"
+                className="h-8 bg-green-800 text-white hover:bg-green-900"
+                onClick={() => router.push("/candidates/new")}
+              >
+                <span className="mr-1">+</span> Create
+              </Button>
+            ) : null
           }
         />
       </div>

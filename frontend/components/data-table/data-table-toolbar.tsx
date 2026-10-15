@@ -2,34 +2,28 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type {
-  DataTableFilterableColumn,
-  DataTableSearchableColumn,
-} from "@/types";
 import type { TableLayout } from "@/lib/data-table/use-table-layout";
 import type { Table } from "@tanstack/react-table";
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { Combobox } from "@/components/ui/combobox";
 import {
-  CrossIcon,
-  PlusCircleIcon,
-  TrashIcon,
-  Maximize2,
-  Minimize2,
-  PrinterIcon,
-  X,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  Stethoscope,
-  CheckCircle2,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ChevronDown,
   Download,
+  PlusCircleIcon,
+  Search,
+  Table2,
+  TrashIcon,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportTableToCsv } from "@/components/data-table/export-csv";
@@ -40,495 +34,129 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
 
 /** Reusable tooltip wrapper */
 interface AppTooltipProps {
   content?: string;
   children: React.ReactNode;
-  sideOffset?: number;
 }
-export function AppTooltip({
-  content,
-  children,
-  sideOffset = 2,
-}: AppTooltipProps) {
+
+export function AppTooltip({ content, children }: AppTooltipProps) {
   if (!content) return <>{children}</>;
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent sideOffset={sideOffset}>{content}</TooltipContent>
+      <TooltipContent sideOffset={2}>{content}</TooltipContent>
     </Tooltip>
   );
 }
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
-  filterableColumns?: DataTableFilterableColumn<TData>[];
-  searchableColumns?: DataTableSearchableColumn<TData>[];
   enableGlobalFilter?: boolean;
   newRowLink?: string;
   deleteRowsAction?: React.MouseEventHandler<HTMLButtonElement>;
+  /** Whatever this board puts beside Export — its status switch, its Create button. */
   toolbarEndActions?: React.ReactNode;
-  /** When set, shows an Export button that downloads the current view as CSV. */
+  /** The board's Create button. Drawn last, after Export, because that is where it belongs. */
+  createAction?: React.ReactNode;
+  /** When set, Export offers this table as a CSV under this filename. */
   exportFileName?: string;
-  onToggleFullscreen?: () => void;
-  isFullscreen?: boolean;
-  onPrint?: (allData: any[], selectedRows: any[]) => void;
+  /**
+   * More ways out of this board, listed under Export.
+   *
+   * Downloading the paperwork for the ticked rows is an export, and it used to be a button of
+   * its own sitting beside the one called Export. One menu, and the toolbar is shorter by a
+   * button on every board that has one.
+   */
+  exportActions?: React.ReactNode;
   searchPlaceholder?: string;
   tooltips?: {
     delete?: string;
     new?: string;
-    print?: string;
-    fullscreen?: string;
     search?: Record<string, string>;
-    filters?: Record<string, string>;
-    reset?: string;
   };
-  /** When true, show a single Filter button that opens a popover with checklist for each filter column (Status, Doctor) */
-  useFilterPopover?: boolean;
   /** This board's remembered column arrangement, when it has one. */
   layout?: TableLayout;
 }
 
+/**
+ * One row above every table, the same on all of them.
+ *
+ * Search and the column menu on the left, the board's own switches and the ways out on the
+ * right. Nothing else: this row used to carry date-range boxes, a filter popover, per-column
+ * dropdowns, a reset, a print button and a fullscreen toggle, none of which any board ever
+ * passed — dead props that made the file four times this length and taught nobody anything.
+ *
+ * Narrowing a list is the column filter row's job, under the headings, where the filter sits on
+ * the column it belongs to.
+ */
 export function DataTableToolbar<TData>({
   table,
-  filterableColumns = [],
-  searchableColumns = [],
   enableGlobalFilter = false,
   newRowLink,
   deleteRowsAction,
   toolbarEndActions,
+  createAction,
   exportFileName,
-  onToggleFullscreen,
-  isFullscreen,
-  onPrint,
-  searchPlaceholder = "Search appointments...",
+  exportActions,
+  searchPlaceholder = "Search…",
   tooltips = {},
-  useFilterPopover = false,
   layout,
 }: DataTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0;
   const globalFilterValue = table.getState().globalFilter;
   const [isPending, startTransition] = React.useTransition();
-  const [globalSearch, setGlobalSearch] = React.useState(
-    globalFilterValue || ""
-  );
+  const [globalSearch, setGlobalSearch] = React.useState(globalFilterValue || "");
   const debouncedGlobalSearch = useDebounce(globalSearch, 300);
 
-  const [searchInputs, setSearchInputs] = React.useState<
-    Record<string, string>
-  >(() =>
-    Object.fromEntries(
-      searchableColumns.map((col) => [
-        String(col.id),
-        (table.getColumn(String(col.id))?.getFilterValue() as string) ?? "",
-      ])
-    )
-  );
-
-  const debouncedSearchInputs = useDebounce(searchInputs, 300);
-
-  // Update global filter
   React.useEffect(() => {
     if (enableGlobalFilter) {
       table.setGlobalFilter(
-        debouncedGlobalSearch === "" ? undefined : debouncedGlobalSearch
+        debouncedGlobalSearch === "" ? undefined : debouncedGlobalSearch,
       );
     }
   }, [debouncedGlobalSearch, table, enableGlobalFilter]);
 
-  // Update table filters after debounce — only if the value actually changed
-  React.useEffect(() => {
-    Object.entries(debouncedSearchInputs).forEach(([id, value]) => {
-      const col = table.getColumn(id);
-      if (!col) return;
-
-      const current = col.getFilterValue() as any;
-      const newValue = value === "" ? undefined : value;
-
-      // deep-equal for possible array/object, otherwise simple equality
-      const isEqual =
-        typeof current === "object" && current !== null
-          ? JSON.stringify(current) === JSON.stringify(newValue)
-          : current === newValue;
-
-      if (!isEqual) {
-        col.setFilterValue(newValue);
-      }
-    });
-  }, [debouncedSearchInputs, table]);
+  const selected = table.getSelectedRowModel().rows.length;
 
   return (
     <TooltipProvider delayDuration={200}>
-      {/* Wraps rather than scrolls.
-          This row used to be `overflow-auto`, so on a narrow window the buttons on the right
-          went off the edge instead of down a line — and the one that went first was Create,
-          the reason most people open a board at all. It was reachable only by scrolling a bar
-          most people never saw. Wrapping costs a few pixels of height and nothing else. */}
+      {/* Wraps rather than scrolls: on a narrow window the buttons on the right go down a line
+          rather than off the edge, where only a scrollbar nobody saw would reach them. */}
       <div className="flex w-full flex-wrap items-center justify-between gap-3 border-b bg-card p-3">
-          {/* Left section: search + filters */}
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {/* Global search */}
+        {/* Left: search, then the column menu beside it. */}
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {enableGlobalFilter && (
             <div className="relative flex items-center">
-              <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+              <Search className="text-muted-foreground pointer-events-none absolute left-3 z-10 h-4 w-4" />
               <Input
                 placeholder={searchPlaceholder}
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                className="h-9 w-[180px] lg:w-[280px] pl-9 pr-9 bg-background"
+                className="bg-background h-8 w-[180px] pr-9 pl-9 lg:w-[280px]"
               />
-              {globalSearch && globalSearch.length > 0 && (
+              {globalSearch.length > 0 && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-6 w-6 rounded-full p-0 hover:bg-accent"
+                  className="hover:bg-accent absolute top-1/2 right-1 z-10 h-6 w-6 -translate-y-1/2 rounded-full p-0"
                   onClick={() => setGlobalSearch("")}
                   aria-label="Clear search"
                 >
-                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                  <X className="text-muted-foreground h-3.5 w-3.5" />
                 </Button>
               )}
             </div>
           )}
 
-          {/* Searchable columns (Date filters) */}
-          {!enableGlobalFilter &&
-            searchableColumns.length > 0 && (
-              <div className="flex items-center gap-2.5 pl-3 border-l border-border/50">
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span className="font-medium">Date range:</span>
-                </div>
-                {searchableColumns.map((column) => {
-                  const columnId = String(column.id);
-                  if (!table.getColumn(columnId)) return null;
-                  const isDate = (column as any).inputType === "datetime-local" || 
-                                 (column as any).inputType === "date";
-                  const isDateRange = columnId.toLowerCase().includes("from") || 
-                                     columnId.toLowerCase().includes("to");
-                  const hasValue = searchInputs[columnId] && searchInputs[columnId] !== "";
+          <DataTableViewOptions table={table} layout={layout} />
+        </div>
 
-                  return (
-                    <AppTooltip
-                      key={columnId}
-                      content={tooltips.search?.[columnId]}
-                    >
-                      <div className="relative">
-                        {isDate && (
-                          <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        )}
-                        <Input
-                          placeholder={isDateRange ? column.title : `Filter ${column.title}...`}
-                          type={(column as any).inputType ?? "text"}
-                          value={searchInputs[columnId] ?? ""}
-                          onChange={(e) =>
-                            setSearchInputs((prev) => ({
-                              ...prev,
-                              [columnId]: e.target.value,
-                            }))
-                          }
-                          className={cn(
-                            "h-9 bg-background",
-                            isDate ? "w-[160px] pl-8 pr-8" : "w-[150px] lg:w-[200px]",
-                            hasValue && "bg-primary/5 border-primary/20"
-                          )}
-                        />
-                        {hasValue && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full p-0 hover:bg-accent"
-                            onClick={() => {
-                              setSearchInputs((prev) => ({
-                                ...prev,
-                                [columnId]: "",
-                              }));
-                            }}
-                            aria-label="Clear date filter"
-                          >
-                            <X className="h-3 w-3 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-                    </AppTooltip>
-                  );
-                })}
-              </div>
-            )}
-
-          {/* Filterable columns: single Filter popover (checklists) or inline Combobox/Select */}
-          {filterableColumns.length > 0 && useFilterPopover && (
-            <div className="flex items-center gap-2.5 pl-3 border-l border-border/50">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-9 gap-2",
-                      isFiltered && "bg-primary/10 border-primary/20"
-                    )}
-                    aria-label="Open filters"
-                  >
-                    <Filter className="h-4 w-4" />
-                    Filters
-                    {isFiltered && (
-                      <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
-                        {table.getState().columnFilters.filter((f) =>
-                          filterableColumns.some((c) => String(c.id) === f.id)
-                        ).length}
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[280px] p-0" align="start">
-                  <div className="flex items-center justify-between border-b px-3 py-2">
-                    <span className="text-sm font-semibold">Filters</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        table.resetColumnFilters();
-                        setSearchInputs({});
-                      }}
-                    >
-                      Reset
-                    </Button>
-                  </div>
-                  <div className="max-h-[320px] overflow-y-auto py-2">
-                    {filterableColumns.map((column) => {
-                      const colObj = table.getColumn(String(column.id));
-                      if (!colObj) return null;
-                      const current = (colObj.getFilterValue() as string[]) || [];
-                      const selectedSet = new Set(current);
-                      const options = column.options || [];
-                      return (
-                        <div
-                          key={String(column.id)}
-                          className="space-y-2 px-3 py-2"
-                        >
-                          <div className="text-xs font-medium text-muted-foreground">
-                            {column.title}
-                          </div>
-                          <div className="space-y-1.5">
-                            {options.map((opt: { value: string; label: string }) => {
-                              const checked = selectedSet.has(String(opt.value));
-                              return (
-                                <label
-                                  key={opt.value}
-                                  className="flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 hover:bg-muted/50"
-                                >
-                                  <Checkbox
-                                    checked={checked}
-                                    onCheckedChange={(checked) => {
-                                      const next = checked
-                                        ? [...current, String(opt.value)]
-                                        : current.filter((v) => v !== opt.value);
-                                      colObj.setFilterValue(
-                                        next.length ? next : undefined
-                                      );
-                                    }}
-                                  />
-                                  <span className="text-sm">{opt.label}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-          )}
-
-          {filterableColumns.length > 0 && !useFilterPopover && (
-            <div className="flex items-center gap-2.5 pl-3 border-l border-border/50">
-              {filterableColumns.map((column) => {
-                const colObj = table.getColumn(String(column.id));
-                if (!colObj) return null;
-
-                const getIcon = () => {
-                  const colId = String(column.id).toLowerCase();
-                  if (colId.includes("partner") || colId.includes("agent")) {
-                    return <Stethoscope className="h-3.5 w-3.5 text-muted-foreground" />;
-                  }
-                  if (colId.includes("candidate")) {
-                    return <User className="h-3.5 w-3.5 text-muted-foreground" />;
-                  }
-                  if (colId.includes("status")) {
-                    return <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />;
-                  }
-                  return <Filter className="h-3.5 w-3.5 text-muted-foreground" />;
-                };
-
-                const useCombobox = ["partner", "candidate"].includes(String(column.id));
-                const current = colObj.getFilterValue() as string[] | undefined;
-                const selected =
-                  Array.isArray(current) && current.length ? current[0] : "";
-                const options = column.options || [];
-                const isFiltered = selected && selected !== "";
-
-                if (useCombobox) {
-                  return (
-                    <AppTooltip
-                      key={String(column.id)}
-                      content={tooltips.filters?.[String(column.id)]}
-                    >
-                      <div className="relative">
-                        <Combobox
-                          items={options.map((opt: any) => ({
-                            value: opt.value,
-                            label: opt.label,
-                          }))}
-                          value={selected || ""}
-                          onValueChange={(val: string) => {
-                            if (!val) {
-                              colObj.setFilterValue(undefined);
-                            } else {
-                              colObj.setFilterValue([val]);
-                            }
-                          }}
-                          placeholder={column.title}
-                          className={cn(
-                            "h-9 w-[160px] lg:w-[180px]",
-                            isFiltered && "bg-primary/10 border-primary/20 pr-8"
-                          )}
-                          disabled={false}
-                        />
-                        {isFiltered && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-8 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full p-0 hover:bg-accent z-10 flex items-center justify-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              colObj.setFilterValue(undefined);
-                            }}
-                            aria-label="Clear filter"
-                          >
-                            <X className="h-3 w-3 text-muted-foreground" />
-                          </Button>
-                        )}
-                      </div>
-                    </AppTooltip>
-                  );
-                }
-
-                if (String(column.id) === "status") {
-                  return (
-                    <AppTooltip
-                      key={String(column.id)}
-                      content={tooltips.filters?.[String(column.id)]}
-                    >
-                      <div className="relative">
-                        <Select
-                          value={selected}
-                          onValueChange={(val: string) => {
-                            if (val === "__CLEAR__" || !val) {
-                              colObj.setFilterValue(undefined);
-                            } else {
-                              colObj.setFilterValue([val]);
-                            }
-                          }}
-                        >
-                          <SelectTrigger
-                            size="sm"
-                            className={cn(
-                              "h-9 w-[140px] lg:w-[160px]",
-                              isFiltered && "bg-primary/10 border-primary/20"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              {getIcon()}
-                              <SelectValue placeholder={String(column.title)} />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent className="max-h-[300px]">
-                            {isFiltered && (
-                              <SelectItem value="__CLEAR__" className="text-muted-foreground">
-                                Clear filter
-                              </SelectItem>
-                            )}
-                            {options.map((opt: any) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </AppTooltip>
-                  );
-                }
-
-                return (
-                  <AppTooltip
-                    key={String(column.id)}
-                    content={tooltips.filters?.[String(column.id)]}
-                  >
-                    <DataTableFacetedFilter
-                      column={colObj}
-                      title={column.title}
-                      options={column.options}
-                    />
-                  </AppTooltip>
-                );
-              })}
-            </div>
-          )}
-
-            {/* Reset filters */}
-            {isFiltered && (
-              <AppTooltip content={tooltips.reset}>
-                <Button
-                  aria-label="Reset filters"
-                  variant="outline"
-                  size="sm"
-                  className="h-9 gap-2 text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    table.resetColumnFilters();
-                    setSearchInputs({});
-                    setGlobalSearch("");
-                  }}
-                >
-                  <CrossIcon className="h-4 w-4" aria-hidden="true" />
-                  Reset
-                </Button>
-              </AppTooltip>
-            )}
-          </div>
-
-        {/* Right section: actions */}
-        {/*
-          Allowed to shrink, which `shrink-0` was not. Kept from shrinking, this row moved onto
-          its own line and then ran off the right of the card anyway, taking Create with it —
-          the same button off the same edge, one line lower. Shrinking lets its own wrap do the
-          work, and `justify-end` keeps it against the right while it still fits beside the
-          search box.
-        */}
+        {/* Right: this board's own switches, the ways out, and Create last. */}
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
-          {deleteRowsAction && table.getSelectedRowModel().rows.length > 0 ? (
+          {/* Only while rows are ticked, so it is never part of the resting toolbar. */}
+          {deleteRowsAction && selected > 0 ? (
             <AppTooltip content={tooltips.delete}>
               <Button
                 aria-label="Delete selected rows"
@@ -547,16 +175,49 @@ export function DataTableToolbar<TData>({
                 Delete
               </Button>
             </AppTooltip>
-          ) : newRowLink ? (
+          ) : null}
+
+          {toolbarEndActions}
+
+          {(exportFileName || exportActions) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="h-8">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                  <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[240px]">
+                {exportFileName && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      const n = exportTableToCsv(table, exportFileName);
+                      toast.success(`Exported ${n} row${n === 1 ? "" : "s"}`);
+                    }}
+                  >
+                    <Table2 className="mr-2 h-4 w-4" />
+                    {/* Says what it will do before it does it: with rows ticked this exports
+                        those and not the page. */}
+                    {selected > 0
+                      ? `This table as CSV (${selected})`
+                      : "This table as CSV"}
+                  </DropdownMenuItem>
+                )}
+                {exportFileName && exportActions ? <DropdownMenuSeparator /> : null}
+                {exportActions}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {createAction}
+
+          {newRowLink ? (
             <AppTooltip content={tooltips.new}>
               <Link aria-label="Create new row" href={newRowLink}>
                 <div
                   className={cn(
-                    buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                      className: "h-8",
-                    })
+                    buttonVariants({ variant: "outline", size: "sm", className: "h-8" }),
                   )}
                 >
                   <PlusCircleIcon className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -565,71 +226,6 @@ export function DataTableToolbar<TData>({
               </Link>
             </AppTooltip>
           ) : null}
-
-          {/* View options */}
-          <DataTableViewOptions table={table} layout={layout} />
-
-          {/* Print */}
-          {onPrint && (
-            <AppTooltip content={tooltips.print}>
-              <Button
-                aria-label="Print table"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() =>
-                  onPrint(
-                    table.getCoreRowModel().rows,
-                    table.getSelectedRowModel().rows
-                  )
-                }
-              >
-                <PrinterIcon className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </AppTooltip>
-          )}
-
-          {exportFileName ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => {
-                const n = exportTableToCsv(table, exportFileName);
-                toast.success(`Exported ${n} row${n === 1 ? "" : "s"}`);
-              }}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {/* Says what it will do before it does it: with rows ticked this exports those
-                  and not the page, which is the opposite of what it used to do. */}
-              {table.getSelectedRowModel().rows.length > 0
-                ? `Export (${table.getSelectedRowModel().rows.length})`
-                : "Export"}
-            </Button>
-          ) : null}
-          {toolbarEndActions}
-
-          {/* Fullscreen */}
-          {onToggleFullscreen && (
-            <AppTooltip content={tooltips.fullscreen}>
-              <Button
-                aria-label={
-                  isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
-                }
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={onToggleFullscreen}
-              >
-                {isFullscreen ? (
-                  <Minimize2 className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Maximize2 className="h-4 w-4" aria-hidden="true" />
-                )}
-              </Button>
-            </AppTooltip>
-          )}
         </div>
       </div>
     </TooltipProvider>

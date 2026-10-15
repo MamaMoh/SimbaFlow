@@ -234,7 +234,7 @@ export default function LmisBoardPage() {
             layout={layout}
             rowClickOpensActions
         exportFileName="lmis"
-            toolbarEndActions={
+            exportActions={
               <BulkDownloadButton
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}
