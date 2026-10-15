@@ -68,6 +68,7 @@ public static class DependencyInjection
 
         services.AddScoped<ITenantDbContext>(sp => sp.GetRequiredService<TenantDbContext>());
         services.AddScoped<ITenantSchemaMigrator, TenantSchemaMigrator>();
+        services.AddScoped<ITenantLifecycleService, TenantLifecycleService>();
 
         // Keep legacy IApplicationDbContext pointing to PlatformDbContext for now
         // (gradually migrate handlers to use IPlatformDbContext or ITenantDbContext)

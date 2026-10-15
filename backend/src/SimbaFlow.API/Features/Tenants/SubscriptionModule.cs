@@ -87,6 +87,7 @@ public class SubscriptionModule : ICarterModule
             UpdateSubscriptionBody body,
             IPlatformDbContext db,
             ITenantSchemaResolver schemas,
+            SimbaFlow.Infrastructure.Persistence.ITenantLifecycleService lifecycle,
             CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsDeleted, ct);
@@ -99,6 +100,16 @@ public class SubscriptionModule : ICarterModule
                     return Results.Json(
                         new { isSuccess = false, error = $"'{body.Status}' is not a status this system has." },
                         statusCode: 400);
+                // Deactivating is offboarding, and coming back from it catches the schema up;
+                // both live on the Agencies page, not on the bill.
+                if (status != tenant.SubscriptionStatus
+                    && (status == TenantStatus.Deactivated || tenant.SubscriptionStatus == TenantStatus.Deactivated))
+                    return Results.Json(
+                        new { isSuccess = false, error = "Offboard or reactivate the agency from the Agencies page." },
+                        statusCode: 400);
+                // Startup migrates active agencies only; one coming back from a suspension may be behind.
+                if (status == TenantStatus.Active && tenant.SubscriptionStatus != TenantStatus.Active)
+                    await lifecycle.PrepareSchemaAsync(tenant.SchemaName, tenant.Id, ct);
                 tenant.SubscriptionStatus = status;
             }
 

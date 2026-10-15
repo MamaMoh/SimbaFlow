@@ -21,7 +21,10 @@ public record TenantListDto(
     int MaxPartnersPerCountry,
     int? MaxCountries,
     string? LicenseNumber,
-    int LicensedCountryCount);
+    int LicensedCountryCount,
+    DateTime? OffboardedAt,
+    string? OffboardingReason,
+    DateTime? LastExportedAt);
 
 public class GetTenantsHandler : IRequestHandler<GetTenantsQuery, Result<List<TenantListDto>>>
 {
@@ -47,7 +50,8 @@ public class GetTenantsHandler : IRequestHandler<GetTenantsQuery, Result<List<Te
                 t.Id, t.Name, t.Slug, t.SchemaName,
                 t.ContactEmail, t.SubscriptionStatus, t.ProvisionedAt,
                 t.AgencyLevel, perCountry, maxCountries,
-                t.LicenseNumber, t.LicensedCountries?.Count ?? 0);
+                t.LicenseNumber, t.LicensedCountries?.Count ?? 0,
+                t.OffboardedAt, t.OffboardingReason, t.LastExportedAt);
         }).ToList();
 
         return Result<List<TenantListDto>>.Success(tenants);

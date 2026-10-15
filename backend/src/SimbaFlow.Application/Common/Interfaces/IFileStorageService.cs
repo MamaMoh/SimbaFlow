@@ -26,6 +26,14 @@ public interface IFileStorageService
     /// <summary>Delete a file (soft — marks deleted but retains on disk).</summary>
     Task DeleteAsync(string relativePath, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Remove a file, and its thumbnail if it has one, from disk for good.
+    ///
+    /// Unlike <see cref="DeleteAsync"/>, nothing is kept. Only purging an offboarded agency calls
+    /// this, after its data has been exported. A file that is already gone is not an error.
+    /// </summary>
+    Task DestroyAsync(string relativePath, CancellationToken cancellationToken = default);
+
     /// <summary>Get thumbnail path for an image file (generates if not exists).</summary>
     Task<string?> GetThumbnailAsync(string relativePath, CancellationToken cancellationToken = default);
 }

@@ -19,7 +19,7 @@ import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Building2, Pencil, Users, Power, Trash2 } from "lucide-react";
+import { MoreHorizontal, Building2, Pencil, Users, Power, Trash2, Download, RotateCcw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +30,8 @@ import {
 import { CreateAgencySheet } from "@/components/tenants/create-agency-sheet";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { EditAgencySheet } from "@/components/tenants/edit-agency-sheet";
-import { DeleteDialog } from "@/components/ui/delete-dialog";
+import { OffboardDialog, PurgeDialog, type OffboardTarget } from "@/components/tenants/offboarding-dialogs";
+import { filenameFromResponse, saveFile } from "@/lib/files/download";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -47,6 +48,9 @@ interface AgencyRow {
   maxCountries?: number | null;
   licenseNumber?: string | null;
   licensedCountryCount?: number;
+  offboardedAt?: string | null;
+  offboardingReason?: string | null;
+  lastExportedAt?: string | null;
 }
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -54,11 +58,11 @@ const fetcher = (url: string) => fetch(url).then(r => r.json());
 const STATUS_MAP: Record<number, { label: string; variant: "default" | "outline" | "destructive" }> = {
   0: { label: "Active", variant: "default" },
   1: { label: "Suspended", variant: "outline" },
-  2: { label: "Deactivated", variant: "destructive" },
+  2: { label: "Offboarded", variant: "destructive" },
 };
 
 export default function TenantsPage() {
-  // Creating, suspending and deleting an agency is platform work: /api/tenants is behind the
+  // Creating, suspending and offboarding an agency is platform work: /api/tenants is behind the
   // SuperAdmin policy end to end. Anyone else reaching this page gets a table of buttons that all
   // come back 403, so say so once instead.
   const { isSuperAdmin, isLoading: permsLoading } = usePermissions();
@@ -70,8 +74,9 @@ export default function TenantsPage() {
   const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
   const [createOpen, setCreateOpen] = useState(false);
   const [editAgencyId, setEditAgencyId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [offboardTarget, setOffboardTarget] = useState<OffboardTarget | null>(null);
+  const [purgeTarget, setPurgeTarget] = useState<OffboardTarget | null>(null);
+  const [isPending, setIsPending] = useState(false);
 
   const { data, mutate } = useSWR("/api/proxy/tenants", fetcher, { revalidateOnFocus: false });
   const all = useTableRows<AgencyRow>(data?.data);
@@ -112,19 +117,67 @@ export default function TenantsPage() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    const res = await fetch(`/api/proxy/tenants/${deleteTarget.id}`, { method: "DELETE" });
-    if (res.ok) {
+  const confirmOffboard = async (reason: string) => {
+    if (!offboardTarget) return;
+    setIsPending(true);
+    const res = await fetch(`/api/proxy/tenants/${offboardTarget.id}/offboard`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (res.ok && result.isSuccess) {
       mutate();
-      toast.success("Agency deleted");
+      toast.success(`${offboardTarget.name} offboarded. Its data is kept until you purge it.`);
+      setOffboardTarget(null);
     } else {
-      toast.error("Failed to delete agency");
+      toast.error(result.error || "Failed to offboard agency");
     }
-    setIsDeleting(false);
-    setDeleteTarget(null);
+    setIsPending(false);
   };
+
+  // The whole agency as one zip: every table, its platform records, and every file. Built on the
+  // server before it is sent, so a large agency takes a moment.
+  const handleExport = async (row: AgencyRow) => {
+    const id = toast.loading(`Preparing the export of ${row.name}…`);
+    try {
+      const res = await fetch(`/api/proxy/tenants/${row.id}/export`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || "Export failed");
+      }
+      const blob = await res.blob();
+      saveFile(new File([blob], filenameFromResponse(res, `${row.slug}-export.zip`), { type: "application/zip" }));
+      toast.success(`Exported ${row.name}`, { id });
+      mutate();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed", { id });
+    }
+  };
+
+  const confirmPurge = async (confirmSlug: string) => {
+    if (!purgeTarget) return;
+    setIsPending(true);
+    const res = await fetch(`/api/proxy/tenants/${purgeTarget.id}/purge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmSlug }),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (res.ok && result.isSuccess) {
+      mutate();
+      toast.success(`${purgeTarget.name} purged`);
+      setPurgeTarget(null);
+    } else {
+      toast.error(result.error || "Failed to purge agency");
+    }
+    setIsPending(false);
+  };
+
+  // Purging needs an export taken after offboarding; the server enforces it, this says why the
+  // item is not offered yet.
+  const exportedSinceOffboarding = (row: AgencyRow) =>
+    !!row.offboardedAt && !!row.lastExportedAt && new Date(row.lastExportedAt) >= new Date(row.offboardedAt);
 
   const columns: ColumnDef<AgencyRow>[] = useMemo(() => [
     {
@@ -177,10 +230,20 @@ export default function TenantsPage() {
       accessorKey: "status",
       meta: { filter: { field: "status", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-      cell: ({ getValue }) => {
+      cell: ({ row, getValue }) => {
         const status = getValue() as number;
         const s = STATUS_MAP[status] || { label: "Unknown", variant: "outline" as const };
-        return <Badge variant={s.variant} className={status === 0 ? "bg-green-100 text-green-800" : ""}>{s.label}</Badge>;
+        const badge = <Badge variant={s.variant} className={status === 0 ? "bg-green-100 text-green-800" : ""}>{s.label}</Badge>;
+        if (status !== 2 || !row.original.offboardedAt) return badge;
+        return (
+          <div className="text-sm" title={row.original.offboardingReason ?? undefined}>
+            {badge}
+            <span className="text-muted-foreground text-xs block">
+              {new Date(row.original.offboardedAt).toLocaleDateString()}
+              {row.original.lastExportedAt ? " · exported" : ""}
+            </span>
+          </div>
+        );
       },
     },
     {
@@ -199,26 +262,48 @@ export default function TenantsPage() {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          {/* Edit and Delete together at the top, then a rule, then the rest — the shape every
-              row menu in the app uses, so the destructive item is always in the same place. */}
+          {/* Edit and the destructive item together at the top, then a rule, then the rest — the
+              shape every row menu in the app uses. An agency still in service is offboarded; one
+              already offboarded can only then be purged. */}
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setEditAgencyId(row.original.id)}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTarget({ id: row.original.id, name: row.original.name })}>
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
-            </DropdownMenuItem>
+            {row.original.status !== 2 ? (
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setOffboardTarget({ id: row.original.id, name: row.original.name, slug: row.original.slug })}
+              >
+                <Power className="h-4 w-4 mr-2" /> Offboard…
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className="text-destructive"
+                disabled={!exportedSinceOffboarding(row.original)}
+                onClick={() => setPurgeTarget({ id: row.original.id, name: row.original.name, slug: row.original.slug })}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {exportedSinceOffboarding(row.original) ? "Purge data…" : "Purge data (export first)"}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => window.location.href = `/staff?tenant=${row.original.id}`}>
               <Users className="h-4 w-4 mr-2" /> Manage Users
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport(row.original)}>
+              <Download className="h-4 w-4 mr-2" /> Export data
             </DropdownMenuItem>
             {row.original.status === 0 ? (
               <DropdownMenuItem onClick={() => handleStatusChange(row.original.id, 1)}>
                 <Power className="h-4 w-4 mr-2" /> Suspend
               </DropdownMenuItem>
-            ) : (
+            ) : row.original.status === 1 ? (
               <DropdownMenuItem onClick={() => handleStatusChange(row.original.id, 0)}>
                 <Power className="h-4 w-4 mr-2" /> Activate
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onClick={() => handleStatusChange(row.original.id, 0)}>
+                <RotateCcw className="h-4 w-4 mr-2" /> Reactivate
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -300,13 +385,17 @@ export default function TenantsPage() {
         onOpenChange={(open) => { if (!open) setEditAgencyId(null); }}
         onUpdated={() => mutate()}
       />
-      <DeleteDialog
-        open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
-        title="Delete agency"
-        description={`Are you sure you want to delete '${deleteTarget?.name}'? All data for this agency will be deactivated. This action cannot be undone.`}
-        onConfirm={confirmDelete}
-        isDeleting={isDeleting}
+      <OffboardDialog
+        target={offboardTarget}
+        onOpenChange={(open) => { if (!open) setOffboardTarget(null); }}
+        onConfirm={confirmOffboard}
+        isPending={isPending}
+      />
+      <PurgeDialog
+        target={purgeTarget}
+        onOpenChange={(open) => { if (!open) setPurgeTarget(null); }}
+        onConfirm={confirmPurge}
+        isPending={isPending}
       />
     </div>
   );
