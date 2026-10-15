@@ -7,7 +7,7 @@ using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Tenants.Queries;
 
-public record GetTenantsQuery : IRequest<Result<List<TenantListDto>>>;
+public record GetTenantsQuery : IRequest<Result<List<TenantListDto>>>, IRequirePlatformAdmin;
 
 public record TenantListDto(
     Guid Id,

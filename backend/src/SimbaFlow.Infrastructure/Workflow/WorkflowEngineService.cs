@@ -5,6 +5,7 @@ using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Entities.Workflow;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.Domain.Events;
+using SimbaFlow.Infrastructure.Persistence.Seeds;
 
 namespace SimbaFlow.Infrastructure.Workflow;
 
@@ -128,6 +129,10 @@ public class WorkflowEngineService : IWorkflowEngineService
             if (!rule.AllowedRoles.Any(r => userRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))
                 return new TransitionResult(false, "You do not have a role permitted to execute this transition.");
         }
+
+        if (EnteringNeedsPermission(rule.TargetStage?.Name) is { } needed
+            && !_currentUser.IsSuperAdmin && !_currentUser.HasPermission(needed))
+            return new TransitionResult(false, $"Permission '{needed}' is required to move a candidate into {rule.TargetStage!.Name}.");
 
         if (!ConditionEvaluator.Evaluate(rule.Conditions, state.StatusValues, candidateFields))
             return new TransitionResult(false, "Transition conditions are not met.");
@@ -438,6 +443,18 @@ public class WorkflowEngineService : IWorkflowEngineService
         return last ?? new StatusUpdateResult(false, "No changes applied.");
     }
 
+    /// <summary>
+    /// A permission needed to move anyone into this stage, beyond workflow.execute.
+    ///
+    /// Commission is where money starts being owed: putting a candidate there opens the commission
+    /// record. That is commission.create, held by finance and the agency's managers. Without it
+    /// the step rode on workflow.execute, so a field agent or an embassy officer could start one.
+    /// </summary>
+    public static string? EnteringNeedsPermission(string? stageName) =>
+        string.Equals(stageName?.Trim(), WorkflowDefinitionUpgrader.CommissionStageName, StringComparison.OrdinalIgnoreCase)
+            ? "commission.create"
+            : null;
+
     public async Task<List<AvailableAction>> GetAvailableActionsAsync(
         Guid candidateId, string[] userRoles, CancellationToken ct = default)
     {
@@ -468,6 +485,7 @@ public class WorkflowEngineService : IWorkflowEngineService
 
         var rules = await _context.WorkflowTransitionRules
             .AsNoTracking()
+            .Include(r => r.TargetStage)
             .Where(r => r.IsActive && !r.IsDeleted && stageIds.Contains(r.SourceStageId))
             .OrderBy(r => r.SortOrder)
             .ToListAsync(ct);
@@ -484,6 +502,13 @@ public class WorkflowEngineService : IWorkflowEngineService
             // stay visible-but-disabled because the user can still satisfy them.)
             if (rule.AllowedRoles.Length > 0 &&
                 !rule.AllowedRoles.Any(r => userRoles.Contains(r, StringComparer.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            // The same for a stage this user's permissions keep them out of.
+            if (EnteringNeedsPermission(rule.TargetStage?.Name) is { } needed
+                && !_currentUser.IsSuperAdmin && !_currentUser.HasPermission(needed))
             {
                 continue;
             }

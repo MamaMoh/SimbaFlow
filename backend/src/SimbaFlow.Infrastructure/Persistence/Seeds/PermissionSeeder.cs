@@ -13,8 +13,10 @@ public static class PermissionSeeder
 {
     private static readonly (string Module, string Code, string Name)[] Permissions =
     [
-        // Auth
-        ("auth", "auth.login", "Login to system"),
+        // Removed 2026-10-15 because nothing checked them, so ticking them on a role did nothing:
+        // auth.login, accounting.reconcile, notification.send, tenant.provision, tenant.manage.
+        // Signing in needs no permission, there is no reconciliation or manual-send screen, and
+        // agency administration is gated on the platform roles. The seeder below deactivates them.
 
         // Users
         ("users", "users.read", "View users"),
@@ -58,13 +60,12 @@ public static class PermissionSeeder
 
         // Commission & Finance
         ("commission", "commission.read", "View commission records"),
-        ("commission", "commission.create", "Initialize commission records"),
+        ("commission", "commission.create", "Add a candidate to Commission (opens their commission record)"),
         ("commission", "commission.update", "Record payments, manage disputes"),
 
         // Accounting
         ("accounting", "accounting.read", "View accounts, journal entries, statements"),
         ("accounting", "accounting.post", "Post journal entries"),
-        ("accounting", "accounting.reconcile", "Perform bank reconciliation"),
 
         // Staff
         ("staff", "staff.read", "View staff profiles"),
@@ -79,7 +80,6 @@ public static class PermissionSeeder
 
         // Notifications
         ("notification", "notification.configure", "Configure notification rules and templates"),
-        ("notification", "notification.send", "Send manual notifications"),
 
         // Bot
         ("bot", "bot.configure", "Configure bot connections and settings"),
@@ -89,10 +89,6 @@ public static class PermissionSeeder
         ("report", "report.view", "View reports and dashboards"),
         ("report", "report.export", "Export reports to Excel/PDF"),
         ("report", "report.schedule", "Configure scheduled reports"),
-
-        // Tenant Administration
-        ("tenant", "tenant.provision", "Provision new tenants/agencies"),
-        ("tenant", "tenant.manage", "Manage tenant settings and status"),
 
         // Audit
         ("audit", "audit.read", "View audit trail"),

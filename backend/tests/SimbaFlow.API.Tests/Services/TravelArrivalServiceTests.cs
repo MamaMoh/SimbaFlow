@@ -378,7 +378,12 @@ public class TravelArrivalServiceTests
         (await engine.ExecuteTransitionAsync(candidate.Id, toArrival.Id, userId, "tester")).IsSuccess.Should().BeTrue();
         await engine.UpdateStatusAsync(candidate.Id, "arrival", "Arrived", userId, "tester");
 
+        // Entering Commission opens the commission record, which is commission.create.
         var handler = new AddToCommissionHandler(db, engine, user);
+        (await handler.Handle(new AddToCommissionCommand(candidate.Id), CancellationToken.None))
+            .IsSuccess.Should().BeFalse("the engine refuses Commission to someone without commission.create");
+
+        user.HasPermission("commission.create").Returns(true);
         (await handler.Handle(new AddToCommissionCommand(candidate.Id), CancellationToken.None))
             .IsSuccess.Should().BeTrue();
 

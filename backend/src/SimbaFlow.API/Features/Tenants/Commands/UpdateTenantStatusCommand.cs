@@ -8,7 +8,7 @@ using SimbaFlow.Infrastructure.Persistence;
 
 namespace SimbaFlow.API.Features.Tenants.Commands;
 
-public record UpdateTenantStatusCommand(Guid TenantId, TenantStatus Status) : IRequest<Result>;
+public record UpdateTenantStatusCommand(Guid TenantId, TenantStatus Status) : IRequest<Result>, IRequirePlatformAdmin;
 
 /// <summary>
 /// Suspends an agency, or brings one back.

@@ -28,10 +28,9 @@ import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function CaseExecutiveBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
-  const canView =
-    hasPermission("embassy.case_view") ||
-    hasPermission("embassy.read") ||
-    hasPermission("system.admin");
+  // Only embassy.case_view: the board's query asks for it, and letting embassy.read in as well
+  // opened the page to Embassy Officers and then failed every request on it.
+  const canView = hasPermission("embassy.case_view") || hasPermission("system.admin");
   // Ticking rows is only worth anything if something can be done with the selection, and the one
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.

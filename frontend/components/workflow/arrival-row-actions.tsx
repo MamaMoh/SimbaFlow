@@ -37,6 +37,9 @@ type Props = {
 export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
   const { hasPermission } = usePermissions();
   const canUpdate = hasPermission("arrival.update") || hasPermission("system.admin");
+  // Opening the commission record is commission.create, not the arrival desk's own permission.
+  const canAddToCommission =
+    hasPermission("commission.create") || hasPermission("system.admin");
   // The candidate's own page, and the paperwork below it, are read under candidate.read. Reaching
   // this board is a different permission, and holding one does not imply the other, so the link has
   // to ask for what the page it points at requires.
@@ -112,7 +115,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                     {notYetDue ? `Flies ${notYetDue.date}` : "Confirm arrived"}
                   </DropdownMenuItem>
                 )}
-                {arrival === "Arrived" && !linked && !candidate.hasOpenException && (
+                {canAddToCommission && arrival === "Arrived" && !linked && !candidate.hasOpenException && (
                   <DropdownMenuItem
                     onClick={() =>
                       run(() => arrivalApi.addToCommission(candidate.id), "Added to Commission")

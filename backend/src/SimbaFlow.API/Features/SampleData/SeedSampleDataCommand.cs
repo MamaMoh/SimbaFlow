@@ -9,9 +9,16 @@ using SimbaFlow.Infrastructure.Workflow;
 
 namespace SimbaFlow.API.Features.SampleData;
 
-public record SeedSampleDataCommand : IRequest<Result<SampleDataSummary>>, IRequirePermission
+/// <summary>
+/// The agency owner's, or the platform team's. candidate.create alone let a data-entry clerk fill
+/// the live pipeline with forty invented people, each walked through every board.
+/// </summary>
+public record SeedSampleDataCommand
+    : IRequest<Result<SampleDataSummary>>, IRequirePermission, IRequireAgencyOwner
 {
     public string RequiredPermission => "candidate.create";
+
+    public string OwnerOnlyMessage => "Sample data is added by the agency owner or the platform team.";
 }
 
 public record SampleDataSummary(int Created, int Skipped, IReadOnlyList<string> Placements);

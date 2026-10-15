@@ -212,10 +212,14 @@ public class FlagExceptionHandler : IRequestHandler<FlagExceptionCommand, Result
     }
 }
 
+/// <summary>
+/// Opens the candidate's commission record, so it asks for commission.create rather than the
+/// arrival desk's arrival.update, which also let a field agent start one.
+/// </summary>
 public record AddToCommissionCommand(Guid CandidateId, string? Notes = null)
     : IRequest<Result>, IRequirePermission
 {
-    public string RequiredPermission => "arrival.update";
+    public string RequiredPermission => "commission.create";
 }
 
 public class AddToCommissionHandler : IRequestHandler<AddToCommissionCommand, Result>

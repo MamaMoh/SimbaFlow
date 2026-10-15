@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AccessDenied } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotLinkCard } from "@/components/bot/bot-link-card";
@@ -48,10 +47,6 @@ export default function SettingsPage() {
     setJustUploaded((current) => ({ ...current, [kind]: path }));
     void mutate();
   };
-
-  if (!canReadSettings && !canUseBot) {
-    return <AccessDenied resource="settings" />;
-  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,7 +95,9 @@ export default function SettingsPage() {
         {canUseBot ? <BotLinkCard /> : null}
       </div>
 
-      {canAdmin ? <IntakeDefaultsCard /> : null}
+      {/* settings.write, like the save behind it. Gated on system.admin, the agency owner — the
+          person who holds settings.write to set these — never saw the card. */}
+      {canManageSettings ? <IntakeDefaultsCard /> : null}
 
       {canReadSettings ? <OfficesCard canEdit={canManageSettings} /> : null}
 

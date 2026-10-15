@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { AGENCY_ROLES, PLATFORM_ROLES, isPlatformRole } from "@/lib/users/roles";
+import { OWNER_ROLE, PLATFORM_ROLES, grantableAgencyRoles, isPlatformRole } from "@/lib/users/roles";
+import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -80,6 +81,9 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
   }, [user, reset]);
 
   const selectedRole = watch("role");
+  const { isSuperAdmin: isPlatformTeam } = usePermissions();
+  // An owner's role is moved by the platform team only, so inside the agency it is shown, not offered.
+  const ownerRoleLocked = !isPlatformTeam && user?.roles?.[0] === OWNER_ROLE;
 
   // Platform people and agency people hold different roles, and nobody holds both. Which set this
   // person belongs to is settled by the role they already have, falling back to whether they have
@@ -88,8 +92,8 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
     const current = user?.roles?.[0];
     if (isPlatformRole(current)) return PLATFORM_ROLES;
     if (!current && !user?.tenantName) return PLATFORM_ROLES;
-    return AGENCY_ROLES;
-  }, [user]);
+    return grantableAgencyRoles(isPlatformTeam);
+  }, [user, isPlatformTeam]);
 
   const onSubmit = async (data: EditUserForm) => {
     if (!user) return;
@@ -208,6 +212,10 @@ export function EditUserSheet({ user, onOpenChange, onSaved }: EditUserSheetProp
                 <p className="text-sm text-muted-foreground">
                   <strong>SuperAdmin.</strong> It bypasses permission checks rather than holding
                   permissions, so it is not granted or removed from this form.
+                </p>
+              ) : ownerRoleLocked ? (
+                <p className="text-sm text-muted-foreground">
+                  <strong>Agency owner.</strong> This role is changed by the platform team.
                 </p>
               ) : (
                 <div className="space-y-1.5">
