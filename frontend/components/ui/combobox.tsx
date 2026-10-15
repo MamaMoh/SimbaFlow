@@ -54,7 +54,7 @@ export function Combobox({
             </span>
           )}
           {/* `min-w-0`, not a minimum in pixels.
-              This used to carry `min-w-[280px]`, to stop a picker shrinking to the width of
+              This used to carry a fixed 280px minimum, to stop a picker shrinking to the width of
               the word in it. But a grid track is sized by what it holds, so in any column
               narrower than 280px the picker grew past its own cell and sat on top of the next
               one — "Country of travel" over "Salary" on the settings card. Width comes from
