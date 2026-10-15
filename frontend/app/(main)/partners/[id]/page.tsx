@@ -12,6 +12,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { indexColumn } from "@/components/data-table/index-column";
 import { identityColumns } from "@/components/data-table/identity-columns";
@@ -141,9 +142,35 @@ export default function PartnerDetailPage() {
     [],
   );
 
+  // Two tables on one page, so two arrangements: the candidates sent to this partner and the
+  // money owed on them are different questions and are not read with the same columns.
+  const candidateColumnIds = useMemo(
+    () => candidateColumns.map((c: any) => c.id ?? c.accessorKey),
+    [candidateColumns],
+  );
+  const candidateLayout = useTableLayout({
+    table: "partner-candidates",
+    columnIds: candidateColumnIds,
+  });
+
+  const billingColumnIds = useMemo(
+    () => billingColumns.map((c: any) => c.id ?? c.accessorKey),
+    [billingColumns],
+  );
+  const billingLayout = useTableLayout({
+    table: "partner-billing",
+    columnIds: billingColumnIds,
+  });
+
   const candidateTable = useReactTable({
     data: candidates.data?.items ?? [],
     columns: candidateColumns,
+    state: {
+      columnOrder: candidateLayout.columnOrder,
+      columnVisibility: candidateLayout.columnVisibility,
+    },
+    onColumnOrderChange: candidateLayout.setColumnOrder,
+    onColumnVisibilityChange: candidateLayout.setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -154,6 +181,12 @@ export default function PartnerDetailPage() {
   const billingTable = useReactTable({
     data: billing.data?.items ?? [],
     columns: billingColumns,
+    state: {
+      columnOrder: billingLayout.columnOrder,
+      columnVisibility: billingLayout.columnVisibility,
+    },
+    onColumnOrderChange: billingLayout.setColumnOrder,
+    onColumnVisibilityChange: billingLayout.setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -243,6 +276,7 @@ export default function PartnerDetailPage() {
               ) : (
                 <DataTable
                   table={candidateTable}
+                  layout={candidateLayout}
                   paginated
                   emptyMessage="No candidates placed through this partner yet."
                 />
@@ -265,6 +299,7 @@ export default function PartnerDetailPage() {
                 ) : (
                   <DataTable
                     table={billingTable}
+                    layout={billingLayout}
                     paginated
                     emptyMessage="No commissions for this partner yet — they appear once an arrived candidate is added to Commission."
                   />

@@ -13,6 +13,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,16 +97,28 @@ export default function CommissionsPage() {
     []
   );
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "commissions", columnIds });
+
   const table = useReactTable({
     data: items,
     columns,
-    state: { sorting },
+    state: {
+      sorting,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   if (permsLoading) {
@@ -157,6 +170,7 @@ export default function CommissionsPage() {
       {!error ? (
         <div className="rounded-lg border bg-card p-4 shadow-sm">
           <DataTable
+            layout={layout}
             onRowClick={(row: { id: string }) => router.push(`/workflow/commissions/${row.id}`)}
         exportFileName="commissions"
             table={table}

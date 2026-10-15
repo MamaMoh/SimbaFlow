@@ -6,6 +6,7 @@ import type {
   DataTableFilterableColumn,
   DataTableSearchableColumn,
 } from "@/types";
+import type { TableLayout } from "@/lib/data-table/use-table-layout";
 import type { Table } from "@tanstack/react-table";
 
 import { cn } from "@/lib/utils";
@@ -98,6 +99,8 @@ interface DataTableToolbarProps<TData> {
   };
   /** When true, show a single Filter button that opens a popover with checklist for each filter column (Status, Doctor) */
   useFilterPopover?: boolean;
+  /** This board's remembered column arrangement, when it has one. */
+  layout?: TableLayout;
 }
 
 export function DataTableToolbar<TData>({
@@ -115,6 +118,7 @@ export function DataTableToolbar<TData>({
   searchPlaceholder = "Search appointments...",
   tooltips = {},
   useFilterPopover = false,
+  layout,
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
   const globalFilterValue = table.getState().globalFilter;
@@ -563,7 +567,7 @@ export function DataTableToolbar<TData>({
           ) : null}
 
           {/* View options */}
-          <DataTableViewOptions table={table} />
+          <DataTableViewOptions table={table} layout={layout} />
 
           {/* Print */}
           {onPrint && (

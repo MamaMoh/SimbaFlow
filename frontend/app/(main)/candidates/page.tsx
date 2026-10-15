@@ -14,6 +14,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
@@ -456,10 +457,43 @@ export default function CandidatesPage() {
     [handleDelete, handleGenerateCv, generatingCvId, mutate]
   );
 
+  // Memoised: this array is a dependency of the layout's own memos, and a fresh one every
+  // render would rebuild the column order on every render.
+  const columnIds = useMemo(
+    () => columns.map((c: any) => c.id ?? c.accessorKey),
+    [columns],
+  );
+
+  // The arrangement this person has made of this board, remembered on this computer.
+  const layout = useTableLayout({
+    table: "candidates",
+    columnIds,
+    managed: ["deletedBy"],
+    defaultVisibility: {
+      // These are filled in later stages, so on a fresh list every row shows "—" and the real
+      // columns get pushed off the right edge. Available from the View menu when wanted.
+      occupation: false,
+      sponsorName: false,
+      visaNumber: false,
+      agentName: false,
+      experienceAbroadYears: false,
+      // Shown only where there is something to show — switching to Inactive turns it on.
+      deletedBy: false,
+    },
+  });
+
   const table = useReactTable({
     data: candidates,
     columns,
-    state: { sorting, globalFilter, rowSelection },
+    state: {
+      sorting,
+      globalFilter,
+      rowSelection,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
     // The search box is the API's, and the per-column boxes are the browser's.
     //
     // manualFiltering used to turn both off together, because re-running the search over the
@@ -479,17 +513,6 @@ export default function CandidatesPage() {
     getSortedRowModel: getSortedRowModel(),
     initialState: {
       pagination: { pageSize: 10 },
-      // These are filled in later stages, so on a fresh list every row shows "—" and the real
-      // columns get pushed off the right edge. Available from the View menu when wanted.
-      columnVisibility: {
-        occupation: false,
-        sponsorName: false,
-        visaNumber: false,
-        agentName: false,
-        experienceAbroadYears: false,
-        // Shown only where there is something to show — switching to Inactive turns it on.
-        deletedBy: false,
-      },
     },
   });
 
@@ -580,6 +603,7 @@ export default function CandidatesPage() {
           onRowClick={(row: { id: string }) => router.push(`/candidates/${row.id}`)}
         exportFileName="candidates"
           table={table}
+          layout={layout}
           emptyMessage="No candidates yet — register a candidate to start the pipeline."
           enableGlobalFilter={true}
           searchPlaceholder="Search candidates..."

@@ -13,6 +13,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -196,10 +197,21 @@ export default function TenantsPage() {
     },
   ], []);
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "tenants", columnIds });
+
   const table = useReactTable({
     data: agencies,
     columns,
-    state: { sorting, globalFilter },
+    state: {
+      sorting,
+      globalFilter,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
@@ -207,6 +219,8 @@ export default function TenantsPage() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     initialState: { pagination: { pageSize: 10 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   if (!permsLoading && !isSuperAdmin) {
@@ -226,6 +240,7 @@ export default function TenantsPage() {
 
       <div className="rounded-lg border bg-card p-4 shadow-sm">
         <DataTable
+          layout={layout}
             rowClickOpensActions
           table={table}
           enableGlobalFilter={true}

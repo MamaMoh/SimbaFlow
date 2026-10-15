@@ -11,6 +11,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
   Select,
@@ -86,13 +87,25 @@ export default function ExceptionsListPage() {
     []
   );
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "exceptions", columnIds });
+
   const table = useReactTable({
+    state: {
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     data: cases,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   if (permsLoading) {
@@ -150,6 +163,7 @@ export default function ExceptionsListPage() {
             </div>
           ) : (
             <DataTable
+              layout={layout}
             onRowClick={(row: { id: string }) => router.push(`/workflow/exceptions/${row.id}`)}
         exportFileName="exceptions" table={table} paginated emptyMessage="No exception cases — Returned/Runaway cases will appear here." />
           )}

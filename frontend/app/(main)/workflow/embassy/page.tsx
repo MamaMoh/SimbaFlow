@@ -13,6 +13,7 @@ import {
 import { AgeCell } from "@/components/data-table/age-cell";
 import { AppointmentCell } from "@/components/data-table/appointment-cell";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -154,16 +155,28 @@ export default function EmbassyBoardPage() {
     [mutate, canSelect]
   );
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "embassy", columnIds });
+
   const table = useReactTable({
     data: candidates,
     columns,
-    state: { rowSelection },
+    state: {
+      rowSelection,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
@@ -310,6 +323,7 @@ export default function EmbassyBoardPage() {
           </div>
         ) : (
           <DataTable
+            layout={layout}
             rowClickOpensActions
             exportFileName="embassy"
             table={table}

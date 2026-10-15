@@ -14,6 +14,7 @@ import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Inbox, X } from "lucide-react";
+import type { TableLayout } from "@/lib/data-table/use-table-layout";
 
 /**
  * The actions column, pinned to the right edge.
@@ -152,6 +153,13 @@ export interface DataTableProps<TData, TValue> {
   emptyMessage?: string;
   /** Full custom empty-state node (overrides emptyMessage). */
   emptyState?: React.ReactNode;
+  /**
+   * Lets a heading be dragged onto another heading's place.
+   *
+   * Passed the layout this board remembers. Without it the headings are fixed, which is what
+   * every table did before and what a board with nothing worth rearranging still wants.
+   */
+  layout?: TableLayout;
 }
 
 export function DataTable<TData, TValue>(
@@ -179,7 +187,13 @@ export function DataTable<TData, TValue>(
     columnFilters = true,
     emptyMessage = "No records to display yet.",
     emptyState,
+    layout,
   } = props;
+
+  // Which heading is under the pointer mid-drag, so the gap opens where it will land. Held
+  // here rather than in the layout: it is about this drag, not about what gets remembered.
+  const [dragging, setDragging] = React.useState<string | null>(null);
+  const [over, setOver] = React.useState<string | null>(null);
   return (
     <div
       className={cn(
@@ -191,6 +205,7 @@ export function DataTable<TData, TValue>(
         <DataTableToolbar
           exportFileName={exportFileName}
           table={table}
+          layout={layout}
           filterableColumns={filterableColumns}
           searchableColumns={searchableColumns}
           enableGlobalFilter={enableGlobalFilter}
@@ -216,22 +231,72 @@ export function DataTable<TData, TValue>(
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup: any) => (
               <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header: any) => (
-                  <TableHead
-                    key={header.id}
-                    className={cn(
-                      "whitespace-nowrap",
-                      header.column.id === "actions" && PINNED
-                    )}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
+                {headerGroup.headers.map((header: any) => {
+                  const movable = !!layout && !layout.locked(header.column.id);
+                  return (
+                    <TableHead
+                      key={header.id}
+                      // Plain HTML drag and drop, no library. It is what a heading row needs
+                      // and nothing more, and the up/down controls in the View menu are what
+                      // answers for a thumb, where this gesture does not exist at all.
+                      draggable={movable}
+                      onDragStart={
+                        movable
+                          ? (e) => {
+                              setDragging(header.column.id);
+                              e.dataTransfer.effectAllowed = "move";
+                              // Firefox starts no drag at all without something set here.
+                              e.dataTransfer.setData("text/plain", header.column.id);
+                            }
+                          : undefined
+                      }
+                      onDragOver={
+                        movable
+                          ? (e) => {
+                              if (!dragging || dragging === header.column.id) return;
+                              // Without this the drop never fires: the default is to refuse.
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = "move";
+                              setOver(header.column.id);
+                            }
+                          : undefined
+                      }
+                      onDragLeave={movable ? () => setOver(null) : undefined}
+                      onDrop={
+                        movable
+                          ? (e) => {
+                              e.preventDefault();
+                              const from = dragging || e.dataTransfer.getData("text/plain");
+                              if (from && from !== header.column.id)
+                                layout?.dropColumn(from, header.column.id);
+                              setDragging(null);
+                              setOver(null);
+                            }
+                          : undefined
+                      }
+                      onDragEnd={() => {
+                        setDragging(null);
+                        setOver(null);
+                      }}
+                      className={cn(
+                        "whitespace-nowrap",
+                        movable && "cursor-grab select-none active:cursor-grabbing",
+                        dragging === header.column.id && "opacity-40",
+                        over === header.column.id &&
+                          dragging !== header.column.id &&
+                          "border-l-2 border-l-primary",
+                        header.column.id === "actions" && PINNED
+                      )}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
 

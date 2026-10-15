@@ -9,6 +9,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,8 +109,18 @@ export default function DepartureBoardPage() {
     [mutate, canSelect]
   );
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "departures", columnIds });
+
   const table = useReactTable({
-    state: { rowSelection },
+    state: {
+      rowSelection,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -119,6 +130,8 @@ export default function DepartureBoardPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   if (permsLoading) {
@@ -170,6 +183,7 @@ export default function DepartureBoardPage() {
             </div>
           ) : (
             <DataTable
+              layout={layout}
             rowClickOpensActions
         exportFileName="departures"
             toolbarEndActions={

@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { AgeCell } from "@/components/data-table/age-cell";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -120,8 +121,18 @@ export default function LmisBoardPage() {
     [mutate, canSelect]
   );
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "lmis", columnIds });
+
   const table = useReactTable({
-    state: { rowSelection },
+    state: {
+      rowSelection,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -131,6 +142,8 @@ export default function LmisBoardPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   if (permsLoading) {
@@ -218,6 +231,7 @@ export default function LmisBoardPage() {
           </div>
         ) : (
           <DataTable
+            layout={layout}
             rowClickOpensActions
         exportFileName="lmis"
             toolbarEndActions={

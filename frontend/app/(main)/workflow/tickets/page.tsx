@@ -11,6 +11,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Input } from "@/components/ui/input";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
@@ -97,8 +98,18 @@ export default function TicketBoardPage() {
     [mutate, canSelect]
   );
 
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "tickets", columnIds });
+
   const table = useReactTable({
-    state: { rowSelection },
+    state: {
+      rowSelection,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -108,6 +119,8 @@ export default function TicketBoardPage() {
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
   if (permsLoading) {
@@ -147,6 +160,7 @@ export default function TicketBoardPage() {
             </div>
           ) : (
             <DataTable
+              layout={layout}
             rowClickOpensActions
         exportFileName="tickets"
             toolbarEndActions={
