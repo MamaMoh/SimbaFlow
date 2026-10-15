@@ -23,4 +23,5 @@ public record ReadAuditEntry(
     string? IpAddress = null,
     string? UserAgent = null,
     bool IsBreakTheGlass = false,
-    string? Reason = null);
+    string? Reason = null,
+    Guid? TenantId = null);

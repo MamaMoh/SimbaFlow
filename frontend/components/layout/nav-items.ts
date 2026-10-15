@@ -194,6 +194,13 @@ export const navigation: NavItem[] = [
     ],
   },
   {
+    // Who changed or opened what in this agency. Owners and auditors hold audit.read.
+    name: "Audit trail",
+    href: "/audit",
+    icon: require("lucide-react").ScrollText,
+    claims: ["audit.read", "system.admin"],
+  },
+  {
     name: "Partners",
     href: "/partners",
     icon: require("lucide-react").Handshake,
