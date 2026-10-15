@@ -127,6 +127,8 @@ public record RecordPaymentCommand(
 
 public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result<Guid>>
 {
+    public const decimal OverpaymentTolerance = 1m;
+
     private readonly ITenantDbContext _context;
     private readonly IExchangeRateService _fx;
     private readonly IJournalPostingService _journal;
@@ -190,6 +192,15 @@ public class RecordPaymentHandler : IRequestHandler<RecordPaymentCommand, Result
 
         if (amountEtb <= 0)
             return Result<Guid>.Failure("Converted ETB amount must be > 0", 400);
+
+        // A payment above what is owed would leave the candidate in credit with nothing to show
+        // for it. Up to one birr over is let through so a foreign-currency payment of the full
+        // balance is not refused for its rounding.
+        CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+        if (amountEtb > commission.BalanceAmount + OverpaymentTolerance)
+            return Result<Guid>.Failure(
+                $"This payment ({amountEtb:N2} ETB) is more than the balance owed ({commission.BalanceAmount:N2} ETB).",
+                400);
 
         if (_context is not TenantDbContext db)
             return Result<Guid>.Failure("Database transaction unavailable", 500);

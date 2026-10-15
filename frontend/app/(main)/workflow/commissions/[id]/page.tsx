@@ -205,6 +205,7 @@ export default function CommissionDetailPage({
         onOpenChange={setPaymentOpen}
         commissionId={commission.id}
         disabledReason={paymentBlock}
+        balance={commission.balanceAmount}
         onRecorded={() => mutate()}
       />
     </div>
