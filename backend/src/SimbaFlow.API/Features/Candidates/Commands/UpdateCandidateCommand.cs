@@ -4,6 +4,7 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.API.Features.Partners;
+using SimbaFlow.API.Features.Offices;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
@@ -26,7 +27,8 @@ public record UpdateCandidateCommand(
     string? PartnerName,
     Guid? PartnerAgencyId = null,
     string? ContractDate = null,
-    CandidateIntakePayload? Intake = null) : IRequest<Result>, IRequirePermission
+    CandidateIntakePayload? Intake = null,
+    Guid? OfficeId = null) : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "candidate.update";
 }
@@ -66,6 +68,15 @@ public class UpdateCandidateHandler : IRequestHandler<UpdateCandidateCommand, Re
                 return Result.Failure(partnerCheck.Error!, 400);
         }
 
+        // Same reasoning as the partner: an office closed since registration does not block an
+        // edit, but moving a candidate onto a closed office does.
+        if (request.OfficeId != candidate.OfficeId && request.OfficeId is Guid officeId)
+        {
+            var officeCheck = await OfficeAssignment.CheckAsync(_context, officeId, cancellationToken);
+            if (!officeCheck.IsValid)
+                return Result.Failure(officeCheck.Error!, 400);
+        }
+
         if (!string.IsNullOrEmpty(request.LabourId) && request.LabourId != candidate.LabourId)
         {
             var labourIdExists = await _context.Candidates
@@ -101,6 +112,7 @@ public class UpdateCandidateHandler : IRequestHandler<UpdateCandidateCommand, Re
         candidate.CountryOfTravel = request.CountryOfTravel;
         candidate.PartnerName = request.PartnerName;
         candidate.PartnerAgencyId = request.PartnerAgencyId;
+        candidate.OfficeId = request.OfficeId;
         candidate.ContractDate = string.IsNullOrEmpty(request.ContractDate) ? null : DateOnly.Parse(request.ContractDate);
 
         if (request.Intake is not null)

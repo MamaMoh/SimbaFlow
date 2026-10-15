@@ -212,34 +212,89 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
             rows, "stage", "avgDays", DateTime.UtcNow);
     }
 
+    /// <summary>Office names by id, closed and removed ones included, so history still reads.</summary>
+    private async Task<Dictionary<Guid, (string Name, bool IsActive, bool IsDeleted)>> LoadOfficesAsync(CancellationToken ct)
+    {
+        var offices = await _context.Offices.AsNoTracking()
+            .Select(o => new { o.Id, o.Name, o.IsActive, o.IsDeleted })
+            .ToListAsync(ct);
+        return offices.ToDictionary(o => o.Id, o => (o.Name, o.IsActive, o.IsDeleted));
+    }
+
+    private const string NoOffice = "No office";
+
+    private static string OfficeLabel(
+        Dictionary<Guid, (string Name, bool IsActive, bool IsDeleted)> offices, Guid? id)
+        => id is Guid key && offices.TryGetValue(key, out var o)
+            ? (o.IsActive && !o.IsDeleted ? o.Name : $"{o.Name} (closed)")
+            : NoOffice;
+
     private async Task<ReportTable> BuildOfficeComparisonAsync(CancellationToken ct)
     {
+        var offices = await LoadOfficesAsync(ct);
+
         var candidateByOffice = await _context.Candidates.AsNoTracking()
             .Where(c => !c.IsDeleted && c.Status == CandidateStatus.Active)
-            .GroupBy(c => c.PartnerName ?? "—")
-            .Select(g => new { Office = g.Key, Count = g.Count() })
+            .GroupBy(c => c.OfficeId)
+            .Select(g => new { OfficeId = g.Key, Count = g.Count() })
             .ToListAsync(ct);
 
-        var commissionByOffice = await _context.Commissions.AsNoTracking()
-            .Where(c => !c.IsDeleted)
-            .GroupBy(c => c.PartnerName ?? "—")
-            .Select(g => new { Office = g.Key, Owed = g.Sum(x => x.BalanceAmount) })
+        // Commission follows the candidate's office: a commission has no office of its own, and
+        // the one that registered the candidate is the one that earned it.
+        var commissionByOffice = await (
+                from cm in _context.Commissions.AsNoTracking()
+                where !cm.IsDeleted
+                join c in _context.Candidates.AsNoTracking() on cm.CandidateId equals c.Id into cs
+                from c in cs.DefaultIfEmpty()
+                select new { OfficeId = c == null ? null : c.OfficeId, cm.BalanceAmount })
+            .GroupBy(x => x.OfficeId)
+            .Select(g => new { OfficeId = g.Key, Owed = g.Sum(x => x.BalanceAmount) })
             .ToListAsync(ct);
 
-        var owedMap = commissionByOffice.ToDictionary(x => x.Office, x => x.Owed);
+        var countMap = candidateByOffice.ToDictionary(x => x.OfficeId ?? Guid.Empty, x => x.Count);
+        var owedMap = commissionByOffice.ToDictionary(x => x.OfficeId ?? Guid.Empty, x => x.Owed);
 
-        var rows = candidateByOffice
-            .OrderByDescending(x => x.Count)
-            .Select(x => new Dictionary<string, object?>
+        // Every open office gets a line, including one with nobody on it yet: an empty branch is
+        // exactly what a comparison is for. Closed offices appear only while they still have
+        // candidates or money owed.
+        var ids = offices
+            .Where(o => o.Value.IsActive && !o.Value.IsDeleted)
+            .Select(o => o.Key)
+            .Concat(countMap.Keys)
+            .Concat(owedMap.Keys)
+            .Distinct()
+            .ToList();
+
+        var rows = ids
+            .Select(id => new
             {
-                ["office"] = x.Office,
-                ["candidates"] = x.Count,
-                ["owed"] = owedMap.GetValueOrDefault(x.Office, 0m)
+                Label = OfficeLabel(offices, id == Guid.Empty ? null : id),
+                Count = countMap.GetValueOrDefault(id, 0),
+                Owed = owedMap.GetValueOrDefault(id, 0m),
+                Unassigned = id == Guid.Empty || !offices.ContainsKey(id)
+            })
+            // Unassigned candidates last, whatever their number: it is a to-do, not a branch.
+            .OrderBy(x => x.Unassigned)
+            .ThenByDescending(x => x.Count)
+            .ThenBy(x => x.Label)
+            .GroupBy(x => x.Label)
+            .Select(g => new Dictionary<string, object?>
+            {
+                ["office"] = g.Key,
+                ["candidates"] = g.Sum(x => x.Count),
+                ["owed"] = g.Sum(x => x.Owed)
             }).ToList();
+
+        var openOffices = offices.Count(o => o.Value.IsActive && !o.Value.IsDeleted);
+        var unassigned = countMap.GetValueOrDefault(Guid.Empty, 0);
+        var summary = openOffices == 0
+            ? "No offices are set up yet. Add them under Settings to compare branches."
+            : $"Active candidates and outstanding commission across {PluralText.Count(openOffices, "office")}."
+                + (unassigned > 0 ? $" {PluralText.Count(unassigned, "candidate")} not assigned to an office." : "");
 
         return new ReportTable(
             "office-comparison", "Office comparison",
-            "Active candidates and outstanding commission by registering office.",
+            summary,
             [
                 new("office", "Office"),
                 new("candidates", "Candidates", ReportColumnType.Number),
@@ -260,10 +315,12 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
             .Select(c => new
             {
                 c.FirstName, c.LastName, c.PassportNumber,
-                c.CurrentStageName, c.PartnerName, c.StageEnteredAt
+                c.CurrentStageName, c.PartnerName, c.OfficeId, c.StageEnteredAt
             })
             .Take(500)
             .ToListAsync(ct);
+
+        var offices = await LoadOfficesAsync(ct);
 
         var rows = stuck.Select(c => new Dictionary<string, object?>
         {
@@ -271,7 +328,8 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
             ["passport"] = c.PassportNumber,
             ["stage"] = c.CurrentStageName ?? "—",
             ["days"] = (int)Math.Floor((now - c.StageEnteredAt!.Value).TotalDays),
-            ["office"] = c.PartnerName ?? "—"
+            ["office"] = OfficeLabel(offices, c.OfficeId),
+            ["partner"] = c.PartnerName ?? "—"
         }).ToList();
 
         return new ReportTable(
@@ -283,6 +341,7 @@ public class GetReportHandler : IRequestHandler<GetReportQuery, Result<ReportTab
                 new("stage", "Stage"),
                 new("days", "Days in stage", ReportColumnType.Number),
                 new("office", "Office"),
+                new("partner", "Partner"),
             ],
             rows, null, null, DateTime.UtcNow);
     }

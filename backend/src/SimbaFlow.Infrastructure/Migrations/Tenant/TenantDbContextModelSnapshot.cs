@@ -224,6 +224,10 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("text")
                         .HasColumnName("occupation");
 
+                    b.Property<Guid?>("OfficeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("office_id");
+
                     b.Property<string>("OtherLanguages")
                         .HasColumnType("text")
                         .HasColumnName("other_languages");
@@ -473,6 +477,9 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .IsUnique()
                         .HasDatabaseName("ix_candidates_labour_id")
                         .HasFilter("labour_id IS NOT NULL");
+
+                    b.HasIndex("OfficeId")
+                        .HasDatabaseName("ix_candidates_office_id");
 
                     b.HasIndex("PassportNumber")
                         .IsUnique()
@@ -1554,6 +1561,70 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.ToTable("agency_skills", (string)null);
                 });
 
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Tenancy.Office", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("city");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("phone");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_offices");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_offices_name")
+                        .HasFilter("is_deleted = FALSE");
+
+                    b.ToTable("offices", (string)null);
+                });
+
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Tenancy.TenantRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2472,6 +2543,15 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasDatabaseName("ix_workflow_transition_rules_workflow_definition_id");
 
                     b.ToTable("workflow_transition_rules", (string)null);
+                });
+
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.Candidate", b =>
+                {
+                    b.HasOne("SimbaFlow.Domain.Entities.Tenancy.Office", null)
+                        .WithMany()
+                        .HasForeignKey("OfficeId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_candidates_offices_office_id");
                 });
 
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Candidates.CandidateDocument", b =>

@@ -44,6 +44,7 @@ import { FormSection } from "@/components/candidates/form-section";
 import { ImageLightbox } from "@/components/candidates/candidate-image";
 import { toast } from "sonner";
 import { useIntakeDefaults, type AgencySkill } from "@/lib/api/intake-defaults";
+import { useOffices } from "@/lib/api/offices";
 import { CountrySelect, countryName } from "@/components/ui/country-select";
 import { PhoneInputField } from "@/components/ui/phone-input";
 import { contractYears } from "@/lib/utils/contract-period";
@@ -324,6 +325,8 @@ const registerCandidateSchema = z.object({
   // printed on and which agreement the placement runs under. A candidate registered without one
   // reached the embassy desk as a record nobody could act on.
   partnerAgencyId: z.string().min(1, "Choose the partner agency this candidate is sent to"),
+  /** The agency's own branch that registered them; groups the Office comparison report. */
+  officeId: opt,
   contractDate: opt,
   // intake
   placeOfBirth: opt,
@@ -434,6 +437,7 @@ const defaults: Partial<RegisterCandidateForm> = {
   // than one that guesses. The agency default fills this in when there is one.
   gender: "",
   partnerAgencyId: "",
+  officeId: "",
   visaType: "Work",
   nationality: "Ethiopia",
   passportType: "Normal",
@@ -1068,6 +1072,7 @@ export function CandidateApplicationForm({
       countryOfTravel: d.countryOfTravel || "",
       partnerName: d.partnerName || "",
       partnerAgencyId: d.partnerAgencyId || "",
+      officeId: d.officeId || "",
       contractDate: d.contractDate || "",
       placeOfBirth: d.placeOfBirth || "",
       // Through matchOption: a saved answer whose spelling differs from the preset's is still that
@@ -1276,6 +1281,34 @@ export function CandidateApplicationForm({
     return options;
   }, [linkedPartners, savedPartnerId, savedPartnerName]);
 
+  /**
+   * Open offices, plus the one already on the record if it has since closed, for the same reason
+   * as the partner list above: a Select that matches none of its options would save a blank.
+   */
+  const { offices } = useOffices();
+  const savedOfficeId = watch("officeId");
+  const officeOptions = useMemo(() => {
+    const all = offices ?? [];
+    const options = all
+      .filter((o) => o.isActive)
+      .map((o) => ({ id: o.id, label: o.city ? `${o.name} · ${o.city}` : o.name }));
+    if (savedOfficeId && !options.some((o) => o.id === savedOfficeId)) {
+      const onFile = all.find((o) => o.id === savedOfficeId);
+      options.unshift({
+        id: savedOfficeId,
+        label: onFile ? `${onFile.name} (closed)` : "Office on file",
+      });
+    }
+    return options;
+  }, [offices, savedOfficeId]);
+
+  // An agency with one open office files every new candidate there without being asked.
+  useEffect(() => {
+    if (isEdit || !offices || getValues("officeId")) return;
+    const open = offices.filter((o) => o.isActive);
+    if (open.length === 1) setValue("officeId", open[0].id);
+  }, [offices, isEdit, getValues, setValue]);
+
   const goBack = () => {
     if (isEdit && candidateId) router.push(`/candidates/${candidateId}`);
     else router.push("/candidates");
@@ -1463,6 +1496,7 @@ export function CandidateApplicationForm({
             countryOfTravel: data.countryOfTravel || null,
             partnerName: data.partnerName || null,
             partnerAgencyId: data.partnerAgencyId || null,
+            officeId: data.officeId || null,
             contractDate: data.contractDate || null,
             intake,
           }),
@@ -1509,6 +1543,7 @@ export function CandidateApplicationForm({
           countryOfTravel: data.countryOfTravel || null,
           partnerName: data.partnerName || null,
           partnerAgencyId: data.partnerAgencyId || null,
+          officeId: data.officeId || null,
           contractDate: data.contractDate || null,
           intake,
         }),
@@ -2087,6 +2122,27 @@ export function CandidateApplicationForm({
                     </p>
                   ) : null}
                 </div>
+                {officeOptions.length > 0 ? (
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Registering office</Label>
+                    <Select
+                      value={savedOfficeId || "none"}
+                      onValueChange={(id) => setValue("officeId", id === "none" ? "" : id)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select office" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="z-[200]">
+                        <SelectItem value="none">No office</SelectItem>
+                        {officeOptions.map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <div className="space-y-1.5">
                   <Label>Contract date</Label>
                   <Input type="date" {...register("contractDate")} />

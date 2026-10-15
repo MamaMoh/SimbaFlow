@@ -93,6 +93,13 @@ public class Candidate : BaseEntity
     public Guid? PartnerAgencyId { get; set; }
     public DateOnly? ContractDate { get; set; }
 
+    /// <summary>
+    /// The agency's own branch that registered this candidate (see
+    /// <see cref="SimbaFlow.Domain.Entities.Tenancy.Office"/>). Null for candidates registered
+    /// before offices existed, or by an agency with none set up.
+    /// </summary>
+    public Guid? OfficeId { get; set; }
+
     // ──── Documents ────
     public string? PhotoPath { get; set; }
     /// <summary>Full-body / full-size photo used for agency forms (distinct from portrait PhotoPath).</summary>

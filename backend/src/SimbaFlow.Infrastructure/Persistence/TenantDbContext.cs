@@ -43,6 +43,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
     public DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults => Set<AgencyIntakeDefaults>();
     public DbSet<AgencySkill> AgencySkills => Set<AgencySkill>();
     public DbSet<AgencyPortalAnswer> AgencyPortalAnswers => Set<AgencyPortalAnswer>();
+    public DbSet<Office> Offices => Set<Office>();
 
     // Workflow
     public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
@@ -97,6 +98,11 @@ public class TenantDbContext : DbContext, ITenantDbContext
                 .HasFilter("labour_id IS NOT NULL");
             entity.HasIndex(c => c.CurrentStageId);
             entity.HasIndex(c => new { c.CurrentStageId, c.StageEnteredAt });
+            entity.HasIndex(c => c.OfficeId);
+            entity.HasOne<Office>()
+                .WithMany()
+                .HasForeignKey(c => c.OfficeId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.Property(c => c.CurrentStatusValues).HasConversion(jsonDocConverter);
             entity.Property(c => c.VisibleInStages)
                 .HasConversion(
@@ -169,6 +175,17 @@ public class TenantDbContext : DbContext, ITenantDbContext
                 .HasFilter("built_in_key IS NOT NULL AND is_deleted = FALSE");
             entity.Property(s => s.Name).HasMaxLength(128);
             entity.Property(s => s.BuiltInKey).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<Office>(entity =>
+        {
+            entity.ToTable("offices");
+            entity.HasIndex(o => o.Name)
+                .IsUnique()
+                .HasFilter("is_deleted = FALSE");
+            entity.Property(o => o.Name).HasMaxLength(128).IsRequired();
+            entity.Property(o => o.City).HasMaxLength(128);
+            entity.Property(o => o.Phone).HasMaxLength(64);
         });
 
         modelBuilder.Entity<AgencyPortalAnswer>(entity =>
