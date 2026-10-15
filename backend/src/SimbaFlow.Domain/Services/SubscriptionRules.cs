@@ -18,6 +18,14 @@ public enum RenewalNotice
     Overdue = 3,
 }
 
+/// <summary>The renewal emails an agency owner is sent, in the order they go out.</summary>
+public enum RenewalReminder
+{
+    DueSoon = 1,
+    DueToday = 2,
+    Overdue = 3,
+}
+
 /// <summary>
 /// When an agency is warned about renewal, and what a billing period covers.
 ///
@@ -73,11 +81,46 @@ public static class SubscriptionRules
     /// <summary>
     /// Whether this agency should be able to use the system.
     ///
-    /// Being overdue does not itself lock anyone out — suspending is a decision somebody makes,
-    /// not something a date does. An agency can be a week late and still working while the
-    /// transfer clears.
+    /// Being overdue does not itself lock anyone out. An agency can be late and still working while
+    /// the transfer clears; only <see cref="ShouldAutoSuspend"/>, after a grace period, turns a
+    /// date into a suspension.
     /// </summary>
     public static bool HasAccess(TenantStatus status) => status == TenantStatus.Active;
+
+    /// <summary>
+    /// Days past the due date before an unpaid agency is suspended automatically, unless
+    /// configured otherwise. Long enough for a bank transfer to clear and for a reminder or two.
+    /// </summary>
+    public const int DefaultAutoSuspendAfterDays = 14;
+
+    /// <summary>
+    /// Which reminder an agency owner should have been sent by today, or null for none.
+    ///
+    /// One per stage, so a daily pass sends each at most once: the caller remembers the last
+    /// stage sent for this due date and only sends when this answer is a later stage.
+    /// </summary>
+    public static RenewalReminder? ReminderFor(DateOnly? nextDue, BillingCycle cycle, DateOnly today) =>
+        NoticeFor(nextDue, cycle, today) switch
+        {
+            RenewalNotice.DueSoon => RenewalReminder.DueSoon,
+            RenewalNotice.DueToday => RenewalReminder.DueToday,
+            RenewalNotice.Overdue => RenewalReminder.Overdue,
+            _ => null,
+        };
+
+    /// <summary>
+    /// True when an agency has gone unpaid long enough to be suspended without anyone deciding to.
+    ///
+    /// Only an active agency that is being charged, with a due date at least
+    /// <paramref name="graceDays"/> in the past. A grace of zero or less turns this off.
+    /// </summary>
+    public static bool ShouldAutoSuspend(
+        TenantStatus status, decimal amount, DateOnly? nextDue, DateOnly today, int graceDays) =>
+        graceDays > 0
+        && status == TenantStatus.Active
+        && amount > 0
+        && nextDue is DateOnly due
+        && today.DayNumber - due.DayNumber >= graceDays;
 
     /// <summary>
     /// Why the people of this agency cannot sign in, or null when they can.

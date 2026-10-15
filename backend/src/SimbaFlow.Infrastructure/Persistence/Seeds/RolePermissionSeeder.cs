@@ -131,6 +131,10 @@ public static class RolePermissionSeeder
         // here, so a permission added later is not quietly missing from it.
         [PlatformRoles.SuperAdmin] = GrantEverything,
         [PlatformRoles.PlatformAdmin] = GrantEverything,
+        // Accounts across the agencies (reset a password, end a session) and the support pages.
+        // No candidate, billing or configuration permission: the support desk helps agencies
+        // without being able to read their people.
+        [PlatformRoles.Support] = ["users.read", "users.write", "platform.support"],
     };
 
     /// <summary>

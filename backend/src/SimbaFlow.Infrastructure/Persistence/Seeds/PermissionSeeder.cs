@@ -99,6 +99,9 @@ public static class PermissionSeeder
 
         // System
         ("system", "system.admin", "Full system administration"),
+        // Marks the platform support desk, so the interface can show its pages. What it may do is
+        // still decided by the PlatformSupport role on the server, never by this grant.
+        ("system", "platform.support", "Platform support desk"),
     ];
     public static async Task SeedPermissionsAsync(IServiceProvider serviceProvider)
     {

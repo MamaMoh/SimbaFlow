@@ -215,6 +215,8 @@ app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+// A platform administrator's agency switch only counts while they have a stated reason on record.
+app.UseMiddleware<SimbaFlow.API.Middleware.AgencyAccessMiddleware>();
 app.UseMiddleware<SimbaFlow.Infrastructure.Identity.StaffContextMiddleware>();
 app.MapCarter();
 app.MapHub<SimbaFlow.Infrastructure.RealTime.SimbaFlowHub>("/hubs/simbaflow");

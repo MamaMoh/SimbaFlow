@@ -38,6 +38,11 @@ public static class ServiceExtensions
             SimbaFlow.API.Features.Reports.Schedules.ScheduledReportSender>();
         services.AddHostedService<SimbaFlow.API.Features.Reports.Schedules.ScheduledReportService>();
 
+        services.AddScoped<SimbaFlow.API.Features.Tenants.AccountInvite>();
+
+        // Renewal reminders and suspension of agencies left unpaid past the grace period
+        services.AddHostedService<SimbaFlow.API.Features.Tenants.BillingReminderService>();
+
         // SignalR
         services.AddSignalR();
         services.AddScoped<ISignalRBroadcaster, SignalRBroadcaster>();
@@ -51,6 +56,14 @@ public static class ServiceExtensions
             // the same authority. See PlatformRoles.
             .AddPolicy("SuperAdmin", policy => policy.RequireAssertion(ctx =>
                 SimbaFlow.Domain.Services.PlatformRoles.All.Any(role =>
+                    ctx.User.HasClaim("role", role) ||
+                    ctx.User.HasClaim(System.Security.Claims.ClaimTypes.Role, role) ||
+                    ctx.User.IsInRole(role))))
+
+            // The whole platform team: both full roles and the support desk. For pages that help
+            // agencies without changing what they are or what they pay.
+            .AddPolicy("PlatformStaff", policy => policy.RequireAssertion(ctx =>
+                SimbaFlow.Domain.Services.PlatformRoles.Staff.Any(role =>
                     ctx.User.HasClaim("role", role) ||
                     ctx.User.HasClaim(System.Security.Claims.ClaimTypes.Role, role) ||
                     ctx.User.IsInRole(role))))

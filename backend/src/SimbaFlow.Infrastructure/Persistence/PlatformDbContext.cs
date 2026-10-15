@@ -63,6 +63,11 @@ public class PlatformDbContext
     public DbSet<PartnerAgreementDocument> PartnerAgreementDocuments => Set<PartnerAgreementDocument>();
 
     // Audit
+    public DbSet<SimbaFlow.Domain.Entities.Platform.Announcement> Announcements => Set<SimbaFlow.Domain.Entities.Platform.Announcement>();
+    public DbSet<SimbaFlow.Domain.Entities.Platform.SupportTicket> SupportTickets => Set<SimbaFlow.Domain.Entities.Platform.SupportTicket>();
+    public DbSet<SimbaFlow.Domain.Entities.Platform.SupportMessage> SupportMessages => Set<SimbaFlow.Domain.Entities.Platform.SupportMessage>();
+    public DbSet<SimbaFlow.Domain.Entities.Platform.PlatformAccessGrant> PlatformAccessGrants => Set<SimbaFlow.Domain.Entities.Platform.PlatformAccessGrant>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ReadAuditLog> ReadAuditLogs => Set<ReadAuditLog>();
 
@@ -184,6 +189,40 @@ public class PlatformDbContext
             entity.Property(x => x.PayloadSummary).HasMaxLength(512).IsRequired();
             entity.Property(x => x.ExternalMessageId).HasMaxLength(128);
             entity.Property(x => x.Error).HasMaxLength(1024);
+        });
+
+        modelBuilder.Entity<SimbaFlow.Domain.Entities.Platform.Announcement>(entity =>
+        {
+            entity.ToTable("Announcements");
+            entity.HasIndex(x => new { x.StartsAt, x.EndsAt });
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Body).HasMaxLength(4000).IsRequired();
+        });
+
+        modelBuilder.Entity<SimbaFlow.Domain.Entities.Platform.SupportTicket>(entity =>
+        {
+            entity.ToTable("SupportTickets");
+            entity.HasIndex(x => new { x.TenantId, x.LastActivityAt });
+            entity.HasIndex(x => new { x.Status, x.LastActivityAt });
+            entity.Property(x => x.Subject).HasMaxLength(200).IsRequired();
+            entity.HasMany(x => x.Messages)
+                .WithOne(m => m.Ticket)
+                .HasForeignKey(m => m.TicketId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SimbaFlow.Domain.Entities.Platform.SupportMessage>(entity =>
+        {
+            entity.ToTable("SupportMessages");
+            entity.Property(x => x.Body).HasMaxLength(8000).IsRequired();
+        });
+
+        modelBuilder.Entity<SimbaFlow.Domain.Entities.Platform.PlatformAccessGrant>(entity =>
+        {
+            entity.ToTable("PlatformAccessGrants");
+            entity.HasIndex(x => new { x.UserId, x.TenantId, x.ExpiresAt });
+            entity.HasIndex(x => new { x.TenantId, x.StartedAt });
+            entity.Property(x => x.Reason).HasMaxLength(500).IsRequired();
         });
 
         modelBuilder.Entity<ReportSchedule>(entity =>

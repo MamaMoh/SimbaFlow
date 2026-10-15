@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/header";
 import { LoadingSpinner } from "@/components/loading/loading-components";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { RenewalNotice } from "@/components/billing/renewal-notice";
+import { AnnouncementBanner } from "@/components/platform/announcement-banner";
 import { CommandPalette } from "@/components/command/command-palette";
 import { PointerEventsGuard } from "@/components/layout/pointer-events-guard";
 import { VisaDetailsHost } from "@/components/workflow/visa-details-host";
@@ -29,6 +30,9 @@ export default function DashboardLayout({
                 has stopped working, and this is the only thing that says why. */}
             <div className="mb-4 empty:mb-0">
               <RenewalNotice />
+            </div>
+            <div className="mb-4 empty:mb-0">
+              <AnnouncementBanner />
             </div>
             <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><LoadingSpinner size="lg" text="Loading..." /></div>}>
               <RouteGuard>{children}</RouteGuard>

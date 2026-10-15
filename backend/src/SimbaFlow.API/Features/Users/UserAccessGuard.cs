@@ -23,7 +23,7 @@ public static class UserAccessGuard
     /// role.write across every tenant, which is a different thing from administering one agency.
     /// </summary>
     private static readonly HashSet<string> PlatformRoles =
-        new(StringComparer.OrdinalIgnoreCase) { "SuperAdmin", "PlatformAdmin" };
+        new(StringComparer.OrdinalIgnoreCase) { "SuperAdmin", "PlatformAdmin", Domain.Services.PlatformRoles.Support };
 
     /// <summary>True if the caller may view/modify the target user.</summary>
     public static bool CanManage(ICurrentUserService caller, ApplicationUser target)
@@ -35,6 +35,11 @@ public static class UserAccessGuard
         // not allowed near a platform-level account — that is what keeps this short of SuperAdmin.
         if (IsTenantlessPlatformAdmin(caller))
             return !target.IsSuperAdmin;
+
+        // The support desk helps agency staff — resets a password, ends a stuck session — and
+        // never touches a platform account.
+        if (IsTenantlessPlatformSupport(caller))
+            return target.TenantId.HasValue && !target.IsSuperAdmin;
 
         // Tenant admins may only touch users in their own (non-null) tenant,
         // and never a platform SuperAdmin.
@@ -79,6 +84,10 @@ public static class UserAccessGuard
     /// user who arrives without a tenant claim — a malformed or truncated token — is treated as
     /// having no access rather than as having platform-wide access.
     /// </summary>
+    private static bool IsTenantlessPlatformSupport(ICurrentUserService caller) =>
+        !caller.TenantId.HasValue
+        && caller.Roles.Contains(Domain.Services.PlatformRoles.Support, StringComparer.OrdinalIgnoreCase);
+
     private static bool IsTenantlessPlatformAdmin(ICurrentUserService caller) =>
         !caller.TenantId.HasValue
         && caller.Roles.Contains("PlatformAdmin", StringComparer.OrdinalIgnoreCase);

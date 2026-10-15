@@ -39,6 +39,16 @@ public class AuthorizationBehavior<TRequest, TResponse> : IPipelineBehavior<TReq
                     "Roles and permissions are managed by the platform team.");
         }
 
+        // The platform team as a whole, support desk included. Still a role, never a permission.
+        if (request is IRequirePlatformStaff)
+        {
+            if (string.IsNullOrEmpty(_currentUser.UserId))
+                throw new UnauthorizedAccessException("Authentication required");
+
+            if (!_currentUser.IsSuperAdmin && !PlatformRoles.IsStaff(_currentUser.Roles))
+                throw new ForbiddenAccessException("This is for the platform team.");
+        }
+
         // Then the agency's own shape — who it is, how its pipeline runs. Its owner, or the
         // platform team, and no permission grant reaches it either.
         if (request is IRequireAgencyOwner ownerRequest)

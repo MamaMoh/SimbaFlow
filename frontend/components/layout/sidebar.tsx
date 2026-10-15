@@ -386,8 +386,10 @@ export function Sidebar({ className }: SidebarProps) {
   // cannot be touched while rendering on the server. Agency is the right guess to render first:
   // it is what every non-platform user gets, so they never see it change.
   const actingTenantId = useActingTenantId();
+  // The support desk belongs to no agency and cannot enter one, so it always runs the platform.
+  const isSupportDesk = !isSuperAdmin() && userClaims.includes("platform.support");
   const navMode: NavScope =
-    isSuperAdmin() && actingTenantId === null ? "platform" : "agency";
+    (isSuperAdmin() && actingTenantId === null) || isSupportDesk ? "platform" : "agency";
 
   // The Workflow section is the agency's own pipeline, so it is read from the pipeline rather
   // than written down here. Not fetched in platform mode: there is no agency to ask about, and

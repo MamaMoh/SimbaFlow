@@ -255,6 +255,27 @@ public static partial class AuditActionNames
         ["GenerateVisaFormCommand"] = "Printed visa form",
         ["GenerateBulkVisaFormsCommand"] = "Printed visa forms in bulk",
         ["GenerateContractCommand"] = "Printed contract",
+        // The platform team's own actions on an agency.
+        ["EnterAgency"] = "Platform team entered the agency",
+        ["LeaveAgency"] = "Platform team left the agency",
+        ["AutoSuspendAgency"] = "Suspended automatically for non-payment",
+        ["SuspendAgency"] = "Suspended the agency",
+        ["ReactivateAgency"] = "Reactivated the agency",
+        ["UpdateAgency"] = "Edited the agency",
+        ["OffboardAgency"] = "Offboarded the agency",
+        ["ExportAgency"] = "Exported the agency's data",
+        ["PurgeAgency"] = "Purged the agency",
+        ["UpdateSubscription"] = "Changed the subscription",
+        ["RaiseInvoice"] = "Raised an invoice",
+        ["MarkInvoicePaid"] = "Recorded a payment",
+        ["VoidInvoice"] = "Voided an invoice",
+        ["ResendOwnerInvite"] = "Re-sent the owner's welcome email",
+        ["PostAnnouncement"] = "Posted an announcement",
+        ["UpdateAnnouncement"] = "Edited an announcement",
+        ["RemoveAnnouncement"] = "Removed an announcement",
+        ["RaiseSupportRequest"] = "Asked the platform team for help",
+        ["ReplySupportRequest"] = "Replied on a help request",
+        ["CloseSupportRequest"] = "Closed a help request",
     };
 
     public static string Describe(string action)

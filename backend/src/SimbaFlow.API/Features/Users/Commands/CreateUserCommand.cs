@@ -112,6 +112,10 @@ public class CreateUserHandler : IRequestHandler<CreateUserCommand, Result<Guid>
                 + "without one.", 400);
         }
 
+        if (tenantId is Guid seatTenant && !isPlatformAccount
+            && await SeatLimit.RefusalForOneMoreAsync(_context, seatTenant, cancellationToken) is { } full)
+            return Result<Guid>.Failure(full, 409);
+
         var user = new ApplicationUser
         {
             UserName = request.Username,

@@ -22,13 +22,21 @@ public class UpdateTenantStatusHandler : IRequestHandler<UpdateTenantStatusComma
     private readonly IPlatformDbContext _context;
     private readonly ITenantSchemaResolver _schemaResolver;
     private readonly ITenantLifecycleService _lifecycle;
+    private readonly IAuditService _audit;
+    private readonly ICurrentUserService _currentUser;
 
     public UpdateTenantStatusHandler(
-        IPlatformDbContext context, ITenantSchemaResolver schemaResolver, ITenantLifecycleService lifecycle)
+        IPlatformDbContext context,
+        ITenantSchemaResolver schemaResolver,
+        ITenantLifecycleService lifecycle,
+        IAuditService audit,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _schemaResolver = schemaResolver;
         _lifecycle = lifecycle;
+        _audit = audit;
+        _currentUser = currentUser;
     }
 
     public async Task<Result> Handle(UpdateTenantStatusCommand request, CancellationToken cancellationToken)
@@ -54,12 +62,22 @@ public class UpdateTenantStatusHandler : IRequestHandler<UpdateTenantStatusComma
             tenant.OffboardedAt = null;
             tenant.OffboardedBy = null;
             tenant.OffboardingReason = null;
+            tenant.AutoSuspendedAt = null;
         }
 
+        var previous = tenant.SubscriptionStatus;
         tenant.SubscriptionStatus = request.Status;
         await _context.SaveChangesAsync(cancellationToken);
 
         _schemaResolver.InvalidateCache(request.TenantId);
+
+        // Against the agency itself, so "who suspended this agency" has an answer on its own trail
+        // and on the platform's.
+        if (previous != request.Status)
+            await API.Features.Platform.PlatformAudit.LogAsync(_audit, _currentUser,
+                request.Status == TenantStatus.Active ? "ReactivateAgency" : "SuspendAgency",
+                tenant.Id, "Tenant", tenant.Id.ToString(),
+                new { From = previous.ToString(), To = request.Status.ToString() }, cancellationToken);
 
         return Result.Success();
     }

@@ -16,15 +16,18 @@ public class ToggleUserStatusHandler : IRequestHandler<ToggleUserStatusCommand, 
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly ICurrentUserService _currentUser;
+    private readonly IPlatformDbContext _db;
 
     public ToggleUserStatusHandler(
         UserManager<ApplicationUser> userManager,
         IRefreshTokenService refreshTokenService,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        IPlatformDbContext db)
     {
         _userManager = userManager;
         _refreshTokenService = refreshTokenService;
         _currentUser = currentUser;
+        _db = db;
     }
 
     public async Task<Result<bool>> Handle(ToggleUserStatusCommand request, CancellationToken cancellationToken)
@@ -40,6 +43,11 @@ public class ToggleUserStatusHandler : IRequestHandler<ToggleUserStatusCommand, 
         // Prevent self-lockout.
         if (_currentUser.UserId == user.Id.ToString())
             return Result<bool>.Failure("Cannot change your own account status", 400);
+
+        // Switching an account back on takes a seat, so it has to fit the agency's plan.
+        if (!user.IsActive && user.TenantId is Guid seatTenant
+            && await SeatLimit.RefusalForOneMoreAsync(_db, seatTenant, cancellationToken) is { } full)
+            return Result<bool>.Failure(full, 409);
 
         user.IsActive = !user.IsActive;
         await _userManager.UpdateAsync(user);

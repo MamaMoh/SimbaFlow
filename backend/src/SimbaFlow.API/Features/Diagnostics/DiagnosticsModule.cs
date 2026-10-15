@@ -19,7 +19,10 @@ public class DiagnosticsModule : ICarterModule
             IPlatformDbContext context,
             ICurrentUserService user) =>
         {
-            if (!user.IsSuperAdmin && !user.HasPermission("system.admin"))
+            // The support desk reads the error log too: it is where "it says something went wrong"
+            // gets an answer. Resolving stays with the administrators.
+            if (!user.IsSuperAdmin && !user.HasPermission("system.admin")
+                && !Domain.Services.PlatformRoles.IsStaff(user.Roles))
                 return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
 
             var q = context.ErrorEvents.AsNoTracking().Where(e => !e.IsDeleted);

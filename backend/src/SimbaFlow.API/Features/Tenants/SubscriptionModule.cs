@@ -36,9 +36,10 @@ public class SubscriptionModule : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
+        // The support desk can see where every agency stands; changing it is an administrator's.
         var admin = app.MapGroup("/api/subscriptions")
             .WithTags("Subscriptions")
-            .RequireAuthorization("SuperAdmin");
+            .RequireAuthorization("PlatformStaff");
 
         // ──── Where every agency stands ────
 
@@ -88,6 +89,8 @@ public class SubscriptionModule : ICarterModule
             IPlatformDbContext db,
             ITenantSchemaResolver schemas,
             SimbaFlow.Infrastructure.Persistence.ITenantLifecycleService lifecycle,
+            IAuditService audit,
+            ICurrentUserService currentUser,
             CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsDeleted, ct);
@@ -110,6 +113,7 @@ public class SubscriptionModule : ICarterModule
                 // Startup migrates active agencies only; one coming back from a suspension may be behind.
                 if (status == TenantStatus.Active && tenant.SubscriptionStatus != TenantStatus.Active)
                     await lifecycle.PrepareSchemaAsync(tenant.SchemaName, tenant.Id, ct);
+                if (status == TenantStatus.Active) tenant.AutoSuspendedAt = null;
                 tenant.SubscriptionStatus = status;
             }
 
@@ -140,8 +144,10 @@ public class SubscriptionModule : ICarterModule
             // and reactivating would leave them locked out just as long.
             schemas.InvalidateCache(tenantId);
 
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "UpdateSubscription", tenantId, "Tenant",
+                tenantId.ToString(), body, ct);
             return Results.Ok(new { isSuccess = true });
-        });
+        }).RequireAuthorization("SuperAdmin");
 
         // ──── Invoices ────
 
@@ -163,7 +169,8 @@ public class SubscriptionModule : ICarterModule
         });
 
         admin.MapPost("/{tenantId:guid}/invoices", async (
-            Guid tenantId, GenerateInvoiceBody body, IPlatformDbContext db, CancellationToken ct) =>
+            Guid tenantId, GenerateInvoiceBody body, IPlatformDbContext db,
+            IAuditService audit, ICurrentUserService currentUser, CancellationToken ct) =>
         {
             var tenant = await db.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId && !t.IsDeleted, ct);
             if (tenant is null)
@@ -241,11 +248,14 @@ public class SubscriptionModule : ICarterModule
                 }
             }
 
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "RaiseInvoice", tenantId, "Invoice",
+                invoice.Id.ToString(), new { invoice.Number, invoice.Amount, invoice.Currency }, ct);
             return Results.Ok(new { isSuccess = true, data = new { invoice.Id, invoice.Number } });
-        });
+        }).RequireAuthorization("SuperAdmin");
 
         admin.MapPost("/invoices/{invoiceId:guid}/paid", async (
-            Guid invoiceId, MarkPaidBody body, IPlatformDbContext db, CancellationToken ct) =>
+            Guid invoiceId, MarkPaidBody body, IPlatformDbContext db,
+            IAuditService audit, ICurrentUserService currentUser, CancellationToken ct) =>
         {
             var invoice = await db.SubscriptionInvoices
                 .FirstOrDefaultAsync(i => i.Id == invoiceId && !i.IsDeleted, ct);
@@ -272,11 +282,14 @@ public class SubscriptionModule : ICarterModule
             }
 
             await db.SaveChangesAsync(ct);
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "MarkInvoicePaid", invoice.TenantId, "Invoice",
+                invoice.Id.ToString(), new { invoice.Number, invoice.PaidOn, invoice.PaymentReference }, ct);
             return Results.Ok(new { isSuccess = true });
-        });
+        }).RequireAuthorization("SuperAdmin");
 
         admin.MapPost("/invoices/{invoiceId:guid}/void", async (
-            Guid invoiceId, IPlatformDbContext db, CancellationToken ct) =>
+            Guid invoiceId, IPlatformDbContext db,
+            IAuditService audit, ICurrentUserService currentUser, CancellationToken ct) =>
         {
             var invoice = await db.SubscriptionInvoices
                 .FirstOrDefaultAsync(i => i.Id == invoiceId && !i.IsDeleted, ct);
@@ -289,8 +302,10 @@ public class SubscriptionModule : ICarterModule
 
             invoice.Status = InvoiceStatus.Void;
             await db.SaveChangesAsync(ct);
+            await Platform.PlatformAudit.LogAsync(audit, currentUser, "VoidInvoice", invoice.TenantId, "Invoice",
+                invoice.Id.ToString(), new { invoice.Number }, ct);
             return Results.Ok(new { isSuccess = true });
-        });
+        }).RequireAuthorization("SuperAdmin");
 
         // ──── The agency's own view ────
         //

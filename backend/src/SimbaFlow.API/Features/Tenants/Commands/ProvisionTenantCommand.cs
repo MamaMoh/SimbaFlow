@@ -22,7 +22,8 @@ public record ProvisionTenantCommand(
     string AdminFirstName,
     string AdminLastName,
     string AdminEmail,
-    string TemporaryPassword,
+    // Optional: left empty, the owner is emailed a link to choose their own (AccountInvite).
+    string? TemporaryPassword,
     int AgencyLevel = 5,
     string? LicenseNumber = null,
     string? LicenseIssuedAt = null,
@@ -59,7 +60,8 @@ public class ProvisionTenantValidator : AbstractValidator<ProvisionTenantCommand
         RuleFor(x => x.AdminEmail).NotEmpty().EmailAddress();
         RuleFor(x => x.AdminFirstName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.AdminLastName).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.TemporaryPassword).NotEmpty().MinimumLength(8);
+        RuleFor(x => x.TemporaryPassword).MinimumLength(8)
+            .When(x => !string.IsNullOrEmpty(x.TemporaryPassword));
     }
 }
 
@@ -70,14 +72,17 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly ITenantLifecycleService _lifecycle;
     private readonly ILogger<ProvisionTenantHandler> _logger;
+    private readonly AccountInvite _invite;
 
     public ProvisionTenantHandler(
         IPlatformDbContext context,
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         ITenantLifecycleService lifecycle,
-        ILogger<ProvisionTenantHandler> logger)
+        ILogger<ProvisionTenantHandler> logger,
+        AccountInvite invite)
     {
+        _invite = invite;
         _context = context;
         _userManager = userManager;
         _roleManager = roleManager;
@@ -200,7 +205,10 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
             EmailConfirmed = true,
         };
 
-        var createResult = await _userManager.CreateAsync(adminUser, request.TemporaryPassword);
+        var password = string.IsNullOrEmpty(request.TemporaryPassword)
+            ? AccountInvite.UnusablePassword()
+            : request.TemporaryPassword;
+        var createResult = await _userManager.CreateAsync(adminUser, password);
         if (!createResult.Succeeded)
         {
             _context.Tenants.Remove(tenant);
@@ -214,6 +222,12 @@ public class ProvisionTenantHandler : IRequestHandler<ProvisionTenantCommand, Re
         {
             await _userManager.AddToRoleAsync(adminUser, "AgencyOwner");
         }
+
+        // The owner chooses their own password from the email. Sent whether or not a temporary
+        // one was given, so the platform admin never has to pass a password along by hand.
+        var invited = await _invite.SendAsync(adminUser, tenant.Name, cancellationToken);
+        if (!invited)
+            _logger.LogWarning("Welcome email to the owner of {TenantName} could not be sent", request.AgencyName);
 
         _logger.LogInformation(
             "Provisioned tenant {TenantName} (schema: {Schema}, level {Level}) with admin {AdminEmail}",

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import useSWR from "swr";
 import { Building2, Banknote, Receipt, AlertTriangle } from "lucide-react";
 import { LoadError } from "@/components/ui/page-alert";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,6 +10,16 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useSubscriptions } from "@/lib/api/subscriptions";
 import { money } from "@/lib/billing/format";
+import { attentionReasons, type AgencyHealth } from "@/lib/platform/health";
+
+type AgencyHealthRow = AgencyHealth & { id: string; name: string };
+
+const healthFetcher = async (url: string): Promise<AgencyHealthRow[]> => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Could not load agencies");
+  const body = await res.json();
+  return Array.isArray(body?.data) ? body.data : [];
+};
 
 /**
  * What the person running the platform needs to see.
@@ -50,6 +61,17 @@ export function PlatformDashboard() {
   );
 
   const attentionCount = totals.overdue + totals.dueSoon;
+
+  // How agencies are using the system, from the Agencies list: idle ones, ones at their user
+  // limit, licences running out and open help requests.
+  const { data: agencies } = useSWR("/api/proxy/tenants", healthFetcher, { revalidateOnFocus: false });
+  const struggling = useMemo(
+    () =>
+      (agencies ?? [])
+        .map((a) => ({ ...a, reasons: attentionReasons(a) }))
+        .filter((a) => a.reasons.length > 0),
+    [agencies],
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -114,6 +136,26 @@ export function PlatformDashboard() {
           isLoading={isLoading}
         />
       </div>
+
+      {struggling.length > 0 && (
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="border-b px-4 py-3">
+            <h2 className="text-sm font-semibold">Agencies that may need help</h2>
+          </div>
+          {struggling.map((a) => (
+            <Link
+              key={a.id}
+              href="/tenants"
+              className="flex items-center gap-3 border-b px-4 py-3 text-sm transition last:border-0 hover:bg-muted/40"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{a.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{a.reasons.join(" · ")}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {!isLoading && totals.agencies === 0 ? (
         <div className="rounded-lg border border-dashed p-10 text-center">

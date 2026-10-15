@@ -54,8 +54,20 @@ public class TenantInfo : BaseEntity
     /// </summary>
     public DateOnly? NextPaymentDue { get; set; }
 
-    /// <summary>Maximum number of user accounts allowed for this tenant.</summary>
+    /// <summary>
+    /// Maximum number of active user accounts allowed for this tenant. Creating or re-enabling an
+    /// account past it is refused; disabled accounts do not count.
+    /// </summary>
     public int MaxUsers { get; set; } = 50;
+
+    /// <summary>The last renewal email sent to the owner, for the due date in <see cref="LastRenewalReminderFor"/>.</summary>
+    public Services.RenewalReminder? LastRenewalReminder { get; set; }
+
+    /// <summary>The due date <see cref="LastRenewalReminder"/> was about; a new due date starts the sequence again.</summary>
+    public DateOnly? LastRenewalReminderFor { get; set; }
+
+    /// <summary>When the agency was suspended automatically for non-payment. Cleared when it is reactivated.</summary>
+    public DateTime? AutoSuspendedAt { get; set; }
 
     /// <summary>When the tenant was provisioned (schema created).</summary>
     public DateTime ProvisionedAt { get; set; } = DateTime.UtcNow;
