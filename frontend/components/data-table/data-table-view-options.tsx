@@ -1,4 +1,4 @@
-import { type Table } from "@tanstack/react-table";
+import { type Column, type Table } from "@tanstack/react-table";
 import { toSentenceCase } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,36 @@ import {
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import type { TableLayout } from "@/lib/data-table/use-table-layout";
+
+/**
+ * What the table calls this column.
+ *
+ * The menu used to print the column's id put through sentence case, which on these boards gave
+ * "Contact Person2" and "Works In" for headings that read "Contact person (2nd)" and "Worked
+ * in". That was tolerable while this was a list of tick boxes; it is not while it is the list
+ * somebody arranges their table from, because the two have to be recognisably the same thing.
+ *
+ * Every heading here is `<DataTableColumnHeader title="…" />`, so building the element and
+ * reading its title gives the real wording. Building an element does not run the component —
+ * nothing is rendered and no hook is called. A column whose heading is shaped some other way
+ * falls back to the id, and anything that throws does too.
+ */
+function headingOf<TData>(column: Column<TData, unknown>, table: Table<TData>): string {
+  const header = column.columnDef.header;
+  if (typeof header === "string" && header.trim()) return header;
+
+  if (typeof header === "function") {
+    try {
+      const element: any = (header as any)({ column, table, header: undefined });
+      const title = element?.props?.title;
+      if (typeof title === "string" && title.trim()) return title;
+    } catch {
+      // Falls through to the id.
+    }
+  }
+
+  return toSentenceCase(column.id);
+}
 
 interface DataTableViewOptionsProps<TData> {
   table: Table<TData>;
@@ -91,6 +121,7 @@ export function DataTableViewOptions<TData>({
             const isOnlyVisible = column.getIsVisible() && visibleColumnsCount === 1;
             const place = movable.findIndex((c) => c.id === column.id);
             const canMove = layout && place >= 0;
+            const heading = headingOf(column, table);
 
             return (
               // Not a DropdownMenuCheckboxItem: that closes the menu on every click, and
@@ -107,9 +138,10 @@ export function DataTableViewOptions<TData>({
                 />
                 <label
                   htmlFor={`col-${column.id}`}
-                  className="flex-1 cursor-pointer truncate text-sm capitalize"
+                  className="flex-1 cursor-pointer truncate text-sm"
+                  title={heading}
                 >
-                  {toSentenceCase(column.id)}
+                  {heading}
                 </label>
 
                 {canMove && (
@@ -119,7 +151,7 @@ export function DataTableViewOptions<TData>({
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
-                      aria-label={`Move ${toSentenceCase(column.id)} left`}
+                      aria-label={`Move ${heading} left`}
                       disabled={place === 0}
                       onClick={() => layout.moveColumn(column.id, -1)}
                     >
@@ -130,7 +162,7 @@ export function DataTableViewOptions<TData>({
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
-                      aria-label={`Move ${toSentenceCase(column.id)} right`}
+                      aria-label={`Move ${heading} right`}
                       disabled={place === movable.length - 1}
                       onClick={() => layout.moveColumn(column.id, 1)}
                     >
