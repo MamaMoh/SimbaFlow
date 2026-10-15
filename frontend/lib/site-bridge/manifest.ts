@@ -159,6 +159,24 @@ export type WriteField = {
   keepTheirs?: boolean;
 };
 
+/**
+ * A value printed under a heading rather than beside a label.
+ *
+ * The contract-parties block on the portal prints "EMPLOYER INFO" and then the employer's name
+ * on the next line, with nothing joining the two — the labelled fields start underneath. There
+ * is no label to match, so the heading is named instead and the line under it is the value.
+ *
+ * Deliberately narrow. Only a heading this file names is read this way: a page of bare lines
+ * gives nothing to tell a heading from a value, and guessing there would invent fields out of
+ * people's names.
+ */
+export type LeadField = {
+  /** The heading, printed as the portal prints it. Matched case-insensitively, on its own line. */
+  after: string;
+  key: FieldKey;
+  kind?: ValueKind;
+};
+
 export type SiteManifest = {
   id: string;
   /** Shown to the person choosing what they are pasting or filling. */
@@ -171,6 +189,8 @@ export type SiteManifest = {
   hosts: string[];
   direction: "read" | "write";
   fields: (ReadField | WriteField)[];
+  /** Values that sit under a heading rather than beside a label. Read-direction only. */
+  leads?: LeadField[];
   /**
    * For a form that is filled repeatedly before being submitted once — the insurance form adds
    * one insured member at a time. Names the button that banks a row, which is as far as we go:
@@ -231,7 +251,7 @@ export const EPRO_CANDIDATE: SiteManifest = {
  */
 export const EPRO_SPONSOR: SiteManifest = {
   id: "epro-sponsor",
-  title: "EPRO — contract parties",
+  title: "Musaned — contract parties",
   hosts: [],
   direction: "read",
   fields: [
@@ -239,7 +259,10 @@ export const EPRO_SPONSOR: SiteManifest = {
     { label: "Visa Number", key: "visaNumber" },
     { label: "Mobile Number", key: "sponsorPhone", kind: "phone" },
   ],
-  note: "The employer's name sits above the labels rather than beside one, so it is picked separately.",
+  // The employer's name is printed under the heading rather than beside a label, which is why
+  // it is read as a lead and not as a field. It is the one thing on this block somebody would
+  // otherwise have to retype, and it is the box the enjaze form calls Sponsor Name.
+  leads: [{ after: "Employer Info", key: "sponsorName" }],
 };
 
 /**

@@ -317,3 +317,56 @@ test("a bare word in prose is not a label", () => {
   );
   assert.equal(found.length, 0);
 });
+
+test("the employer's name is read from under its heading", () => {
+  // The contract block as the portal prints it: a heading, the employer's name on the next
+  // line with no label joining them, and the labelled fields underneath. Every value below is
+  // invented.
+  const block = [
+    "Contract parties",
+    "EMPLOYER INFO",
+    "SAMPLE EMPLOYER NAME",
+    "LOCATION:",
+    "شارع الملك فهد، حي النزهة",
+    "VISA NUMBER:",
+    "1900000001",
+    "MOBILE NUMBER:",
+    "966500000000",
+  ].join("\n");
+
+  const { values } = readFromText(block, EPRO_SPONSOR);
+
+  assert.equal(values.sponsorName, "SAMPLE EMPLOYER NAME");
+  assert.equal(values.visaNumber, "1900000001");
+  assert.equal(values.sponsorPhone, "966500000000");
+  assert.equal(values.sponsorAddress, "شارع الملك فهد، حي النزهة");
+});
+
+test("a heading with a label straight under it has no name of its own", () => {
+  // The portal prints the block without the employer named. Reading "Location" as somebody's
+  // name would put a word into a visa application that nobody typed.
+  const block = "EMPLOYER INFO\nLOCATION:\nRiyadh\n";
+  const { values } = readFromText(block, EPRO_SPONSOR);
+
+  assert.equal(values.sponsorName, undefined);
+  assert.equal(values.sponsorAddress, "Riyadh");
+});
+
+test("the contract block beats the candidate page on a paste of the contract block", () => {
+  // Mobile Number is a label on both maps. Whichever recognises more of the page wins, and
+  // the employer's name is part of that count.
+  const block = [
+    "EMPLOYER INFO",
+    "SAMPLE EMPLOYER NAME",
+    "LOCATION:",
+    "Riyadh",
+    "VISA NUMBER:",
+    "1900000001",
+    "MOBILE NUMBER:",
+    "966500000000",
+  ].join("\n");
+
+  const best = bestRead(block, [EPRO_CANDIDATE, EPRO_SPONSOR]);
+  assert.equal(best?.manifest.id, "epro-sponsor");
+  assert.equal(best?.result.values.sponsorName, "SAMPLE EMPLOYER NAME");
+});

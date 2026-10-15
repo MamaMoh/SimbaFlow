@@ -246,6 +246,25 @@ export type VisaDetails = {
 /** One thing the enjaze form is waiting for: what to call it, and what to send it as. */
 export type VisaFormGapField = { key: string; label: string };
 
+/**
+ * The employer half of the contract page, as four boxes.
+ *
+ * These are what the portal prints together under "Contract parties": the employer, where the
+ * candidate is going, the visa the contract is against and the number somebody will ring. They
+ * are offered as a set rather than as whatever happens to be missing, because they are pasted
+ * as a set — and because correcting a sponsor's phone number that is already on file is a
+ * thing the desk does, which a list of gaps would never offer.
+ *
+ * The keys are the ones `setVisaDetails` takes and the ones the portal maps read into, so a
+ * pasted value reaches the right box without translation.
+ */
+export const CONTRACT_PARTY_FIELDS: VisaFormGapField[] = [
+  { key: "sponsorName", label: "Employer (sponsor) name" },
+  { key: "sponsorAddress", label: "Location in KSA" },
+  { key: "visaNumber", label: "Visa number" },
+  { key: "sponsorPhone", label: "Mobile number" },
+];
+
 export type VisaFormGap = {
   id: string;
   fullName: string;

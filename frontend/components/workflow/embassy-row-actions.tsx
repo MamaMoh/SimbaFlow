@@ -14,6 +14,8 @@ import { WorkflowActionItems } from "@/components/workflow/workflow-action-items
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { embassyApi, type EmbassyBoardRow } from "@/lib/api/embassy";
+import { CONTRACT_PARTY_FIELDS } from "@/lib/api/candidates";
+import { useVisaDetails } from "@/components/workflow/visa-details-host";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { toast } from "sonner";
@@ -22,6 +24,7 @@ import {
   CircleSlash,
   CalendarClock,
   ClipboardCheck,
+  ClipboardPaste,
   Eye,
   MoreHorizontal,
   Pencil,
@@ -64,6 +67,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
   const canRead = hasPermission("candidate.read");
   const canEditCandidate = hasPermission("candidate.update");
   const { actions, mutate: mutateActions } = useAvailableActions(candidate.id, stageId);
+  const askForVisaDetails = useVisaDetails();
 
   const [mode, setMode] = useState<Mode>(null);
   const medical = candidate.statusValues?.medical ?? "";
@@ -126,6 +130,40 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
             candidateId={candidate.id}
             visaFormMissing={candidate.visaFormMissing}
           />
+          {/*
+            The employer block off the portal, into the record, without opening the candidate.
+
+            This is the one piece of typing the embassy desk does out of another tab: the
+            employer's name, the address the candidate is going to, the visa number and a
+            mobile, printed together under "Contract parties" and retyped one box at a time.
+            The dialog this opens takes the whole block pasted at once.
+
+            Offered whatever is already on file, rather than only when something is missing. A
+            sponsor's number that changed is the ordinary case, and a list of gaps would never
+            have offered it.
+          */}
+          {canEditCandidate && (
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                askForVisaDetails({
+                  gaps: [
+                    {
+                      id: candidate.id,
+                      fullName: candidate.fullName,
+                      fields: CONTRACT_PARTY_FIELDS,
+                    },
+                  ],
+                  requireAll: false,
+                  onFilled: refresh,
+                  onCancelled: refresh,
+                });
+              }}
+            >
+              <ClipboardPaste className="mr-2 h-4 w-4" />
+              Contract parties (paste)
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <MoveBackStageItem
             candidateId={candidate.id}

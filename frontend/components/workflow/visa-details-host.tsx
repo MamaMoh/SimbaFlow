@@ -10,6 +10,15 @@ type Ask = {
   onFilled: () => void;
   /** Saved without printing — let whoever asked drop its spinner. */
   onCancelled?: () => void;
+  /**
+   * Whether every box has to be filled before it will save.
+   *
+   * True when something is waiting on these — a form that cannot print without them, which is
+   * why the dialog opened. False when somebody opened it themselves to put a value right: the
+   * contract page off the portal carries four of these and sometimes three, and refusing to
+   * save three because the fourth was not printed is refusing the typing that was done.
+   */
+  requireAll?: boolean;
 };
 
 const AskForVisaDetails = createContext<(ask: Ask) => void>(() => {});
@@ -57,6 +66,7 @@ export function VisaDetailsHost({ children }: { children: React.ReactNode }) {
       <VisaDetailsDialog
         open={open}
         gaps={ask?.gaps ?? []}
+        requireAll={ask?.requireAll ?? true}
         onOpenChange={(next) => {
           if (!next) dismiss();
         }}

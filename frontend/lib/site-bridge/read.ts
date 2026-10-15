@@ -1,6 +1,7 @@
 import { splitFullName, splitGivenNames } from "./names";
 import {
   type FieldKey,
+  type LeadField,
   type ReadField,
   type SiteManifest,
   type ValueKind,
@@ -211,6 +212,31 @@ function expand(key: FieldKey, value: string, into: Partial<Record<FieldKey, str
   into[key] = value;
 }
 
+/**
+ * The line under a heading, when that is where the portal prints a value.
+ *
+ * Bounded by the first label that follows the heading: on the contract block the employer's
+ * name sits between "EMPLOYER INFO" and "LOCATION:", and a heading with nothing but labels
+ * under it has no value of its own. A line that is itself a label is not a value either, which
+ * is what stops a heading printed directly above "Location:" from reading the word "Location"
+ * as somebody's name.
+ */
+function readLead(source: string, lead: LeadField, firstLabelAt: (from: number) => number):
+  string | null {
+  const heading = new RegExp(
+    `(?:^|\n)[ \t]*${escape(lead.after).replace(/\s+/g, "[ \t]+")}[ \t]*(?=\n|$)`,
+    "i",
+  );
+  const found = heading.exec(source);
+  if (!found) return null;
+
+  const start = found.index + found[0].length;
+  const until = firstLabelAt(start);
+  const line = firstLine(source.slice(start, until));
+  if (!line || /:\s*$/.test(line)) return null;
+  return line;
+}
+
 export function readFromText(text: string, manifest: SiteManifest): ReadResult {
   const fields = manifest.fields as ReadField[];
   const source = text.replace(/\r\n?/g, "\n").replace(/ /g, " ");
@@ -240,9 +266,23 @@ export function readFromText(text: string, manifest: SiteManifest): ReadResult {
     found.push({ key: hit.field.key, label: hit.field.label, value });
   });
 
-  const missing = fields
-    .filter((f) => !seen.has(f.key))
-    .map((f) => ({ key: f.key, label: f.label }));
+  for (const lead of manifest.leads ?? []) {
+    if (seen.has(lead.key)) continue;
+    const raw = readLead(source, lead, (from) =>
+      hits.find((h) => h.start >= from)?.start ?? source.length,
+    );
+    if (!raw) continue;
+    const value = normalise(raw, lead.kind);
+    if (!value) continue;
+    seen.add(lead.key);
+    expand(lead.key, value, values);
+    found.push({ key: lead.key, label: lead.after, value });
+  }
+
+  const missing = [
+    ...fields.map((f) => ({ key: f.key, label: f.label })),
+    ...(manifest.leads ?? []).map((l) => ({ key: l.key, label: l.after })),
+  ].filter((f) => !seen.has(f.key));
 
   return { values, found, missing, unrecognised };
 }
