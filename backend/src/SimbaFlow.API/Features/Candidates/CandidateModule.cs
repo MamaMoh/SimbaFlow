@@ -22,11 +22,12 @@ public class CandidateModule : ICarterModule
             Guid? stageId, string? countryOfTravel, string? status,
             int? minAge, int? maxAge,
             Guid? partnerAgencyId, string? occupation,
+            string? filters,
             ISender sender) =>
         {
             var query = new GetCandidatesQuery(
                 page ?? 1, pageSize ?? 20, search, stageId, countryOfTravel, status,
-                minAge, maxAge, partnerAgencyId, occupation);
+                minAge, maxAge, partnerAgencyId, occupation, filters);
             var result = await sender.Send(query);
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });

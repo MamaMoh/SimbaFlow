@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SimbaFlow.Application.Common.Filtering;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Candidates;
@@ -16,7 +17,10 @@ public record GetCandidatesQuery(
     int? MinAge = null,
     int? MaxAge = null,
     Guid? PartnerAgencyId = null,
-    string? Occupation = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
+    string? Occupation = null,
+    // The filter row under the headings, as it arrived: still a string, because what may be
+    // filtered is this board's business and not the endpoint's.
+    string? Filters = null) : IRequest<Result<PaginatedCandidateResult>>, IRequirePermission
 {
     public string RequiredPermission => "candidate.read";
 }
@@ -139,6 +143,10 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
             query = query.Where(c => c.Occupation == request.Occupation);
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        // The filter row. Only the columns listed below can be filtered at all; anything else
+        // that arrives is dropped before it reaches the database.
+        query = CandidateFilters.For(today).Apply(query, TableFilters.Parse(request.Filters));
 
         // Age is asked for as a range of years and held as a date of birth, so the range is
         // turned into dates rather than the date of birth into an age: an age computed per row

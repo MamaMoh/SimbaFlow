@@ -15,6 +15,14 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Inbox, X } from "lucide-react";
 import type { TableLayout } from "@/lib/data-table/use-table-layout";
+import {
+  filterFor,
+  withFilter,
+  type ColumnFilter,
+  type ColumnFilterSpec,
+} from "@/lib/data-table/column-filters";
+import { ColumnFilterCell } from "@/components/data-table/column-filter-cell";
+import { headingOf } from "@/components/data-table/column-heading";
 
 /**
  * The actions column, pinned to the right edge.
@@ -153,6 +161,15 @@ export interface DataTableProps<TData, TValue> {
    * Set false where the rows are already narrowed by something else.
    */
   columnFilters?: boolean;
+  /**
+   * The filter row's current state, when this board filters in the database.
+   *
+   * Supplied together: without `onFiltersChange` there is nothing to do with a change, so the
+   * funnels are not drawn at all and the row falls back to the boxes that narrow what is
+   * already on screen.
+   */
+  filters?: ColumnFilter[];
+  onFiltersChange?: (next: ColumnFilter[]) => void;
   /** Message shown inside the table body when there are no rows. */
   emptyMessage?: string;
   /** Full custom empty-state node (overrides emptyMessage). */
@@ -189,7 +206,11 @@ export function DataTable<TData, TValue>(
     emptyMessage = "No records to display yet.",
     emptyState,
     layout,
+    filters,
+    onFiltersChange,
   } = props;
+
+  const serverFiltered = !!filters && !!onFiltersChange;
 
   // Which heading is under the pointer mid-drag, so the gap opens where it will land. Held
   // here rather than in the layout: it is about this drag, not about what gets remembered.
@@ -300,38 +321,58 @@ export function DataTable<TData, TValue>(
                 question, and it was being answered by exporting to Excel. */}
             {columnFilters ? (
               <TableRow className="hover:bg-transparent">
-                {table.getVisibleLeafColumns().map((column: any) => (
-                  <th
-                    key={column.id}
-                    className={cn(
-                      "bg-muted/30 p-1 align-middle",
-                      column.id === "actions" && PINNED
-                    )}
-                  >
-                    {column.getCanFilter() ? (
-                      <div className="relative">
-                        <Input
-                          value={(column.getFilterValue() as string) ?? ""}
-                          onChange={(e) =>
-                            column.setFilterValue(e.target.value || undefined)
-                          }
-                          aria-label={`Filter ${column.id}`}
-                          className="h-7 w-full min-w-[80px] bg-background px-2 pr-6 text-xs shadow-none"
-                        />
-                        {column.getFilterValue() ? (
-                          <button
-                            type="button"
-                            aria-label={`Clear ${column.id} filter`}
-                            onClick={() => column.setFilterValue(undefined)}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </th>
-                ))}
+                {table.getVisibleLeafColumns().map((column: any) => {
+                  const spec: ColumnFilterSpec | undefined =
+                    column.columnDef.meta?.filter;
+
+                  return (
+                    <th
+                      key={column.id}
+                      className={cn(
+                        "bg-muted/30 p-1 align-middle",
+                        column.id === "actions" && PINNED
+                      )}
+                    >
+                      {/* A funnel where the server will answer, and nothing where it will not.
+                          A column with no field behind it used to get a box that narrowed the
+                          page in the browser, which on a paginated board answers a different
+                          question from the one being asked. */}
+                      {serverFiltered ? (
+                        spec ? (
+                          <ColumnFilterCell
+                            spec={spec}
+                            heading={headingOf(column, table)}
+                            value={filterFor(filters!, spec.field)}
+                            onChange={(next) =>
+                              onFiltersChange!(withFilter(filters!, spec.field, next))
+                            }
+                          />
+                        ) : null
+                      ) : column.getCanFilter() ? (
+                        <div className="relative">
+                          <Input
+                            value={(column.getFilterValue() as string) ?? ""}
+                            onChange={(e) =>
+                              column.setFilterValue(e.target.value || undefined)
+                            }
+                            aria-label={`Filter ${column.id}`}
+                            className="h-7 w-full min-w-[80px] bg-background px-2 pr-6 text-xs shadow-none"
+                          />
+                          {column.getFilterValue() ? (
+                            <button
+                              type="button"
+                              aria-label={`Clear ${column.id} filter`}
+                              onClick={() => column.setFilterValue(undefined)}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </th>
+                  );
+                })}
               </TableRow>
             ) : null}
           </TableHeader>

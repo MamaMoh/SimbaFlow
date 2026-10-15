@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { toQueryParam, type ColumnFilter } from "@/lib/data-table/column-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
@@ -69,53 +70,6 @@ interface CandidateRow {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-/**
- * One dropdown that narrows the list in the database.
- *
- * Hidden entirely when there is nothing to choose between — a Partner filter offering one
- * partner, or none, is a control that cannot change the answer. The counts come from the
- * database, so "Saudi Arabia 412" is the number of candidates there are, not the number on
- * this page.
- */
-function DbFilter({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-  options: { value: string; label: string; count: number }[];
-}) {
-  if (options.length < 2) return null;
-
-  const chosen = options.find((o) => o.value === value);
-
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger
-        size="sm"
-        aria-label={`Filter by ${label.toLowerCase()}`}
-        className={
-          "h-8 w-[150px] text-xs " + (value !== "all" ? "border-green-800 bg-green-50" : "")
-        }
-      >
-        <SelectValue placeholder={label}>{chosen ? chosen.label : label}</SelectValue>
-      </SelectTrigger>
-      <SelectContent className="max-h-[320px]">
-        <SelectItem value="all">All {label.toLowerCase()}s</SelectItem>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-            <span className="ml-1.5 text-muted-foreground">{o.count}</span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
 export default function CandidatesPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canRead =
@@ -130,14 +84,14 @@ export default function CandidatesPage() {
   // What the API was last asked for. The box updates on every keystroke; this follows a beat
   // later, so typing a name is one request rather than one per letter.
   const [search, setSearch] = useState("");
-  const [ageRange, setAgeRange] = useState<{ min: string; max: string }>({ min: "", max: "" });
   const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
-  // Stage, destination, partner and occupation all narrow the query rather than the rows the
-  // browser is holding. "all" means the filter is off, and is never sent.
+  // The stage chips above the table narrow the query rather than the rows the browser is
+  // holding. "all" means the chip is off, and is never sent.
   const [stageFilter, setStageFilter] = useState<string>("all");
-  const [countryFilter, setCountryFilter] = useState<string>("all");
-  const [partnerFilter, setPartnerFilter] = useState<string>("all");
-  const [occupationFilter, setOccupationFilter] = useState<string>("all");
+  // The filter row under the headings. Destination, partner, occupation and age used to be
+  // controls in the toolbar; they are funnels on their own columns now, which is both fewer
+  // places to look and every column rather than the four somebody picked in advance.
+  const [columnFilters, setColumnFilters] = useState<ColumnFilter[]>([]);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -156,6 +110,10 @@ export default function CandidatesPage() {
     return () => clearTimeout(timer);
   }, [globalFilter]);
 
+  // Only the finished ones travel. A "greater than" with an empty box is the ordinary state
+  // while somebody is still typing, and it should leave the list alone rather than empty it.
+  const filterParam = useMemo(() => toQueryParam(columnFilters), [columnFilters]);
+
   /**
    * The list, narrowed by the database rather than by the browser.
    *
@@ -169,18 +127,8 @@ export default function CandidatesPage() {
       ? `/api/proxy/candidates?page=1&pageSize=200` +
         (search ? `&search=${encodeURIComponent(search)}` : "") +
         (statusFilter !== "active" ? `&status=${statusFilter}` : "") +
-        (ageRange.min ? `&minAge=${encodeURIComponent(ageRange.min)}` : "") +
-        (ageRange.max ? `&maxAge=${encodeURIComponent(ageRange.max)}` : "") +
         (stageFilter !== "all" ? `&stageId=${encodeURIComponent(stageFilter)}` : "") +
-        (countryFilter !== "all"
-          ? `&countryOfTravel=${encodeURIComponent(countryFilter)}`
-          : "") +
-        (partnerFilter !== "all"
-          ? `&partnerAgencyId=${encodeURIComponent(partnerFilter)}`
-          : "") +
-        (occupationFilter !== "all"
-          ? `&occupation=${encodeURIComponent(occupationFilter)}`
-          : "")
+        (filterParam ? `&filters=${encodeURIComponent(filterParam)}` : "")
       : null,
     fetcher,
     { revalidateOnFocus: false, keepPreviousData: true }
@@ -291,6 +239,7 @@ export default function CandidatesPage() {
       },
       {
         accessorKey: "fullName",
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -298,18 +247,21 @@ export default function CandidatesPage() {
       },
       {
         accessorKey: "registeredAt",
+        meta: { filter: { field: "registeredAt", kind: "date" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
         cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString(),
       },
       ...identityColumns<CandidateRow>(),
       {
         accessorKey: "age",
+        meta: { filter: { field: "age", kind: "number" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Age" />,
         cell: ({ getValue }) => getValue() ?? "—",
         size: 50,
       },
       {
         accessorKey: "phoneNumber",
+        meta: { filter: { field: "phoneNumber", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
@@ -317,6 +269,7 @@ export default function CandidatesPage() {
         // The person to ring when the candidate herself cannot be reached, which is what the
         // desk means by "contact" — the column that used to carry that name was her own number.
         id: "contactPerson2",
+        meta: { filter: { field: "contactPerson2", kind: "text" } },
         accessorFn: (row) =>
           [row.contactPerson2, row.contactPhone2].filter(Boolean).join(" · "),
         header: ({ column }) => (
@@ -338,11 +291,13 @@ export default function CandidatesPage() {
       },
       {
         accessorKey: "occupation",
+        meta: { filter: { field: "occupation", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Occupation" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "experienceAbroadYears",
+        meta: { filter: { field: "experienceAbroadYears", kind: "number" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Experience" />,
         cell: ({ getValue }) => {
           const years = getValue() as number | null | undefined;
@@ -353,26 +308,31 @@ export default function CandidatesPage() {
       },
       {
         accessorKey: "worksIn",
+        meta: { filter: { field: "worksIn", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Worked in" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "sponsorName",
+        meta: { filter: { field: "sponsorName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Sponsor" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "visaNumber",
+        meta: { filter: { field: "visaNumber", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Visa No." />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "agentName",
+        meta: { filter: { field: "agentName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Agent" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "partnerName",
+        meta: { filter: { field: "partnerName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
@@ -582,6 +542,8 @@ export default function CandidatesPage() {
         exportFileName="candidates"
           table={table}
           layout={layout}
+          filters={columnFilters}
+          onFiltersChange={setColumnFilters}
           emptyMessage="No candidates yet — register a candidate to start the pipeline."
           enableGlobalFilter={true}
           searchPlaceholder="Search candidates..."

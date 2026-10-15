@@ -20,6 +20,7 @@ export function identityColumns<T>(): ColumnDef<T>[] {
 export function passportColumn<T>(): ColumnDef<T> {
   return {
     accessorKey: "passportNumber",
+    meta: { filter: { field: "passportNumber", kind: "text" } },
     header: ({ column }) => <DataTableColumnHeader column={column} title="Passport" />,
     cell: ({ getValue }) => (
       <span className="whitespace-nowrap tabular-nums">{(getValue() as string) || "—"}</span>
@@ -30,6 +31,7 @@ export function passportColumn<T>(): ColumnDef<T> {
 export function labourIdColumn<T>(): ColumnDef<T> {
   return {
     accessorKey: "labourId",
+    meta: { filter: { field: "labourId", kind: "text" } },
     header: ({ column }) => <DataTableColumnHeader column={column} title="Labour ID" />,
     // Em dash rather than blank: most candidates have no labour ID until the Ministry issues
     // one, and an empty cell reads as a column that is broken rather than as a number not yet
