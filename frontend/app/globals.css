@@ -197,16 +197,18 @@
    * One number sets the density of the whole app.
    *
    * Every size in Tailwind is in rem, so the root size is not only the text: padding, row
-   * heights, gaps and icon boxes all come down with it. At 15px a board fits about one more
-   * column and two more rows in the same window than it did at the browser's 16px, which is
-   * what the desks were asking for — they work on a wide list and were scrolling for things
-   * that should have been on screen.
+   * heights, gaps and icon boxes all come down with it. Against the browser's own 16px this
+   * gains a board roughly two columns and three rows in the same window, and brings the whole
+   * of the navigation on screen at once — the desks work on wide lists and were scrolling for
+   * things that should have been in front of them.
    *
-   * Not smaller than this on purpose. What is read off these screens is passport and visa
-   * numbers, often from a pace away, and a misread digit is a rejected application.
+   * Chosen by looking at it: 16, 15, 14 and 13 side by side on the real boards, and 13 is what
+   * the agency picked. It is as small as this should go. What is read off these screens is
+   * passport and visa numbers, often from a pace away, and a misread digit is a rejected
+   * application — so anything below this trades a real risk for space.
    */
   html {
-    font-size: 15px;
+    font-size: 13px;
   }
 
   body {
