@@ -19,6 +19,33 @@ public class AccountingModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        group.MapGet("/journals", async (
+            DateOnly? from, DateOnly? to, string? sourceType, string? search, int? page, int? pageSize,
+            ISender sender) =>
+        {
+            var result = await sender.Send(new GetJournalEntriesQuery(
+                from, to, sourceType, search, page ?? 1, pageSize ?? 50));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapGet("/reports/trial-balance", async (DateOnly? asOf, ISender sender) =>
+        {
+            var result = await sender.Send(new GetTrialBalanceQuery(asOf));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapGet("/reports/profit-and-loss", async (DateOnly? from, DateOnly? to, ISender sender) =>
+        {
+            var result = await sender.Send(new GetProfitAndLossQuery(from, to));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapGet("/reports/balance-sheet", async (DateOnly? asOf, ISender sender) =>
+        {
+            var result = await sender.Send(new GetBalanceSheetQuery(asOf));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapGet("/journals/{id:guid}", async (Guid id, ISender sender) =>
         {
             var result = await sender.Send(new GetJournalEntryByIdQuery(id));
