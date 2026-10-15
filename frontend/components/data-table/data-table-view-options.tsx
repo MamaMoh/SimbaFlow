@@ -90,10 +90,12 @@ export function DataTableViewOptions<TData>({
               aria-label="Toggle columns"
               variant="outline"
               size="sm"
-              // Was `hidden lg:flex`, which took the only way of arranging a table away from
-              // exactly the screen that needs it most — the narrower the window, the more it
-              // matters which six columns are on it.
-              className="ml-auto flex h-8"
+              // No `ml-auto`: that pushed this to the far end of the left-hand group, leaving a
+              // stretch of nothing between the search box and the button that belongs beside it.
+              // Was also `hidden lg:flex`, which took the only way of arranging a table away
+              // from exactly the screen that needs it most — the narrower the window, the more
+              // it matters which six columns are on it.
+              className="flex h-8"
             >
               <SlidersHorizontalIcon className="mr-2 h-4 w-4" />
               View

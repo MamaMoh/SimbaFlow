@@ -19,7 +19,7 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { DeleteDialog } from "@/components/ui/delete-dialog";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { toast } from "sonner";
-import { generateBulkCandidateCvs, generateCandidateCv } from "@/lib/api/candidates";
+import { generateCandidateCv } from "@/lib/api/candidates";
 import { CandidateListActions } from "@/components/candidates/candidate-list-actions";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Files, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import { PageHeader } from "@/components/ui/page-header";
@@ -146,7 +146,6 @@ export default function CandidatesPage() {
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [generatingCvId, setGeneratingCvId] = useState<string | null>(null);
-  const [bulkGenerating, setBulkGenerating] = useState(false);
 
   useEffect(() => {
     // `?? ""` is load-bearing. An empty search box means "no filter" to TanStack, which it
@@ -243,27 +242,6 @@ export default function CandidatesPage() {
       setGeneratingCvId(null);
     }
   }, []);
-
-  const handleBulkGenerateCvs = async () => {
-    if (selectedIds.length === 0) {
-      toast.error("Select at least one candidate");
-      return;
-    }
-    if (selectedIds.length > 50) {
-      toast.error("Select at most 50 candidates at once");
-      return;
-    }
-    setBulkGenerating(true);
-    try {
-      saveFile(await generateBulkCandidateCvs(selectedIds));
-      toast.success(`Generated ${selectedIds.length} CV${selectedIds.length === 1 ? "" : "s"}`);
-      setRowSelection({});
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Bulk CV generation failed");
-    } finally {
-      setBulkGenerating(false);
-    }
-  };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -627,23 +605,6 @@ export default function CandidatesPage() {
                   </button>
                 ))}
               </div>
-              {/* Only while rows are ticked, so it is not part of the resting toolbar. */}
-              {selectedIds.length > 0 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 gap-1.5"
-                  disabled={bulkGenerating}
-                  onClick={handleBulkGenerateCvs}
-                >
-                  {bulkGenerating ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Files className="h-3.5 w-3.5" />
-                  )}
-                  Generate CVs ({selectedIds.length})
-                </Button>
-              ) : null}
             </div>
           }
           exportActions={
