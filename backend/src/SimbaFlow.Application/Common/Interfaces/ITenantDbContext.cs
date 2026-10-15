@@ -49,6 +49,7 @@ public interface ITenantDbContext
     DbSet<Account> Accounts { get; }
     DbSet<JournalEntry> JournalEntries { get; }
     DbSet<JournalLine> JournalLines { get; }
+    DbSet<Expense> Expenses { get; }
     DbSet<FinanceCounter> FinanceCounters { get; }
 
     // Tenant Roles

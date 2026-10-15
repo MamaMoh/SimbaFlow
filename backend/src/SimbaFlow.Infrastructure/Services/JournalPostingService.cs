@@ -12,6 +12,8 @@ public sealed class JournalPostingService : IJournalPostingService
     public const string SourceTypeCommissionFees = "CommissionFees";
     public const string SourceTypePaymentVoid = "CommissionPaymentVoid";
     public const string SourceTypeDisputeAdjustment = "DisputeAdjustment";
+    public const string SourceTypeExpense = "Expense";
+    public const string SourceTypeExpenseVoid = "ExpenseVoid";
 
     /// <summary>
     /// Payments posted before fees were accrued credited revenue directly. The backfill reverses

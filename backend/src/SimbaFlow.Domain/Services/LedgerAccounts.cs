@@ -21,6 +21,13 @@ public static class LedgerAccounts
     public const string CommissionRevenue = "4100";
     public const string OtherFeeRevenue = "4200";
     public const string FeeWaivers = "4900";
+    public const string Salaries = "5100";
+    public const string RentAndUtilities = "5200";
+    public const string TransportAndTravel = "5300";
+    public const string GovernmentFees = "5400";
+    public const string Marketing = "5500";
+    public const string OfficeSupplies = "5600";
+    public const string OtherExpenses = "5900";
 
     public static readonly IReadOnlyList<(string Code, string Name, AccountType Type)> SystemAccounts =
     [
@@ -33,6 +40,13 @@ public static class LedgerAccounts
         (CommissionRevenue, "Commission Revenue", AccountType.Revenue),
         (OtherFeeRevenue, "Other fee revenue", AccountType.Revenue),
         (FeeWaivers, "Fee waivers and adjustments", AccountType.Revenue),
+        (Salaries, "Salaries and wages", AccountType.Expense),
+        (RentAndUtilities, "Rent and utilities", AccountType.Expense),
+        (TransportAndTravel, "Transport and travel", AccountType.Expense),
+        (GovernmentFees, "Government and licence fees", AccountType.Expense),
+        (Marketing, "Marketing", AccountType.Expense),
+        (OfficeSupplies, "Office supplies", AccountType.Expense),
+        (OtherExpenses, "Other expenses", AccountType.Expense),
     ];
 
     /// <summary>The account a fee of this type is credited to when it is charged.</summary>
@@ -43,5 +57,20 @@ public static class LedgerAccounts
         FeeType.Medical => MedicalPayable,
         FeeType.Ticket => TicketPayable,
         _ => OtherFeeRevenue,
+    };
+
+    /// <summary>The account an expense of this category is debited to.</summary>
+    public static string ForExpense(ExpenseCategory category) => category switch
+    {
+        ExpenseCategory.MedicalPayout => MedicalPayable,
+        ExpenseCategory.TicketPayout => TicketPayable,
+        ExpenseCategory.PartnerPayout => PartnerSharePayable,
+        ExpenseCategory.Salaries => Salaries,
+        ExpenseCategory.RentAndUtilities => RentAndUtilities,
+        ExpenseCategory.TransportAndTravel => TransportAndTravel,
+        ExpenseCategory.GovernmentFees => GovernmentFees,
+        ExpenseCategory.Marketing => Marketing,
+        ExpenseCategory.OfficeSupplies => OfficeSupplies,
+        _ => OtherExpenses,
     };
 }

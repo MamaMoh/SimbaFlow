@@ -68,6 +68,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalLine> JournalLines => Set<JournalLine>();
+    public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<FinanceCounter> FinanceCounters => Set<FinanceCounter>();
 
     // Tenant Roles
@@ -368,6 +369,22 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.Property(l => l.Credit).HasPrecision(18, 2);
             entity.Property(l => l.Memo).HasMaxLength(512);
             entity.HasOne(l => l.Account).WithMany().HasForeignKey(l => l.AccountId);
+        });
+
+        modelBuilder.Entity<Expense>(entity =>
+        {
+            entity.ToTable("expenses");
+            entity.HasIndex(e => e.ExpenseDate)
+                .HasFilter("is_deleted = FALSE");
+            entity.HasIndex(e => e.CommissionId);
+            entity.Property(e => e.Description).HasMaxLength(512);
+            entity.Property(e => e.Payee).HasMaxLength(256);
+            entity.Property(e => e.Reference).HasMaxLength(256);
+            entity.Property(e => e.VoidReason).HasMaxLength(1000);
+            entity.Property(e => e.Currency).HasMaxLength(8);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.Property(e => e.AmountEtb).HasPrecision(18, 2);
+            entity.Property(e => e.ExchangeRateToEtb).HasPrecision(18, 8);
         });
 
         modelBuilder.Entity<FinanceCounter>(entity =>

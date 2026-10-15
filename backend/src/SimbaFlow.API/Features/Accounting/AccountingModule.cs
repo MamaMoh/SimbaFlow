@@ -33,6 +33,26 @@ public class AccountingModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        group.MapGet("/expenses", async (DateOnly? from, DateOnly? to, string? category, ISender sender) =>
+        {
+            var result = await sender.Send(new GetExpensesQuery(from, to, category));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapPost("/expenses", async (RecordExpenseRequest body, ISender sender) =>
+        {
+            var result = await sender.Send(new RecordExpenseCommand(
+                body.ExpenseDate, body.Category, body.Description, body.Amount, body.Currency,
+                body.Method, body.Payee, body.Reference, body.CommissionId));
+            return Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapPost("/expenses/{id:guid}/void", async (Guid id, VoidExpenseRequest body, ISender sender) =>
+        {
+            var result = await sender.Send(new VoidExpenseCommand(id, body.Reason));
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         group.MapPost("/rates", async (UpsertRateRequest body, ISender sender) =>
         {
             if (!DateOnly.TryParse(body.EffectiveDate, out var date))
@@ -53,3 +73,16 @@ public record UpsertRateRequest(
     decimal Rate,
     string EffectiveDate,
     string? Source);
+
+public record RecordExpenseRequest(
+    DateOnly ExpenseDate,
+    string Category,
+    string Description,
+    decimal Amount,
+    string? Currency,
+    string Method,
+    string? Payee,
+    string? Reference,
+    Guid? CommissionId);
+
+public record VoidExpenseRequest(string Reason);

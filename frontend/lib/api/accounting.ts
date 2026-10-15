@@ -126,7 +126,66 @@ export function useExchangeRates(params?: {
   };
 }
 
+export type ExpenseRow = {
+  id: string;
+  expenseDate: string;
+  category: string;
+  description: string;
+  payee: string | null;
+  amount: number;
+  currency: string;
+  exchangeRateToEtb: number;
+  amountEtb: number;
+  method: string;
+  reference: string | null;
+  commissionId: string | null;
+  journalEntryId: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+};
+
+export const EXPENSE_CATEGORIES: { value: string; label: string; payout?: boolean }[] = [
+  { value: "MedicalPayout", label: "Medical payout", payout: true },
+  { value: "TicketPayout", label: "Ticket payout", payout: true },
+  { value: "PartnerPayout", label: "Partner payout", payout: true },
+  { value: "Salaries", label: "Salaries and wages" },
+  { value: "RentAndUtilities", label: "Rent and utilities" },
+  { value: "TransportAndTravel", label: "Transport and travel" },
+  { value: "GovernmentFees", label: "Government and licence fees" },
+  { value: "Marketing", label: "Marketing" },
+  { value: "OfficeSupplies", label: "Office supplies" },
+  { value: "Other", label: "Other" },
+];
+
+const EMPTY_EXPENSES: ExpenseRow[] = [];
+
+export function useExpenses(params?: { from?: string; to?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  const key = `/api/proxy/accounting/expenses?${qs}`;
+  const { data, error, isLoading, mutate } = useSWR<ApiResult<ExpenseRow[]>>(key, fetcher, {
+    revalidateOnFocus: false,
+  });
+  return { expenses: data?.data ?? EMPTY_EXPENSES, isLoading, error, mutate };
+}
+
 export const accountingApi = {
+  recordExpense: (body: {
+    expenseDate: string;
+    category: string;
+    description: string;
+    amount: number;
+    currency: string;
+    method: string;
+    payee?: string;
+    reference?: string;
+    commissionId?: string;
+  }) => sendJson<string>("/api/proxy/accounting/expenses", "POST", body),
+
+  voidExpense: (id: string, reason: string) =>
+    sendJson<void>(`/api/proxy/accounting/expenses/${id}/void`, "POST", { reason }),
+
   upsertRate: (body: {
     fromCurrency: string;
     toCurrency: string;
