@@ -24,6 +24,7 @@ public interface ITenantDbContext
     DbSet<AgencyIntakeDefaults> AgencyIntakeDefaults { get; }
     DbSet<AgencySkill> AgencySkills { get; }
     DbSet<AgencyPortalAnswer> AgencyPortalAnswers { get; }
+    DbSet<Office> Offices { get; }
 
     // Workflow
     DbSet<WorkflowDefinition> WorkflowDefinitions { get; }

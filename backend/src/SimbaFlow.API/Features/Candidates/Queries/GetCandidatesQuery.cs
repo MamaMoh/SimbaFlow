@@ -408,6 +408,7 @@ public record CandidateDetailDto(
     string? RegisteredBy,
     IReadOnlyList<string> ExtraSkills,
     IReadOnlyList<CandidateWorkExperienceDto> WorkExperiences,
+    Guid? OfficeId,
     /// <summary>
     /// What the enjaze form is still waiting for, named the way the desk's own screens name it.
     /// Empty means it can be printed. Filled in by the handler, not by the projection.
@@ -468,7 +469,8 @@ public class GetCandidateByIdHandler : IRequestHandler<GetCandidateByIdQuery, Re
                     .Where(w => !w.IsDeleted)
                     .OrderBy(w => w.SortOrder)
                     .Select(w => new CandidateWorkExperienceDto(w.Country, w.Occupation, w.Years))
-                    .ToArray()))
+                    .ToArray(),
+                c.OfficeId))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (candidate is null) return Result<CandidateDetailDto>.Failure("Candidate not found", 404);
