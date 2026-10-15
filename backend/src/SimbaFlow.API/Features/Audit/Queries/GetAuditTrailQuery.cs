@@ -28,7 +28,8 @@ public record AuditTrailEntryDto(
     bool Success,
     string? IpAddress,
     string? UserAgent,
-    int? DurationMs);
+    int? DurationMs,
+    string? Details = null);
 
 public record AuditTrailOption(string Value, string Label);
 
@@ -145,7 +146,8 @@ public class GetAuditTrailHandler : IRequestHandler<GetAuditTrailQuery, Result<A
                 r.Success,
                 r.IpAddress,
                 r.UserAgent,
-                r.DurationMs);
+                r.DurationMs,
+                r.Details);
         }).ToList();
 
         var userOptions = people
@@ -176,6 +178,8 @@ public class GetAuditTrailHandler : IRequestHandler<GetAuditTrailQuery, Result<A
         public string? IpAddress { get; init; }
         public string? UserAgent { get; init; }
         public int? DurationMs { get; init; }
+        /// <summary>What was asked for, as recorded — secrets already blanked.</summary>
+        public string? Details { get; init; }
     }
 
     private IQueryable<Row> ChangeRows(Guid tenantId, DateTime? from, DateTime? to, bool failedOnly)
@@ -189,6 +193,7 @@ public class GetAuditTrailHandler : IRequestHandler<GetAuditTrailQuery, Result<A
             Id = a.Id, At = a.Timestamp, UserId = a.UserId, Action = a.Action,
             EntityType = a.EntityType, EntityId = a.EntityId, Success = a.Success,
             IpAddress = a.IpAddress, UserAgent = a.UserAgent, DurationMs = a.DurationMs,
+            Details = a.NewValues,
         });
     }
 
@@ -276,12 +281,25 @@ public static partial class AuditActionNames
         ["RaiseSupportRequest"] = "Asked the platform team for help",
         ["ReplySupportRequest"] = "Replied on a help request",
         ["CloseSupportRequest"] = "Closed a help request",
+        // Read from the Telegram bot.
+        ["BotCandidateSearch"] = "Looked up candidate in Telegram",
+        ["BotCandidateCv"] = "Got CV in Telegram",
+        ["BotStageList"] = "Listed a stage in Telegram",
+        ["BotOverdueList"] = "Listed overdue candidates in Telegram",
+        ["BotExpiringList"] = "Listed expiring passports in Telegram",
+        ["LoginCommand"] = "Signed in",
+        ["VerifyMfaCommand"] = "Signed in (second step)",
+        ["LogoutCommand"] = "Signed out",
     };
 
     public static string Describe(string action)
     {
         if (string.IsNullOrWhiteSpace(action)) return "Unknown action";
         if (Known.TryGetValue(action, out var known)) return known;
+
+        // Written by the catch-all for endpoints outside MediatR: "HTTP PUT /api/offices/{id}".
+        if (action.StartsWith(Middleware.WriteAuditMiddleware.ActionPrefix, StringComparison.Ordinal))
+            return DescribeRoute(action[Middleware.WriteAuditMiddleware.ActionPrefix.Length..]);
 
         var name = action;
         foreach (var suffix in new[] { "Command", "Query" })
@@ -294,6 +312,23 @@ public static partial class AuditActionNames
         // Acronyms stay as written (CV, LMIS); everything else after the first word is lowercase.
         return string.Join(' ', words.Select((w, i) =>
             i == 0 ? w : w.All(char.IsUpper) && w.Length > 1 ? w : w.ToLowerInvariant()));
+    }
+
+    private static string DescribeRoute(string methodAndRoute)
+    {
+        var parts = methodAndRoute.Split(' ', 2);
+        if (parts.Length < 2) return methodAndRoute;
+
+        var verb = parts[0] switch
+        {
+            "DELETE" => "Removed",
+            "PUT" or "PATCH" => "Changed",
+            _ => "Saved",
+        };
+        var words = parts[1].Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Where(s => s != "api" && !s.StartsWith('{'))
+            .Select(s => s.Replace('-', ' '));
+        return $"{verb} {string.Join(' ', words)}".Trim();
     }
 
     [GeneratedRegex("(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")]

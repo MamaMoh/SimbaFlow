@@ -23,9 +23,10 @@ public static class ServiceExtensions
             cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
             cfg.RegisterServicesFromAssembly(typeof(ApplicationDbContext).Assembly);
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+            // Before authorization, so an attempt a missing permission refused is on the trail too.
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(PerformanceLogBehavior<,>));
-            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ReadAuditBehavior<,>));
         });
         services.AddValidatorsFromAssembly(typeof(Program).Assembly);

@@ -60,6 +60,25 @@ function Subject({ e }: { e: AuditTrailEntry }) {
   return text;
 }
 
+/** What was asked for, as the server recorded it. Passwords and codes arrive already blanked. */
+function Details({ json }: { json?: string | null }) {
+  if (!json) return null;
+  let pretty = json;
+  try {
+    pretty = JSON.stringify(JSON.parse(json), null, 2);
+  } catch {
+    // Shown as stored.
+  }
+  return (
+    <details className="mt-1 text-xs text-muted-foreground">
+      <summary className="cursor-pointer select-none">Details</summary>
+      <pre className="mt-1 max-h-64 max-w-md overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 font-mono">
+        {pretty}
+      </pre>
+    </details>
+  );
+}
+
 export default function AuditTrailPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canRead = hasPermission("audit.read") || hasPermission("system.admin");
@@ -238,7 +257,10 @@ export default function AuditTrailPage() {
                     <div className="font-medium">{e.userName}</div>
                     {e.userEmail && <div className="text-xs text-muted-foreground">{e.userEmail}</div>}
                   </td>
-                  <td className="px-4 py-2" title={e.rawAction}>{e.action}</td>
+                  <td className="px-4 py-2" title={e.rawAction}>
+                    {e.action}
+                    <Details json={e.details} />
+                  </td>
                   <td className="px-4 py-2"><Subject e={e} /></td>
                   {kind === "changes" && (
                     <td className="px-4 py-2">

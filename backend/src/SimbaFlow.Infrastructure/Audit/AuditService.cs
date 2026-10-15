@@ -20,8 +20,11 @@ public class AuditService : IAuditService
         _serviceProvider = serviceProvider;
     }
 
+    public bool HasLogged { get; private set; }
+
     public async Task LogAsync(AuditEntry entry, CancellationToken ct = default)
     {
+        HasLogged = true;
         try
         {
             // Use a separate scope to avoid interfering with the current unit of work

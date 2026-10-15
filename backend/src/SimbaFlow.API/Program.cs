@@ -218,6 +218,7 @@ app.UseAuthorization();
 // A platform administrator's agency switch only counts while they have a stated reason on record.
 app.UseMiddleware<SimbaFlow.API.Middleware.AgencyAccessMiddleware>();
 app.UseMiddleware<SimbaFlow.Infrastructure.Identity.StaffContextMiddleware>();
+app.UseMiddleware<SimbaFlow.API.Middleware.WriteAuditMiddleware>();
 app.MapCarter();
 app.MapHub<SimbaFlow.Infrastructure.RealTime.SimbaFlowHub>("/hubs/simbaflow");
 app.MapHealthChecks("/health");
