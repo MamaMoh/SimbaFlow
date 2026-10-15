@@ -23,10 +23,15 @@ import { bestRead } from "@/lib/site-bridge/read";
  * slow and is where a transposed passport number comes from. Here the page is copied whole and
  * pasted once, and the labels on it do the rest.
  *
- * Nothing is filled until a person has seen it. The parse reports three things and they are all
- * worth showing: what it recognised, what the page did not carry, and what the page carried that
- * we have no field for — that last list is how a label we have not mapped yet gets noticed
- * rather than silently dropped.
+ * A recognised page fills on the paste itself. There is nothing to decide at that point: the
+ * dialog's preview was the same list of values the form is about to show, and the form is where
+ * anything wrong gets corrected anyway, so a confirm step only asked the desk to read the same
+ * twenty values twice. The toast says how many went in and the form stays unsaved.
+ *
+ * The preview is still here for the page that is not recognised on sight — a partial copy, or a
+ * page pasted in pieces. It reports three things and they are all worth showing: what it
+ * recognised, what the page did not carry, and what the page carried that we have no field for —
+ * that last list is how a label we have not mapped yet gets noticed rather than silently dropped.
  *
  * No extension, on purpose. This works in any browser, on a phone, and on a page pasted out of a
  * PDF or a message from the office in Riyadh — none of which an extension reaches.
@@ -48,11 +53,25 @@ export function PasteFromPortal({
     [text],
   );
 
-  const apply = () => {
-    if (!read) return;
-    onApply(read.result.values);
+  const apply = (values: Partial<Record<FieldKey, string>>) => {
+    onApply(values);
     setText("");
     onOpenChange(false);
+  };
+
+  /**
+   * The paste is the instruction. Reading the clipboard here rather than waiting for the
+   * textarea lets a page that is recognised go straight into the form, and only the paste —
+   * not a keystroke, and not a second paste appended to a first — is treated that way, so
+   * nothing fills while somebody is still assembling the text by hand.
+   */
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (text.length > 0) return;
+    const pasted = e.clipboardData.getData("text");
+    const straightIn = pasted.trim().length > 0 ? bestRead(pasted, SITE_MANIFESTS) : null;
+    if (!straightIn) return;
+    e.preventDefault();
+    apply(straightIn.result.values);
   };
 
   return (
@@ -70,13 +89,15 @@ export function PasteFromPortal({
           <DialogTitle>Paste from the portal</DialogTitle>
           <DialogDescription>
             Select the whole page on the portal, copy it, and paste it here. The labels on the
-            page are what is read — nothing is filled in until you have looked at it.
+            page are what is read, and a page we recognise fills the form as soon as you paste
+            it — check it over before you save.
           </DialogDescription>
         </DialogHeader>
 
         <Textarea
           autoFocus
           value={text}
+          onPaste={onPaste}
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste the copied page here"
           className="min-h-32 font-mono text-xs"
@@ -127,7 +148,7 @@ export function PasteFromPortal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={apply} disabled={!read}>
+          <Button onClick={() => read && apply(read.result.values)} disabled={!read}>
             <ClipboardPaste className="size-4" />
             Fill the form
           </Button>
