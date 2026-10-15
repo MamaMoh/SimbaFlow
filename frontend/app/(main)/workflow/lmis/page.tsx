@@ -216,7 +216,7 @@ export default function LmisBoardPage() {
                  heading. */
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={insurance} onValueChange={setInsurance}>
-                  <SelectTrigger className="h-8 w-[150px]" aria-label="Insurance">
+                  <SelectTrigger className="h-8 w-[125px]" aria-label="Insurance">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -227,7 +227,7 @@ export default function LmisBoardPage() {
                   </SelectContent>
                 </Select>
                 <Select value={milestone} onValueChange={setMilestone}>
-                  <SelectTrigger className="h-8 w-[150px]" aria-label="Milestone">
+                  <SelectTrigger className="h-8 w-[135px]" aria-label="Milestone">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -238,11 +238,11 @@ export default function LmisBoardPage() {
                   </SelectContent>
                 </Select>
                 <Select value={mirrorOnly} onValueChange={setMirrorOnly}>
-                  <SelectTrigger className="h-8 w-[160px]" aria-label="Source">
+                  <SelectTrigger className="h-8 w-[125px]" aria-label="Source">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Primary + Mirror</SelectItem>
+                    <SelectItem value="all">Any source</SelectItem>
                     <SelectItem value="mirror">Mirror only</SelectItem>
                   </SelectContent>
                 </Select>

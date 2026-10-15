@@ -308,6 +308,12 @@ export default function PartnersPage() {
                 <button
                   key={which}
                   type="button"
+                  // Two words on screen, the whole phrase to a screen reader: the chips are
+                  // beside three buttons and a search box, and the full labels pushed the
+                  // Create button onto a line of its own.
+                  aria-label={
+                    which === "linked" ? "Linked to my agency" : "All my partners"
+                  }
                   onClick={() => setTab(which)}
                   className={
                     "rounded px-2.5 py-1 text-xs font-medium transition " +
@@ -316,7 +322,7 @@ export default function PartnersPage() {
                       : "text-muted-foreground hover:text-foreground")
                   }
                 >
-                  {which === "linked" ? "Linked to my agency" : "All my partners"}
+                  {which === "linked" ? "Linked" : "All"}
                 </button>
               ))}
             </div>
@@ -328,10 +334,11 @@ export default function PartnersPage() {
                   size="sm"
                   variant="outline"
                   className="h-8 gap-1.5"
+                  aria-label="Link a partner to my agency"
                   onClick={() => setLinkOpen(true)}
                 >
                   <Link2 className="h-3.5 w-3.5" />
-                  Link to my agency
+                  Link
                 </Button>
               ) : null}
               {canCreateCatalog ? (
