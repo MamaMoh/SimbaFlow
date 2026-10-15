@@ -11,8 +11,8 @@ import {
 import { AgeCell } from "@/components/data-table/age-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Input } from "@/components/ui/input";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { EmbassyRowActions } from "@/components/workflow/embassy-row-actions";
@@ -36,11 +36,16 @@ export default function CaseExecutiveBoardPage() {
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.
   const canSelect = hasPermission("candidate.read");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { candidates, totalCount, isLoading, error, mutate } = useCaseExecutiveBoard({
     search: search || undefined,
+    filters: filterParam,
     pageSize: 50,
   });
 
@@ -50,6 +55,11 @@ export default function CaseExecutiveBoardPage() {
       indexColumn<EmbassyBoardRow>(),
       {
         accessorKey: "fullName",
+        // The field name the server's whitelist knows this column by. The clearance chips and
+        // the day counts have none: the first live in a document on the candidate and the rest
+        // are worked out per row, and a funnel that quietly matched nothing would be worse
+        // than no funnel at all.
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -108,10 +118,15 @@ export default function CaseExecutiveBoardPage() {
 
   const table = useReactTable({
     state: {
+      globalFilter,
       rowSelection,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -141,14 +156,6 @@ export default function CaseExecutiveBoardPage() {
       <PageHeader
         title="Case Executive"
         count={totalCount}
-        actions={
-          <Input
-            className="max-w-xs"
-            placeholder="Search…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        }
       />
 
       {error && (
@@ -177,7 +184,10 @@ export default function CaseExecutiveBoardPage() {
               />
             }
             table={table}
-            enableGlobalFilter={false}
+            enableGlobalFilter
+            searchPlaceholder="Search name, passport or labour ID…"
+            filters={filters}
+            onFiltersChange={setFilters}
             paginated
             emptyMessage="No cases waiting — candidates appear here when Embassy sets visa to Ready."
           />

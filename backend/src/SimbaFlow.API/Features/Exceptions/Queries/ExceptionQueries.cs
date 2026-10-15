@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
+using SimbaFlow.API.Features.Candidates.Queries;
 
 namespace SimbaFlow.API.Features.Exceptions.Queries;
 
@@ -61,7 +63,9 @@ public record GetExceptionCasesQuery(
     int Page = 1,
     int PageSize = 20,
     string? Status = null,
-    string? Type = null) : IRequest<Result<ExceptionCaseListResult>>, IRequirePermission
+    string? Type = null,
+    string? Filters = null,
+    string? Search = null) : IRequest<Result<ExceptionCaseListResult>>, IRequirePermission
 {
     public string RequiredPermission => "arrival.read";
 }
@@ -85,9 +89,29 @@ public class GetExceptionCasesHandler : IRequestHandler<GetExceptionCasesQuery, 
             Enum.TryParse<ExceptionType>(request.Type, ignoreCase: true, out var type))
             query = query.Where(e => e.Type == type);
 
+        // A row here is a case and the candidate it is about, so the funnels are offered to
+        // both halves before they meet. Each whitelist ignores the field names it does not know,
+        // which is what lets one parsed list narrow two different tables.
+        var funnels = TableFilters.Parse(request.Filters);
+        query = ExceptionFilters.For().Apply(query, funnels);
+        var candidates = _context.Candidates.AsNoTracking().Where(c => !c.IsDeleted);
+
+        // The toolbar's search box. The same four fields every other board looks in, so a
+        // passport number found on one board is found on this one.
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search;
+            candidates = candidates.Where(c =>
+                EF.Functions.ILike(c.FirstName, $"%{search}%") ||
+                EF.Functions.ILike(c.LastName, $"%{search}%") ||
+                EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
+                (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
+        }
+
+        var people = CandidateFilters.Joined().Apply(candidates, funnels);
+
         var joined = from e in query
-            join c in _context.Candidates.AsNoTracking() on e.CandidateId equals c.Id
-            where !c.IsDeleted
+            join c in people on e.CandidateId equals c.Id
             select new { Case = e, Candidate = c };
 
         var total = await joined.CountAsync(ct);

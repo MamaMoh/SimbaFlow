@@ -53,6 +53,22 @@ public sealed class FilterableColumns<T>
     }
 
     /// <summary>
+    /// A column held as an enum and shown as its name.
+    ///
+    /// Matched by resolving the typed text to the enum values whose names answer it, and then
+    /// comparing against those — rather than turning the column into a string in the database,
+    /// which Postgres stores as an integer and cannot compare without reading every row.
+    /// "Contains" and "starts with" work the same way, so a half-typed "run" still finds
+    /// Runaway.
+    /// </summary>
+    public FilterableColumns<T> Enum<TEnum>(string field, Expression<Func<T, TEnum>> selector)
+        where TEnum : struct, System.Enum
+    {
+        _fields[field] = f => FilterPredicates.Enum(selector, f);
+        return this;
+    }
+
+    /// <summary>
     /// A column whose own handling the board supplies.
     ///
     /// For the ones that are not a comparison against a column: an age held as a date of birth,
@@ -146,6 +162,48 @@ public static class FilterPredicates
         };
 
         return body is null ? null : Lambda<T>(body, p);
+    }
+
+    public static Expression<Func<T, bool>>? Enum<T, TEnum>(
+        Expression<Func<T, TEnum>> selector, TableFilter filter)
+        where TEnum : struct, System.Enum
+    {
+        var p = selector.Parameters[0];
+        var value = selector.Body;
+
+        // A column that is always one of a fixed set is never blank. Saying so beats offering a
+        // funnel that quietly matches nothing.
+        if (filter.Operator == FilterOperator.Blank)
+            return Lambda<T>(Expression.Constant(false), p);
+        if (filter.Operator == FilterOperator.NotBlank)
+            return Lambda<T>(Expression.Constant(true), p);
+
+        if (string.IsNullOrWhiteSpace(filter.Value)) return null;
+        var needle = filter.Value.Trim();
+
+        Func<string, bool> answers = filter.Operator switch
+        {
+            FilterOperator.Equals or FilterOperator.NotEquals =>
+                name => name.Equals(needle, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.Contains =>
+                name => name.Contains(needle, StringComparison.OrdinalIgnoreCase),
+            FilterOperator.StartsWith =>
+                name => name.StartsWith(needle, StringComparison.OrdinalIgnoreCase),
+            _ => _ => false,
+        };
+
+        var wanted = System.Enum.GetValues<TEnum>().Where(v => answers(v.ToString()!)).ToList();
+        var negate = filter.Operator == FilterOperator.NotEquals;
+
+        // Nothing is called that. An empty "is one of" is false, and its negation is everything.
+        if (wanted.Count == 0)
+            return Lambda<T>(Expression.Constant(negate), p);
+
+        Expression body = wanted
+            .Select(v => (Expression)Expression.Equal(value, Expression.Constant(v, typeof(TEnum))))
+            .Aggregate(Expression.OrElse);
+
+        return Lambda<T>(negate ? Expression.Not(body) : body, p);
     }
 
     public static Expression<Func<T, bool>>? Number<T>(

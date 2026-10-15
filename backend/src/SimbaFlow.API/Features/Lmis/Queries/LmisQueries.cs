@@ -4,6 +4,7 @@ using SimbaFlow.API.Features.Embassy;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.API.Features.Candidates.Queries;
 
 namespace SimbaFlow.API.Features.Lmis.Queries;
 
@@ -35,6 +36,7 @@ public record GetLmisBoardQuery(
     int Page = 1,
     int PageSize = 20,
     string? Search = null,
+    string? Filters = null,
     string? Insurance = null,
     string? Milestone = null,
     bool? MirrorOnly = null) : IRequest<Result<LmisBoardResult>>, IRequirePermission
@@ -68,6 +70,10 @@ public class GetLmisBoardHandler : IRequestHandler<GetLmisBoardQuery, Result<Lmi
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
+
+        // The funnels under the headings. Applied after the search box, so the two narrow
+        // together rather than one replacing the other.
+        query = CandidateFilters.Narrow(query, request.Filters);
 
         var candidates = await query
             .OrderByDescending(c => c.StageEnteredAt ?? c.RegisteredAt)

@@ -11,9 +11,9 @@ import {
 import { AgeCell } from "@/components/data-table/age-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { ArrivalRowActions } from "@/components/workflow/arrival-row-actions";
@@ -34,11 +34,16 @@ export default function ArrivalBoardPage() {
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.
   const canSelect = hasPermission("candidate.read");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useArrivalBoard({
     search: search || undefined,
+    filters: filterParam,
     pageSize: 50,
   });
 
@@ -48,6 +53,11 @@ export default function ArrivalBoardPage() {
       indexColumn<ArrivalBoardRow>(),
       {
         accessorKey: "fullName",
+        // The field name the server's whitelist knows this column by. The status tracks and
+        // the day counts below have none: they are read off a document on the candidate or
+        // worked out per row, and a funnel that quietly matched nothing would be worse than
+        // no funnel.
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -116,10 +126,15 @@ export default function ArrivalBoardPage() {
 
   const table = useReactTable({
     state: {
+      globalFilter,
       rowSelection,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -149,14 +164,6 @@ export default function ArrivalBoardPage() {
       <PageHeader
         title="Arrivals"
         count={totalCount}
-        actions={
-          <Input
-            className="max-w-xs"
-            placeholder="Search name or passport…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        }
       />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
@@ -178,7 +185,15 @@ export default function ArrivalBoardPage() {
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}
               />
-            } table={table} paginated emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures." />
+            }
+              table={table}
+              paginated
+              enableGlobalFilter
+              searchPlaceholder="Search name, passport or labour ID…"
+              filters={filters}
+              onFiltersChange={setFilters}
+              emptyMessage="No arrivals yet — candidates appear here after “To Arrival” from Departures."
+            />
           )}
         </div>
       )}

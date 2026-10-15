@@ -98,6 +98,9 @@ export function useExceptionCases(params?: {
   pageSize?: number;
   status?: string;
   type?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
+  search?: string;
 }) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
@@ -105,6 +108,8 @@ export function useExceptionCases(params?: {
   });
   if (params?.status) qs.set("status", params.status);
   if (params?.type) qs.set("type", params.type);
+  if (params?.filters) qs.set("filters", params.filters);
+  if (params?.search) qs.set("search", params.search);
 
   const key = `/api/proxy/exceptions?${qs.toString()}`;
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedList>>(key, fetcher, {

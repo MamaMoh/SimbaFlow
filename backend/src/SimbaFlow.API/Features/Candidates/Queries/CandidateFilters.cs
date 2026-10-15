@@ -20,11 +20,27 @@ namespace SimbaFlow.API.Features.Candidates.Queries;
 /// </summary>
 public static class CandidateFilters
 {
+    /// <summary>
+    /// One board's list, narrowed by whatever funnels were set on it.
+    ///
+    /// Every workflow board is a list of candidates under a different heading, and they share
+    /// this whitelist for the same reason they share the entity: a funnel on Passport means the
+    /// same column on the Embassy board as on the candidates list, and two lists of allowed
+    /// field names would eventually disagree about that.
+    ///
+    /// Today is taken here rather than passed in because the only thing that uses it is the age
+    /// column, and a board asking "older than 23" means older than 23 today.
+    /// </summary>
+    public static IQueryable<Candidate> Narrow(IQueryable<Candidate> query, string? filters) =>
+        string.IsNullOrWhiteSpace(filters)
+            ? query
+            : For(DateOnly.FromDateTime(DateTime.UtcNow)).Apply(query, TableFilters.Parse(filters));
+
     public static FilterableColumns<Candidate> For(DateOnly today) =>
         new FilterableColumns<Candidate>()
             // Stored in three columns and read as one, which is how it is typed and how it is
             // searched. The same shape the global search uses, so the two agree.
-            .Custom("fullName", f => Name(f))
+            .Custom("fullName", NameMatches)
             .Text("passportNumber", c => c.PassportNumber)
             .Text("labourId", c => c.LabourId)
             .Text("eNumber", c => c.ENumber)
@@ -42,6 +58,20 @@ public static class CandidateFilters
             .Custom("age", f => Age(f, today));
 
     /// <summary>
+    /// The candidate columns a board carries alongside rows of its own.
+    ///
+    /// The commission board and the exceptions board are lists of commissions and of cases, each
+    /// joined to the candidate it is about — so the person's name, passport and labour ID are on
+    /// them under the heading "Candidate" rather than "Name". Same three predicates, the names
+    /// the board's own columns use.
+    /// </summary>
+    public static FilterableColumns<Candidate> Joined() =>
+        new FilterableColumns<Candidate>()
+            .Custom("candidateName", NameMatches)
+            .Text("passportNumber", c => c.PassportNumber)
+            .Text("labourId", c => c.LabourId);
+
+    /// <summary>
     /// The whole name as well as its parts.
     ///
     /// "Almaz Kebede" is in neither FirstName nor LastName, so a filter on either finds nothing
@@ -49,7 +79,7 @@ public static class CandidateFilters
     /// with and without a middle name, because most people have one recorded and the ones who
     /// do not would otherwise match a string with a double space in it.
     /// </summary>
-    private static Expression<Func<Candidate, bool>>? Name(TableFilter f)
+    public static Expression<Func<Candidate, bool>>? NameMatches(TableFilter f)
     {
         if (f.Operator is FilterOperator.Blank or FilterOperator.NotBlank) return null;
         if (string.IsNullOrWhiteSpace(f.Value)) return null;

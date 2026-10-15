@@ -14,6 +14,7 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { boardQueryString, useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +65,11 @@ export default function StaffPage() {
   const canManage = hasPermission("users.write");
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: this list is paginated there, so narrowing the hundred the browser is holding
+  // would answer a different question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<EditableUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -72,7 +77,9 @@ export default function StaffPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, mutate } = useSWR(
-    canView ? `/api/proxy/users?page=1&pageSize=100` : null,
+    canView
+      ? `/api/proxy/users?page=1&pageSize=100` + boardQueryString(search, filterParam ?? "")
+      : null,
     fetcher,
     { revalidateOnFocus: false }
   );
@@ -107,6 +114,10 @@ export default function StaffPage() {
     },
     {
       accessorKey: "username",
+      // The field name the server's whitelist knows this column by. Agency and Roles have
+      // none: both come from somewhere other than the account row — the tenant, and Identity's
+      // own join — so neither can be asked of this table.
+      meta: { filter: { field: "username", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Username" />,
       cell: ({ row }) => (
         <div>
@@ -119,11 +130,13 @@ export default function StaffPage() {
     },
     {
       id: "fullName",
+      meta: { filter: { field: "fullName", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Full name" />,
       accessorFn: (row) => `${row.firstName} ${row.lastName}`,
     },
     {
       accessorKey: "email",
+      meta: { filter: { field: "email", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
     },
     {
@@ -170,6 +183,8 @@ export default function StaffPage() {
     },
     {
       accessorKey: "isActive",
+      // Held as a yes or no and shown as a word, so it is matched against the word.
+      meta: { filter: { field: "isActive", kind: "text" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
       cell: ({ getValue }) => {
         const active = getValue() as boolean;
@@ -182,6 +197,7 @@ export default function StaffPage() {
     },
     {
       accessorKey: "lastLoginAt",
+      meta: { filter: { field: "lastLoginAt", kind: "date" } },
       header: ({ column }) => <DataTableColumnHeader column={column} title="Last login" />,
       cell: ({ getValue }) => {
         const date = getValue() as string | null;
@@ -251,6 +267,9 @@ export default function StaffPage() {
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
@@ -285,9 +304,16 @@ export default function StaffPage() {
           enableGlobalFilter={true}
           searchPlaceholder="Search users…"
           paginated={true}
-          toolbarEndActions={
+          exportFileName="staff"
+          filters={filters}
+          onFiltersChange={setFilters}
+          createAction={
             canManage ? (
-              <Button size="sm" className="h-8 bg-green-800 hover:bg-green-900 text-white" onClick={() => setCreateOpen(true)}>
+              <Button
+                size="sm"
+                className="h-8 bg-green-800 text-white hover:bg-green-900"
+                onClick={() => setCreateOpen(true)}
+              >
                 <span className="mr-1">+</span> Create
               </Button>
             ) : null

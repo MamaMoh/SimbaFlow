@@ -14,9 +14,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { CommissionStatusBadge } from "@/components/finance/commission-status-badge";
 import { formatEtb, useCommissionBoard, type CommissionBoardRow } from "@/lib/api/commissions";
@@ -33,11 +32,16 @@ export default function CommissionsPage() {
   const canView = hasPermission("commission.read") || hasPermission("system.admin");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = useState("");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
 
   const { items, totalCount, isLoading, error, mutate } = useCommissionBoard({
     status: statusFilter || undefined,
     search: search || undefined,
+    filters: filterParam,
     pageSize: 100,
   });
 
@@ -46,6 +50,9 @@ export default function CommissionsPage() {
       indexColumn<CommissionBoardRow>(),
       {
         accessorKey: "candidateName",
+        // A row here is a commission joined to the candidate it is about, so the person's
+        // columns answer to the names this board gives them.
+        meta: { filter: { field: "candidateName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Candidate" />,
         cell: ({ row }) => (
           <NameCell
@@ -57,36 +64,43 @@ export default function CommissionsPage() {
       ...identityColumns<CommissionBoardRow>(),
       {
         accessorKey: "countryOfTravel",
+        meta: { filter: { field: "countryOfTravel", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Country" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "partnerName",
+        meta: { filter: { field: "partnerName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
         accessorKey: "status",
+        meta: { filter: { field: "status", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ getValue }) => <CommissionStatusBadge status={String(getValue() || "")} />,
       },
       {
         accessorKey: "totalFeesAmount",
+        meta: { filter: { field: "totalFeesAmount", kind: "number" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Fees (ETB)" />,
         cell: ({ getValue }) => formatEtb(getValue() as number),
       },
       {
         accessorKey: "totalPaidAmount",
+        meta: { filter: { field: "totalPaidAmount", kind: "number" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Paid" />,
         cell: ({ getValue }) => formatEtb(getValue() as number),
       },
       {
         accessorKey: "balanceAmount",
+        meta: { filter: { field: "balanceAmount", kind: "number" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Balance" />,
         cell: ({ getValue }) => formatEtb(getValue() as number),
       },
       {
         accessorKey: "openedAt",
+        meta: { filter: { field: "openedAt", kind: "date" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Opened" />,
         cell: ({ getValue }) => {
           const v = getValue() as string;
@@ -108,9 +122,14 @@ export default function CommissionsPage() {
     columns,
     state: {
       sorting,
+      globalFilter,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: setGlobalFilter,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -137,26 +156,6 @@ export default function CommissionsPage() {
       <PageHeader
         title="Commissions"
         count={totalCount}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              className="h-8 w-48"
-              placeholder="Search name / passport"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {["", "Open", "Partial", "Settled", "Disputed"].map((s) => (
-              <Button
-                key={s || "all"}
-                size="sm"
-                variant={statusFilter === s ? "default" : "outline"}
-                onClick={() => setStatusFilter(s)}
-              >
-                {s || "All"}
-              </Button>
-            ))}
-          </div>
-        }
       />
 
       {error ? (
@@ -175,6 +174,29 @@ export default function CommissionsPage() {
         exportFileName="commissions"
             table={table}
             paginated
+            enableGlobalFilter
+            searchPlaceholder="Search name or passport…"
+            filters={filters}
+            onFiltersChange={setFilters}
+            toolbarEndActions={
+              <div className="flex rounded-md border p-0.5" role="group" aria-label="Filter by status">
+                {["", "Open", "Partial", "Settled", "Disputed"].map((s) => (
+                  <button
+                    key={s || "all"}
+                    type="button"
+                    onClick={() => setStatusFilter(s)}
+                    className={
+                      "rounded px-2.5 py-1 text-xs font-medium transition " +
+                      (statusFilter === s
+                        ? "bg-green-800 text-white"
+                        : "text-muted-foreground hover:text-foreground")
+                    }
+                  >
+                    {s || "All"}
+                  </button>
+                ))}
+              </div>
+            }
             emptyMessage="No commissions yet — open one from the Arrivals board (Add to Commission)."
           />
         </div>

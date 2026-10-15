@@ -2,6 +2,9 @@ using FluentAssertions;
 using SimbaFlow.API.Features.Candidates.Queries;
 using SimbaFlow.Application.Common.Filtering;
 using SimbaFlow.Domain.Entities.Candidates;
+using SimbaFlow.API.Features.Exceptions.Queries;
+using SimbaFlow.Domain.Entities.Travel;
+using SimbaFlow.Domain.Enums;
 using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Tests.Services;
@@ -284,5 +287,102 @@ public class TableFilterTests
             "[{\"field\":\"age\",\"op\":\"lt\",\"value\":\"30\"}," +
             "{\"field\":\"occupation\",\"op\":\"contains\",\"value\":\"maid\"}]")
             .Should().ContainSingle(c => c.FirstName == "Hiwot");
+    }
+
+    // ──── A column held as an enum ────
+
+    private static List<ExceptionCase> FilterCases(IEnumerable<ExceptionCase> cases, string json) =>
+        ExceptionFilters.For().Apply(cases.AsQueryable(), TableFilters.Parse(json)).ToList();
+
+    private static ExceptionCase Case(ExceptionType type, ExceptionStatus status) =>
+        new() { Id = Guid.NewGuid(), CandidateId = Guid.NewGuid(), Type = type, Status = status };
+
+    [Fact]
+    public void Enum_IsMatchedByTheNameTheBoardShows_TEST90()
+    {
+        var cases = new[]
+        {
+            Case(ExceptionType.Returned, ExceptionStatus.Open),
+            Case(ExceptionType.Runaway, ExceptionStatus.Open),
+        };
+
+        FilterCases(cases, "[{\"field\":\"type\",\"op\":\"eq\",\"value\":\"runaway\"}]")
+            .Should().ContainSingle(c => c.Type == ExceptionType.Runaway);
+    }
+
+    [Fact]
+    public void Enum_HalfTheNameStillFindsIt_TEST90()
+    {
+        // Somebody typing "run" under Type should see the runaways before they finish the word.
+        var cases = new[]
+        {
+            Case(ExceptionType.Returned, ExceptionStatus.Open),
+            Case(ExceptionType.Runaway, ExceptionStatus.Open),
+        };
+
+        FilterCases(cases, "[{\"field\":\"type\",\"op\":\"startswith\",\"value\":\"run\"}]")
+            .Should().ContainSingle(c => c.Type == ExceptionType.Runaway);
+    }
+
+    [Fact]
+    public void Enum_NothingIsCalledThat_IsAnEmptyListNotEveryRow_TEST90()
+    {
+        var cases = new[] { Case(ExceptionType.Returned, ExceptionStatus.Open) };
+
+        FilterCases(cases, "[{\"field\":\"status\",\"op\":\"eq\",\"value\":\"banana\"}]")
+            .Should().BeEmpty();
+        // And its negation is everything, which is the only consistent answer.
+        FilterCases(cases, "[{\"field\":\"status\",\"op\":\"neq\",\"value\":\"banana\"}]")
+            .Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Enum_IsNeverBlank_TEST90()
+    {
+        // A column that is always one of a fixed set has no blank to ask about. Saying so beats
+        // a funnel that silently matches nothing either way.
+        var cases = new[] { Case(ExceptionType.Returned, ExceptionStatus.Open) };
+
+        FilterCases(cases, "[{\"field\":\"type\",\"op\":\"blank\"}]").Should().BeEmpty();
+        FilterCases(cases, "[{\"field\":\"type\",\"op\":\"notblank\"}]").Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void AJoinedBoardKnowsThePersonByItsOwnColumnName_TEST91()
+    {
+        // The commissions and exceptions boards head the column "Candidate", not "Name", and
+        // the whitelist has to answer to what the board calls it or the funnel does nothing.
+        var people = new[] { Person("Hiwot", "Gebru"), Person("Munir", "Alemu") };
+
+        CandidateFilters.Joined()
+            .Apply(people.AsQueryable(),
+                TableFilters.Parse("[{\"field\":\"candidateName\",\"op\":\"contains\",\"value\":\"munir\"}]"))
+            .Should().ContainSingle(c => c.FirstName == "Munir");
+
+        // And the candidates board's own name for it is not on this one.
+        CandidateFilters.Joined()
+            .Apply(people.AsQueryable(),
+                TableFilters.Parse("[{\"field\":\"fullName\",\"op\":\"contains\",\"value\":\"munir\"}]"))
+            .Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void TheSameFilterListNarrowsBothHalvesOfAJoinedBoard_TEST91()
+    {
+        // One parsed list is offered to both whitelists; each ignores what it does not know.
+        // That is what lets a filter on the person and a filter on the case apply together.
+        var json = "[{\"field\":\"candidateName\",\"op\":\"contains\",\"value\":\"hiwot\"}," +
+                   "{\"field\":\"type\",\"op\":\"eq\",\"value\":\"runaway\"}]";
+        var parsed = TableFilters.Parse(json);
+
+        var people = new[] { Person("Hiwot", "Gebru"), Person("Munir", "Alemu") };
+        var cases = new[]
+        {
+            Case(ExceptionType.Returned, ExceptionStatus.Open),
+            Case(ExceptionType.Runaway, ExceptionStatus.Open),
+        };
+
+        CandidateFilters.Joined().Apply(people.AsQueryable(), parsed).Should().HaveCount(1);
+        ExceptionFilters.For().Apply(cases.AsQueryable(), parsed).Should().HaveCount(1);
     }
 }

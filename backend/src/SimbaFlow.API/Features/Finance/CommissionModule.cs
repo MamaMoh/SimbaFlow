@@ -15,20 +15,20 @@ public class CommissionModule : ICarterModule
 
         group.MapGet("/board", async (
             int? page, int? pageSize, string? status, string? country, string? search,
-            ISender sender) =>
+            string? filters, ISender sender) =>
         {
             var result = await sender.Send(new GetCommissionBoardQuery(
-                page ?? 1, pageSize ?? 50, status, country, search));
+                page ?? 1, pageSize ?? 50, status, country, search, filters));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
         // Alias for existing UI
         group.MapGet("/", async (
             int? page, int? pageSize, string? status, string? country, string? search,
-            ISender sender) =>
+            string? filters, ISender sender) =>
         {
             var result = await sender.Send(new GetCommissionBoardQuery(
-                page ?? 1, pageSize ?? 50, status, country, search));
+                page ?? 1, pageSize ?? 50, status, country, search, filters));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

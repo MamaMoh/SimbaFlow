@@ -4,6 +4,7 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
 using SimbaFlow.Domain.Services;
+using SimbaFlow.API.Features.Candidates.Queries;
 
 namespace SimbaFlow.API.Features.Embassy.Queries;
 
@@ -34,7 +35,8 @@ public record EmbassyBoardResult(
 public record GetEmbassyBoardQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
+    string? Search = null,
+    string? Filters = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "embassy.read";
 }
@@ -58,6 +60,7 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
             request.Page,
             request.PageSize,
             request.Search,
+            request.Filters,
             primaryOnly: false,
             ct);
     }
@@ -67,6 +70,7 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
         int page,
         int pageSize,
         string? search,
+        string? filters,
         bool primaryOnly,
         CancellationToken ct)
     {
@@ -82,6 +86,10 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
+
+        // The funnels under the headings. Applied after the search box, so the two narrow
+        // together rather than one replacing the other.
+        query = CandidateFilters.Narrow(query, filters);
 
         var candidates = await query
             .OrderByDescending(c => c.StageEnteredAt ?? c.RegisteredAt)
@@ -125,7 +133,8 @@ public class GetEmbassyBoardHandler : IRequestHandler<GetEmbassyBoardQuery, Resu
 public record GetCaseExecutiveBoardQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
+    string? Search = null,
+    string? Filters = null) : IRequest<Result<EmbassyBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "embassy.case_view";
 }
@@ -156,6 +165,7 @@ public class GetCaseExecutiveBoardHandler
             request.Page,
             request.PageSize,
             request.Search,
+            request.Filters,
             primaryOnly: false,
             ct);
     }

@@ -12,8 +12,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Input } from "@/components/ui/input";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { TrackChip } from "@/components/workflow/status-update-sheet";
 import { TravelRowActions } from "@/components/workflow/travel-row-actions";
@@ -34,11 +34,16 @@ export default function TicketBoardPage() {
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.
   const canSelect = hasPermission("candidate.read");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useTicketBoard({
     search: search || undefined,
+    filters: filterParam,
     pageSize: 50,
   });
 
@@ -48,6 +53,11 @@ export default function TicketBoardPage() {
       indexColumn<TravelBoardRow>(),
       {
         accessorKey: "fullName",
+        // The field name the server's whitelist knows this column by. A column without one
+        // gets no funnel, which is the right answer for the status tracks below: they live in
+        // a document on the candidate rather than in a column, and a funnel that quietly
+        // matched nothing would be worse than none.
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -79,7 +89,8 @@ export default function TicketBoardPage() {
       },
       {
         accessorKey: "partnerName",
-        header: "Partner",
+        meta: { filter: { field: "partnerName", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Partner" />,
         cell: ({ getValue }) => (getValue() as string) || "—",
       },
       {
@@ -106,10 +117,15 @@ export default function TicketBoardPage() {
 
   const table = useReactTable({
     state: {
+      globalFilter,
       rowSelection,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -139,14 +155,6 @@ export default function TicketBoardPage() {
       <PageHeader
         title="Tickets"
         count={totalCount}
-        actions={
-          <Input
-            className="max-w-xs"
-            placeholder="Search name or passport…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        }
       />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
@@ -168,7 +176,15 @@ export default function TicketBoardPage() {
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}
               />
-            } table={table} paginated emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS." />
+            }
+              table={table}
+              paginated
+              enableGlobalFilter
+              searchPlaceholder="Search name, passport or labour ID…"
+              filters={filters}
+              onFiltersChange={setFilters}
+              emptyMessage="No candidates awaiting tickets — they appear here after “To Ticket” from LMIS."
+            />
           )}
         </div>
       )}

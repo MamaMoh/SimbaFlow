@@ -80,12 +80,15 @@ export function useTicketBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
 }) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
 
   const key = `/api/proxy/travel/ticket/board?${qs.toString()}`;
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {
@@ -107,6 +110,8 @@ export function useDepartureBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
   includeCanceled?: boolean;
 }) {
   const qs = new URLSearchParams({
@@ -114,6 +119,7 @@ export function useDepartureBoard(params?: {
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
   if (params?.includeCanceled) qs.set("includeCanceled", "true");
 
   const key = `/api/proxy/travel/departure/board?${qs.toString()}`;

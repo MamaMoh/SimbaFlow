@@ -10,8 +10,8 @@ import {
 } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
@@ -35,12 +35,17 @@ export default function DepartureBoardPage() {
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.
   const canSelect = hasPermission("candidate.read");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [includeCanceled, setIncludeCanceled] = useState(false);
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useDepartureBoard({
     search: search || undefined,
+    filters: filterParam,
     pageSize: 50,
     includeCanceled,
   });
@@ -51,6 +56,10 @@ export default function DepartureBoardPage() {
       indexColumn<TravelBoardRow>(),
       {
         accessorKey: "fullName",
+        // The field name the server's whitelist knows this column by. The status tracks below
+        // have none: they live in a document on the candidate rather than in a column, and a
+        // funnel that quietly matched nothing would be worse than no funnel.
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
           <NameCell href={`/candidates/${row.original.id}`} name={row.original.fullName} />
@@ -117,10 +126,15 @@ export default function DepartureBoardPage() {
 
   const table = useReactTable({
     state: {
+      globalFilter,
       rowSelection,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -147,30 +161,7 @@ export default function DepartureBoardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Departures"
-        count={totalCount}
-        actions={
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="show-canceled"
-                checked={includeCanceled}
-                onCheckedChange={(v) => setIncludeCanceled(v === true)}
-              />
-              <Label htmlFor="show-canceled" className="text-sm font-normal">
-                Show canceled
-              </Label>
-            </div>
-            <Input
-              className="max-w-xs"
-              placeholder="Search name or passport…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        }
-      />
+      <PageHeader title="Departures" count={totalCount} />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
 
@@ -191,7 +182,27 @@ export default function DepartureBoardPage() {
                 candidateIds={Object.keys(rowSelection).filter((id) => rowSelection[id])}
                 onDownloaded={() => setRowSelection({})}
               />
-            } table={table} paginated emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets." />
+            }
+              table={table}
+              paginated
+              enableGlobalFilter
+              searchPlaceholder="Search name, passport or labour ID…"
+              filters={filters}
+              onFiltersChange={setFilters}
+              toolbarEndActions={
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="show-canceled"
+                    checked={includeCanceled}
+                    onCheckedChange={(v) => setIncludeCanceled(v === true)}
+                  />
+                  <Label htmlFor="show-canceled" className="text-sm font-normal">
+                    Show canceled
+                  </Label>
+                </div>
+              }
+              emptyMessage="No departures scheduled yet — candidates appear here after “To Departure” from Tickets."
+            />
           )}
         </div>
       )}

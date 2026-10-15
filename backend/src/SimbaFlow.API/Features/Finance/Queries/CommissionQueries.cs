@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
+using SimbaFlow.API.Features.Candidates.Queries;
 
 namespace SimbaFlow.API.Features.Finance.Queries;
 
@@ -31,7 +33,8 @@ public record GetCommissionBoardQuery(
     int PageSize = 50,
     string? Status = null,
     string? Country = null,
-    string? Search = null) : IRequest<Result<CommissionBoardResult>>, IRequirePermission
+    string? Search = null,
+    string? Filters = null) : IRequest<Result<CommissionBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "commission.read";
 }
@@ -49,10 +52,19 @@ public class GetCommissionBoardHandler
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 200);
 
+        // A row here is a commission and the candidate it is about, so the funnels are offered
+        // to both halves before they meet. Each whitelist ignores the field names it does not
+        // know, which is what lets one parsed list narrow two different tables.
+        var funnels = TableFilters.Parse(request.Filters);
+
+        var commissions = CommissionFilters.For()
+            .Apply(_context.Commissions.AsNoTracking().Where(c => !c.IsDeleted), funnels);
+        var people = CandidateFilters.Joined()
+            .Apply(_context.Candidates.AsNoTracking().Where(c => !c.IsDeleted), funnels);
+
         var query =
-            from c in _context.Commissions.AsNoTracking()
-            join cand in _context.Candidates.AsNoTracking() on c.CandidateId equals cand.Id
-            where !c.IsDeleted && !cand.IsDeleted
+            from c in commissions
+            join cand in people on c.CandidateId equals cand.Id
             select new { Commission = c, Candidate = cand };
 
         if (!string.IsNullOrWhiteSpace(request.Status) &&

@@ -115,6 +115,8 @@ export function useCommissionBoard(params?: {
   status?: string;
   country?: string;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
 }) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
@@ -123,6 +125,7 @@ export function useCommissionBoard(params?: {
   if (params?.status) qs.set("status", params.status);
   if (params?.country) qs.set("country", params.country);
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
 
   const key = `/api/proxy/commissions/board?${qs}`;
   const { data, error, isLoading, mutate } = useSWR<ApiResult<BoardResult>>(key, fetcher, {

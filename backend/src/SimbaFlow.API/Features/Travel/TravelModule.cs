@@ -14,18 +14,19 @@ public class TravelModule : ICarterModule
             .RequireAuthorization();
 
         group.MapGet("/ticket/board", async (
-            int? page, int? pageSize, string? search, ISender sender) =>
+            int? page, int? pageSize, string? search, string? filters, ISender sender) =>
         {
             var result = await sender.Send(new GetTicketBoardQuery(
-                page ?? 1, pageSize ?? 20, search));
+                page ?? 1, pageSize ?? 20, search, filters));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
         group.MapGet("/departure/board", async (
-            int? page, int? pageSize, string? search, bool? includeCanceled, ISender sender) =>
+            int? page, int? pageSize, string? search, string? filters, bool? includeCanceled,
+            ISender sender) =>
         {
             var result = await sender.Send(new GetDepartureBoardQuery(
-                page ?? 1, pageSize ?? 20, search, includeCanceled ?? false));
+                page ?? 1, pageSize ?? 20, search, filters, includeCanceled ?? false));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

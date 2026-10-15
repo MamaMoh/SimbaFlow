@@ -4,10 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Identity;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Users.Queries;
 
-public record GetUsersQuery(int Page = 1, int PageSize = 20, string? Search = null)
+public record GetUsersQuery(
+    int Page = 1, int PageSize = 20, string? Search = null, string? Filters = null)
     : IRequest<Result<PaginatedList<UserListDto>>>, IRequirePermission
 {
     public string RequiredPermission => "users.read";
@@ -89,6 +91,10 @@ public class GetUsersHandler : IRequestHandler<GetUsersQuery, Result<PaginatedLi
                 u.LastName.ToLower().Contains(search) ||
                 u.Email!.ToLower().Contains(search));
         }
+
+        // The funnels under the headings. After the tenant check and the search, never before:
+        // what a person may filter is what they may already see.
+        query = UserFilters.For().Apply(query, TableFilters.Parse(request.Filters));
 
         var totalCount = await query.CountAsync(cancellationToken);
 

@@ -14,10 +14,10 @@ public class ArrivalModule : ICarterModule
             .RequireAuthorization();
 
         group.MapGet("/board", async (
-            int? page, int? pageSize, string? search, ISender sender) =>
+            int? page, int? pageSize, string? search, string? filters, ISender sender) =>
         {
             var result = await sender.Send(new GetArrivalBoardQuery(
-                page ?? 1, pageSize ?? 20, search));
+                page ?? 1, pageSize ?? 20, search, filters));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 

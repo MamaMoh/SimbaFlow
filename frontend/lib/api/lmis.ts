@@ -57,6 +57,8 @@ export function useLmisBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
   insurance?: string;
   milestone?: string;
   mirrorOnly?: boolean;
@@ -66,6 +68,7 @@ export function useLmisBoard(params?: {
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
   if (params?.insurance) qs.set("insurance", params.insurance);
   if (params?.milestone) qs.set("milestone", params.milestone);
   if (params?.mirrorOnly) qs.set("mirrorOnly", "true");

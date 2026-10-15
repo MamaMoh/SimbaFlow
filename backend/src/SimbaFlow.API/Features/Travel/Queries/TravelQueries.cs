@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.API.Features.Candidates.Queries;
 
 namespace SimbaFlow.API.Features.Travel.Queries;
 
@@ -32,7 +33,8 @@ public record TravelBoardResult(
 public record GetTicketBoardQuery(
     int Page = 1,
     int PageSize = 20,
-    string? Search = null) : IRequest<Result<TravelBoardResult>>, IRequirePermission
+    string? Search = null,
+    string? Filters = null) : IRequest<Result<TravelBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "travel.read";
 }
@@ -51,7 +53,7 @@ public class GetTicketBoardHandler : IRequestHandler<GetTicketBoardQuery, Result
             return Result<TravelBoardResult>.Failure("Ticket stage not configured", 500);
 
         return await BoardQueryAsync(
-            stage.Id, request.Page, request.PageSize, request.Search,
+            stage.Id, request.Page, request.PageSize, request.Search, request.Filters,
             includeCanceled: true, sortByRemainingDays: false, ct);
     }
 
@@ -60,6 +62,7 @@ public class GetTicketBoardHandler : IRequestHandler<GetTicketBoardQuery, Result
         int page,
         int pageSize,
         string? search,
+        string? filters,
         bool includeCanceled,
         bool sortByRemainingDays,
         CancellationToken ct)
@@ -76,6 +79,10 @@ public class GetTicketBoardHandler : IRequestHandler<GetTicketBoardQuery, Result
                 EF.Functions.ILike(c.PassportNumber, $"%{search}%") ||
                 (c.LabourId != null && EF.Functions.ILike(c.LabourId, $"%{search}%")));
         }
+
+        // The funnels under the headings. Applied after the search box, so the two narrow
+        // together rather than one replacing the other.
+        query = CandidateFilters.Narrow(query, filters);
 
         var candidates = await query.ToListAsync(ct);
 
@@ -126,6 +133,7 @@ public record GetDepartureBoardQuery(
     int Page = 1,
     int PageSize = 20,
     string? Search = null,
+    string? Filters = null,
     bool IncludeCanceled = false) : IRequest<Result<TravelBoardResult>>, IRequirePermission
 {
     public string RequiredPermission => "travel.read";
@@ -150,7 +158,7 @@ public class GetDepartureBoardHandler : IRequestHandler<GetDepartureBoardQuery, 
             return Result<TravelBoardResult>.Failure("Departure stage not configured", 500);
 
         return await _board.BoardQueryAsync(
-            stage.Id, request.Page, request.PageSize, request.Search,
+            stage.Id, request.Page, request.PageSize, request.Search, request.Filters,
             request.IncludeCanceled, sortByRemainingDays: true, ct);
     }
 }

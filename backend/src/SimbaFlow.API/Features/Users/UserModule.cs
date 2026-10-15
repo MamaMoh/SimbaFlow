@@ -16,9 +16,11 @@ public class UserModule : ICarterModule
                 AuthenticationSchemes = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme
             });
 
-        group.MapGet("/", async (ISender sender, int page = 1, int pageSize = 20, string? search = null) =>
+        group.MapGet("/", async (
+            ISender sender, int page = 1, int pageSize = 20, string? search = null,
+            string? filters = null) =>
         {
-            var result = await sender.Send(new GetUsersQuery(page, pageSize, search));
+            var result = await sender.Send(new GetUsersQuery(page, pageSize, search, filters));
             return Results.Ok(result);
         });
 

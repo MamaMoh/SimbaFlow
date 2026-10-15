@@ -57,13 +57,14 @@ async function postJson(url: string, body?: unknown): Promise<void> {
 
 function boardKey(
   path: string,
-  params?: { page?: number; pageSize?: number; search?: string }
+  params?: { page?: number; pageSize?: number; search?: string; filters?: string }
 ) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
   return `/api/proxy/${path}?${qs.toString()}`;
 }
 
@@ -71,6 +72,8 @@ export function useEmbassyBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
 }) {
   const key = boardKey("embassy/board", params);
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {
@@ -92,6 +95,8 @@ export function useCaseExecutiveBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
 }) {
   const key = boardKey("embassy/case-executive/board", params);
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {

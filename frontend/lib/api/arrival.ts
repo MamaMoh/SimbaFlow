@@ -56,12 +56,15 @@ export function useArrivalBoard(params?: {
   page?: number;
   pageSize?: number;
   search?: string;
+  /** The funnel row, already encoded by the board. */
+  filters?: string;
 }) {
   const qs = new URLSearchParams({
     page: String(params?.page ?? 1),
     pageSize: String(params?.pageSize ?? 50),
   });
   if (params?.search) qs.set("search", params.search);
+  if (params?.filters) qs.set("filters", params.filters);
 
   const key = `/api/proxy/arrival/board?${qs.toString()}`;
   const { data, error, isLoading, mutate } = useSWR<ApiResult<PaginatedBoard>>(key, fetcher, {

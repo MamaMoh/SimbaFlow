@@ -11,10 +11,9 @@ import {
 import { AgeCell } from "@/components/data-table/age-cell";
 import { DataTable } from "@/components/data-table/data-table";
 import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -42,7 +41,11 @@ export default function LmisBoardPage() {
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.
   const canSelect = hasPermission("candidate.read");
-  const [search, setSearch] = useState("");
+  // The search box in the toolbar and the funnels under the headings. Both are answered by
+  // the API: narrowing the page the browser happens to be holding would answer a different
+  // question from the one being asked.
+  const { globalFilter, setGlobalFilter, search, filters, setFilters, filterParam } =
+    useBoardQuery();
   const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
   const [insurance, setInsurance] = useState<string>("all");
   const [milestone, setMilestone] = useState<string>("all");
@@ -50,6 +53,7 @@ export default function LmisBoardPage() {
 
   const { candidates, totalCount, isLoading, error, mutate, stageId } = useLmisBoard({
     search: search || undefined,
+    filters: filterParam,
     insurance: insurance === "all" ? undefined : insurance,
     milestone: milestone === "all" ? undefined : milestone,
     mirrorOnly: mirrorOnly === "mirror" ? true : undefined,
@@ -62,6 +66,11 @@ export default function LmisBoardPage() {
       indexColumn<LmisBoardRow>(),
       {
         accessorKey: "fullName",
+        // The field name the server's whitelist knows this column by. Insurance, Milestone and
+        // the day counts have none: the first two live in a document on the candidate and the
+        // rest are worked out per row, so they are asked for by the switches in the toolbar
+        // instead of by a funnel that would quietly match nothing.
+        meta: { filter: { field: "fullName", kind: "text" } },
         header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
         cell: ({ row }) => (
           <div className="flex items-center gap-2">
@@ -129,10 +138,15 @@ export default function LmisBoardPage() {
 
   const table = useReactTable({
     state: {
+      globalFilter,
       rowSelection,
       columnOrder: layout.columnOrder,
       columnVisibility: layout.columnVisibility,
     },
+    // The search box belongs to the API. Left as TanStack's own it would narrow the rows the
+    // API already chose, hiding the ones it matched on a column that is not on screen.
+    globalFilterFn: () => true,
+    onGlobalFilterChange: setGlobalFilter,
     onRowSelectionChange: setRowSelection,
     getRowId: (row) => row.id,
     enableRowSelection: true,
@@ -162,58 +176,7 @@ export default function LmisBoardPage() {
       <PageHeader
         title="LMIS"
         count={totalCount}
-        actions={
-          <Input
-            className="max-w-xs"
-            placeholder="Search…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        }
       />
-
-      <div className="flex flex-wrap gap-4 items-end">
-        <div className="space-y-1">
-          <Label className="text-xs">Insurance</Label>
-          <Select value={insurance} onValueChange={setInsurance}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="Insurance Unpaid">Unpaid</SelectItem>
-              <SelectItem value="Insurance Paid">Paid</SelectItem>
-              <SelectItem value="Available">Available</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Milestone</Label>
-          <Select value={milestone} onValueChange={setMilestone}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="Uploaded">Uploaded</SelectItem>
-              <SelectItem value="Check Verified">Check Verified</SelectItem>
-              <SelectItem value="Issued">Issued</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Source</Label>
-          <Select value={mirrorOnly} onValueChange={setMirrorOnly}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Primary + Mirror</SelectItem>
-              <SelectItem value="mirror">Mirror only</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
       {error && (
         <LoadError
@@ -241,8 +204,50 @@ export default function LmisBoardPage() {
               />
             }
             table={table}
-            enableGlobalFilter={false}
+            enableGlobalFilter
+            searchPlaceholder="Search name, passport or labour ID…"
+            filters={filters}
+            onFiltersChange={setFilters}
             paginated
+            toolbarEndActions={
+              /* Insurance and Milestone are status tracks and Source is about how a row got
+                 here, so none of the three is a column the database can be asked about. They
+                 are the board's own switches, which is why they sit here rather than under a
+                 heading. */
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={insurance} onValueChange={setInsurance}>
+                  <SelectTrigger className="h-8 w-[150px]" aria-label="Insurance">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any insurance</SelectItem>
+                    <SelectItem value="Insurance Unpaid">Unpaid</SelectItem>
+                    <SelectItem value="Insurance Paid">Paid</SelectItem>
+                    <SelectItem value="Available">Available</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={milestone} onValueChange={setMilestone}>
+                  <SelectTrigger className="h-8 w-[150px]" aria-label="Milestone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Any milestone</SelectItem>
+                    <SelectItem value="Uploaded">Uploaded</SelectItem>
+                    <SelectItem value="Check Verified">Check Verified</SelectItem>
+                    <SelectItem value="Issued">Issued</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={mirrorOnly} onValueChange={setMirrorOnly}>
+                  <SelectTrigger className="h-8 w-[160px]" aria-label="Source">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Primary + Mirror</SelectItem>
+                    <SelectItem value="mirror">Mirror only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            }
             emptyMessage="No candidates on the LMIS board yet — mirror rows appear when Medical=Fit and Tasheer=Book Done; primary rows after “To LMIS”."
           />
         )}
