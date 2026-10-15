@@ -191,6 +191,28 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             _cache.Remove(PromptKey(update.ChatId));
         }
 
+        // A bare message that is exactly the name of a stage asks for that stage.
+        //
+        // The bot prints the stage names as tappable <code> chips, so the natural way to answer
+        // "which stage?" is to tap one and send it — and that only worked while a prompt was
+        // still pending. It stopped being pending after five minutes, and after one answer that
+        // did not match, so the next tap fell through to candidate search and found nobody.
+        // Reading the name on its own merits means it works whenever it is sent.
+        //
+        // Exact only, never a partial match: "Embassy" is a stage, but a search for a person
+        // must not be swallowed because their name contains one. A candidate whose name is
+        // exactly a stage name is still reachable with /find.
+        if (parsed.Command == BotCommand.Search && !string.IsNullOrWhiteSpace(parsed.Argument))
+        {
+            await using var probe = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
+            var typed = parsed.Argument.Trim().ToLower();
+            if (await probe.WorkflowStages.AsNoTracking()
+                    .AnyAsync(x => !x.IsDeleted && x.Name.ToLower() == typed, ct))
+            {
+                parsed = new BotCommandParse(BotCommand.Stage, parsed.Argument);
+            }
+        }
+
         if (parsed.Command == BotCommand.Language)
         {
             var requested = parsed.Argument;
@@ -428,6 +450,10 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             if (stage is null)
             {
+                // Ask again, and stay listening. This used to re-print the list without
+                // re-arming the prompt, so the second attempt was read as a candidate search
+                // and the person was answering a question nobody was waiting for.
+                AskFor(update.ChatId, BotCommand.Stage);
                 await _telegram.SendMessageAsync(update.ChatId,
                     BotMessages.AskForStage(stageNames, amLang), ct);
                 return;

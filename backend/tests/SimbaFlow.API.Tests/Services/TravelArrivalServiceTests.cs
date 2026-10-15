@@ -415,7 +415,7 @@ public class TravelArrivalServiceTests
         (await engine.ExecuteTransitionAsync(candidate.Id, toArrival.Id, userId, "tester")).IsSuccess.Should().BeTrue();
         await engine.UpdateStatusAsync(candidate.Id, "arrival", "Pending", userId, "tester");
 
-        var handler = new FlagExceptionHandler(db, engine, user);
+        var handler = new FlagExceptionHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
         (await handler.Handle(new FlagExceptionCommand(candidate.Id, "Returned"), CancellationToken.None))
             .IsSuccess.Should().BeTrue();
 
@@ -555,6 +555,54 @@ public class TravelArrivalServiceTests
 
         var state = await engine.GetCurrentStateAsync(candidate.Id);
         state.StatusValues["arrival"].Should().Be("Pending");
+    }
+
+    [Theory]
+    [InlineData("Returned", "exception.returned")]
+    [InlineData("Runaway", "exception.runaway")]
+    public async Task FlagException_TellsTheAgency_TEST83(string type, string expectedEvent)
+    {
+        // The one thing in this pipeline that should not wait for tomorrow morning's digest.
+        var (db, engine, userId, user) = CreateSut();
+        var (_, _, _, _, toDeparture, toArrival, _, _, candidate) = await SeedUnit4Async(db);
+
+        await engine.UpdateStatusAsync(
+            candidate.Id, "ticket_status", "Booking Complete", userId, "tester",
+            metadata: new Dictionary<string, string>
+            {
+                ["destination"] = "Riyadh",
+                ["flight_date"] = DaysFromToday(-10)
+            });
+        (await engine.ExecuteTransitionAsync(candidate.Id, toDeparture.Id, userId, "tester"))
+            .IsSuccess.Should().BeTrue();
+        await engine.UpdateStatusAsync(candidate.Id, "departure_status", "Departed", userId, "tester");
+        (await engine.ExecuteTransitionAsync(candidate.Id, toArrival.Id, userId, "tester"))
+            .IsSuccess.Should().BeTrue();
+        await engine.UpdateStatusAsync(candidate.Id, "arrival", "Pending", userId, "tester");
+
+        var notifier = Substitute.For<ICandidateNotifier>();
+        var handler = new FlagExceptionHandler(db, engine, user, notifier);
+        (await handler.Handle(new FlagExceptionCommand(candidate.Id, type), CancellationToken.None))
+            .IsSuccess.Should().BeTrue();
+
+        await notifier.Received(1).NotifyAsync(candidate.Id, expectedEvent, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task FlagException_Refused_SendsNothing_TEST84()
+    {
+        // A candidate who is not on the Arrival board at all. No case is opened, so nobody is
+        // told one was — a message about somebody absconding is not something to send twice or
+        // in error.
+        var (db, engine, _, user) = CreateSut();
+        var (_, _, _, _, _, _, _, _, candidate) = await SeedUnit4Async(db);
+
+        var notifier = Substitute.For<ICandidateNotifier>();
+        var handler = new FlagExceptionHandler(db, engine, user, notifier);
+        (await handler.Handle(new FlagExceptionCommand(candidate.Id, "Runaway"), CancellationToken.None))
+            .IsSuccess.Should().BeFalse();
+
+        await notifier.DidNotReceiveWithAnyArgs().NotifyAsync(default, default!, default);
     }
 
     [Fact]

@@ -91,7 +91,26 @@ export function useAgencyBotLinks(enabled = true) {
   );
 }
 
+/**
+ * Whether this account currently wants the bot's messages.
+ *
+ * The same flag /mute and /unmute set in the chat, so the switch and the command never disagree.
+ */
+export function useBotNotifications(enabled = true) {
+  return useSWR<boolean>(enabled ? "/api/proxy/bot/notifications" : null, fetcher, {
+    revalidateOnFocus: false,
+  });
+}
+
 export const botApi = {
+  async setNotifications(on: boolean) {
+    const res = await fetch("/api/proxy/bot/notifications", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ on }),
+    });
+    return res.json();
+  },
   async testConnection() {
     const res = await fetch("/api/proxy/bot/test", { method: "POST" });
     return res.json();

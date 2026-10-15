@@ -4,7 +4,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { botApi, useBotLinks, useBotStatus, type BotChatLink } from "@/lib/api/bot";
+import {
+  botApi,
+  useBotLinks,
+  useBotNotifications,
+  useBotStatus,
+  type BotChatLink,
+} from "@/lib/api/bot";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { describeLink, lastSeenLabel, linkSubtitle } from "@/lib/bot/chat-links";
 import { formatDateTime } from "@/lib/utils";
 import { Send, X } from "lucide-react";
@@ -31,8 +39,27 @@ export function BotLinkCard() {
   const [busy, setBusy] = useState(false);
   const { data: botStatus, mutate: mutateBotStatus } = useBotStatus(true);
   const { data: links, mutate: mutateLinks } = useBotLinks(true);
+  const { data: notificationsOn, mutate: mutateNotifications } = useBotNotifications(true);
 
   const linked = links ?? [];
+
+  const onToggleNotifications = async (on: boolean) => {
+    // Shown as already moved. A switch that waits for a round trip before it moves reads as
+    // broken, and the worst case here is that it goes back.
+    mutateNotifications(on, false);
+    try {
+      const result = await botApi.setNotifications(on);
+      if (!result?.isSuccess) {
+        toast.error(result?.error || "Could not change it");
+        mutateNotifications();
+        return;
+      }
+      toast.success(on ? "Telegram messages on" : "Telegram messages off");
+    } catch {
+      toast.error("Could not change it");
+      mutateNotifications();
+    }
+  };
 
   const onGenerate = async () => {
     setLinking(true);
@@ -102,6 +129,27 @@ export function BotLinkCard() {
           number and your own both ring.
         </p>
       </div>
+
+      {/* Only where there is something to silence. On an account with no phone linked it is a
+          switch over nothing, and the question it asks has not come up yet. */}
+      {linked.length > 0 && notificationsOn !== undefined && (
+        <div className="flex items-center justify-between gap-3 rounded-md border px-3 py-2.5">
+          <div className="min-w-0">
+            <Label htmlFor="bot-notifications" className="text-sm font-medium">
+              Tell me when something happens
+            </Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              A candidate registered, a ticket booked, a departure or an arrival confirmed, and
+              anyone returned or reported missing. Looking things up still works either way.
+            </p>
+          </div>
+          <Switch
+            id="bot-notifications"
+            checked={notificationsOn}
+            onCheckedChange={onToggleNotifications}
+          />
+        </div>
+      )}
 
       {linked.length > 0 ? (
         <ul className="divide-y rounded-md border">

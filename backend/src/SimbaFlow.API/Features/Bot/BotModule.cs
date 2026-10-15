@@ -179,6 +179,36 @@ public class BotModule : ICarterModule
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
 
+        // ──── My own on/off switch ────
+        //
+        // /mute and /unmute have always existed in the chat, which is no use to somebody who
+        // has not opened Telegram and wants the messages to stop. Same flag, read and written
+        // from the settings card.
+        group.MapGet("/notifications", async (
+            ICurrentUserService currentUser,
+            IBotLinkService linkService,
+            CancellationToken ct) =>
+        {
+            if (!currentUser.HasPermission("bot.use") || !Guid.TryParse(currentUser.UserId, out var userId))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+
+            var result = await linkService.GetNotificationsOnAsync(userId, ct);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
+        group.MapPut("/notifications", async (
+            SetBotNotificationsRequest body,
+            ICurrentUserService currentUser,
+            IBotLinkService linkService,
+            CancellationToken ct) =>
+        {
+            if (!currentUser.HasPermission("bot.use") || !Guid.TryParse(currentUser.UserId, out var userId))
+                return Results.Json(new { isSuccess = false, error = "Forbidden" }, statusCode: 403);
+
+            var result = await linkService.SetNotificationsOnAsync(userId, body.On, ct);
+            return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
+        });
+
         // ──── Everyone the agency's bot talks to ────
         //
         // The owner's own bot is answering these people with their agency's data, so the owner is
@@ -266,4 +296,10 @@ public class BotModule : ICarterModule
 public sealed class AgencyBotSettingsBody
 {
     public bool BotDisabled { get; set; }
+}
+
+/// <summary>Body of a person's own notification switch. A class, for the same reason.</summary>
+public sealed class SetBotNotificationsRequest
+{
+    public bool On { get; set; }
 }

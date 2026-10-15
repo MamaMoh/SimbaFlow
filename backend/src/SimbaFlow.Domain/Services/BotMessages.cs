@@ -241,6 +241,10 @@ public static class BotMessages
             "visa.rejected" => amharic ? "ቪዛ ተከልክሏል" : "was refused a visa",
             "medical.fit" => amharic ? "የሕክምና ምርመራ አልፏል" : "passed the medical",
             "medical.unfit" => amharic ? "የሕክምና ምርመራ አላለፈም" : "did not pass the medical",
+            // The two that are not good news, and the two an owner most wants to hear the
+            // same day rather than in tomorrow's digest.
+            "exception.returned" => amharic ? "ተመልሷል" : "has been returned",
+            "exception.runaway" => amharic ? "ጠፍቷል" : "has been reported missing",
             _ => null
         };
 

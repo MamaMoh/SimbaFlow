@@ -112,13 +112,18 @@ public class FlagExceptionHandler : IRequestHandler<FlagExceptionCommand, Result
     private readonly ITenantDbContext _context;
     private readonly IWorkflowEngineService _engine;
     private readonly ICurrentUserService _currentUser;
+    private readonly ICandidateNotifier _notifier;
 
     public FlagExceptionHandler(
-        ITenantDbContext context, IWorkflowEngineService engine, ICurrentUserService currentUser)
+        ITenantDbContext context,
+        IWorkflowEngineService engine,
+        ICurrentUserService currentUser,
+        ICandidateNotifier notifier)
     {
         _context = context;
         _engine = engine;
         _currentUser = currentUser;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(FlagExceptionCommand request, CancellationToken ct)
@@ -188,6 +193,15 @@ public class FlagExceptionHandler : IRequestHandler<FlagExceptionCommand, Result
             });
             await _context.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
+
+            // Sent after the commit, and outside the transaction, so a Telegram outage cannot
+            // roll back a case that has been opened. Somebody returned or missing is the one
+            // thing in this pipeline that should not wait for tomorrow morning's digest.
+            await _notifier.NotifyAsync(
+                request.CandidateId,
+                type == ExceptionType.Returned ? "exception.returned" : "exception.runaway",
+                ct);
+
             return Result.Success();
         }
         catch

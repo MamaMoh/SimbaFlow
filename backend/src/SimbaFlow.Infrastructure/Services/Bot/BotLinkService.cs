@@ -42,6 +42,15 @@ public interface IBotLinkService
 
     /// <summary>Records that this chat is still in use. Cheap, and skipped when already fresh.</summary>
     Task TouchAsync(string chatId, string? telegramUsername, string? displayName, CancellationToken ct = default);
+
+    /// <summary>Whether this account currently wants the bot's messages.</summary>
+    Task<Result<bool>> GetNotificationsOnAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Turns this account's messages on or off. The same switch /mute and /unmute throw in the
+    /// chat, so the setting reads the same on both.
+    /// </summary>
+    Task<Result<bool>> SetNotificationsOnAsync(Guid userId, bool on, CancellationToken ct = default);
 }
 
 public sealed class BotLinkService : IBotLinkService
@@ -294,6 +303,34 @@ public sealed class BotLinkService : IBotLinkService
             .ToListAsync(ct);
 
         return Result<List<BotChatLinkDto>>.Success(rows);
+    }
+
+    public async Task<Result<bool>> GetNotificationsOnAsync(Guid userId, CancellationToken ct = default)
+    {
+        var muted = await _platform.ApplicationUsers.AsNoTracking()
+            .Where(u => u.Id == userId && !u.IsDeleted)
+            .Select(u => (bool?)u.BotMuted)
+            .FirstOrDefaultAsync(ct);
+
+        return muted is null
+            ? Result<bool>.Failure("User not found", 404)
+            : Result<bool>.Success(!muted.Value);
+    }
+
+    public async Task<Result<bool>> SetNotificationsOnAsync(
+        Guid userId, bool on, CancellationToken ct = default)
+    {
+        // Stored as "muted" because that is the word the chat command uses and the notifier
+        // reads. The screen says it the other way round, because a switch labelled "muted" is
+        // one people turn on expecting to be told things.
+        var user = await _platform.ApplicationUsers
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted, ct);
+        if (user is null)
+            return Result<bool>.Failure("User not found", 404);
+
+        user.BotMuted = !on;
+        await _platform.SaveChangesAsync(ct);
+        return Result<bool>.Success(on);
     }
 
     public async Task<Result<List<AgencyBotChatLinkDto>>> ListForAgencyAsync(
