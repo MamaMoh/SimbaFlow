@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { OnChangeFn, VisibilityState } from "@tanstack/react-table";
 import {
   isArranged,
@@ -71,19 +71,37 @@ export function useTableLayout({
   const locked = useMemo(() => ({ start: LOCKED_START, end: LOCKED_END }), []);
   const [saved, setSaved] = useState<StoredLayout | null>(null);
 
+  // The same value as `saved`, readable without waiting for a re-render.
+  //
+  // Both setters merge their change into what is already stored, and reading that through the
+  // state would read whatever the last render captured. A board that toggles a column from an
+  // effect on mount — Candidates does, for "Deleted by" — then wrote its change against a
+  // `saved` still holding the pre-read null, and the arrangement that had just been loaded from
+  // storage was overwritten with nothing. The order came back for one render and was gone by
+  // the next reload.
+  const savedRef = useRef<StoredLayout | null>(null);
+
   // Read after mount, not during render: localStorage does not exist on the server, and a value
   // read during the first render would not match what the server sent.
   useEffect(() => {
+    let loaded: StoredLayout | null = null;
     try {
       const raw = window.localStorage.getItem(layoutKey(table));
-      setSaved(raw ? (JSON.parse(raw) as StoredLayout) : null);
+      loaded = raw ? (JSON.parse(raw) as StoredLayout) : null;
     } catch {
-      setSaved(null);
+      loaded = null;
     }
+    savedRef.current = loaded;
+    setSaved(loaded);
   }, [table]);
 
   const persist = useCallback(
     (next: StoredLayout | null) => {
+      // Nothing changed, so nothing is written. Without this a board that toggles a column
+      // from an effect rewrites the stored layout on every mount for no reason.
+      if (JSON.stringify(savedRef.current) === JSON.stringify(next)) return;
+
+      savedRef.current = next;
       setSaved(next);
       try {
         if (next === null) window.localStorage.removeItem(layoutKey(table));
@@ -111,9 +129,14 @@ export function useTableLayout({
   const setColumnOrder = useCallback<OnChangeFn<string[]>>(
     (updater) => {
       const next = typeof updater === "function" ? updater(columnOrder) : updater;
-      persist({ ...saved, order: next.filter((id) => !locked.start.includes(id) && !locked.end.includes(id)) });
+      persist({
+        ...savedRef.current,
+        order: next.filter(
+          (id) => !locked.start.includes(id) && !locked.end.includes(id),
+        ),
+      });
     },
-    [columnOrder, locked, persist, saved],
+    [columnOrder, locked, persist],
   );
 
   const setColumnVisibility = useCallback<OnChangeFn<VisibilityState>>(
@@ -129,10 +152,10 @@ export function useTableLayout({
         const standard = defaultVisibility[id] ?? true;
         if (wanted !== standard) changed[id] = wanted;
       }
-      persist({ ...saved, visibility: changed });
+      persist({ ...savedRef.current, visibility: changed });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [columnIds, columnVisibility, defaultVisibility, managed.join(","), persist, saved],
+    [columnIds, columnVisibility, defaultVisibility, managed.join(","), persist],
   );
 
   const moveColumn = useCallback(
