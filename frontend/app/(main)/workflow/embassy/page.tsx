@@ -314,7 +314,7 @@ export default function EmbassyBoardPage() {
             exportFileName="embassy"
             table={table}
             toolbarEndActions={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"

@@ -585,7 +585,7 @@ export default function CandidatesPage() {
           searchPlaceholder="Search candidates..."
           paginated={true}
           toolbarEndActions={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Each of these narrows the query, not the rows already fetched, and each option
                   carries the count the database gives it — so an empty result is visible as a
                   zero before it is chosen rather than as a blank table afterwards. */}

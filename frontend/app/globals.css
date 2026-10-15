@@ -192,6 +192,23 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /*
+   * One number sets the density of the whole app.
+   *
+   * Every size in Tailwind is in rem, so the root size is not only the text: padding, row
+   * heights, gaps and icon boxes all come down with it. At 15px a board fits about one more
+   * column and two more rows in the same window than it did at the browser's 16px, which is
+   * what the desks were asking for — they work on a wide list and were scrolling for things
+   * that should have been on screen.
+   *
+   * Not smaller than this on purpose. What is read off these screens is passport and visa
+   * numbers, often from a pace away, and a misread digit is a rejected application.
+   */
+  html {
+    font-size: 15px;
+  }
+
   body {
     @apply bg-background text-foreground;
   }

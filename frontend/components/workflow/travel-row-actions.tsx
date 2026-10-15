@@ -14,6 +14,7 @@ import { WorkflowActionItems } from "@/components/workflow/workflow-action-items
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
 import { travelApi, type TravelBoardRow } from "@/lib/api/travel";
+import { flightNotYetDue } from "@/lib/workflow/flight-due";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { citiesFor, todayIso } from "@/lib/data/destination-cities";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -56,6 +57,7 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
   const notification = s.notification_status ?? "";
   const departureStatus = s.departure_status ?? "";
   const canceled = candidate.isCanceled || s.canceled === "true";
+  const notYetDue = flightNotYetDue(s);
 
   const refresh = () => {
     mutateActions();
@@ -218,13 +220,16 @@ export function TravelRowActions({ candidate, onMutate, board, stageId }: Props)
               </DropdownMenuItem>
             )}
             {notification === "Notified" && departureStatus !== "Departed" && (
+              /* Greyed rather than hidden: the item is coming back on the day of the flight,
+                 and a desk that cannot find it at all will go looking for another way round. */
               <DropdownMenuItem
+                disabled={!!notYetDue}
                 onClick={() =>
                   run(() => travelApi.confirmDeparted(candidate.id), "Confirmed departed")
                 }
               >
                 <PlaneTakeoff className="mr-2 h-4 w-4" />
-                Confirm departed
+                {notYetDue ? `Departs ${notYetDue.date}` : "Confirm departed"}
               </DropdownMenuItem>
             )}
             {departureStatus !== "Departed" && (

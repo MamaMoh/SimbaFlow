@@ -25,6 +25,7 @@ import {
   Undo2,
 } from "lucide-react";
 import Link from "next/link";
+import { flightNotYetDue } from "@/lib/workflow/flight-due";
 
 type Props = {
   candidate: ArrivalBoardRow;
@@ -45,6 +46,7 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
 
   const arrival = candidate.statusValues?.arrival ?? "";
   const linked = candidate.commissionLinked;
+  const notYetDue = flightNotYetDue(candidate.statusValues);
 
   const refresh = () => {
     mutateActions();
@@ -103,10 +105,11 @@ export function ArrivalRowActions({ candidate, onMutate, stageId }: Props) {
                 <DropdownMenuSeparator />
                 {(arrival === "Pending" || arrival === "") && (
                   <DropdownMenuItem
+                    disabled={!!notYetDue}
                     onClick={() => run(() => arrivalApi.confirmArrived(candidate.id), "Arrived")}
                   >
                     <PlaneLanding className="mr-2 h-4 w-4" />
-                    Confirm arrived
+                    {notYetDue ? `Flies ${notYetDue.date}` : "Confirm arrived"}
                   </DropdownMenuItem>
                 )}
                 {arrival === "Arrived" && !linked && !candidate.hasOpenException && (

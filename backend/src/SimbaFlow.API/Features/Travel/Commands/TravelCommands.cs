@@ -210,6 +210,10 @@ public class ConfirmDepartedHandler : IRequestHandler<ConfirmDepartedCommand, Re
         if (string.Equals(departureStatus, "Departed", StringComparison.OrdinalIgnoreCase))
             return Result.Failure("Candidate is already Departed", 400);
 
+        var tooEarly = TravelArrivalHelpers.FlightNotYetDue(status, "departed");
+        if (tooEarly is not null)
+            return tooEarly;
+
         var transition = await TravelArrivalHelpers.FindTransitionAsync(
             _context, departure.Id, arrival.Id, TravelArrivalHelpers.ToArrivalAction, ct);
         if (transition is null)

@@ -47,12 +47,18 @@ export function Combobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className="relative w-full">
+        <div className="relative w-full min-w-0">
           {icon && (
             <span className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none text-muted-foreground flex items-center justify-center">
               {icon}
             </span>
           )}
+          {/* `min-w-0`, not a minimum in pixels.
+              This used to carry `min-w-[280px]`, to stop a picker shrinking to the width of
+              the word in it. But a grid track is sized by what it holds, so in any column
+              narrower than 280px the picker grew past its own cell and sat on top of the next
+              one — "Country of travel" over "Salary" on the settings card. Width comes from
+              the cell now, and the label inside truncates. */}
           <Button
             type="button"
             variant="outline"
@@ -60,7 +66,7 @@ export function Combobox({
             aria-expanded={open}
             disabled={disabled}
             className={cn(
-              "w-full min-w-[280px] justify-start gap-0 text-left font-normal h-10 relative",
+              "relative h-10 w-full min-w-0 justify-start gap-0 text-left font-normal",
               !value && "text-muted-foreground",
               icon ? "pl-10 pr-10" : "pl-3 pr-10",
               className

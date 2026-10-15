@@ -464,6 +464,99 @@ public class TravelArrivalServiceTests
         add.Error.Should().ContainEquivalentOf("exception");
     }
 
+    /// <summary>
+    /// Puts a candidate on the Departure board, Notified, with the flight date given.
+    /// </summary>
+    private static async Task<Candidate> ReadyToDepartAsync(
+        TenantDbContext db, WorkflowEngineService engine, Guid userId, string flightDate)
+    {
+        var (_, _, _, _, toDeparture, _, _, _, candidate) = await SeedUnit4Async(db);
+
+        await engine.UpdateStatusAsync(
+            candidate.Id, "ticket_status", "Booking Complete", userId, "tester",
+            metadata: new Dictionary<string, string>
+            {
+                ["destination"] = "Riyadh",
+                ["flight_date"] = flightDate
+            });
+        (await engine.ExecuteTransitionAsync(candidate.Id, toDeparture.Id, userId, "tester"))
+            .IsSuccess.Should().BeTrue();
+        await engine.UpdateStatusAsync(candidate.Id, "notification_status", "Notified", userId, "tester");
+
+        return candidate;
+    }
+
+    private static string DaysFromToday(int days) =>
+        DateOnly.FromDateTime(DateTime.UtcNow).AddDays(days).ToString("yyyy-MM-dd");
+
+    [Fact]
+    public async Task ConfirmDeparted_BeforeTheFlightDate_IsRefused_TEST79()
+    {
+        var (db, engine, userId, user) = CreateSut();
+        var candidate = await ReadyToDepartAsync(db, engine, userId, DaysFromToday(7));
+
+        var handler = new ConfirmDepartedHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
+        var result = await handler.Handle(new ConfirmDepartedCommand(candidate.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.StatusCode.Should().Be(400);
+        // The date is in the message: the desk needs to know which date it is being held to.
+        result.Error.Should().ContainEquivalentOf("flight is booked for");
+
+        // And nothing moved — a refused departure leaves the record where it was.
+        var state = await engine.GetCurrentStateAsync(candidate.Id);
+        state.StatusValues.TryGetValue("departure_status", out var departure);
+        departure.Should().NotBe("Departed");
+    }
+
+    [Fact]
+    public async Task ConfirmDeparted_OnTheDayOfTheFlight_IsAllowed_TEST80()
+    {
+        // The flight leaves today. Holding the desk until tomorrow would make the board wrong
+        // for the whole of the day the work actually happens on.
+        var (db, engine, userId, user) = CreateSut();
+        var candidate = await ReadyToDepartAsync(db, engine, userId, DaysFromToday(0));
+
+        var handler = new ConfirmDepartedHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
+        (await handler.Handle(new ConfirmDepartedCommand(candidate.Id), CancellationToken.None))
+            .IsSuccess.Should().BeTrue();
+
+        var state = await engine.GetCurrentStateAsync(candidate.Id);
+        state.StatusValues["departure_status"].Should().Be("Departed");
+    }
+
+    [Fact]
+    public async Task ConfirmArrived_BeforeTheFlightDate_IsRefused_TEST82()
+    {
+        // Departed on a date that was then moved forward: the candidate is standing on the
+        // Arrival board on a flight that has not left.
+        var (db, engine, userId, user) = CreateSut();
+        var (_, _, _, _, toDeparture, toArrival, _, _, candidate) = await SeedUnit4Async(db);
+
+        await engine.UpdateStatusAsync(
+            candidate.Id, "ticket_status", "Booking Complete", userId, "tester",
+            metadata: new Dictionary<string, string>
+            {
+                ["destination"] = "Riyadh",
+                ["flight_date"] = DaysFromToday(5)
+            });
+        (await engine.ExecuteTransitionAsync(candidate.Id, toDeparture.Id, userId, "tester"))
+            .IsSuccess.Should().BeTrue();
+        await engine.UpdateStatusAsync(candidate.Id, "departure_status", "Departed", userId, "tester");
+        (await engine.ExecuteTransitionAsync(candidate.Id, toArrival.Id, userId, "tester"))
+            .IsSuccess.Should().BeTrue();
+        await engine.UpdateStatusAsync(candidate.Id, "arrival", "Pending", userId, "tester");
+
+        var handler = new ConfirmArrivedHandler(db, engine, user, Substitute.For<ICandidateNotifier>());
+        var result = await handler.Handle(new ConfirmArrivedCommand(candidate.Id), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Should().ContainEquivalentOf("flight is booked for");
+
+        var state = await engine.GetCurrentStateAsync(candidate.Id);
+        state.StatusValues["arrival"].Should().Be("Pending");
+    }
+
     [Fact]
     public void NoOpNotifier_Completes_TEST47()
     {

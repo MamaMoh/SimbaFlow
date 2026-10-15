@@ -45,13 +45,20 @@ public class ConfirmArrivedHandler : IRequestHandler<ConfirmArrivedCommand, Resu
         if (!gate.IsSuccess)
             return Result.Failure(gate.Error ?? "Failed", gate.StatusCode);
 
-        var arrival = TravelArrivalHelpers.TrackValue(
-            TravelArrivalHelpers.ReadStatusValues(gate.Data!), TravelArrivalHelpers.ArrivalTrack);
+        var status = TravelArrivalHelpers.ReadStatusValues(gate.Data!);
+        var arrival = TravelArrivalHelpers.TrackValue(status, TravelArrivalHelpers.ArrivalTrack);
         if (!string.IsNullOrEmpty(arrival) &&
             !arrival.Equals("Pending", StringComparison.OrdinalIgnoreCase))
         {
             return Result.Failure($"Cannot confirm Arrived from status '{arrival}'. Expected Pending.", 400);
         }
+
+        // Being on this board means the departure was confirmed, and that is already gated on
+        // the flight date — but a departure confirmed on a date that was later moved forward
+        // would otherwise leave an arrival standing on a flight that has not left.
+        var tooEarly = TravelArrivalHelpers.FlightNotYetDue(status, "arrived");
+        if (tooEarly is not null)
+            return tooEarly;
 
         var meta = new Dictionary<string, string>
         {

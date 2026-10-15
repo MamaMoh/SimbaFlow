@@ -169,9 +169,14 @@ export function DataTableToolbar<TData>({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex w-full items-center justify-between gap-3 overflow-auto p-3 border-b bg-card">
+      {/* Wraps rather than scrolls.
+          This row used to be `overflow-auto`, so on a narrow window the buttons on the right
+          went off the edge instead of down a line — and the one that went first was Create,
+          the reason most people open a board at all. It was reachable only by scrolling a bar
+          most people never saw. Wrapping costs a few pixels of height and nothing else. */}
+      <div className="flex w-full flex-wrap items-center justify-between gap-3 border-b bg-card p-3">
           {/* Left section: search + filters */}
-          <div className="flex flex-1 items-center gap-2 flex-wrap">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {/* Global search */}
           {enableGlobalFilter && (
             <div className="relative flex items-center">
@@ -511,7 +516,7 @@ export function DataTableToolbar<TData>({
           </div>
 
         {/* Right section: actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           {deleteRowsAction && table.getSelectedRowModel().rows.length > 0 ? (
             <AppTooltip content={tooltips.delete}>
               <Button
