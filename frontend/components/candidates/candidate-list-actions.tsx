@@ -26,7 +26,7 @@ import {
   useAvailableActions,
 } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
-import { CopyToInsuranceItem } from "@/components/workflow/copy-to-insurance-item";
+import { CopyToFormItem } from "@/components/workflow/copy-to-form-item";
 import { reactivateCandidate } from "@/lib/api/candidates";
 
 type CandidateListActionsProps = {
@@ -190,7 +190,8 @@ export function CandidateListActions({
             <FileText className="h-4 w-4 mr-2" /> Generate CV
           </DropdownMenuItem>
         )}
-        <CopyToInsuranceItem candidateId={candidateId} candidateName={candidateName} />
+        <CopyToFormItem form="insurance" candidateId={candidateId} candidateName={candidateName} />
+        <CopyToFormItem form="lmis" candidateId={candidateId} candidateName={candidateName} />
         {workflowMoves.map((action) => (
           <DropdownMenuItem
             key={action.transitionRuleId}

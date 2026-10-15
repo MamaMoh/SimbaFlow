@@ -159,7 +159,7 @@ async function start() {
         boxes < 5 ? "There is nothing to fill on this page" : "This is not a form I know",
         boxes < 5
           ? "This looks like a page to read rather than a form. To bring a candidate into SimbaFlow, copy the whole page and paste it into Candidates → New."
-          : "Open the insurance or visa application and click here again. If you are on it already, the labels differ from the ones on file — copy them below and they can be corrected.",
+          : "Open the insurance, visa or LMIS contract form and click here again. If you are on it already, the labels differ from the ones on file — copy them below and they can be corrected.",
       );
       return;
     }
@@ -350,7 +350,10 @@ $("fill").addEventListener("click", async () => {
         const li = document.createElement("li");
         li.innerHTML = `<span class="what"></span><span class="why"></span>`;
         li.querySelector(".what").textContent = item.label;
-        li.querySelector(".why").textContent = WHY[item.status] ?? item.status;
+        li.querySelector(".why").textContent =
+          item.status === "dropdown" && item.value
+            ? `choose “${item.value}”`
+            : WHY[item.status] ?? item.status;
         list.appendChild(li);
       }
       $("outcome").appendChild(box);

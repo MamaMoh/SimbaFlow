@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiClient } from "@/lib/api/client";
 import { getCachedServerSession } from "@/lib/api/session-cache";
 import { manifestById, type FieldKey } from "@/lib/site-bridge/manifest";
+import { contractEnd, saudiCityIn } from "@/lib/site-bridge/contract";
 import { joinName } from "@/lib/site-bridge/names";
 import { fillPlan, type CandidateValues } from "@/lib/site-bridge/write";
 
@@ -40,8 +41,9 @@ const text = (value: unknown): string =>
  * The record as the maps name things.
  *
  * Mostly a straight copy, because the field keys were chosen to match what the candidate form
- * already calls these — the three exceptions are the ones above plus nationality, which falls
- * back to the country that issued the passport.
+ * already calls these — the exceptions are the ones above, nationality, which falls back to the
+ * country that issued the passport, and the contract's end and the employer's city, which LMIS
+ * asks for on their own and SimbaFlow holds only the parts of (see `contract.ts`).
  */
 function toValues(c: Record<string, unknown>): CandidateValues {
   const direct: FieldKey[] = [
@@ -90,6 +92,9 @@ function toValues(c: Record<string, unknown>): CandidateValues {
   values.passportIssueDate = day(c.passportIssueDate);
   values.passportExpiryDate = day(c.passportExpiryDate);
   values.nationality = text(c.nationality) || text(c.country);
+  values.contractDate = day(c.contractDate);
+  values.contractEndDate = contractEnd(values.contractDate, text(c.contractPeriod));
+  values.sponsorCity = saudiCityIn(text(c.sponsorAddress));
 
   // Assembled, not stored: SimbaFlow holds the parts, and a form with a single name box wants
   // them back together. Built from the same rule that divides them, so the two cannot disagree.

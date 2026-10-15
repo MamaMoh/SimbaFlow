@@ -39,12 +39,13 @@ const form = readFileSync(join(here, "insurance-form.html"), "utf8").replace(
   '<script src="../page-functions.js"></script>',
   "",
 );
+const lmis = readFileSync(join(here, "lmis-contract-form.html"), "utf8");
 const other = `<!doctype html><title>Webmail</title><label>To</label><input id="to">
   <label>Subject</label><input id="subject"><textarea id="body"></textarea>`;
 
 const server = createServer((req, res) => {
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-  res.end(req.url.startsWith("/mail") ? other : form);
+  res.end(req.url.startsWith("/mail") ? other : req.url.startsWith("/lmis") ? lmis : form);
 });
 await new Promise((ok) => server.listen(0, "127.0.0.1", ok));
 const origin = `http://127.0.0.1:${server.address().port}`;
@@ -196,6 +197,43 @@ await check("a newer format is refused rather than misread", async () => {
   await pasteInto(page, 'input[placeholder="First Name"]', "simbaflow-fill:2:e30=");
   assert.equal(await page.locator('input[placeholder="First Name"]').inputValue(), "");
   assert.equal(await page.locator("simbaflow-paste").count(), 1);
+});
+
+await check("the LMIS contract payload fills the Create Contract dialog", async () => {
+  const steps = [
+    step("Beginning of Contract", "2026-03-01", { kind: "date", display: "03/01/2026" }),
+    step("Ending of Contract", "2028-03-01", { kind: "date", display: "03/01/2028" }),
+    step("Passport Number", "EQ0000001"),
+    step("Visa Number", "1234567890"),
+    step("Employer city", "Riyadh", { kind: "select", alternatives: ["Riyadh", "Ar Riyadh"] }),
+    step("Employer Full Name", "Invented Sponsor Name"),
+    step("Employer Phone number", "+966500000000", { kind: "phone", display: "+966500000000" }),
+  ];
+  const missing = [{ label: "Alternative Phone Number" }, { label: "House Number" }];
+  await page.goto(`${origin}/lmis`);
+  await pasteInto(
+    page,
+    'input[placeholder="passport number"]',
+    payload({
+      site: { id: "lmis-contract", title: "LMIS — create contract" },
+      plan: { steps, missing, repeatButton: "Create Contract" },
+      recognise: [...steps, ...missing].map((s) => s.label),
+    }),
+  );
+  const value = (sel) => page.locator(sel).inputValue();
+  assert.equal(await value('input[type="date"] >> nth=0'), "2026-03-01");
+  assert.equal(await value('input[type="date"] >> nth=1'), "2028-03-01");
+  assert.equal(await value('input[placeholder="passport number"]'), "EQ0000001");
+  assert.equal(await value('input[placeholder="visa number"]'), "1234567890");
+  assert.equal(await value('input[placeholder="Employer Name"]'), "Invented Sponsor Name");
+  assert.equal(await value('input[placeholder="Employer phone number"]'), "+966500000000");
+  // The employer's other number and house are not the candidate's to fill in.
+  assert.equal(await value('input[placeholder="employer alternative phone number"]'), "");
+  assert.equal(await value('input[placeholder="House Number"]'), "");
+  // LMIS's own city widget is named for the person, not typed into.
+  assert.equal(await value('input[role="combobox"]'), "");
+  assert.equal(await page.locator("simbaflow-paste").count(), 1);
+  if (shotsAt) await page.screenshot({ path: join(shotsAt, "lmis-filled-light.png") });
 });
 
 await check("a site whose access is gone stops listening", async () => {

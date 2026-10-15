@@ -317,7 +317,10 @@
             const li = document.createElement("li");
             li.innerHTML = `<span class="what"></span><span class="why"></span>`;
             li.querySelector(".what").textContent = item.label;
-            li.querySelector(".why").textContent = WHY[item.status] || item.status;
+            li.querySelector(".why").textContent =
+              item.status === "dropdown" && item.value
+                ? `choose “${item.value}”`
+                : WHY[item.status] || item.status;
             box.querySelector("ul").appendChild(li);
           }
           $(".body").appendChild(box);

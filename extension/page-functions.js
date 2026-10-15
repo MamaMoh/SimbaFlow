@@ -272,7 +272,13 @@
       }
     }
 
-    return results.map(({ label, status }) => ({ label, status }));
+    // The value goes back with a box that has to be finished by hand, so the card can say what
+    // to choose — "Riyadh" — rather than only that something should be.
+    return results.map(({ label, status }) => {
+      if (status !== "dropdown" && status !== "nooption") return { label, status };
+      const step = steps.find((s) => s.label === label);
+      return { label, status, value: step?.display || step?.value || "" };
+    });
   };
 
   window.__simbaflow = { collectLabels, describe, fill };

@@ -50,8 +50,8 @@ export function BrowserHelperCard() {
       <div>
         <h2 className="text-sm font-semibold">Browser helper</h2>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          Fills a candidate into the insurance and visa portals, instead of typing sixteen boxes
-          for each person. Chrome and Edge.
+          Fills a candidate into the insurance and visa portals and the LMIS contract form,
+          instead of typing every box for each person. Chrome and Edge.
         </p>
       </div>
 
@@ -69,8 +69,9 @@ export function BrowserHelperCard() {
           {atLeast(version, PASTE_HELPER_VERSION) ? (
             <p className="text-muted-foreground text-xs">
               Or right-click a candidate on the Candidates or LMIS board, choose{" "}
-              <strong>Copy to insurance</strong>, and paste into the insurance form. The first time,
-              open the helper on that form and turn on <strong>Fill when I paste here</strong>.
+              <strong>Copy to insurance</strong> or <strong>Copy to LMIS contract</strong>, and paste
+              into that form. The first time, open the helper on the form and turn on{" "}
+              <strong>Fill when I paste here</strong>.
             </p>
           ) : (
             <div className="space-y-2">
