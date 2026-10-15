@@ -139,8 +139,9 @@ export function BotLinkCard() {
               Tell me when something happens
             </Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              A candidate registered, a ticket booked, a departure or an arrival confirmed, and
-              anyone returned or reported missing. Looking things up still works either way.
+              A candidate registered, a ticket booked, a departure or an arrival confirmed,
+              anyone returned or reported missing, and the morning summary. Looking things up
+              in the chat still works either way.
             </p>
           </div>
           <Switch
