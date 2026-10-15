@@ -25,15 +25,26 @@ public class UpsertCommissionFeesHandler : IRequestHandler<UpsertCommissionFeesC
 {
     private readonly ITenantDbContext _context;
     private readonly IExchangeRateService _fx;
+    private readonly IJournalPostingService _journal;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpsertCommissionFeesHandler(ITenantDbContext context, IExchangeRateService fx)
+    public UpsertCommissionFeesHandler(
+        ITenantDbContext context,
+        IExchangeRateService fx,
+        IJournalPostingService journal,
+        ICurrentUserService currentUser)
     {
         _context = context;
         _fx = fx;
+        _journal = journal;
+        _currentUser = currentUser;
     }
 
     public async Task<Result> Handle(UpsertCommissionFeesCommand request, CancellationToken ct)
     {
+        if (!Guid.TryParse(_currentUser.UserId, out var userId))
+            return Result.Failure("Unauthenticated", 401);
+
         var commission = await _context.Commissions
             .Include(c => c.Fees)
             .Include(c => c.Payments)
@@ -94,6 +105,9 @@ public class UpsertCommissionFeesHandler : IRequestHandler<UpsertCommissionFeesC
         // Keep navigation in sync for recalc
         commission.Fees = existingFees.Concat(newFees).ToList();
         CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+
+        // Charging fees is when the agency earns its fee and starts owing the pass-through money.
+        await _journal.SyncCommissionFeesAsync(commission, userId, cancellationToken: ct);
         await _context.SaveChangesAsync(ct);
         return Result.Success();
     }
