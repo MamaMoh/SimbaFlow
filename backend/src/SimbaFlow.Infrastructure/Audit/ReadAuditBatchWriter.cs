@@ -102,6 +102,7 @@ public class ReadAuditBatchWriter : BackgroundService
     private static ReadAuditLog MapToLog(ReadAuditEntry entry) => new()
     {
         UserId = entry.UserId,
+        TenantId = entry.TenantId,
         EntityType = entry.EntityType,
         EntityId = entry.EntityId,
         Action = entry.Action,

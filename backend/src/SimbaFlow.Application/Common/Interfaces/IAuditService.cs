@@ -21,4 +21,5 @@ public record AuditEntry(
     string? OldValues = null,
     string? NewValues = null,
     string? IpAddress = null,
-    string? UserAgent = null);
+    string? UserAgent = null,
+    Guid? TenantId = null);

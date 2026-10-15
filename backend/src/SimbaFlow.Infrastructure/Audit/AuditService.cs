@@ -31,6 +31,7 @@ public class AuditService : IAuditService
             dbContext.AuditLogs.Add(new AuditLog
             {
                 UserId = entry.UserId,
+                TenantId = entry.TenantId,
                 Action = entry.Action,
                 EntityType = entry.EntityType,
                 EntityId = entry.EntityId,
@@ -64,6 +65,13 @@ public class AuditLog
 
     /// <summary>The user whose context the action was performed in.</summary>
     public string? UserId { get; set; }
+
+    /// <summary>
+    /// The agency the action was performed in. The table is shared by every agency, so this is
+    /// what lets an owner see their own agency's trail and nobody else's. Null on rows written
+    /// before it existed, and on platform actions taken outside any agency.
+    /// </summary>
+    public Guid? TenantId { get; set; }
 
     /// <summary>
     /// If the session was impersonated, the admin who initiated it.

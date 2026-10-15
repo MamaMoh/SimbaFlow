@@ -1699,6 +1699,9 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<bool>("Success")
                         .HasColumnType("boolean");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone");
 
@@ -1709,6 +1712,8 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Timestamp");
 
                     b.ToTable("AuditLogs", "public");
                 });
@@ -1748,6 +1753,9 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                     b.Property<string>("StaffProfileId")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("UserAgent")
                         .HasColumnType("text");
 
@@ -1755,6 +1763,8 @@ namespace SimbaFlow.Infrastructure.Migrations.Platform
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "AccessedAt");
 
                     b.ToTable("ReadAuditLogs", "public");
                 });

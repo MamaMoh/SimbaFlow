@@ -77,6 +77,12 @@ public class PlatformDbContext
 
         modelBuilder.HasDefaultSchema("public");
 
+        // The audit trail page reads one agency's rows, newest first.
+        modelBuilder.Entity<AuditLog>(entity =>
+            entity.HasIndex(a => new { a.TenantId, a.Timestamp }));
+        modelBuilder.Entity<ReadAuditLog>(entity =>
+            entity.HasIndex(a => new { a.TenantId, a.AccessedAt }));
+
         modelBuilder.Entity<RolePermission>(entity =>
         {
             entity.HasKey(rp => new { rp.RoleId, rp.PermissionId });
