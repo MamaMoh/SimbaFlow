@@ -14,6 +14,7 @@ import { StatusUpdateSheet } from "@/components/workflow/status-update-sheet";
 import { WorkflowActionItems } from "@/components/workflow/workflow-action-items";
 import { CandidateDocumentItems } from "@/components/workflow/candidate-document-items";
 import { MoveBackStageItem } from "@/components/workflow/move-back-stage-item";
+import { CopyToInsuranceItem } from "@/components/workflow/copy-to-insurance-item";
 import { lmisApi, nextLmisMilestone, type LmisBoardRow } from "@/lib/api/lmis";
 import { useAvailableActions } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
@@ -96,6 +97,7 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
             )}
             {canRead || canEditCandidate ? <DropdownMenuSeparator /> : null}
             <CandidateDocumentItems candidateId={candidate.id} />
+            <CopyToInsuranceItem candidateId={candidate.id} candidateName={candidate.fullName} />
             <DropdownMenuSeparator />
             <MoveBackStageItem
               candidateId={candidate.id}

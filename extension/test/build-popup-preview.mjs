@@ -38,9 +38,14 @@ const PLAN = {
 const STUB = `
 <script>
 window.chrome = {
-  runtime: { getManifest: () => ({ version: "${version}" }) },
+  runtime: { getManifest: () => ({ version: "${version}" }), sendMessage: async () => ({ ok: true }) },
   storage: { local: { get: async () => ({}) } },
-  tabs: { query: async () => [{ id: 1 }], create: async () => {} },
+  tabs: { query: async () => [{ id: 1, url: "https://insurance.example/members/add" }], create: async () => {} },
+  permissions: {
+    contains: async () => false,
+    request: async () => true,
+    remove: async () => true,
+  },
   scripting: {
     executeScript: async ({ func, args }) =>
       func ? [{ result: window.__stubPage(args[0], args[1]) }] : [{ result: null }],

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2, Download, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PASTE_HELPER_VERSION, atLeast } from "@/lib/site-bridge/copy-to-form";
 
 /**
  * Where people get the browser helper.
@@ -65,6 +66,27 @@ export function BrowserHelperCard() {
             for the candidate. It fills the boxes; you check them and press the form&rsquo;s own
             button.
           </p>
+          {atLeast(version, PASTE_HELPER_VERSION) ? (
+            <p className="text-muted-foreground text-xs">
+              Or right-click a candidate on the Candidates or LMIS board, choose{" "}
+              <strong>Copy to insurance</strong>, and paste into the insurance form. The first time,
+              open the helper on that form and turn on <strong>Fill when I paste here</strong>.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-amber-700">
+                Filling by pasting needs version {PASTE_HELPER_VERSION}. Download it again, replace
+                the folder, and press the reload arrow on{" "}
+                <code className="bg-muted rounded px-1 py-0.5">chrome://extensions</code>.
+              </p>
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <a href="/simbaflow-form-filler.zip" download>
+                  <Download className="size-4" />
+                  Download {PASTE_HELPER_VERSION}
+                </a>
+              </Button>
+            </div>
+          )}
         </div>
       ) : STORE_URL ? (
         <div className="space-y-2">

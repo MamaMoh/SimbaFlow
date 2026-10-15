@@ -17,12 +17,37 @@ All of that lives in `frontend/lib/site-bridge/` and arrives over the wire:
 **So a portal that renames a box is fixed by a deploy of SimbaFlow**, not by twenty people
 re-installing this. That is the entire reason it is built this way.
 
+## Filling by paste
+
+The second way in. On the Candidates or LMIS board, right-click a candidate and choose **Copy to
+insurance**. SimbaFlow puts that candidate on the clipboard as a finished fill — the same plan
+the toolbar would have fetched — and pasting it into the insurance form fills every box at once.
+A batch of twenty is right-click, copy, switch tab, paste, check, Add Member, twenty times.
+
+- The payload is one line, `simbaflow-fill:1:` and base64 JSON, written by
+  `frontend/lib/site-bridge/clipboard.ts` and read by `paste.js`. That file's test pins the exact
+  bytes, so changing the format on one side fails until the other side changes too.
+- A copy is good for twenty minutes. Copy Hiwot at nine and paste at four, and the form meant
+  for somebody else would get Hiwot; an old copy is refused instead.
+- It fills only a page that prints at least three of the form's own labels — the same test the
+  popup uses — so pasting into a webmail box or the visa form fills nothing. A payload is never
+  let through into the box either way: it is a candidate's details, encoded but not hidden.
+- Any other paste passes through untouched.
+
+The listener has to be on the page before the paste, which the toolbar's one-click access cannot
+give. So the popup, on a form it recognises, offers **Fill when I paste here**; turning it on asks
+the browser for that one site (`optional_host_permissions`), and `background.js` registers
+`paste.js` for exactly the sites granted. Taking the access away — from the switch or from
+`chrome://extensions` — unregisters it. There is still no list of portals in this folder.
+
 ## Permissions
 
 - `host_permissions` is **only** `https://app.laba.et`. Its requests carry the signed-in session
   cookie, so there is no second credential to issue, store on a laptop, or forget to revoke.
 - No portal is listed anywhere. `activeTab` grants access to the one tab you are looking at, at
   the moment you click the toolbar button, and nothing else.
+- `optional_host_permissions` covers any site, and is never granted wholesale: the popup asks
+  for one origin at a time, when a person turns on filling by paste for the form in front of them.
 - The page is recognised by the labels printed on it, not by its hostname. A portal that moves
   to a new address keeps working.
 
@@ -66,6 +91,17 @@ node test/build.mjs
 builds `test/harness.generated.html`: the fixture in `test/insurance-form.html` with the real
 `page-functions.js` inlined, so what is tested is what ships. Open it in a browser and run
 `window.__simbaflow.fill([...])` from the console.
+
+## Testing paste, end to end
+
+```bash
+cd frontend && npm ci          # once, for Playwright
+node ../extension/test/paste-e2e.mjs [--shots <dir>]
+```
+
+loads this folder unpacked into Chromium, serves the insurance fixture locally, puts payloads on
+the real clipboard and presses Ctrl+V: a fill, an ordinary paste, a stale copy, the wrong page, a
+newer format, and a withdrawn site. `CHROMIUM_PATH` picks a browser other than Playwright's own.
 
 ## Looking at the popup
 
