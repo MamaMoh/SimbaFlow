@@ -43,6 +43,35 @@ export type CommissionPayment = {
   reference: string | null;
   notes: string | null;
   journalEntryId: string | null;
+  receiptNumber: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+};
+
+export type PaymentReceipt = {
+  paymentId: string;
+  receiptNumber: string;
+  agencyName: string;
+  agencyAddress: string | null;
+  agencyPhone: string | null;
+  agencyLicenseNumber: string | null;
+  candidateName: string;
+  passportNumber: string;
+  partnerName: string | null;
+  paidAt: string;
+  amount: number;
+  currency: string;
+  exchangeRateToEtb: number;
+  amountEtb: number;
+  method: string;
+  reference: string | null;
+  notes: string | null;
+  recordedBy: string;
+  totalFeesEtb: number;
+  totalPaidEtb: number;
+  balanceEtb: number;
+  voidedAt: string | null;
+  voidReason: string | null;
 };
 
 export type CommissionDispute = {
@@ -52,6 +81,10 @@ export type CommissionDispute = {
   openedAt: string;
   resolvedAt: string | null;
   resolutionNotes: string | null;
+  disputedAmountEtb: number | null;
+  /** Enforced, Waived or Adjusted, once resolved. */
+  outcome: string | null;
+  adjustmentAmountEtb: number;
 };
 
 export type CommissionDetail = {
@@ -66,6 +99,7 @@ export type CommissionDetail = {
   openedAt: string;
   totalFeesAmount: number;
   totalPaidAmount: number;
+  totalAdjustedAmount: number;
   balanceAmount: number;
   fees: CommissionFee[];
   payments: CommissionPayment[];
@@ -156,7 +190,18 @@ export function useCommission(id: string | undefined) {
   };
 }
 
+export function usePaymentReceipt(paymentId: string | undefined) {
+  const key = paymentId ? `/api/proxy/commissions/payments/${paymentId}/receipt` : null;
+  const { data, error, isLoading } = useSWR<ApiResult<PaymentReceipt>>(key, fetcher, {
+    revalidateOnFocus: false,
+  });
+  return { receipt: data?.data, isLoading, error };
+}
+
 export const commissionsApi = {
+  voidPayment: (paymentId: string, reason: string) =>
+    sendJson<void>(`/api/proxy/commissions/payments/${paymentId}/void`, "POST", { reason }),
+
   upsertFees: (id: string, fees: FeeLineInput[]) =>
     sendJson<void>(`/api/proxy/commissions/${id}/fees`, "PUT", { fees }),
 
@@ -172,12 +217,19 @@ export const commissionsApi = {
     }
   ) => sendJson<string>(`/api/proxy/commissions/${id}/payments`, "POST", body),
 
-  openDispute: (id: string, reason: string) =>
-    sendJson<string>(`/api/proxy/commissions/${id}/disputes`, "POST", { reason }),
+  openDispute: (id: string, reason: string, amountEtb?: number) =>
+    sendJson<string>(`/api/proxy/commissions/${id}/disputes`, "POST", { reason, amountEtb }),
 
-  resolveDispute: (disputeId: string, resolutionNotes: string) =>
+  resolveDispute: (
+    disputeId: string,
+    resolutionNotes: string,
+    outcome: string,
+    adjustmentAmountEtb?: number
+  ) =>
     sendJson<void>(`/api/proxy/commissions/disputes/${disputeId}/resolve`, "POST", {
       resolutionNotes,
+      outcome,
+      adjustmentAmountEtb,
     }),
 };
 

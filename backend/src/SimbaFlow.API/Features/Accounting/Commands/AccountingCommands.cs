@@ -16,11 +16,20 @@ public record UpsertExchangeRateCommand(
     public string RequiredPermission => "accounting.post";
 }
 
+/// <summary>
+/// Saves a rate for the signed-in agency only. A platform administrator, who acts for no agency,
+/// saves the platform default that agencies without their own rate fall back to.
+/// </summary>
 public class UpsertExchangeRateHandler : IRequestHandler<UpsertExchangeRateCommand, Result<Guid>>
 {
     private readonly IPlatformDbContext _platform;
+    private readonly ICurrentUserService _currentUser;
 
-    public UpsertExchangeRateHandler(IPlatformDbContext platform) => _platform = platform;
+    public UpsertExchangeRateHandler(IPlatformDbContext platform, ICurrentUserService currentUser)
+    {
+        _platform = platform;
+        _currentUser = currentUser;
+    }
 
     public async Task<Result<Guid>> Handle(UpsertExchangeRateCommand request, CancellationToken ct)
     {
@@ -36,9 +45,14 @@ public class UpsertExchangeRateHandler : IRequestHandler<UpsertExchangeRateComma
         if (from.Length != 3 || to.Length != 3)
             return Result<Guid>.Failure("Currencies must be ISO 4217 (3 letters)", 400);
 
+        var tenantId = _currentUser.TenantId;
+        if (tenantId is null && !_currentUser.IsSuperAdmin)
+            return Result<Guid>.Failure("Only the platform team can set default rates", 403);
+
         var existing = await _platform.ExchangeRates
             .FirstOrDefaultAsync(r =>
                 !r.IsDeleted
+                && r.TenantId == tenantId
                 && r.FromCurrency == from
                 && r.ToCurrency == to
                 && r.EffectiveDate == request.EffectiveDate, ct);
@@ -53,6 +67,7 @@ public class UpsertExchangeRateHandler : IRequestHandler<UpsertExchangeRateComma
 
         var rate = new ExchangeRate
         {
+            TenantId = tenantId,
             FromCurrency = from,
             ToCurrency = to,
             Rate = request.Rate,

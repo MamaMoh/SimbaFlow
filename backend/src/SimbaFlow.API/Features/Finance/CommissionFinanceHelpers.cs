@@ -8,13 +8,18 @@ internal static class CommissionFinanceHelpers
     public static void RecalcTotalsAndStatus(Commission commission)
     {
         var fees = commission.Fees?.Where(f => !f.IsDeleted).ToList() ?? [];
-        var payments = commission.Payments?.Where(p => !p.IsDeleted).ToList() ?? [];
-        var disputes = commission.Disputes?.Where(d => !d.IsDeleted).ToList() ?? [];
+        var payments = commission.Payments?.Where(p => !p.IsDeleted && p.VoidedAt == null).DistinctBy(p => p.Id).ToList() ?? [];
+        // By id: a dispute added to the collection by hand and again by fix-up must count once.
+        var disputes = commission.Disputes?.Where(d => !d.IsDeleted).DistinctBy(d => d.Id).ToList() ?? [];
 
         commission.TotalFeesAmount = Math.Round(fees.Sum(f => f.AmountEtb), 2, MidpointRounding.AwayFromZero);
         commission.TotalPaidAmount = Math.Round(payments.Sum(p => p.AmountEtb), 2, MidpointRounding.AwayFromZero);
+        commission.TotalAdjustedAmount = Math.Round(
+            disputes.Where(d => d.Status == DisputeStatus.Resolved).Sum(d => d.AdjustmentAmountEtb),
+            2, MidpointRounding.AwayFromZero);
         commission.BalanceAmount = Math.Round(
-            commission.TotalFeesAmount - commission.TotalPaidAmount, 2, MidpointRounding.AwayFromZero);
+            commission.TotalFeesAmount - commission.TotalPaidAmount - commission.TotalAdjustedAmount,
+            2, MidpointRounding.AwayFromZero);
 
         if (disputes.Any(d => d.Status == DisputeStatus.Open))
         {
@@ -22,9 +27,10 @@ internal static class CommissionFinanceHelpers
             return;
         }
 
-        if (commission.TotalFeesAmount > 0 && commission.TotalPaidAmount >= commission.TotalFeesAmount)
+        var cleared = commission.TotalPaidAmount + commission.TotalAdjustedAmount;
+        if (commission.TotalFeesAmount > 0 && cleared >= commission.TotalFeesAmount)
             commission.Status = CommissionStatus.Settled;
-        else if (commission.TotalPaidAmount > 0)
+        else if (cleared > 0)
             commission.Status = CommissionStatus.Partial;
         else
             commission.Status = CommissionStatus.Open;

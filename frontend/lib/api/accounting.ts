@@ -47,6 +47,8 @@ export type ExchangeRateRow = {
   rate: number;
   effectiveDate: string;
   source: string | null;
+  /** True for this agency's own rate; false for a platform default it falls back to. */
+  isAgencyRate: boolean;
 };
 
 const fetcher = async <T>(url: string): Promise<T> => {
@@ -124,7 +126,141 @@ export function useExchangeRates(params?: {
   };
 }
 
+export type ExpenseRow = {
+  id: string;
+  expenseDate: string;
+  category: string;
+  description: string;
+  payee: string | null;
+  amount: number;
+  currency: string;
+  exchangeRateToEtb: number;
+  amountEtb: number;
+  method: string;
+  reference: string | null;
+  commissionId: string | null;
+  journalEntryId: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+};
+
+export const EXPENSE_CATEGORIES: { value: string; label: string; payout?: boolean }[] = [
+  { value: "MedicalPayout", label: "Medical payout", payout: true },
+  { value: "TicketPayout", label: "Ticket payout", payout: true },
+  { value: "PartnerPayout", label: "Partner payout", payout: true },
+  { value: "Salaries", label: "Salaries and wages" },
+  { value: "RentAndUtilities", label: "Rent and utilities" },
+  { value: "TransportAndTravel", label: "Transport and travel" },
+  { value: "GovernmentFees", label: "Government and licence fees" },
+  { value: "Marketing", label: "Marketing" },
+  { value: "OfficeSupplies", label: "Office supplies" },
+  { value: "Other", label: "Other" },
+];
+
+const EMPTY_EXPENSES: ExpenseRow[] = [];
+
+export function useExpenses(params?: { from?: string; to?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.from) qs.set("from", params.from);
+  if (params?.to) qs.set("to", params.to);
+  const key = `/api/proxy/accounting/expenses?${qs}`;
+  const { data, error, isLoading, mutate } = useSWR<ApiResult<ExpenseRow[]>>(key, fetcher, {
+    revalidateOnFocus: false,
+  });
+  return { expenses: data?.data ?? EMPTY_EXPENSES, isLoading, error, mutate };
+}
+
+export type JournalListRow = {
+  id: string;
+  entryNumber: string;
+  postedAt: string;
+  description: string;
+  sourceType: string;
+  sourceId: string | null;
+  amount: number;
+};
+
+export type StatementLine = { code: string; name: string; amount: number };
+
+export type TrialBalance = {
+  asOf: string;
+  rows: { accountId: string; code: string; name: string; type: string; debit: number; credit: number }[];
+  totalDebit: number;
+  totalCredit: number;
+};
+
+export type ProfitAndLoss = {
+  from: string;
+  to: string;
+  revenue: StatementLine[];
+  totalRevenue: number;
+  expenses: StatementLine[];
+  totalExpenses: number;
+  netProfit: number;
+};
+
+export type BalanceSheet = {
+  asOf: string;
+  assets: StatementLine[];
+  totalAssets: number;
+  liabilities: StatementLine[];
+  totalLiabilities: number;
+  equity: StatementLine[];
+  retainedEarnings: number;
+  totalEquity: number;
+  totalLiabilitiesAndEquity: number;
+};
+
+function useReport<T>(key: string | null) {
+  const { data, error, isLoading, mutate } = useSWR<ApiResult<T>>(key, fetcher, {
+    revalidateOnFocus: false,
+  });
+  return { data: data?.data, error, isLoading, mutate };
+}
+
+export function useJournalEntries(params: {
+  from?: string;
+  to?: string;
+  sourceType?: string;
+  search?: string;
+  page: number;
+  pageSize: number;
+}) {
+  const qs = new URLSearchParams({ page: String(params.page), pageSize: String(params.pageSize) });
+  if (params.from) qs.set("from", params.from);
+  if (params.to) qs.set("to", params.to);
+  if (params.sourceType) qs.set("sourceType", params.sourceType);
+  if (params.search) qs.set("search", params.search);
+  return useReport<{ items: JournalListRow[]; totalCount: number; page: number; pageSize: number }>(
+    `/api/proxy/accounting/journals?${qs}`
+  );
+}
+
+export const useTrialBalance = (asOf: string) =>
+  useReport<TrialBalance>(`/api/proxy/accounting/reports/trial-balance?asOf=${asOf}`);
+
+export const useProfitAndLoss = (from: string, to: string) =>
+  useReport<ProfitAndLoss>(`/api/proxy/accounting/reports/profit-and-loss?from=${from}&to=${to}`);
+
+export const useBalanceSheet = (asOf: string) =>
+  useReport<BalanceSheet>(`/api/proxy/accounting/reports/balance-sheet?asOf=${asOf}`);
+
 export const accountingApi = {
+  recordExpense: (body: {
+    expenseDate: string;
+    category: string;
+    description: string;
+    amount: number;
+    currency: string;
+    method: string;
+    payee?: string;
+    reference?: string;
+    commissionId?: string;
+  }) => sendJson<string>("/api/proxy/accounting/expenses", "POST", body),
+
+  voidExpense: (id: string, reason: string) =>
+    sendJson<void>(`/api/proxy/accounting/expenses/${id}/void`, "POST", { reason }),
+
   upsertRate: (body: {
     fromCurrency: string;
     toCurrency: string;

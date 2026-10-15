@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { commissionsApi } from "@/lib/api/commissions";
+import { commissionsApi, formatEtb } from "@/lib/api/commissions";
 
 const METHODS = ["Cash", "BankTransfer", "MobileMoney", "Other"];
 
@@ -28,12 +28,15 @@ export function RecordPaymentSheet({
   onOpenChange,
   commissionId,
   disabledReason,
+  balance,
   onRecorded,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   commissionId: string;
   disabledReason?: string | null;
+  /** What the candidate still owes, in ETB. Payments above it are refused. */
+  balance: number;
   onRecorded: () => void;
 }) {
   const [amount, setAmount] = useState("0");
@@ -52,6 +55,10 @@ export function RecordPaymentSheet({
     const value = Number(amount);
     if (!(value > 0)) {
       toast.error("Amount must be greater than 0");
+      return;
+    }
+    if (currency === "ETB" && value > balance + 1) {
+      toast.error(`That is more than the balance owed (${formatEtb(balance)}).`);
       return;
     }
     setBusy(true);
@@ -83,7 +90,8 @@ export function RecordPaymentSheet({
         <SheetHeader>
           <SheetTitle>Record payment</SheetTitle>
           <SheetDescription>
-            Posts Cash (1100) Dr / Revenue (4100) Cr in ETB for the converted amount.
+            Balance owed: {formatEtb(balance)}. Posts Cash (1100) Dr / Receivable (1200) Cr in ETB
+            for the converted amount.
           </SheetDescription>
         </SheetHeader>
 

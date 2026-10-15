@@ -151,6 +151,12 @@ export const navigation: NavItem[] = [
     claims: ["accounting.read", "system.admin"],
   },
   {
+    name: "Expenses",
+    href: "/finance/expenses",
+    icon: require("lucide-react").Receipt,
+    claims: ["accounting.read", "system.admin"],
+  },
+  {
     name: "Exchange rates",
     href: "/finance/rates",
     icon: require("lucide-react").ArrowLeftRight,

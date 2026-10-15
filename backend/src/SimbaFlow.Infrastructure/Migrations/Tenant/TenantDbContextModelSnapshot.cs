@@ -831,6 +831,11 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
+                    b.Property<decimal>("TotalAdjustedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_adjusted_amount");
+
                     b.Property<decimal>("TotalFeesAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -951,6 +956,15 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<decimal>("AdjustmentAmountEtb")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("adjustment_amount_etb");
+
+                    b.Property<Guid?>("AdjustmentJournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("adjustment_journal_entry_id");
+
                     b.Property<Guid>("CommissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("commission_id");
@@ -963,6 +977,11 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<decimal?>("DisputedAmountEtb")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("disputed_amount_etb");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -974,6 +993,10 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.Property<Guid>("OpenedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("opened_by_user_id");
+
+                    b.Property<int?>("Outcome")
+                        .HasColumnType("integer")
+                        .HasColumnName("outcome");
 
                     b.Property<string>("Reason")
                         .IsRequired()
@@ -1023,6 +1046,130 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.ToTable("disputes", (string)null);
                 });
 
+            modelBuilder.Entity("SimbaFlow.Domain.Entities.Finance.Expense", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<decimal>("AmountEtb")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount_etb");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer")
+                        .HasColumnName("category");
+
+                    b.Property<Guid?>("CommissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("commission_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("currency");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("description");
+
+                    b.Property<decimal>("ExchangeRateToEtb")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("numeric(18,8)")
+                        .HasColumnName("exchange_rate_to_etb");
+
+                    b.Property<DateOnly>("ExpenseDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expense_date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_deleted");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("journal_entry_id");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("integer")
+                        .HasColumnName("method");
+
+                    b.Property<string>("Payee")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("payee");
+
+                    b.Property<Guid>("RecordedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recorded_by_user_id");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("reference");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("VoidJournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("void_journal_entry_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_expenses");
+
+                    b.HasIndex("CommissionId")
+                        .HasDatabaseName("ix_expenses_commission_id");
+
+                    b.HasIndex("ExpenseDate")
+                        .HasDatabaseName("ix_expenses_expense_date")
+                        .HasFilter("is_deleted = FALSE");
+
+                    b.ToTable("expenses", (string)null);
+                });
+
             modelBuilder.Entity("SimbaFlow.Domain.Entities.Finance.FinanceCounter", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1045,6 +1192,10 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.Property<int>("NextJournalNumber")
                         .HasColumnType("integer")
                         .HasColumnName("next_journal_number");
+
+                    b.Property<int>("NextReceiptNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("next_receipt_number");
 
                     b.Property<uint>("RowVersion")
                         .IsConcurrencyToken()
@@ -1271,6 +1422,11 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("paid_at");
 
+                    b.Property<string>("ReceiptNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("receipt_number");
+
                     b.Property<Guid>("RecordedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("recorded_by_user_id");
@@ -1293,6 +1449,23 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.Property<string>("UpdatedBy")
                         .HasColumnType("text")
                         .HasColumnName("updated_by");
+
+                    b.Property<Guid?>("VoidJournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("void_journal_entry_id");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("void_reason");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("voided_at");
+
+                    b.Property<Guid?>("VoidedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("voided_by_user_id");
 
                     b.HasKey("Id")
                         .HasName("pk_payments");
