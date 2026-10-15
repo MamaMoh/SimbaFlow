@@ -169,7 +169,10 @@ public record CommissionDisputeDto(
     string Reason,
     DateTime OpenedAt,
     DateTime? ResolvedAt,
-    string? ResolutionNotes);
+    string? ResolutionNotes,
+    decimal? DisputedAmountEtb,
+    string? Outcome,
+    decimal AdjustmentAmountEtb);
 
 public record CommissionDetailDto(
     Guid Id,
@@ -183,6 +186,7 @@ public record CommissionDetailDto(
     DateTime OpenedAt,
     decimal TotalFeesAmount,
     decimal TotalPaidAmount,
+    decimal TotalAdjustedAmount,
     decimal BalanceAmount,
     List<CommissionFeeDto> Fees,
     List<CommissionPaymentDto> Payments,
@@ -233,7 +237,9 @@ public class GetCommissionByIdHandler
             .Where(d => d.CommissionId == request.Id && !d.IsDeleted)
             .OrderByDescending(d => d.OpenedAt)
             .Select(d => new CommissionDisputeDto(
-                d.Id, d.Status.ToString(), d.Reason, d.OpenedAt, d.ResolvedAt, d.ResolutionNotes))
+                d.Id, d.Status.ToString(), d.Reason, d.OpenedAt, d.ResolvedAt, d.ResolutionNotes,
+                d.DisputedAmountEtb, d.Outcome.HasValue ? d.Outcome.Value.ToString() : null,
+                d.AdjustmentAmountEtb))
             .ToListAsync(ct);
 
         return Result<CommissionDetailDto>.Success(new CommissionDetailDto(
@@ -250,6 +256,7 @@ public class GetCommissionByIdHandler
             row.Commission.OpenedAt,
             row.Commission.TotalFeesAmount,
             row.Commission.TotalPaidAmount,
+            row.Commission.TotalAdjustedAmount,
             row.Commission.BalanceAmount,
             fees,
             payments,

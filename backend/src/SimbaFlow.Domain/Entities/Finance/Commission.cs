@@ -23,7 +23,10 @@ public class Commission : BaseEntity
     /// <summary>Denormalized Σ payment AmountEtb.</summary>
     public decimal TotalPaidAmount { get; set; }
 
-    /// <summary>TotalFeesAmount − TotalPaidAmount (ETB).</summary>
+    /// <summary>Denormalized Σ amounts written off by resolved disputes (ETB).</summary>
+    public decimal TotalAdjustedAmount { get; set; }
+
+    /// <summary>TotalFeesAmount − TotalPaidAmount − TotalAdjustedAmount (ETB).</summary>
     public decimal BalanceAmount { get; set; }
 
     public ICollection<CommissionFee> Fees { get; set; } = [];

@@ -81,6 +81,10 @@ export type CommissionDispute = {
   openedAt: string;
   resolvedAt: string | null;
   resolutionNotes: string | null;
+  disputedAmountEtb: number | null;
+  /** Enforced, Waived or Adjusted, once resolved. */
+  outcome: string | null;
+  adjustmentAmountEtb: number;
 };
 
 export type CommissionDetail = {
@@ -95,6 +99,7 @@ export type CommissionDetail = {
   openedAt: string;
   totalFeesAmount: number;
   totalPaidAmount: number;
+  totalAdjustedAmount: number;
   balanceAmount: number;
   fees: CommissionFee[];
   payments: CommissionPayment[];
@@ -212,12 +217,19 @@ export const commissionsApi = {
     }
   ) => sendJson<string>(`/api/proxy/commissions/${id}/payments`, "POST", body),
 
-  openDispute: (id: string, reason: string) =>
-    sendJson<string>(`/api/proxy/commissions/${id}/disputes`, "POST", { reason }),
+  openDispute: (id: string, reason: string, amountEtb?: number) =>
+    sendJson<string>(`/api/proxy/commissions/${id}/disputes`, "POST", { reason, amountEtb }),
 
-  resolveDispute: (disputeId: string, resolutionNotes: string) =>
+  resolveDispute: (
+    disputeId: string,
+    resolutionNotes: string,
+    outcome: string,
+    adjustmentAmountEtb?: number
+  ) =>
     sendJson<void>(`/api/proxy/commissions/disputes/${disputeId}/resolve`, "POST", {
       resolutionNotes,
+      outcome,
+      adjustmentAmountEtb,
     }),
 };
 

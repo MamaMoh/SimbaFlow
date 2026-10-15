@@ -98,7 +98,9 @@ export default function CommissionDetailPage({
               </Link>
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-4 rounded-md border bg-card px-4 py-3 text-sm">
+          <div
+            className={`grid gap-4 rounded-md border bg-card px-4 py-3 text-sm ${commission.totalAdjustedAmount > 0 ? "grid-cols-4" : "grid-cols-3"}`}
+          >
             <div>
               <p className="text-muted-foreground">Fees</p>
               <p className="font-medium tabular-nums">{formatEtb(commission.totalFeesAmount)}</p>
@@ -107,6 +109,12 @@ export default function CommissionDetailPage({
               <p className="text-muted-foreground">Paid</p>
               <p className="font-medium tabular-nums">{formatEtb(commission.totalPaidAmount)}</p>
             </div>
+            {commission.totalAdjustedAmount > 0 ? (
+              <div>
+                <p className="text-muted-foreground">Written off</p>
+                <p className="font-medium tabular-nums">{formatEtb(commission.totalAdjustedAmount)}</p>
+              </div>
+            ) : null}
             <div>
               <p className="text-muted-foreground">Balance</p>
               <p className="font-medium tabular-nums">{formatEtb(commission.balanceAmount)}</p>
@@ -229,6 +237,7 @@ export default function CommissionDetailPage({
         <DisputePanel
           commissionId={commission.id}
           disputes={commission.disputes}
+          balance={commission.balanceAmount}
           canUpdate={canUpdate}
           onChanged={() => mutate()}
         />

@@ -831,6 +831,11 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
+                    b.Property<decimal>("TotalAdjustedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("total_adjusted_amount");
+
                     b.Property<decimal>("TotalFeesAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -951,6 +956,15 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<decimal>("AdjustmentAmountEtb")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("adjustment_amount_etb");
+
+                    b.Property<Guid?>("AdjustmentJournalEntryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("adjustment_journal_entry_id");
+
                     b.Property<Guid>("CommissionId")
                         .HasColumnType("uuid")
                         .HasColumnName("commission_id");
@@ -963,6 +977,11 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                         .HasColumnType("text")
                         .HasColumnName("created_by");
 
+                    b.Property<decimal?>("DisputedAmountEtb")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("disputed_amount_etb");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -974,6 +993,10 @@ namespace SimbaFlow.Infrastructure.Migrations.Tenant
                     b.Property<Guid>("OpenedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("opened_by_user_id");
+
+                    b.Property<int?>("Outcome")
+                        .HasColumnType("integer")
+                        .HasColumnName("outcome");
 
                     b.Property<string>("Reason")
                         .IsRequired()

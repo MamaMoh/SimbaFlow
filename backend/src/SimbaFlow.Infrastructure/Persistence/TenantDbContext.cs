@@ -284,6 +284,7 @@ public class TenantDbContext : DbContext, ITenantDbContext
             entity.Property(c => c.TotalFeesAmount).HasPrecision(18, 2);
             entity.Property(c => c.TotalPaidAmount).HasPrecision(18, 2);
             entity.Property(c => c.BalanceAmount).HasPrecision(18, 2);
+            entity.Property(c => c.TotalAdjustedAmount).HasPrecision(18, 2);
             entity.HasMany(c => c.Fees).WithOne(f => f.Commission).HasForeignKey(f => f.CommissionId);
             entity.HasMany(c => c.Payments).WithOne(p => p.Commission).HasForeignKey(p => p.CommissionId);
             entity.HasMany(c => c.Disputes).WithOne(d => d.Commission).HasForeignKey(d => d.CommissionId);
@@ -330,6 +331,8 @@ public class TenantDbContext : DbContext, ITenantDbContext
                 .HasFilter($"is_deleted = FALSE AND status = {(int)DisputeStatus.Open}");
             entity.Property(d => d.Reason).HasMaxLength(2000);
             entity.Property(d => d.ResolutionNotes).HasMaxLength(2000);
+            entity.Property(d => d.DisputedAmountEtb).HasPrecision(18, 2);
+            entity.Property(d => d.AdjustmentAmountEtb).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<Account>(entity =>

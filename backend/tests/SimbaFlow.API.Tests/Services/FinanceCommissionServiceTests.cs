@@ -216,7 +216,7 @@ public class FinanceCommissionServiceTests
             new OpenDisputeCommand(commission.Id, "Another"), CancellationToken.None);
         second.IsSuccess.Should().BeFalse();
 
-        var resolve = await new ResolveDisputeHandler(db, user).Handle(
+        var resolve = await new ResolveDisputeHandler(db, journal, user).Handle(
             new ResolveDisputeCommand(open.Data!, "Agreed settlement"), CancellationToken.None);
         resolve.IsSuccess.Should().BeTrue();
 

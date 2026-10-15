@@ -78,7 +78,7 @@ public class CommissionModule : ICarterModule
 
         group.MapPost("/{id:guid}/disputes", async (Guid id, OpenDisputeRequest body, ISender sender) =>
         {
-            var result = await sender.Send(new OpenDisputeCommand(id, body.Reason));
+            var result = await sender.Send(new OpenDisputeCommand(id, body.Reason, body.AmountEtb));
             return result.IsSuccess
                 ? Results.Json(result, statusCode: result.StatusCode)
                 : Results.Json(result, statusCode: result.StatusCode);
@@ -87,7 +87,8 @@ public class CommissionModule : ICarterModule
         group.MapPost("/disputes/{disputeId:guid}/resolve", async (
             Guid disputeId, ResolveDisputeRequest body, ISender sender) =>
         {
-            var result = await sender.Send(new ResolveDisputeCommand(disputeId, body.ResolutionNotes));
+            var result = await sender.Send(new ResolveDisputeCommand(
+                disputeId, body.ResolutionNotes, body.Outcome, body.AdjustmentAmountEtb));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
     }
@@ -108,6 +109,9 @@ public record RecordPaymentRequest(
     DateTime? PaidAt,
     string? Reference,
     string? Notes);
-public record OpenDisputeRequest(string Reason);
+public record OpenDisputeRequest(string Reason, decimal? AmountEtb = null);
 public record VoidPaymentRequest(string Reason);
-public record ResolveDisputeRequest(string ResolutionNotes);
+public record ResolveDisputeRequest(
+    string ResolutionNotes,
+    string? Outcome = null,
+    decimal? AdjustmentAmountEtb = null);

@@ -4,6 +4,7 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Finance;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 using SimbaFlow.Infrastructure.Persistence;
 using SimbaFlow.Infrastructure.Services;
 
@@ -311,7 +312,7 @@ public class VoidPaymentHandler : IRequestHandler<VoidPaymentCommand, Result>
     }
 }
 
-public record OpenDisputeCommand(Guid CommissionId, string Reason)
+public record OpenDisputeCommand(Guid CommissionId, string Reason, decimal? AmountEtb = null)
     : IRequest<Result<Guid>>, IRequirePermission
 {
     public string RequiredPermission => "commission.update";
@@ -348,11 +349,21 @@ public class OpenDisputeHandler : IRequestHandler<OpenDisputeCommand, Result<Gui
         if (commission.Disputes.Any(d => !d.IsDeleted && d.Status == DisputeStatus.Open))
             return Result<Guid>.Failure("An open dispute already exists for this commission", 409);
 
+        decimal? amount = request.AmountEtb is decimal a
+            ? Math.Round(a, 2, MidpointRounding.AwayFromZero)
+            : null;
+        if (amount is <= 0)
+            return Result<Guid>.Failure("The disputed amount must be greater than 0", 400);
+        if (amount > commission.BalanceAmount)
+            return Result<Guid>.Failure(
+                $"The disputed amount is more than the balance owed ({commission.BalanceAmount:N2} ETB)", 400);
+
         var dispute = new Dispute
         {
             CommissionId = commission.Id,
             Status = DisputeStatus.Open,
             Reason = request.Reason.Trim(),
+            DisputedAmountEtb = amount,
             OpenedAt = DateTime.UtcNow,
             OpenedByUserId = userId
         };
@@ -366,20 +377,33 @@ public class OpenDisputeHandler : IRequestHandler<OpenDisputeCommand, Result<Gui
     }
 }
 
-public record ResolveDisputeCommand(Guid DisputeId, string ResolutionNotes)
+/// <param name="Outcome">Enforced (default), Waived or Adjusted.</param>
+/// <param name="AdjustmentAmountEtb">For Adjusted: how much of the balance to write off.</param>
+public record ResolveDisputeCommand(
+    Guid DisputeId,
+    string ResolutionNotes,
+    string? Outcome = null,
+    decimal? AdjustmentAmountEtb = null)
     : IRequest<Result>, IRequirePermission
 {
     public string RequiredPermission => "commission.update";
 }
 
+/// <summary>
+/// Closes a dispute with its outcome. Waived and Adjusted write money off the balance and post
+/// Dr fee waivers (4900) / Cr receivable; Enforced leaves the balance as it is.
+/// </summary>
 public class ResolveDisputeHandler : IRequestHandler<ResolveDisputeCommand, Result>
 {
     private readonly ITenantDbContext _context;
+    private readonly IJournalPostingService _journal;
     private readonly ICurrentUserService _currentUser;
 
-    public ResolveDisputeHandler(ITenantDbContext context, ICurrentUserService currentUser)
+    public ResolveDisputeHandler(
+        ITenantDbContext context, IJournalPostingService journal, ICurrentUserService currentUser)
     {
         _context = context;
+        _journal = journal;
         _currentUser = currentUser;
     }
 
@@ -409,7 +433,50 @@ public class ResolveDisputeHandler : IRequestHandler<ResolveDisputeCommand, Resu
         if (commission is null)
             return Result.Failure("Commission not found", 404);
 
+        var outcome = DisputeOutcome.Enforced;
+        if (!string.IsNullOrWhiteSpace(request.Outcome)
+            && !Enum.TryParse(request.Outcome, true, out outcome))
+            return Result.Failure($"Invalid outcome: {request.Outcome}", 400);
+
+        CommissionFinanceHelpers.RecalcTotalsAndStatus(commission);
+        var balance = Math.Max(0, commission.BalanceAmount);
+        decimal writeOff;
+        switch (outcome)
+        {
+            case DisputeOutcome.Waived:
+                writeOff = Math.Min(dispute.DisputedAmountEtb ?? balance, balance);
+                break;
+            case DisputeOutcome.Adjusted:
+                if (request.AdjustmentAmountEtb is not decimal adj || adj <= 0)
+                    return Result.Failure("An adjusted outcome needs the amount to write off", 400);
+                writeOff = Math.Round(adj, 2, MidpointRounding.AwayFromZero);
+                if (writeOff > balance)
+                    return Result.Failure(
+                        $"The adjustment is more than the balance owed ({balance:N2} ETB)", 400);
+                break;
+            default:
+                writeOff = 0;
+                break;
+        }
+
+        if (writeOff > 0)
+        {
+            var entry = await _journal.PostAsync(
+                $"Dispute {outcome.ToString().ToLowerInvariant()}: commission {commission.Id}",
+                JournalPostingService.SourceTypeDisputeAdjustment,
+                dispute.Id,
+                [
+                    new JournalLineSpec(LedgerAccounts.FeeWaivers, writeOff, 0, dispute.Reason),
+                    new JournalLineSpec(LedgerAccounts.Receivable, 0, writeOff, dispute.Reason),
+                ],
+                userId,
+                cancellationToken: ct);
+            dispute.AdjustmentJournalEntryId = entry?.Id;
+        }
+
         dispute.Status = DisputeStatus.Resolved;
+        dispute.Outcome = outcome;
+        dispute.AdjustmentAmountEtb = writeOff;
         dispute.ResolvedAt = DateTime.UtcNow;
         dispute.ResolutionNotes = request.ResolutionNotes.Trim();
         dispute.ResolvedByUserId = userId;
