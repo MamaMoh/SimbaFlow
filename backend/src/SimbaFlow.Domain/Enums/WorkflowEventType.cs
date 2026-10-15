@@ -10,5 +10,7 @@ public enum WorkflowEventType
     MirrorViewActivated = 5,
     MirrorViewDeactivated = 6,
     ExceptionFlagged = 7,
-    Archived = 8
+    Archived = 8,
+    /// <summary>Brought back from the Inactive list after an Unfit result or a removal.</summary>
+    Reactivated = 9
 }

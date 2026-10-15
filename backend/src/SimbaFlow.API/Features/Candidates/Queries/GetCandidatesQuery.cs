@@ -209,7 +209,8 @@ public class GetCandidatesHandler : IRequestHandler<GetCandidatesQuery, Result<P
                 c.ExperienceAbroadYears,
                 c.DeletedBy,
                 c.DeletedAt,
-                c.CurrentStageId == null || c.CurrentStageId == initialStageId))
+                // A removed row has nothing left to delete; its menu offers Reactivate instead.
+                !c.IsDeleted && (c.CurrentStageId == null || c.CurrentStageId == initialStageId)))
             .ToListAsync(cancellationToken);
 
         var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);

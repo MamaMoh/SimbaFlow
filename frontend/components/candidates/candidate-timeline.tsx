@@ -11,7 +11,8 @@ const EVENT_LABELS: Record<number, string> = {
   5: "Mirror activated",
   6: "Mirror deactivated",
   7: "Exception flagged",
-  8: "Archived",
+  8: "Removed",
+  9: "Reactivated",
 };
 
 type CandidateTimelineProps = {
