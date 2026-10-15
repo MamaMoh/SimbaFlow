@@ -47,7 +47,7 @@ export const navigation: NavItem[] = [
     href: "/overview",
     scope: "both",
     icon: require("lucide-react").LayoutDashboard,
-    claims: ["candidate.read", "system.admin"],
+    claims: ["candidate.read", "system.admin", "platform.support"],
   },
   {
     name: "My work",
@@ -237,14 +237,38 @@ export const navigation: NavItem[] = [
     href: "/admin/errors",
     scope: "platform",
     icon: require("lucide-react").AlertOctagon,
-    claims: ["system.admin"],
+    claims: ["system.admin", "platform.support"],
   },
   {
+    // The support desk reads billing; changing it is an administrator's.
     name: "Subscriptions",
     href: "/subscriptions",
     scope: "platform",
     icon: require("lucide-react").Receipt,
-    claims: ["system.admin"],
+    claims: ["system.admin", "platform.support"],
+  },
+  {
+    // Help requests from every agency, in one inbox.
+    name: "Help requests",
+    href: "/admin/support",
+    scope: "platform",
+    icon: require("lucide-react").LifeBuoy,
+    claims: ["system.admin", "platform.support"],
+  },
+  {
+    name: "Announcements",
+    href: "/admin/announcements",
+    scope: "platform",
+    icon: require("lucide-react").Megaphone,
+    claims: ["system.admin", "platform.support"],
+  },
+  {
+    // Every agency's trail and the platform team's own actions, in one place.
+    name: "Platform audit",
+    href: "/admin/audit",
+    scope: "platform",
+    icon: require("lucide-react").ScrollText,
+    claims: ["system.admin", "platform.support"],
   },
   {
     // /api/tenants is behind the SuperAdmin policy, not a permission, so tenant.manage only ever
@@ -253,7 +277,13 @@ export const navigation: NavItem[] = [
     href: "/tenants",
     scope: "platform",
     icon: require("lucide-react").Server,
-    claims: ["system.admin"],
+    claims: ["system.admin", "platform.support"],
+  },
+  {
+    // Any agency staff member can ask the platform team for help. No claim: everyone.
+    name: "Help",
+    href: "/help",
+    icon: require("lucide-react").LifeBuoy,
   },
   {
     name: "Settings",
@@ -420,7 +450,7 @@ export function filterNavigationByClaims(
  * after a successful login, with only a button back to the same denial.
  */
 export function firstPermittedRoute(claims: string[], isSuperAdmin: boolean): string {
-  if (isSuperAdmin) return "/overview";
+  if (isSuperAdmin || claims.includes("platform.support")) return "/overview";
   const walk = (items: NavItem[]): string | null => {
     for (const item of items) {
       if (item.isSeparator) continue;

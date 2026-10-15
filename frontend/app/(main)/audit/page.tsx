@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Loader2, ScrollText } from "lucide-react";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { PageHeader } from "@/components/ui/page-header";
+import { AgencyAccessLog } from "@/components/platform/agency-access-log";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +111,8 @@ export default function AuditTrailPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Audit trail" count={data ? total : undefined} />
+
+      <AgencyAccessLog />
 
       <Tabs
         value={kind}

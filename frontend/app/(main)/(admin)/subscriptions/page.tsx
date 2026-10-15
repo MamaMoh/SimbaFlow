@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { usePlatformStaff } from "@/lib/platform/use-platform-staff";
 import {
   subscriptionApi,
   useSubscriptions,
@@ -45,8 +45,9 @@ function dueLabel(row: SubscriptionRow) {
 }
 
 export default function SubscriptionsPage() {
-  const { isSuperAdmin } = usePermissions();
-  const { rows, error, isLoading, mutate } = useSubscriptions(isSuperAdmin);
+  // The support desk reads billing; only administrators change it.
+  const { isSuperAdmin, isStaff } = usePlatformStaff();
+  const { rows, error, isLoading, mutate } = useSubscriptions(isStaff);
 
   const [editing, setEditing] = useState<SubscriptionRow | null>(null);
   const [invoicing, setInvoicing] = useState<SubscriptionRow | null>(null);
@@ -69,7 +70,7 @@ export default function SubscriptionsPage() {
     };
   }, [rows]);
 
-  if (!isSuperAdmin) return <AccessDenied resource="subscriptions" />;
+  if (!isStaff) return <AccessDenied resource="subscriptions" />;
 
   const setStatus = async (row: SubscriptionRow, status: "Active" | "Suspended") => {
     setBusyId(row.id);
@@ -201,20 +202,24 @@ export default function SubscriptionsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap justify-end gap-1.5">
-                      <Button size="sm" variant="outline" className="h-8" onClick={() => setEditing(row)}>
-                        Plan
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setInvoicing(row)}>
-                        <Receipt className="h-3.5 w-3.5" />
-                        Invoice
-                      </Button>
+                      {isSuperAdmin && (
+                        <>
+                          <Button size="sm" variant="outline" className="h-8" onClick={() => setEditing(row)}>
+                            Plan
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setInvoicing(row)}>
+                            <Receipt className="h-3.5 w-3.5" />
+                            Invoice
+                          </Button>
+                        </>
+                      )}
                       <Button asChild size="sm" variant="ghost" className="h-8 gap-1.5">
                         <Link href={`/subscriptions/${row.id}`}>
                           <FileText className="h-3.5 w-3.5" />
                           History
                         </Link>
                       </Button>
-                      {row.hasAccess ? (
+                      {!isSuperAdmin ? null : row.hasAccess ? (
                         <Button
                           size="sm"
                           variant="ghost"

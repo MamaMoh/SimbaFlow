@@ -10,8 +10,11 @@
  * it is granted by the bootstrap seeder and not from a form.
  */
 
-/** Runs the platform and has no agency of their own. */
-export const PLATFORM_ROLES = ["PlatformAdmin"] as const;
+/**
+ * Runs the platform and has no agency of their own. PlatformSupport is the support desk: it sees
+ * and helps every agency but cannot change one, enter one, or touch billing.
+ */
+export const PLATFORM_ROLES = ["PlatformAdmin", "PlatformSupport"] as const;
 
 /** Works inside one agency. */
 export const AGENCY_ROLES = [

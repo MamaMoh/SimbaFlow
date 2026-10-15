@@ -49,7 +49,10 @@ const createAgencySchema = z
     adminFirstName: z.string().min(2, "First name required"),
     adminLastName: z.string().min(2, "Last name required"),
     adminEmail: z.string().email("Valid admin email required"),
-    temporaryPassword: z.string().min(8, "Password must be at least 8 characters"),
+    // Optional: the owner is emailed a link to choose their own password either way.
+    temporaryPassword: z
+      .string()
+      .refine((v) => v === "" || v.length >= 8, "Password must be at least 8 characters"),
   })
   .superRefine((data, ctx) => {
     const caps = AGENCY_LEVELS.find((l) => l.level === data.agencyLevel);
@@ -81,7 +84,7 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
   } = useForm<CreateAgencyForm>({
     resolver: zodResolver(createAgencySchema),
     defaultValues: {
-      temporaryPassword: "Welcome@123!",
+      temporaryPassword: "",
       agencyLevel: 5,
       licensedCountries: [],
       country: "Ethiopia",
@@ -147,12 +150,14 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
           adminFirstName: data.adminFirstName,
           adminLastName: data.adminLastName,
           adminEmail: data.adminEmail,
-          temporaryPassword: data.temporaryPassword,
+          temporaryPassword: data.temporaryPassword || null,
         }),
       });
       const result = await response.json();
       if (result.isSuccess) {
-        toast.success(`Agency "${data.agencyName}" created (Level ${data.agencyLevel})`);
+        toast.success(`Agency "${data.agencyName}" created (Level ${data.agencyLevel})`, {
+          description: `A welcome email with a link to choose a password is on its way to ${data.adminEmail}.`,
+        });
         reset();
         onOpenChange(false);
         onCreated();
@@ -388,12 +393,10 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
             <div>
               <h3 className="flex items-center gap-2 text-sm font-semibold mb-4">
                 <Key className="h-4 w-4 text-green-700" />
-                Initial Password
+                Sign-in
               </h3>
               <div className="space-y-1.5">
-                <Label>
-                  Temporary Password <span className="text-red-500">*</span>
-                </Label>
+                <Label>Temporary password (optional)</Label>
                 <Input type="password" {...register("temporaryPassword")} />
                 {errors.temporaryPassword && (
                   <p className="text-xs text-destructive mt-1">
@@ -401,7 +404,8 @@ export function CreateAgencySheet({ open, onOpenChange, onCreated }: CreateAgenc
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  The agency owner will be forced to change this on first login.
+                  The owner is emailed a link to choose their own password, so you can leave this
+                  empty. If you set one, they must change it at first sign-in.
                 </p>
               </div>
             </div>

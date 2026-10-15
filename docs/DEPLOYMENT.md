@@ -99,6 +99,11 @@ Renewal is automatic — the running `simba-certbot` loop renews `app.laba.et` a
 The Telegram bot is **disabled** in this deployment (`Telegram__Enabled=false`); supply
 `Telegram__BotToken` via the environment if you enable it.
 
+Billing reminders: the API emails an agency's contact and owner when a payment comes due (once
+when it is close, on the day, and once it is late) and suspends an agency still unpaid 14 days
+after its due date. `Billing__AutoSuspendAfterDays` changes the grace period; `0` turns automatic
+suspension off (reminders still go out). Both need SMTP to be configured to reach anyone.
+
 ## The laba.et deploy deletes this app's vhost
 
 `app.laba.et` went down on 2026-09-01 with `ERR_CERT_COMMON_NAME_INVALID`, taking `www.laba.et`,

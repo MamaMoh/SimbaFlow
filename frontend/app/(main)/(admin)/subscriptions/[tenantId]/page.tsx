@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { usePlatformStaff } from "@/lib/platform/use-platform-staff";
 import {
   subscriptionApi,
   useInvoices,
@@ -40,9 +40,10 @@ export default function AgencyBillingPage({
   params: Promise<{ tenantId: string }>;
 }) {
   const { tenantId } = use(params);
-  const { isSuperAdmin } = usePermissions();
-  const { rows, isLoading: rowsLoading, mutate: mutateRows } = useSubscriptions(isSuperAdmin);
-  const { invoices, error, mutate } = useInvoices(isSuperAdmin ? tenantId : null);
+  // The support desk reads billing; only administrators change it.
+  const { isSuperAdmin, isStaff } = usePlatformStaff();
+  const { rows, isLoading: rowsLoading, mutate: mutateRows } = useSubscriptions(isStaff);
+  const { invoices, error, mutate } = useInvoices(isStaff ? tenantId : null);
 
   const [paying, setPaying] = useState<InvoiceRow | null>(null);
   const [voiding, setVoiding] = useState<InvoiceRow | null>(null);
@@ -64,7 +65,7 @@ export default function AgencyBillingPage({
     };
   }, [invoices, agency]);
 
-  if (!isSuperAdmin) return <AccessDenied resource="subscriptions" />;
+  if (!isStaff) return <AccessDenied resource="subscriptions" />;
 
   const refresh = () => {
     void mutate();
@@ -198,7 +199,7 @@ export default function AgencyBillingPage({
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        {inv.status === "Issued" ? (
+                        {inv.status === "Issued" && isSuperAdmin ? (
                           <div className="flex justify-end gap-1.5">
                             <Button
                               size="sm"

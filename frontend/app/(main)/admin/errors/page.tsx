@@ -28,8 +28,10 @@ function daysSince(iso: string) {
 }
 
 export default function ErrorsPage() {
-  const { hasPermission, isSuperAdmin } = usePermissions();
-  const allowed = isSuperAdmin || hasPermission("system.admin");
+  const { hasPermission, isSuperAdmin, permissions } = usePermissions();
+  // The support desk reads errors too; only administrators mark them resolved.
+  const canResolve = isSuperAdmin || hasPermission("system.admin");
+  const allowed = canResolve || permissions.includes("platform.support");
 
   const { data, error, mutate } = useSWR(
     allowed ? "/api/proxy/diagnostics/errors" : null,
@@ -83,9 +85,11 @@ export default function ErrorsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <AgeCell days={daysSince(g.firstSeen)} title="Days since first seen" />
-                <Button size="sm" variant="outline" onClick={() => resolve(g.fingerprint)}>
-                  Resolve
-                </Button>
+                {canResolve && (
+                  <Button size="sm" variant="outline" onClick={() => resolve(g.fingerprint)}>
+                    Resolve
+                  </Button>
+                )}
               </div>
             </li>
           ))}

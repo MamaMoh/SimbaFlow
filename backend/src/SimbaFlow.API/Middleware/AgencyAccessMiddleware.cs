@@ -34,9 +34,13 @@ public sealed class AgencyAccessMiddleware
             || !Guid.TryParse(header, out var tenantId)
             || context.User.Identity?.IsAuthenticated != true
             || !IsPlatformAdmin(context.User)
-            // Signing in and out, and starting or ending the access itself, work from anywhere.
+            // Signing in and out, starting or ending the access itself, and the platform's own
+            // pages (which never read an agency's data) work from anywhere.
             || path.StartsWithSegments("/api/auth")
-            || path.StartsWithSegments("/api/platform"))
+            || path.StartsWithSegments("/api/platform")
+            || path.StartsWithSegments("/api/tenants")
+            || path.StartsWithSegments("/api/subscriptions")
+            || path.StartsWithSegments("/api/diagnostics"))
         {
             await _next(context);
             return;

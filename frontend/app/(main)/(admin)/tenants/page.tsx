@@ -19,7 +19,7 @@ import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Building2, Pencil, Users, Power, Trash2, Download, RotateCcw } from "lucide-react";
+import { MoreHorizontal, Building2, Pencil, Users, Power, Trash2, Download, RotateCcw, Mail, AlertTriangle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CreateAgencySheet } from "@/components/tenants/create-agency-sheet";
-import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { usePlatformStaff } from "@/lib/platform/use-platform-staff";
+import { ago, attentionReasons, daysSince, IDLE_DAYS } from "@/lib/platform/health";
 import { EditAgencySheet } from "@/components/tenants/edit-agency-sheet";
 import { OffboardDialog, PurgeDialog, type OffboardTarget } from "@/components/tenants/offboarding-dialogs";
 import { filenameFromResponse, saveFile } from "@/lib/files/download";
@@ -51,6 +52,17 @@ interface AgencyRow {
   offboardedAt?: string | null;
   offboardingReason?: string | null;
   lastExportedAt?: string | null;
+  // Usage
+  activeUsers?: number;
+  maxUsers?: number;
+  lastSignInAt?: string | null;
+  lastActivityAt?: string | null;
+  candidates?: number | null;
+  activeCandidates?: number | null;
+  candidatesAddedLast30Days?: number | null;
+  licenseExpiresAt?: string | null;
+  autoSuspendedAt?: string | null;
+  openSupportTickets?: number;
 }
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
@@ -62,10 +74,10 @@ const STATUS_MAP: Record<number, { label: string; variant: "default" | "outline"
 };
 
 export default function TenantsPage() {
-  // Creating, suspending and offboarding an agency is platform work: /api/tenants is behind the
-  // SuperAdmin policy end to end. Anyone else reaching this page gets a table of buttons that all
-  // come back 403, so say so once instead.
-  const { isSuperAdmin, isLoading: permsLoading } = usePermissions();
+  // The whole platform team sees the list and how each agency is doing. Creating, editing,
+  // suspending and offboarding are the administrators'; the support desk gets only the actions
+  // that help an agency (its users, the welcome email).
+  const { isSuperAdmin, isStaff, isLoading: permsLoading } = usePlatformStaff();
 
   const [sorting, setSorting] = useState<SortingState>([]);
   // The same search box and the same funnels as every other board. This list arrives whole —
@@ -92,6 +104,9 @@ export default function TenantsPage() {
           contactEmail: "text",
           status: "text",
           provisionedAt: "date",
+          activeUsers: "number",
+          activeCandidates: "number",
+          lastSignInAt: "date",
         },
         // Status is held as a number and shown as a word, so it is matched against the word.
         (row, field) =>
@@ -115,6 +130,13 @@ export default function TenantsPage() {
     } else {
       toast.error(result.error || "Failed to update status");
     }
+  };
+
+  const resendInvite = async (row: AgencyRow) => {
+    const res = await fetch(`/api/proxy/tenants/${row.id}/resend-invite`, { method: "POST" });
+    const result = await res.json().catch(() => ({}));
+    if (res.ok && result.isSuccess) toast.success(`Welcome email sent to ${result.data?.sentTo ?? "the owner"}`);
+    else toast.error(result.error || "Could not send the welcome email");
   };
 
   const confirmOffboard = async (reason: string) => {
@@ -234,6 +256,14 @@ export default function TenantsPage() {
         const status = getValue() as number;
         const s = STATUS_MAP[status] || { label: "Unknown", variant: "outline" as const };
         const badge = <Badge variant={s.variant} className={status === 0 ? "bg-green-100 text-green-800" : ""}>{s.label}</Badge>;
+        if (status === 1 && row.original.autoSuspendedAt) {
+          return (
+            <div className="text-sm">
+              {badge}
+              <span className="text-muted-foreground text-xs block">Unpaid, suspended automatically</span>
+            </div>
+          );
+        }
         if (status !== 2 || !row.original.offboardedAt) return badge;
         return (
           <div className="text-sm" title={row.original.offboardingReason ?? undefined}>
@@ -241,6 +271,74 @@ export default function TenantsPage() {
             <span className="text-muted-foreground text-xs block">
               {new Date(row.original.offboardedAt).toLocaleDateString()}
               {row.original.lastExportedAt ? " · exported" : ""}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      // How many people work here against what the plan allows.
+      accessorKey: "activeUsers",
+      meta: { filter: { field: "activeUsers", kind: "number" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Users" />,
+      cell: ({ row }) => {
+        const used = row.original.activeUsers ?? 0;
+        const max = row.original.maxUsers;
+        const full = !!max && used >= max;
+        return (
+          <span className={full ? "font-medium text-amber-700" : ""} title={full ? "At its user limit" : undefined}>
+            {used}
+            {max ? <span className="text-muted-foreground"> / {max}</span> : null}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "activeCandidates",
+      meta: { filter: { field: "activeCandidates", kind: "number" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Candidates" />,
+      cell: ({ row }) => {
+        const r = row.original;
+        if (r.candidates == null) return <span className="text-muted-foreground">—</span>;
+        return (
+          <div className="text-sm" title={`${r.candidates} in total, ${r.activeCandidates} active`}>
+            <span className="font-medium">{r.activeCandidates}</span>
+            <span className="text-muted-foreground"> active</span>
+            {r.candidatesAddedLast30Days ? (
+              <span className="text-muted-foreground text-xs block">+{r.candidatesAddedLast30Days} in 30 days</span>
+            ) : null}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "lastSignInAt",
+      meta: { filter: { field: "lastSignInAt", kind: "date" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Last sign-in" />,
+      cell: ({ row }) => {
+        const d = daysSince(row.original.lastSignInAt);
+        const idle = d === null || d >= IDLE_DAYS;
+        return (
+          <span className={idle && row.original.status === 0 ? "text-amber-700" : "text-muted-foreground"}>
+            {ago(row.original.lastSignInAt)}
+          </span>
+        );
+      },
+    },
+    {
+      // What, if anything, the platform team should look at here.
+      id: "attention",
+      header: "Needs attention",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const reasons = attentionReasons(row.original);
+        if (reasons.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+        return (
+          <div className="flex items-start gap-1.5 text-xs text-amber-800" title={reasons.join("\n")}>
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>
+              {reasons[0]}
+              {reasons.length > 1 ? ` +${reasons.length - 1}` : ""}
             </span>
           </div>
         );
@@ -266,6 +364,17 @@ export default function TenantsPage() {
               shape every row menu in the app uses. An agency still in service is offboarded; one
               already offboarded can only then be purged. */}
           <DropdownMenuContent align="end">
+            {!isSuperAdmin ? (
+              <>
+                <DropdownMenuItem onClick={() => window.location.href = `/staff?tenant=${row.original.id}`}>
+                  <Users className="h-4 w-4 mr-2" /> Manage Users
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => resendInvite(row.original)}>
+                  <Mail className="h-4 w-4 mr-2" /> Resend welcome email
+                </DropdownMenuItem>
+              </>
+            ) : (
+            <>
             <DropdownMenuItem onClick={() => setEditAgencyId(row.original.id)}>
               <Pencil className="h-4 w-4 mr-2" /> Edit
             </DropdownMenuItem>
@@ -290,6 +399,9 @@ export default function TenantsPage() {
             <DropdownMenuItem onClick={() => window.location.href = `/staff?tenant=${row.original.id}`}>
               <Users className="h-4 w-4 mr-2" /> Manage Users
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => resendInvite(row.original)}>
+              <Mail className="h-4 w-4 mr-2" /> Resend welcome email
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleExport(row.original)}>
               <Download className="h-4 w-4 mr-2" /> Export data
             </DropdownMenuItem>
@@ -306,13 +418,15 @@ export default function TenantsPage() {
                 <RotateCcw className="h-4 w-4 mr-2" /> Reactivate
               </DropdownMenuItem>
             )}
+            </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
       size: 60,
       enableSorting: false,
     },
-  ], []);
+  ], [isSuperAdmin]);
 
   // Memoised: a fresh array each render would rebuild the order every render.
   const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
@@ -340,12 +454,12 @@ export default function TenantsPage() {
     onColumnVisibilityChange: layout.setColumnVisibility,
   });
 
-  if (!permsLoading && !isSuperAdmin) {
+  if (!permsLoading && !isStaff) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title="Agencies" />
         <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-          Managing agencies is reserved for platform administrators.
+          Managing agencies is reserved for the platform team.
         </div>
       </div>
     );
@@ -367,7 +481,7 @@ export default function TenantsPage() {
           filters={filters}
           onFiltersChange={setFilters}
           createAction={
-            <Button
+            isSuperAdmin && <Button
               size="sm"
               className="h-8 bg-green-800 text-white hover:bg-green-900"
               onClick={() => setCreateOpen(true)}
