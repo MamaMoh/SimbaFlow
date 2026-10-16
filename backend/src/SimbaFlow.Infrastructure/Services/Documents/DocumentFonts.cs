@@ -22,6 +22,20 @@ public static class DocumentFonts
 {
     private const string ArabicName = "SimbaFlowArabic";
     private const string EthiopicName = "SimbaFlowEthiopic";
+    private const string CvArabicName = "SimbaFlowCvArabic";
+
+    /// <summary>
+    /// Scheherazade New, regular and bold, built into this assembly (Fonts/, SIL Open Font
+    /// License). The CV's Arabic is set in it because it is the free face closest to the Times New
+    /// Roman Arabic of the CVs partners already know: simple, upright Naskh. Bold is registered as
+    /// well, so the white headings on the coloured bars are drawn by a real bold rather than a
+    /// faked one.
+    /// </summary>
+    private static readonly string[] CvArabicResources =
+    [
+        "ScheherazadeNew-Regular.ttf",
+        "ScheherazadeNew-Bold.ttf",
+    ];
 
     // Alpine (runtime image) first, then macOS and Debian for local development.
     private static readonly string[] ArabicPaths =
@@ -47,6 +61,13 @@ public static class DocumentFonts
     /// <summary>Families in fallback order — pass straight to TextStyle.FontFamily.</summary>
     public static string[] Chain { get; }
 
+    /// <summary>
+    /// The CV's chain: the same, with Scheherazade New ahead of the general Arabic font. Only the
+    /// CV changes; the contract and the visa form keep <see cref="Chain"/>. If the built-in font
+    /// cannot be read this is simply <see cref="Chain"/>, so a CV still renders.
+    /// </summary>
+    public static string[] CvChain { get; }
+
     /// <summary>Scripts with no font on this machine, for the startup diagnostic.</summary>
     public static IReadOnlyList<string> MissingScripts { get; }
 
@@ -65,6 +86,10 @@ public static class DocumentFonts
 
         Chain = [.. chain];
         MissingScripts = missing;
+
+        CvChain = TryRegisterEmbedded(CvArabicName, CvArabicResources)
+            ? [Fonts.Lato, CvArabicName, .. chain.Skip(1)]
+            : Chain;
     }
 
     /// <summary>
@@ -74,6 +99,37 @@ public static class DocumentFonts
     /// constructor instead.
     /// </summary>
     public static void EnsureInitialized() { }
+
+    /// <summary>
+    /// Registers every one of these built-in font files under one family name, so QuestPDF picks
+    /// the regular or the bold by weight. True when at least the first, the regular, was read.
+    /// </summary>
+    private static bool TryRegisterEmbedded(string name, string[] files)
+    {
+        var assembly = typeof(DocumentFonts).Assembly;
+        var registered = false;
+
+        foreach (var file in files)
+        {
+            var resource = assembly.GetManifestResourceNames()
+                .FirstOrDefault(n => n.EndsWith("." + file, StringComparison.Ordinal));
+            if (resource is null) continue;
+
+            try
+            {
+                using var stream = assembly.GetManifestResourceStream(resource);
+                if (stream is null) continue;
+                FontManager.RegisterFontWithCustomName(name, stream);
+                registered = true;
+            }
+            catch
+            {
+                // An unreadable bold still leaves the regular; an unreadable regular leaves Chain.
+            }
+        }
+
+        return registered;
+    }
 
     private static bool TryRegister(string name, string[] paths)
     {

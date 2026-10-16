@@ -34,4 +34,23 @@ public class DocumentFontsTests
         var expected = 3 - DocumentFonts.Chain.Length;
         DocumentFonts.MissingScripts.Should().HaveCount(expected);
     }
+
+    [Fact]
+    public void TheCvSetsItsArabicInTheBuiltInFont()
+    {
+        // Scheherazade New is built into the assembly rather than installed, so unlike the Noto
+        // fonts it is there on every host. If it ever stops being read, CvChain quietly falls back
+        // to Chain and the CV changes typeface without anyone deciding it should.
+        DocumentFonts.CvChain[0].Should().Be(Fonts.Lato);
+        DocumentFonts.CvChain.Should().Contain("SimbaFlowCvArabic");
+        DocumentFonts.CvChain.Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public void TheCvKeepsEveryOtherScriptTheDocumentsHave()
+    {
+        // The CV's own Arabic goes in front; Ethiopic and the general Arabic stay behind it for
+        // anything Scheherazade does not draw, such as an Amharic name.
+        DocumentFonts.CvChain.Should().Contain(DocumentFonts.Chain);
+    }
 }

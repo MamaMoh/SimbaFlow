@@ -38,6 +38,9 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Assets\*" />
+    <!-- Scheherazade New (SIL Open Font License, see Fonts/OFL.txt): the CV's Arabic. Built in
+         rather than installed, so the CV looks the same on every machine that renders it. -->
+    <EmbeddedResource Include="Fonts\*.ttf" />
   </ItemGroup>
 
 </Project>

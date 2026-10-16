@@ -180,7 +180,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(14);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.CvChain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             // Wrapped in a Column so the band takes its own height. Handed page.Content()
             // directly it is the size of the sheet, and the stretched side extends to the
@@ -323,7 +323,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(16);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.CvChain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -443,7 +443,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(14);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.CvChain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -555,7 +555,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(16);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.CvChain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -684,7 +684,7 @@ internal static class CvLayouts
         {
             page.Size(PageSizes.A4);
             page.Margin(16);
-            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
+            page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.CvChain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
             page.Content().Column(root =>
             {
@@ -845,7 +845,7 @@ internal static class CvLayouts
             {
                 page.Size(PageSizes.A4);
                 page.Margin(12);
-                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.Chain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
+                page.DefaultTextStyle(x => x.FontFamily(Services.Documents.DocumentFonts.CvChain).FontSize(FormType.PageDefault).LineHeight(FormType.LineHeight).FontColor(Colors.Black));
 
                 page.Content().Column(root =>
                 {
