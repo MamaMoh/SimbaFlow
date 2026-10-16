@@ -15,11 +15,13 @@ import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
 import {
   MY_WORK_PERMISSIONS,
+  totalNeedsAction,
   useMyWorkQueues,
   type WorkQueue,
   type WorkQueueRow,
 } from "@/lib/api/work-queues";
 import { PageHeader } from "@/components/ui/page-header";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -102,6 +104,13 @@ function QueueRow({ row }: { row: WorkQueueRow }) {
   );
 }
 
+/**
+ * One part of the tab: what this desk owes, and what it is waiting for.
+ *
+ * Both live inside the board's own card rather than in cards of their own. Two floating panels
+ * read as two separate things to do; the boards everywhere else in the app are one card with a
+ * toolbar on top, and this is the same board with its rows grouped.
+ */
 function Section({
   title,
   icon: Icon,
@@ -114,8 +123,8 @@ function Section({
   empty: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
-      <div className="flex items-center gap-2 border-b px-4 py-3">
+    <div className="border-t">
+      <div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2.5">
         <Icon className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-sm font-semibold">{title}</h2>
         <span className="text-xs text-muted-foreground tabular-nums">{rows.length}</span>
@@ -135,6 +144,13 @@ function Section({
   );
 }
 
+/**
+ * The boards this role can open, as the card's own heading.
+ *
+ * Styled as the chip groups on the other boards — a bordered strip, the chosen one in the same
+ * green the Commissions and Partners switches use — so a tab here reads as the same kind of
+ * control as the switches a person already knows, rather than as a browser tab bar.
+ */
 function QueueTabs({
   queues,
   active,
@@ -147,7 +163,8 @@ function QueueTabs({
   return (
     <div
       role="tablist"
-      className="flex gap-1 overflow-x-auto rounded-lg border bg-muted/40 p-1"
+      aria-label="Boards you can open"
+      className="flex gap-1 overflow-x-auto border-b px-3 py-2"
     >
       {queues.map((q) => {
         const selected = q.key === active;
@@ -160,19 +177,21 @@ function QueueTabs({
             className={cn(
               "inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition",
               selected
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-green-800 text-white"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             {q.label}
             <span
               className={cn(
                 "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums",
-                q.overdueCount > 0
-                  ? "bg-rose-500/15 text-rose-700 dark:text-rose-400"
-                  : q.needsActionCount > 0
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground"
+                selected
+                  ? "bg-white/20 text-white"
+                  : q.overdueCount > 0
+                    ? "bg-rose-500/15 text-rose-700 dark:text-rose-400"
+                    : q.needsActionCount > 0
+                      ? "bg-primary/15 text-primary"
+                      : "bg-muted text-muted-foreground"
               )}
               title={`${q.needsActionCount} to do, ${q.waitingCount} waiting`}
             >
@@ -237,109 +256,121 @@ export default function MyWorkPage() {
   const filtered = !!search || partner !== ANY || office !== ANY;
 
   return (
-    <div className="flex flex-col gap-5">
-      <PageHeader title="My work" />
+    <div className="flex flex-col gap-6">
+      {/* The count is everything this desk owes across every tab — the same number the sidebar
+          badge carries, so the page confirms what brought the person to it. The board the
+          open tab came from is the page's one action, which is where every other page puts it. */}
+      <PageHeader
+        title="My work"
+        count={totalNeedsAction(data)}
+        actions={
+          active && (
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href={active.boardHref}>
+                Open {active.label} board
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          )
+        }
+      />
 
       {error && <LoadError message={error.message} onRetry={() => mutate()} />}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-8 pl-8"
-            placeholder="Name, passport or labour ID"
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-          />
-        </div>
-        {(data?.partners.length ?? 0) > 0 && (
-          <Select value={partner} onValueChange={setPartner}>
-            <SelectTrigger className="h-8 w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>All partners</SelectItem>
-              {data!.partners.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {(data?.offices.length ?? 0) > 0 && (
-          <Select value={office} onValueChange={setOffice}>
-            <SelectTrigger className="h-8 w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>All offices</SelectItem>
-              {data!.offices.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {isLoading && data && (
-          <Loader2 className="mb-2 h-4 w-4 animate-spin text-muted-foreground" />
+      <div className="rounded-lg border bg-card shadow-sm">
+        {isLoading && !data ? (
+          <div className="flex items-center justify-center p-12 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Loading your queues…
+          </div>
+        ) : queues.length === 0 ? (
+          <div className="p-12 text-center text-sm text-muted-foreground">
+            Your role has no workflow boards yet. Ask an administrator to add one to your role.
+          </div>
+        ) : (
+          <>
+            {/* One board and there is nothing to switch between: the strip would be a single
+                chip naming the page it is already on. */}
+            {queues.length > 1 && (
+              <QueueTabs queues={queues} active={active!.key} onSelect={selectTab} />
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 px-4 py-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="h-8 pl-8"
+                  placeholder="Name, passport or labour ID"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                />
+              </div>
+              {(data?.partners.length ?? 0) > 0 && (
+                <Select value={partner} onValueChange={setPartner}>
+                  <SelectTrigger className="h-8 w-[150px]" aria-label="Partner">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ANY}>All partners</SelectItem>
+                    {data!.partners.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {(data?.offices.length ?? 0) > 0 && (
+                <Select value={office} onValueChange={setOffice}>
+                  <SelectTrigger className="h-8 w-[140px]" aria-label="Office">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ANY}>All offices</SelectItem>
+                    {data!.offices.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {isLoading && data && (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+              {/* What this tab holds, beside the filters that decide it rather than on a line
+                  of its own under them. */}
+              <p className="ml-auto text-sm text-muted-foreground">
+                {active!.needsActionCount} to do · {active!.waitingCount} waiting
+                {active!.overdueCount > 0 && (
+                  <span className="text-rose-600 dark:text-rose-400">
+                    {" "}
+                    · {active!.overdueCount} over 14 days
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <Section
+              title="Needs action"
+              icon={Clock}
+              rows={toDo}
+              empty={
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                  {filtered ? "Nothing matches these filters." : "You're all caught up here."}
+                </>
+              }
+            />
+            <Section
+              title="Waiting on others"
+              icon={Hourglass}
+              rows={waiting}
+              empty="Nobody is waiting on someone else."
+            />
+          </>
         )}
       </div>
-
-      {isLoading && !data ? (
-        <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Loading your queues…
-        </div>
-      ) : queues.length === 0 ? (
-        <div className="rounded-lg border bg-card p-10 text-center text-sm text-muted-foreground">
-          Your role has no workflow boards yet. Ask an administrator to add one to your role.
-        </div>
-      ) : (
-        <>
-          {queues.length > 1 && (
-            <QueueTabs queues={queues} active={active!.key} onSelect={selectTab} />
-          )}
-
-          <div className="flex items-center justify-between text-sm">
-            <p className="text-muted-foreground">
-              {active!.needsActionCount} to do · {active!.waitingCount} waiting
-              {active!.overdueCount > 0 && (
-                <span className="text-rose-600 dark:text-rose-400">
-                  {" "}
-                  · {active!.overdueCount} over 14 days
-                </span>
-              )}
-            </p>
-            <Link
-              href={active!.boardHref}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-            >
-              Open {active!.label} board
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-
-          <Section
-            title="Needs action"
-            icon={Clock}
-            rows={toDo}
-            empty={
-              <>
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                {filtered ? "Nothing matches these filters." : "You're all caught up here."}
-              </>
-            }
-          />
-          <Section
-            title="Waiting on others"
-            icon={Hourglass}
-            rows={waiting}
-            empty="Nobody is waiting on someone else."
-          />
-        </>
-      )}
     </div>
   );
 }
