@@ -169,7 +169,9 @@ public class DownloadCandidateDocumentsHandler
                 if (bytes is null) continue;
 
                 items.Add(PdfBundleItem.Document(
-                    $"{candidate.FullName} · {doc.DocumentType}", bytes));
+                    $"{candidate.FullName} · {doc.DocumentType}", bytes,
+                    isSnapshot: doc.DocumentType is DocumentType.Passport
+                        or DocumentType.Photo or DocumentType.FullPhoto));
             }
         }
 

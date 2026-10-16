@@ -31,8 +31,14 @@ public sealed record PdfBundleItem
 
     public bool IsDivider => Content is null;
 
+    /// <summary>
+    /// An image that is a picture of a person or a passport, printed at about the size of the
+    /// real thing rather than across the page. See PdfBundleService.RenderPhoto.
+    /// </summary>
+    public bool IsSnapshot { get; private init; }
+
     public static PdfBundleItem Divider(string title) => new() { Title = title };
 
-    public static PdfBundleItem Document(string title, byte[] content) =>
-        new() { Title = title, Content = content };
+    public static PdfBundleItem Document(string title, byte[] content, bool isSnapshot = false) =>
+        new() { Title = title, Content = content, IsSnapshot = isSnapshot };
 }

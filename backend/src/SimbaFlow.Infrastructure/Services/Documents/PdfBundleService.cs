@@ -82,7 +82,7 @@ public class PdfBundleService : IPdfBundleService
     {
         var content = item.Content!;
         if (IsPdf(content)) return content;
-        if (IsImage(content)) return RenderPhoto(content, item.Title);
+        if (IsImage(content)) return RenderPhoto(content, item.Title, item.IsSnapshot);
         return null;
     }
 
@@ -102,10 +102,36 @@ public class PdfBundleService : IPdfBundleService
         }
     }
 
-    private static byte[]? RenderPhoto(byte[] content, string title)
+    /// <summary>
+    /// Points per pixel when an image is printed at <c>PrintDpi</c>. 150 dpi is as coarse as a
+    /// photo can be printed before it starts to look soft; anything larger than that is the
+    /// printer inventing pixels.
+    /// </summary>
+    private const float PrintDpi = 150f;
+
+    /// <summary>The most an image may take on an A4 page with a 24pt margin and the caption.</summary>
+    private const float PageWidth = 540f, PageHeight = 740f;
+
+    /// <summary>
+    /// The box a passport or a photo is held to: about a passport's data page across, half a page
+    /// or so down. A head-and-shoulders photo comes out roughly 12 × 16 cm, a passport scan
+    /// about the width of the passport plus the desk it was photographed on.
+    /// </summary>
+    private const float SnapshotWidth = 400f, SnapshotHeight = 460f;
+
+    private static byte[]? RenderPhoto(byte[] content, string title, bool isSnapshot)
     {
         try
         {
+            // Stretched across the page, a phone photo of 600-odd pixels was printing at around
+            // 80 dpi and came out blurred. Now it is never printed larger than its own pixels allow,
+            // and a passport or a photo never larger than the real thing would be.
+            var (pixelWidth, pixelHeight) = PixelSize(content);
+            var (width, height) = PrintSize(
+                pixelWidth, pixelHeight,
+                isSnapshot ? SnapshotWidth : PageWidth,
+                isSnapshot ? SnapshotHeight : PageHeight);
+
             return Document.Create(container => container.Page(page =>
             {
                 page.Size(PageSizes.A4);
@@ -113,7 +139,10 @@ public class PdfBundleService : IPdfBundleService
                 page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(9));
 
                 page.Header().Text(title).FontSize(10).SemiBold();
-                page.Content().PaddingTop(10).AlignCenter().AlignMiddle().Image(content).FitArea();
+                page.Content().PaddingTop(10).AlignCenter().AlignTop()
+                    // FitArea inside the box, so a photo whose stored orientation differs from
+                    // its header still keeps its shape — it just comes out a little smaller.
+                    .Width(width).Height(height).Image(content).FitArea();
             })).GeneratePdf();
         }
         catch
@@ -122,6 +151,57 @@ public class PdfBundleService : IPdfBundleService
             return null;
         }
     }
+
+    /// <summary>
+    /// The printed size of an image in points: its own pixels at <see cref="PrintDpi"/>, scaled
+    /// down to fit the box when that is too big, keeping its shape. Never scaled up.
+    /// </summary>
+    public static (float Width, float Height) PrintSize(
+        int pixelWidth, int pixelHeight, float maxWidth, float maxHeight)
+    {
+        if (pixelWidth <= 0 || pixelHeight <= 0) return (maxWidth, maxHeight);
+
+        var width = pixelWidth * 72f / PrintDpi;
+        var height = pixelHeight * 72f / PrintDpi;
+        var scale = Math.Min(1f, Math.Min(maxWidth / width, maxHeight / height));
+        return (width * scale, height * scale);
+    }
+
+    /// <summary>
+    /// Width and height in pixels, read from the PNG or JPEG header; (0, 0) when it cannot be
+    /// found, which prints the image as large as the page allows, as before.
+    /// </summary>
+    public static (int Width, int Height) PixelSize(byte[] c)
+    {
+        // PNG: the IHDR chunk is always first, width and height big-endian at bytes 16 and 20.
+        if (c.Length >= 24 && c[0] == 0x89 && c[1] == 0x50)
+            return (ReadInt32(c, 16), ReadInt32(c, 20));
+
+        // JPEG: walk the segments to the start-of-frame, which holds height then width.
+        if (c.Length >= 4 && c[0] == 0xFF && c[1] == 0xD8)
+        {
+            var i = 2;
+            while (i + 9 < c.Length)
+            {
+                if (c[i] != 0xFF) { i++; continue; }
+                var marker = c[i + 1];
+                if (marker == 0xFF) { i++; continue; }
+                if (marker is 0xD8 or 0x01 || marker is >= 0xD0 and <= 0xD7) { i += 2; continue; }
+
+                var length = (c[i + 2] << 8) | c[i + 3];
+                var isFrame = marker is >= 0xC0 and <= 0xCF and not 0xC4 and not 0xC8 and not 0xCC;
+                if (isFrame)
+                    return ((c[i + 7] << 8) | c[i + 8], (c[i + 5] << 8) | c[i + 6]);
+                if (length < 2) break;
+                i += 2 + length;
+            }
+        }
+
+        return (0, 0);
+    }
+
+    private static int ReadInt32(byte[] c, int at) =>
+        (c[at] << 24) | (c[at + 1] << 16) | (c[at + 2] << 8) | c[at + 3];
 
     private static byte[] RenderDivider(string title) =>
         Document.Create(container => container.Page(page =>
