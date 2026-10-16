@@ -6,6 +6,12 @@ namespace SimbaFlow.Application.Common.Interfaces;
 public interface IAuditService
 {
     Task LogAsync(AuditEntry entry, CancellationToken ct = default);
+
+    /// <summary>
+    /// Whether anything was written through this instance — one per web request — so the
+    /// catch-all for writes that skip MediatR does not record the same request twice.
+    /// </summary>
+    bool HasLogged => false;
 }
 
 /// <summary>

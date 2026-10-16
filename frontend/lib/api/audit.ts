@@ -27,6 +27,8 @@ export type AuditTrailEntry = {
   ipAddress?: string | null;
   userAgent?: string | null;
   durationMs?: number | null;
+  /** What was asked for (changes only), as JSON. */
+  details?: string | null;
 };
 
 export type AuditTrailOption = { value: string; label: string };

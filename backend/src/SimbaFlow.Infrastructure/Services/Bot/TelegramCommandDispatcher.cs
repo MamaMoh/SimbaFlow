@@ -29,6 +29,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
     private readonly IOptionsMonitor<EmailOptions> _appOptions;
     private readonly ITelegramGateway _telegram;
     private readonly IBotLinkService _botLinkService;
+    private readonly IReadAuditService _readAudit;
     private readonly ILogger<TelegramCommandDispatcher> _logger;
 
     public TelegramCommandDispatcher(
@@ -41,6 +42,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         IOptionsMonitor<EmailOptions> appOptions,
         ITelegramGateway telegram,
         IBotLinkService botLinkService,
+        IReadAuditService readAudit,
         ILogger<TelegramCommandDispatcher> logger)
     {
         _platform = platform;
@@ -52,7 +54,28 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
         _appOptions = appOptions;
         _telegram = telegram;
         _botLinkService = botLinkService;
+        _readAudit = readAudit;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// The bot answers outside the web application's request pipeline, so its reads of
+    /// candidates are put on the same read-audit log by hand. Lists with no single candidate
+    /// are logged once without an id, as the web candidate list is.
+    /// </summary>
+    private void LogRead(ApplicationUser user, string action, IEnumerable<Guid>? candidateIds = null)
+    {
+        var ids = candidateIds?.Distinct().Select(id => (string?)id.ToString()).ToList() ?? [];
+        if (ids.Count == 0) ids.Add(null);
+
+        foreach (var id in ids)
+            _readAudit.LogAccess(new ReadAuditEntry(
+                UserId: user.Id.ToString(),
+                EntityType: "Candidate",
+                EntityId: id,
+                Action: action,
+                UserAgent: "Telegram bot",
+                TenantId: user.TenantId));
     }
 
     /// <summary>
@@ -282,6 +305,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
             var matches = await FindCandidatesAsync(tenantDb, query, ct);
+            if (matches.Count > 0) LogRead(user, "BotCandidateSearch", matches.Select(m => m.Id));
 
             if (matches.Count == 0)
             {
@@ -332,6 +356,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
 
             await using var tenantDb = await _tenantFactory.CreateAsync(user.TenantId, user.IsSuperAdmin, ct);
             var found = await FindCandidatesAsync(tenantDb, query, ct);
+            if (found.Count > 1) LogRead(user, "BotCandidateSearch", found.Select(m => m.Id));
 
             if (found.Count == 0)
             {
@@ -347,6 +372,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
             }
 
             var candidate = found[0];
+            LogRead(user, "BotCandidateCv", [candidate.Id]);
 
             // Everything the renderer needs has to be handed to it here. There is no signed-in
             // user behind a Telegram message, so the layout and the letterhead cannot be read
@@ -466,6 +492,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                 .Select(c => new { c.FirstName, c.MiddleName, c.LastName, c.PassportNumber, c.StageEnteredAt })
                 .Take(BotCandidateSearch.MaxResults)
                 .ToListAsync(ct);
+            LogRead(user, "BotStageList");
 
             var rows = standing
                 .Select(c => (
@@ -496,6 +523,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                                    c.CurrentStageName, c.StageEnteredAt })
                 .Take(BotCandidateSearch.MaxResults)
                 .ToListAsync(ct);
+            LogRead(user, "BotOverdueList");
 
             var rows = stuck
                 .Select(c => (
@@ -527,6 +555,7 @@ public sealed class TelegramCommandDispatcher : ITelegramCommandDispatcher
                                    c.PassportExpiryDate })
                 .Take(BotCandidateSearch.MaxResults)
                 .ToListAsync(ct);
+            LogRead(user, "BotExpiringList");
 
             var rows = expiring
                 .Select(c => (

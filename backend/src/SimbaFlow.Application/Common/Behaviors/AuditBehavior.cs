@@ -6,9 +6,10 @@ using SimbaFlow.Application.Common.Interfaces;
 namespace SimbaFlow.Application.Common.Behaviors;
 
 /// <summary>
-/// MediatR pipeline behavior that logs all write commands to the audit trail.
-/// Runs post-handler execution to capture success/failure status.
-/// Read queries are not audited for performance.
+/// MediatR pipeline behavior that writes every request that changes something — or takes data
+/// out — to the audit trail, with who, where, which record and what was asked for.
+/// It runs first, so attempts that validation or a missing permission refused are recorded too,
+/// as failures. Reads are not recorded here; personal-record reads go to the read-audit log.
 /// </summary>
 public class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -34,27 +35,20 @@ public class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TR
     {
         var requestName = typeof(TRequest).Name;
 
-        // Only audit write operations
-        if (!IsAuditableCommand(requestName))
+        if (!AuditDetails.IsRecorded(requestName))
             return await next(cancellationToken);
 
         var stopwatch = Stopwatch.StartNew();
+        var details = AuditDetails.Describe(request);
 
         try
         {
             var response = await next(cancellationToken);
             stopwatch.Stop();
 
-            await _auditService.LogAsync(new AuditEntry(
-                UserId: _currentUser.UserId,
-                Action: requestName,
-                EntityType: ExtractEntityType(requestName),
-                EntityId: ExtractEntityId(response),
-                Success: true,
-                DurationMs: (int)stopwatch.ElapsedMilliseconds,
-                IpAddress: _currentUser.IpAddress,
-                UserAgent: _currentUser.UserAgent,
-                TenantId: _currentUser.TenantId), cancellationToken);
+            await _auditService.LogAsync(Entry(
+                requestName, AuditDetails.EntityId(request, response),
+                AuditDetails.Succeeded(response), stopwatch, details), cancellationToken);
 
             return response;
         }
@@ -65,59 +59,25 @@ public class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TR
             _logger.LogWarning(ex, "Auditable command {CommandName} failed for user {UserId}",
                 requestName, _currentUser.UserId);
 
-            await _auditService.LogAsync(new AuditEntry(
-                UserId: _currentUser.UserId,
-                Action: requestName,
-                EntityType: ExtractEntityType(requestName),
-                EntityId: null,
-                Success: false,
-                DurationMs: (int)stopwatch.ElapsedMilliseconds,
-                IpAddress: _currentUser.IpAddress,
-                UserAgent: _currentUser.UserAgent,
-                TenantId: _currentUser.TenantId), cancellationToken);
+            await _auditService.LogAsync(Entry(
+                requestName, AuditDetails.EntityId(request, null),
+                success: false, stopwatch, details), CancellationToken.None);
 
             throw;
         }
     }
 
-    private static bool IsAuditableCommand(string name) =>
-        name.StartsWith("Create", StringComparison.Ordinal) ||
-        name.StartsWith("Update", StringComparison.Ordinal) ||
-        name.StartsWith("Delete", StringComparison.Ordinal) ||
-        name.StartsWith("Set", StringComparison.Ordinal) ||
-        name.Contains("Toggle", StringComparison.Ordinal) ||
-        name.Contains("Assign", StringComparison.Ordinal) ||
-        name.Contains("Reset", StringComparison.Ordinal) ||
-        name.Contains("Revoke", StringComparison.Ordinal) ||
-        name.Contains("Import", StringComparison.Ordinal);
-
-    private static string? ExtractEntityType(string commandName)
-    {
-        // Extract entity from "CreateUserCommand" → "User"
-        var suffixes = new[] { "Command", "Query" };
-        var prefixes = new[] { "Create", "Update", "Delete", "Set", "Toggle", "Assign", "Reset", "Import", "Revoke", "Force" };
-
-        var name = commandName;
-        foreach (var suffix in suffixes)
-            if (name.EndsWith(suffix, StringComparison.Ordinal))
-                name = name[..^suffix.Length];
-
-        foreach (var prefix in prefixes)
-            if (name.StartsWith(prefix, StringComparison.Ordinal))
-                return name[prefix.Length..];
-
-        return name;
-    }
-
-    private static string? ExtractEntityId(TResponse? response)
-    {
-        if (response is null) return null;
-
-        // Try to extract Id from Result<Guid>
-        var dataProperty = response.GetType().GetProperty("Data");
-        if (dataProperty?.GetValue(response) is Guid guidValue)
-            return guidValue.ToString();
-
-        return null;
-    }
+    private AuditEntry Entry(
+        string requestName, string? entityId, bool success, Stopwatch stopwatch, string? details) =>
+        new(
+            UserId: _currentUser.UserId,
+            Action: requestName,
+            EntityType: AuditDetails.EntityType(requestName),
+            EntityId: entityId,
+            Success: success,
+            DurationMs: (int)stopwatch.ElapsedMilliseconds,
+            NewValues: details,
+            IpAddress: _currentUser.IpAddress,
+            UserAgent: _currentUser.UserAgent,
+            TenantId: _currentUser.TenantId);
 }
