@@ -96,8 +96,9 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
               </DropdownMenuItem>
             )}
             {canRead || canEditCandidate ? <DropdownMenuSeparator /> : null}
-            <CandidateDocumentItems candidateId={candidate.id} />
-            <CopyToFormItem form="insurance" candidateId={candidate.id} candidateName={candidate.fullName} />
+            {/* LMIS needs the visa form and the LMIS contract fill; the CV, the contract and the
+                insurance copy belong to the stages before it. */}
+            <CandidateDocumentItems candidateId={candidate.id} only={["visa"]} />
             <CopyToFormItem form="lmis" candidateId={candidate.id} candidateName={candidate.fullName} />
             <DropdownMenuSeparator />
             <MoveBackStageItem
