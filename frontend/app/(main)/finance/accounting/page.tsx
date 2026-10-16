@@ -27,6 +27,7 @@ import {
 } from "@/lib/api/accounting";
 import { formatEtb } from "@/lib/api/commissions";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { cn } from "@/lib/utils";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const monthStart = () => today().slice(0, 8) + "01";
@@ -63,9 +64,33 @@ function Loading() {
 
 function DateField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input id={id} type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    <div className="flex items-center gap-1.5">
+      <Label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="date"
+        className="h-8 w-[150px]"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+/**
+ * The figure a statement is read for, before the statement itself.
+ *
+ * Somebody opening Profit and loss wants the number at the bottom; they read the lines to find
+ * out how it got there. It was only at the bottom, under however many accounts had been posted
+ * to, so the page opened on the detail and buried the answer.
+ */
+function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
+  return (
+    <div className="rounded-lg border bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("mt-1 text-2xl font-semibold tabular-nums", tone)}>{formatEtb(value)}</p>
     </div>
   );
 }
@@ -93,12 +118,11 @@ export default function AccountingPage() {
     <div className="flex flex-col gap-6">
       <PageHeader title="Accounting" />
 
-      <div className="flex flex-wrap items-end gap-3">
-        <DateField id="acc-from" label="From" value={from} onChange={setFrom} />
-        <DateField id="acc-to" label="To (and as of)" value={to} onChange={setTo} />
-      </div>
-
-      <Tabs defaultValue="pl">
+      <Tabs defaultValue="pl" className="flex flex-col gap-4">
+        {/* The statement to read and the period to read it over, together: they are one
+            question, and the dates floating above the tabs read as a setting for the page
+            rather than as half of what is being asked. */}
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 shadow-sm">
         <TabsList className="flex-wrap">
           <TabsTrigger value="pl">Profit and loss</TabsTrigger>
           <TabsTrigger value="bs">Balance sheet</TabsTrigger>
@@ -106,6 +130,11 @@ export default function AccountingPage() {
           <TabsTrigger value="journal">Journal</TabsTrigger>
           <TabsTrigger value="accounts">Chart of accounts</TabsTrigger>
         </TabsList>
+          <div className="ml-auto flex flex-wrap items-center gap-3">
+            <DateField id="acc-from" label="From" value={from} onChange={setFrom} />
+            <DateField id="acc-to" label="To (and as of)" value={to} onChange={setTo} />
+          </div>
+        </div>
         <TabsContent value="pl">
           <ProfitAndLossTab from={from} to={to} />
         </TabsContent>
@@ -133,15 +162,19 @@ function Panel({ children }: { children: React.ReactNode }) {
 function StatementSection({ title, lines, total, totalLabel }: { title: string; lines: StatementLine[]; total: number; totalLabel: string }) {
   return (
     <>
-      <TableRow className="hover:bg-transparent">
-        <TableCell colSpan={2} className="pt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
+      {/* Muted on a span and not on the cell: the ET theme blockifies a muted cell, which
+          drops it out of its own row. */}
+      <TableRow className="bg-muted/40 hover:bg-muted/40">
+        <TableCell colSpan={2} className="py-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {title}
+          </span>
         </TableCell>
       </TableRow>
       {lines.length === 0 ? (
-        <TableRow>
-          <TableCell colSpan={2} className="text-sm text-muted-foreground">
-            Nothing posted.
+        <TableRow className="hover:bg-transparent">
+          <TableCell colSpan={2}>
+            <span className="text-sm text-muted-foreground">Nothing posted.</span>
           </TableCell>
         </TableRow>
       ) : (
@@ -155,7 +188,7 @@ function StatementSection({ title, lines, total, totalLabel }: { title: string; 
           </TableRow>
         ))
       )}
-      <TableRow className="font-medium">
+      <TableRow className="border-t-2 font-medium hover:bg-transparent">
         <TableCell>{totalLabel}</TableCell>
         <TableCell className="text-right">{money(total)}</TableCell>
       </TableRow>
@@ -167,24 +200,49 @@ function ProfitAndLossTab({ from, to }: { from: string; to: string }) {
   const { data, error, isLoading } = useProfitAndLoss(from, to);
   if (error) return <ReportError error={error} />;
   if (isLoading || !data) return <Loading />;
+  const profit = data.netProfit >= 0;
   return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Stat label="Revenue" value={data.totalRevenue} />
+        <Stat label="Expenses" value={data.totalExpenses} />
+        <Stat
+          label={profit ? "Net profit" : "Net loss"}
+          value={data.netProfit}
+          tone={profit ? "text-green-800 dark:text-green-500" : "text-rose-600 dark:text-rose-400"}
+        />
+      </div>
     <Panel>
-      <p className="mb-2 text-sm text-muted-foreground">
+      <p className="mb-3 text-sm text-muted-foreground">
         Partner share, medical and ticket money is owed onward, so it is not income here.
       </p>
       <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Account</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+          </TableRow>
+        </TableHeader>
         <TableBody>
           <StatementSection title="Revenue" lines={data.revenue} total={data.totalRevenue} totalLabel="Total revenue" />
           <StatementSection title="Expenses" lines={data.expenses} total={data.totalExpenses} totalLabel="Total expenses" />
         </TableBody>
         <TableFooter>
           <TableRow>
-            <TableCell className="font-semibold">{data.netProfit >= 0 ? "Net profit" : "Net loss"}</TableCell>
-            <TableCell className="text-right font-semibold">{money(data.netProfit)}</TableCell>
+            <TableCell className="font-semibold">{profit ? "Net profit" : "Net loss"}</TableCell>
+            <TableCell
+              className={cn(
+                "text-right font-semibold",
+                profit ? "text-green-800 dark:text-green-500" : "text-rose-600 dark:text-rose-400"
+              )}
+            >
+              {money(data.netProfit)}
+            </TableCell>
           </TableRow>
         </TableFooter>
       </Table>
     </Panel>
+    </div>
   );
 }
 
@@ -194,9 +252,33 @@ function BalanceSheetTab({ asOf }: { asOf: string }) {
   if (isLoading || !data) return <Loading />;
   const balanced = Math.abs(data.totalAssets - data.totalLiabilitiesAndEquity) < 0.005;
   return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Stat label="Assets" value={data.totalAssets} />
+        <Stat label="Liabilities" value={data.totalLiabilities} />
+        <Stat label="Equity" value={data.totalEquity} />
+      </div>
     <Panel>
-      <p className="mb-2 text-sm text-muted-foreground">As of {data.asOf}.</p>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <p className="text-sm text-muted-foreground">As of {data.asOf}.</p>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[11px] font-medium",
+            balanced
+              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+              : "bg-rose-500/15 text-rose-700 dark:text-rose-400"
+          )}
+        >
+          {balanced ? "Balanced" : "Does not balance"}
+        </span>
+      </div>
       <Table>
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            <TableHead>Account</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+          </TableRow>
+        </TableHeader>
         <TableBody>
           <StatementSection title="Assets" lines={data.assets} total={data.totalAssets} totalLabel="Total assets" />
           <StatementSection
@@ -220,9 +302,10 @@ function BalanceSheetTab({ asOf }: { asOf: string }) {
         </TableFooter>
       </Table>
       {!balanced ? (
-        <p className="mt-3 text-sm text-red-700">Assets and liabilities plus equity do not agree.</p>
+        <p className="mt-3 text-sm text-rose-700">Assets and liabilities plus equity do not agree.</p>
       ) : null}
     </Panel>
+    </div>
   );
 }
 
@@ -247,8 +330,8 @@ function TrialBalanceTab({ asOf }: { asOf: string }) {
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-sm text-muted-foreground">
-                Nothing posted yet.
+              <TableCell colSpan={5}>
+                <span className="text-sm text-muted-foreground">Nothing posted yet.</span>
               </TableCell>
             </TableRow>
           ) : (

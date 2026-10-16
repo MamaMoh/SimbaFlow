@@ -502,9 +502,12 @@
     visibility: visible !important;
   }
 
-  /* Ensure icons inside input containers are visible */
-  .ethiopian .relative svg.text-muted-foreground,
-  .ethiopian .relative .text-muted-foreground {
+  /* Ensure icons inside input containers are visible.
+     Icons only. This used to name every muted element inside any .relative, which forced
+     display:block on table cells and spans as well — a muted cell dropped out of its own row,
+     so a passport number printed above the name beside it. The colour rule above already
+     covers muted text; only the icon needs the rest. */
+  .ethiopian .relative svg.text-muted-foreground {
     color: rgb(107 114 128) !important;
     display: block !important;
     visibility: visible !important;
