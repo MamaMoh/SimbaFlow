@@ -155,12 +155,13 @@ public class CandidateModule : ICarterModule
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 
-        // Every selected candidate's chosen paperwork, merged into one printable PDF.
+        // Every selected candidate's chosen paperwork: one PDF per candidate, in a ZIP when there
+        // are several.
         group.MapPost("/documents/bulk", async (DownloadCandidateDocumentsCommand command, ISender sender) =>
         {
             var result = await sender.Send(command);
             return result.IsSuccess
-                ? Results.File(result.Data!, "application/pdf", $"Documents {DateTime.UtcNow:yyyy-MM-dd}.pdf")
+                ? Results.File(result.Data!.Content, result.Data.ContentType, result.Data.FileName)
                 : Results.Json(result, statusCode: result.StatusCode);
         });
 

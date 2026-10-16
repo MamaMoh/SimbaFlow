@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -5,30 +6,38 @@ using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Candidates;
 using SimbaFlow.Domain.Enums;
+using SimbaFlow.Domain.Services;
 
 namespace SimbaFlow.API.Features.Candidates.Commands;
 
 /// <summary>
-/// The selected candidates' selected paperwork, as one PDF.
+/// The selected candidates' selected paperwork: one PDF per candidate.
 ///
 /// This is the job the desk actually has: an embassy run needs the passport, the photo and the CV
 /// for twenty people, and collecting that a document at a time is twenty times three clicks plus
-/// twenty trips into a candidate's page. It comes back as a single document because the packet is
-/// printed and stapled as one — a folder of loose files means one print dialog per file. Each
-/// candidate's pages open with a divider carrying their name, so the stack can be split by hand
-/// afterwards.
+/// twenty trips into a candidate's page.
+///
+/// Each candidate's paperwork is one PDF — their CV, passport and photos together, in that order —
+/// and several candidates come back as a ZIP of those, one file per person named after them.
+/// Everyone was merged into a single PDF with a divider page between people, on the idea that the
+/// packet is printed and stapled as one. It is not: each candidate's file goes to a partner on its
+/// own, so the desk was splitting the stack back apart by hand. One candidate is still one PDF,
+/// with no ZIP around it.
 /// </summary>
 public record DownloadCandidateDocumentsCommand(
     List<Guid> CandidateIds,
-    List<int> DocumentTypes) : IRequest<Result<byte[]>>, IRequirePermission, IAuditedRead
+    List<int> DocumentTypes) : IRequest<Result<CandidateDocumentsDownload>>, IRequirePermission, IAuditedRead
 {
     public string RequiredPermission => "candidate.read";
     public string AuditEntityType => "Candidate";
     public IReadOnlyCollection<Guid> AuditEntityIds => CandidateIds;
 }
 
+/// <summary>What the download is, as the browser should save it.</summary>
+public sealed record CandidateDocumentsDownload(byte[] Content, string ContentType, string FileName);
+
 public class DownloadCandidateDocumentsHandler
-    : IRequestHandler<DownloadCandidateDocumentsCommand, Result<byte[]>>
+    : IRequestHandler<DownloadCandidateDocumentsCommand, Result<CandidateDocumentsDownload>>
 {
     /// <summary>
     /// Enough for an embassy run, and short of the request timing out while the desk waits. The
@@ -90,7 +99,7 @@ public class DownloadCandidateDocumentsHandler
         _logger = logger;
     }
 
-    public async Task<Result<byte[]>> Handle(
+    public async Task<Result<CandidateDocumentsDownload>> Handle(
         DownloadCandidateDocumentsCommand request, CancellationToken ct)
     {
         var ids = (request.CandidateIds ?? [])
@@ -100,7 +109,7 @@ public class DownloadCandidateDocumentsHandler
             .ToList();
 
         if (ids.Count == 0)
-            return Result<byte[]>.Failure("Select at least one candidate.", 400);
+            return Result<CandidateDocumentsDownload>.Failure("Select at least one candidate.", 400);
 
         var types = (request.DocumentTypes ?? [])
             .Where(t => Enum.IsDefined(typeof(DocumentType), t))
@@ -109,7 +118,7 @@ public class DownloadCandidateDocumentsHandler
             .ToList();
 
         if (types.Count == 0)
-            return Result<byte[]>.Failure("Choose at least one kind of document.", 400);
+            return Result<CandidateDocumentsDownload>.Failure("Choose at least one kind of document.", 400);
 
         var candidates = await _context.Candidates
             .AsNoTracking()
@@ -121,7 +130,7 @@ public class DownloadCandidateDocumentsHandler
             .ToListAsync(ct);
 
         if (candidates.Count == 0)
-            return Result<byte[]>.Failure("No candidates found.", 404);
+            return Result<CandidateDocumentsDownload>.Failure("No candidates found.", 404);
 
         var documents = await _context.CandidateDocuments
             .AsNoTracking()
@@ -133,57 +142,116 @@ public class DownloadCandidateDocumentsHandler
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var wantsCv = types.Contains(DocumentType.CV);
-        var items = new List<PdfBundleItem>();
+        var files = new List<(Candidate Candidate, byte[] Pdf)>();
 
         foreach (var candidate in candidates)
         {
             ct.ThrowIfCancellationRequested();
 
-            // Only worth a divider when there is more than one name in the stack.
-            if (candidates.Count > 1)
-                items.Add(PdfBundleItem.Divider(candidate.FullName));
+            var items = await PagesForAsync(
+                candidate, byCandidate.GetValueOrDefault(candidate.Id) ?? [], wantsCv, ct);
 
-            var onFile = byCandidate.GetValueOrDefault(candidate.Id) ?? [];
-
-            // The CV leads, and is drawn rather than read — see RenderCvAsync.
-            if (wantsCv)
-            {
-                var cv = await RenderCvAsync(candidate, onFile, ct);
-                if (cv is not null)
-                    items.Add(PdfBundleItem.Document($"{candidate.FullName} · CV", cv));
-            }
-
-            var found = Preferred(onFile)
-                .Where(d => d.DocumentType != DocumentType.CV)
-                // Every candidate's pages come in the same order, so a stack of twenty can be
-                // checked by flicking through rather than reading each page.
-                .OrderBy(d => RankOf(d.DocumentType))
-                .ThenBy(d => d.UploadedAt);
-
-            foreach (var doc in found)
-            {
-                var bytes = await ReadAsync(doc.FilePath, ct);
-
-                // The row survived but the file did not. Skipped rather than failed: the rest of
-                // the packet is still worth printing.
-                if (bytes is null) continue;
-
-                items.Add(PdfBundleItem.Document(
-                    $"{candidate.FullName} · {doc.DocumentType}", bytes,
-                    isSnapshot: doc.DocumentType is DocumentType.Passport
-                        or DocumentType.Photo or DocumentType.FullPhoto));
-            }
+            // A candidate with none of the chosen documents is left out rather than given an
+            // empty file: the folder should hold what there is to send.
+            var pdf = await _pdfBundle.MergeAsync(items, ct);
+            if (pdf is not null) files.Add((candidate, pdf));
         }
 
-        var pdf = await _pdfBundle.MergeAsync(items, ct);
-
-        if (pdf is null)
+        if (files.Count == 0)
         {
-            return Result<byte[]>.Failure(
+            return Result<CandidateDocumentsDownload>.Failure(
                 "None of the selected candidates have any of those documents yet.", 404);
         }
 
-        return Result<byte[]>.Success(pdf);
+        // Asked for one person, handed one PDF — a ZIP around a single file is one more thing
+        // to open before the print dialog.
+        if (candidates.Count == 1)
+        {
+            var (only, pdf) = files[0];
+            return Result<CandidateDocumentsDownload>.Success(new CandidateDocumentsDownload(
+                pdf, "application/pdf", DocumentFileName.For(only.FullName, "Documents")));
+        }
+
+        return Result<CandidateDocumentsDownload>.Success(new CandidateDocumentsDownload(
+            await ZipAsync(files, ct),
+            "application/zip",
+            $"Documents {DateTime.UtcNow:yyyy-MM-dd}.zip"));
+    }
+
+    /// <summary>
+    /// One candidate's paperwork, in the order it is sent: the CV first, then the passport, the
+    /// photos and the rest, the same order for everyone.
+    /// </summary>
+    private async Task<List<PdfBundleItem>> PagesForAsync(
+        Candidate candidate, IReadOnlyList<CandidateDocument> onFile, bool wantsCv, CancellationToken ct)
+    {
+        var items = new List<PdfBundleItem>();
+
+        // The CV leads, and is drawn rather than read — see RenderCvAsync.
+        if (wantsCv)
+        {
+            var cv = await RenderCvAsync(candidate, onFile, ct);
+            if (cv is not null)
+                items.Add(PdfBundleItem.Document($"{candidate.FullName} · CV", cv));
+        }
+
+        var found = Preferred(onFile)
+            .Where(d => d.DocumentType != DocumentType.CV)
+            // Every candidate's pages come in the same order, so a file can be checked by flicking
+            // through rather than reading each page.
+            .OrderBy(d => RankOf(d.DocumentType))
+            .ThenBy(d => d.UploadedAt);
+
+        foreach (var doc in found)
+        {
+            var bytes = await ReadAsync(doc.FilePath, ct);
+
+            // The row survived but the file did not. Skipped rather than failed: the rest of the
+            // candidate's file is still worth sending.
+            if (bytes is null) continue;
+
+            items.Add(PdfBundleItem.Document(
+                $"{candidate.FullName} · {doc.DocumentType}", bytes,
+                isSnapshot: doc.DocumentType is DocumentType.Passport or DocumentType.FullPhoto,
+                isPortrait: doc.DocumentType is DocumentType.Photo));
+        }
+
+        return items;
+    }
+
+    /// <summary>
+    /// One PDF per candidate, each named after the person: "Almaz Debela Kebede - Documents.pdf".
+    ///
+    /// Two candidates can share a name, and a ZIP with two entries called the same thing extracts
+    /// to one file. The passport number settles it, but only for the second one — putting it on
+    /// every entry would make the common case harder to read for a problem it does not have.
+    /// </summary>
+    private static async Task<byte[]> ZipAsync(
+        IReadOnlyList<(Candidate Candidate, byte[] Pdf)> files, CancellationToken ct)
+    {
+        await using var buffer = new MemoryStream();
+        var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        using (var archive = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var (candidate, pdf) in files)
+            {
+                var name = DocumentFileName.For(candidate.FullName, "Documents");
+                if (!taken.Add(name))
+                {
+                    name = DocumentFileName.For(
+                        $"{candidate.FullName} {candidate.PassportNumber}", "Documents");
+                    taken.Add(name);
+                }
+
+                // PDFs barely compress; spending time trying only delays the download.
+                var entry = archive.CreateEntry(name, CompressionLevel.Fastest);
+                await using var stream = entry.Open();
+                await stream.WriteAsync(pdf, ct);
+            }
+        }
+
+        return buffer.ToArray();
     }
 
     /// <summary>

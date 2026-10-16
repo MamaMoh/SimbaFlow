@@ -37,8 +37,15 @@ public sealed record PdfBundleItem
     /// </summary>
     public bool IsSnapshot { get; private init; }
 
+    /// <summary>
+    /// The candidate's head-and-shoulders photo: a snapshot, printed a little larger than a
+    /// passport scan because it is the picture a partner actually looks at.
+    /// </summary>
+    public bool IsPortrait { get; private init; }
+
     public static PdfBundleItem Divider(string title) => new() { Title = title };
 
-    public static PdfBundleItem Document(string title, byte[] content, bool isSnapshot = false) =>
-        new() { Title = title, Content = content, IsSnapshot = isSnapshot };
+    public static PdfBundleItem Document(
+        string title, byte[] content, bool isSnapshot = false, bool isPortrait = false) =>
+        new() { Title = title, Content = content, IsSnapshot = isSnapshot || isPortrait, IsPortrait = isPortrait };
 }

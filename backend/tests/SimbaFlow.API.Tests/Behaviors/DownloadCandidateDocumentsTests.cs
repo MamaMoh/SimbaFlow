@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -16,10 +17,12 @@ namespace SimbaFlow.API.Tests.Behaviors;
 ///
 /// An embassy run needs the passport, photo and CV for twenty people at once. Doing that a document
 /// at a time is sixty clicks and twenty trips into a candidate's page, which is why the desk was
-/// asking for it. What comes back is one PDF, because the packet is printed and stapled as one.
+/// asking for it. What comes back is one PDF per candidate, in a ZIP when there are several,
+/// because each candidate's file goes to a partner on its own.
 ///
-/// The merge itself is qpdf's job and is not exercised here — these tests pin what goes into the
-/// bundle and in what order, which is the part this handler decides.
+/// The merge itself is qpdf's job and is not exercised here — these tests pin what goes into each
+/// candidate's file and in what order, and how the files are handed back, which is the part this
+/// handler decides.
 /// </summary>
 public class DownloadCandidateDocumentsTests : IDisposable
 {
@@ -29,8 +32,11 @@ public class DownloadCandidateDocumentsTests : IDisposable
     private readonly IPdfBundleService _bundle = Substitute.For<IPdfBundleService>();
     private readonly DownloadCandidateDocumentsHandler _handler;
 
-    /// <summary>What the handler last asked to be merged, in the order it asked for it.</summary>
-    private IReadOnlyList<PdfBundleItem> _merged = [];
+    /// <summary>Each merge the handler asked for — one per candidate — in the order it asked.</summary>
+    private readonly List<IReadOnlyList<PdfBundleItem>> _merges = [];
+
+    /// <summary>Everything that was merged, across every candidate's file, in order.</summary>
+    private IReadOnlyList<PdfBundleItem> _merged => _merges.SelectMany(m => m).ToList();
 
     public DownloadCandidateDocumentsTests()
     {
@@ -53,9 +59,12 @@ public class DownloadCandidateDocumentsTests : IDisposable
         _bundle.MergeAsync(Arg.Any<IReadOnlyList<PdfBundleItem>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                _merged = call.Arg<IReadOnlyList<PdfBundleItem>>();
-                return Task.FromResult<byte[]?>(
-                    _merged.Any(i => !i.IsDivider) ? [0x25, 0x50, 0x44, 0x46] : null);
+                var items = call.Arg<IReadOnlyList<PdfBundleItem>>();
+                _merges.Add(items);
+                // A stand-in PDF that says whose pages it holds, so a ZIP entry can be traced back.
+                return Task.FromResult<byte[]?>(items.Any(i => !i.IsDivider)
+                    ? System.Text.Encoding.UTF8.GetBytes("%PDF " + string.Join(" | ", items.Select(i => i.Title)))
+                    : null);
             });
 
         _handler = new DownloadCandidateDocumentsHandler(
@@ -96,8 +105,21 @@ public class DownloadCandidateDocumentsTests : IDisposable
     private IReadOnlyList<string> MergedTitles() =>
         _merged.Select(i => i.IsDivider ? $"[{i.Title}]" : i.Title).ToList();
 
+    /// <summary>The entries of a returned ZIP, by name, with what each stand-in PDF says it holds.</summary>
+    private static Dictionary<string, string> Entries(byte[] zip)
+    {
+        using var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read);
+        return archive.Entries.ToDictionary(
+            e => e.FullName,
+            e =>
+            {
+                using var reader = new StreamReader(e.Open());
+                return reader.ReadToEnd();
+            });
+    }
+
     [Fact]
-    public async Task EachCandidatesPagesOpenWithADividerCarryingTheirName()
+    public async Task SeveralCandidatesComeBackAsAZipWithOnePdfEach()
     {
         var seada = await GivenCandidate(
             "EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport, DocumentType.Photo);
@@ -110,15 +132,58 @@ public class DownloadCandidateDocumentsTests : IDisposable
             default);
 
         result.IsSuccess.Should().BeTrue();
+        result.Data!.ContentType.Should().Be("application/zip");
+        result.Data.FileName.Should().EndWith(".zip");
 
-        // Sorted by last name, so a stack of twenty can be found in the way a person would file it.
-        MergedTitles().Should().Equal(
-            "[HANAN ABDI]",
-            "HANAN ABDI · Passport",
-            "HANAN ABDI · Photo",
-            "[SEADA MEKONNEN]",
-            "SEADA MEKONNEN · Passport",
-            "SEADA MEKONNEN · Photo");
+        // Each file is one person's paperwork, named after them, and holds nobody else's pages.
+        var entries = Entries(result.Data.Content);
+        entries.Keys.Should().BeEquivalentTo("HANAN ABDI - Documents.pdf", "SEADA MEKONNEN - Documents.pdf");
+        entries["HANAN ABDI - Documents.pdf"].Should().Be("%PDF HANAN ABDI · Passport | HANAN ABDI · Photo");
+        entries["SEADA MEKONNEN - Documents.pdf"].Should().Be("%PDF SEADA MEKONNEN · Passport | SEADA MEKONNEN · Photo");
+    }
+
+    [Fact]
+    public async Task NoCandidatesFileCarriesADividerPage()
+    {
+        // The divider only existed to split one stack of everybody back apart by hand. Each
+        // person is their own file now, so it would be a blank page at the front of every one.
+        var seada = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
+        var hanan = await GivenCandidate("EP7798713", "HANAN", "ABDI", DocumentType.Passport);
+
+        await _handler.Handle(
+            new DownloadCandidateDocumentsCommand([seada, hanan], [(int)DocumentType.Passport]), default);
+
+        _merges.Should().HaveCount(2);
+        _merged.Should().NotContain(i => i.IsDivider);
+    }
+
+    [Fact]
+    public async Task TwoCandidatesWithOneNameStillGetTwoFiles()
+    {
+        // A ZIP with two entries of the same name extracts to one file, and one person's paperwork
+        // silently replaces the other's.
+        var first = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
+        var second = await GivenCandidate("EP7798713", "SEADA", "MEKONNEN", DocumentType.Passport);
+
+        var result = await _handler.Handle(
+            new DownloadCandidateDocumentsCommand([first, second], [(int)DocumentType.Passport]), default);
+
+        Entries(result.Data!.Content).Keys.Should().HaveCount(2)
+            .And.Contain("SEADA MEKONNEN - Documents.pdf")
+            .And.Contain(name => name.Contains("SEADA MEKONNEN E") && name.EndsWith(" - Documents.pdf"));
+    }
+
+    [Fact]
+    public async Task ACandidateWithNothingToSendIsLeftOutOfTheZip()
+    {
+        var seada = await GivenCandidate("EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport);
+        var hanan = await GivenCandidate("EP7798713", "HANAN", "ABDI");
+
+        var result = await _handler.Handle(
+            new DownloadCandidateDocumentsCommand([seada, hanan], [(int)DocumentType.Passport]), default);
+
+        result.IsSuccess.Should().BeTrue();
+        Entries(result.Data!.Content).Keys.Should().Equal("SEADA MEKONNEN - Documents.pdf");
     }
 
     [Fact]
@@ -170,9 +235,26 @@ public class DownloadCandidateDocumentsTests : IDisposable
     };
 
     [Fact]
-    public async Task OneCandidateNeedsNoDivider()
+    public async Task TheHeadshotIsPrintedAsThePortrait_ThePassportAndFullPhotoAsSnapshots()
     {
-        // A divider in front of the only name in the stack is a page nobody needs to print.
+        var id = await GivenCandidate(
+            "EQ1030621", "SEADA", "MEKONNEN",
+            DocumentType.Passport, DocumentType.Photo, DocumentType.FullPhoto);
+
+        await _handler.Handle(
+            new DownloadCandidateDocumentsCommand(
+                [id], [(int)DocumentType.Passport, (int)DocumentType.Photo, (int)DocumentType.FullPhoto]),
+            default);
+
+        _merged.Single(i => i.Title.EndsWith("· Photo")).IsPortrait.Should().BeTrue();
+        _merged.Where(i => !i.Title.EndsWith("· Photo")).Should()
+            .OnlyContain(i => i.IsSnapshot && !i.IsPortrait);
+    }
+
+    [Fact]
+    public async Task OneCandidateIsOnePdf_NotAZipAroundOne()
+    {
+        // A ZIP holding a single file is one more thing to open before the print dialog.
         var id = await GivenCandidate(
             "EQ1030621", "SEADA", "MEKONNEN", DocumentType.Passport, DocumentType.Photo);
 
@@ -182,6 +264,8 @@ public class DownloadCandidateDocumentsTests : IDisposable
             default);
 
         result.IsSuccess.Should().BeTrue();
+        result.Data!.ContentType.Should().Be("application/pdf");
+        result.Data.FileName.Should().Be("SEADA MEKONNEN - Documents.pdf");
         _merged.Should().NotContain(i => i.IsDivider);
     }
 

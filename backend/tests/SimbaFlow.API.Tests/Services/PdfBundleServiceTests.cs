@@ -227,6 +227,27 @@ public class PdfBundleServiceTests
     }
 
     [Fact]
+    public void ThePortraitPrintsAFifthLargerThanASnapshot()
+    {
+        // The same 600 × 800 phone photo: 288 × 384 points as a snapshot, about a fifth larger as
+        // the portrait, because it may print at 125 dpi inside its bigger box.
+        var (width, height) = PdfBundleService.PrintSize(600, 800, 440, 560, 125);
+
+        width.Should().BeApproximately(345.6f, 0.01f);
+        height.Should().BeApproximately(460.8f, 0.01f);
+    }
+
+    [Fact]
+    public void APortraitIsAlsoASnapshot()
+    {
+        // Held to a box like any photo, never stretched across the page.
+        var item = PdfBundleItem.Document("SEADA MEKONNEN · Photo", Png(), isPortrait: true);
+
+        item.IsPortrait.Should().BeTrue();
+        item.IsSnapshot.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ABigPassportPhotoStillMakesOnePage()
     {
         using var image = new Image<Rgba32>(4000, 3000);

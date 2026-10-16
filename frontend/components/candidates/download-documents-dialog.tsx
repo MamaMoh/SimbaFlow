@@ -26,7 +26,7 @@ import { downloadCandidateDocuments } from "@/lib/api/candidates";
  * anybody prints them together. The Tasheer appointment slip went the same way once the
  * agencies said they do not use it. These three are what gets sent.
  *
- * The order is the order the merged download comes out in: keep it in step with PageOrder in
+ * The order is the order each candidate's PDF comes out in: keep it in step with PageOrder in
  * backend/src/SimbaFlow.API/Features/Candidates/Commands/DownloadCandidateDocumentsCommand.cs.
  */
 export const DOCUMENT_KINDS: { type: number; label: string }[] = [
@@ -114,8 +114,8 @@ export function DownloadDocumentsDialog({
             {count === 0
               ? "Select candidates first."
               : count === 1
-                ? "Merged into one PDF, ready to print."
-                : `Merged into one PDF, for ${count} selected — a divider page per candidate.`}
+                ? "One PDF, ready to print."
+                : `A ZIP with one PDF per candidate, for ${count} selected — each named after the person.`}
           </DialogDescription>
         </DialogHeader>
 

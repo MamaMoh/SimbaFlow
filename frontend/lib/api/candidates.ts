@@ -177,7 +177,8 @@ export async function generateBulkCandidateCvs(candidateIds: string[]): Promise<
 }
 
 /**
- * The selected candidates' selected documents, as one ZIP.
+ * The selected candidates' selected documents: one PDF per candidate. Several candidates come back
+ * as a ZIP of those; one comes back as the PDF itself. The API names the file either way.
  *
  * `documentTypes` are the API's DocumentType numbers — see DOCUMENT_KINDS, which is the one place
  * they are named.
@@ -204,7 +205,8 @@ export async function downloadCandidateDocuments(
     const parsed = JSON.parse(await blob.text());
     throw new Error(parsed?.error || "Download failed");
   }
-  return new File([blob], filenameFromResponse(res, "Documents.pdf"), { type: blob.type });
+  const fallback = (blob.type || "").includes("zip") ? "Documents.zip" : "Documents.pdf";
+  return new File([blob], filenameFromResponse(res, fallback), { type: blob.type });
 }
 
 export async function generateCandidateVisaForm(candidateId: string): Promise<File> {

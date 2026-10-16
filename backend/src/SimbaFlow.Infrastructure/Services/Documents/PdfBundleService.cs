@@ -82,7 +82,7 @@ public class PdfBundleService : IPdfBundleService
     {
         var content = item.Content!;
         if (IsPdf(content)) return content;
-        if (IsImage(content)) return RenderPhoto(content, item.Title, item.IsSnapshot);
+        if (IsImage(content)) return RenderPhoto(content, item.Title, item.IsSnapshot, item.IsPortrait);
         return null;
     }
 
@@ -119,7 +119,21 @@ public class PdfBundleService : IPdfBundleService
     /// </summary>
     private const float SnapshotWidth = 400f, SnapshotHeight = 460f;
 
-    private static byte[]? RenderPhoto(byte[] content, string title, bool isSnapshot)
+    /// <summary>
+    /// The head-and-shoulders photo's box, about a fifth larger than the snapshot's. It is the
+    /// picture a partner looks at first, and at the snapshot size it read as a thumbnail in the
+    /// middle of an empty sheet.
+    /// </summary>
+    private const float PortraitWidth = 440f, PortraitHeight = 560f;
+
+    /// <summary>
+    /// The portrait may print a little coarser than <see cref="PrintDpi"/>, so an ordinary phone
+    /// photo grows with the box instead of staying the size its pixels allowed at 150 dpi. 125 dpi
+    /// is still finer than a face needs to look sharp on paper.
+    /// </summary>
+    private const float PortraitDpi = 125f;
+
+    private static byte[]? RenderPhoto(byte[] content, string title, bool isSnapshot, bool isPortrait)
     {
         try
         {
@@ -127,10 +141,12 @@ public class PdfBundleService : IPdfBundleService
             // 80 dpi and came out blurred. Now it is never printed larger than its own pixels allow,
             // and a passport or a photo never larger than the real thing would be.
             var (pixelWidth, pixelHeight) = PixelSize(content);
-            var (width, height) = PrintSize(
-                pixelWidth, pixelHeight,
-                isSnapshot ? SnapshotWidth : PageWidth,
-                isSnapshot ? SnapshotHeight : PageHeight);
+            var (width, height) = isPortrait
+                ? PrintSize(pixelWidth, pixelHeight, PortraitWidth, PortraitHeight, PortraitDpi)
+                : PrintSize(
+                    pixelWidth, pixelHeight,
+                    isSnapshot ? SnapshotWidth : PageWidth,
+                    isSnapshot ? SnapshotHeight : PageHeight);
 
             return Document.Create(container => container.Page(page =>
             {
@@ -139,7 +155,9 @@ public class PdfBundleService : IPdfBundleService
                 page.DefaultTextStyle(x => x.FontFamily(DocumentFonts.Chain).FontSize(9));
 
                 page.Header().Text(title).FontSize(10).SemiBold();
-                page.Content().PaddingTop(10).AlignCenter().AlignTop()
+                // In the middle of the sheet, not hung from the top of it: a photo smaller than the
+                // page sat under the caption with the bottom two-thirds of the paper empty.
+                page.Content().PaddingTop(10).AlignCenter().AlignMiddle()
                     // FitArea inside the box, so a photo whose stored orientation differs from
                     // its header still keeps its shape — it just comes out a little smaller.
                     .Width(width).Height(height).Image(content).FitArea();
@@ -153,16 +171,16 @@ public class PdfBundleService : IPdfBundleService
     }
 
     /// <summary>
-    /// The printed size of an image in points: its own pixels at <see cref="PrintDpi"/>, scaled
+    /// The printed size of an image in points: its own pixels at <paramref name="dpi"/>, scaled
     /// down to fit the box when that is too big, keeping its shape. Never scaled up.
     /// </summary>
     public static (float Width, float Height) PrintSize(
-        int pixelWidth, int pixelHeight, float maxWidth, float maxHeight)
+        int pixelWidth, int pixelHeight, float maxWidth, float maxHeight, float dpi = PrintDpi)
     {
         if (pixelWidth <= 0 || pixelHeight <= 0) return (maxWidth, maxHeight);
 
-        var width = pixelWidth * 72f / PrintDpi;
-        var height = pixelHeight * 72f / PrintDpi;
+        var width = pixelWidth * 72f / dpi;
+        var height = pixelHeight * 72f / dpi;
         var scale = Math.Min(1f, Math.Min(maxWidth / width, maxHeight / height));
         return (width * scale, height * scale);
     }
