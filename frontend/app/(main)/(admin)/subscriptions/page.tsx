@@ -3,7 +3,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Ban, CheckCircle2, FileText, Loader2, Receipt } from "lucide-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Ban, CheckCircle2, FileText, Loader2, MoreHorizontal, Pencil, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
@@ -33,6 +42,33 @@ import {
   type SubscriptionRow,
 } from "@/lib/api/subscriptions";
 import { money, onDate } from "@/lib/billing/format";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { indexColumn } from "@/components/data-table/index-column";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
+import type { ColumnFilter } from "@/lib/data-table/column-filters";
+
+/** A row as the table reads it, with the plan already in words so its funnel can compare them. */
+type SubscriptionTableRow = SubscriptionRow & { plan: string };
+
+/** The plan as the Plan column says it. */
+function planLabel(row: SubscriptionRow) {
+  return row.subscriptionAmount > 0
+    ? `${money(row.subscriptionAmount, row.subscriptionCurrency)} · ${row.cycle.toLowerCase()}`
+    : "Not charged";
+}
+
+/** Fixed, so the remembered column order is not rebuilt on every render. */
+const COLUMN_IDS = ["index", "name", "status", "plan", "nextPaymentDue", "outstanding", "actions"];
 
 /** When the next payment lands, said the way someone would say it. */
 function dueLabel(row: SubscriptionRow) {
@@ -70,7 +106,18 @@ export default function SubscriptionsPage() {
     };
   }, [rows]);
 
-  if (!isStaff) return <AccessDenied resource="subscriptions" />;
+  const [sorting, setSorting] = useState<SortingState>([]);
+  // Every agency arrives at once, so the funnels are answered here like the agencies board.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
+  const filtered = useMemo<SubscriptionTableRow[]>(
+    () =>
+      applyColumnFilters(
+        rows.map((r) => ({ ...r, plan: planLabel(r) })),
+        filters,
+        { name: "text", status: "text", plan: "text", nextPaymentDue: "date", outstanding: "number" },
+      ),
+    [rows, filters],
+  );
 
   const setStatus = async (row: SubscriptionRow, status: "Active" | "Suspended") => {
     setBusyId(row.id);
@@ -89,9 +136,126 @@ export default function SubscriptionsPage() {
     }
   };
 
+  const columns: ColumnDef<SubscriptionTableRow>[] = [
+    indexColumn<SubscriptionTableRow>(),
+    {
+      accessorKey: "name",
+      meta: { filter: { field: "name", kind: "text" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Agency" />,
+      cell: ({ row }) => <span className="font-medium">{row.original.name}</span>,
+    },
+    {
+      accessorKey: "status",
+      meta: { filter: { field: "status", kind: "text" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Access" />,
+      cell: ({ row }) => (
+        <Badge
+          variant={row.original.hasAccess ? "default" : "destructive"}
+          className={row.original.hasAccess ? "bg-green-700 hover:bg-green-700" : ""}
+        >
+          {row.original.status}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "plan",
+      meta: { filter: { field: "plan", kind: "text" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Plan" />,
+      cell: ({ row }) => <span className="text-muted-foreground">{row.original.plan}</span>,
+    },
+    {
+      accessorKey: "nextPaymentDue",
+      meta: { filter: { field: "nextPaymentDue", kind: "date" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Next payment" />,
+      cell: ({ row }) => (
+        <>
+          <span
+            className={
+              row.original.notice === "Overdue"
+                ? "font-medium text-red-700"
+                : row.original.notice === "DueSoon" || row.original.notice === "DueToday"
+                  ? "font-medium text-amber-700"
+                  : "text-muted-foreground"
+            }
+          >
+            {dueLabel(row.original)}
+          </span>
+          {row.original.nextPaymentDue ? (
+            <span className="block text-xs text-muted-foreground">{onDate(row.original.nextPaymentDue)}</span>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      accessorKey: "outstanding",
+      meta: { filter: { field: "outstanding", kind: "number" } },
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Unpaid" />,
+      cell: ({ row }) =>
+        row.original.outstanding > 0 ? (
+          <span className="font-medium text-amber-700">{row.original.outstanding}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            {/* Edit and the destructive item together at the top, then a rule, then the rest —
+                the shape every row menu in the app uses. The support desk reads billing, so it
+                sees History alone. */}
+            <DropdownMenuContent align="end">
+              {isSuperAdmin && (
+                <>
+                  <DropdownMenuItem onClick={() => setEditing(r)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit plan
+                  </DropdownMenuItem>
+                  {r.hasAccess ? (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      disabled={busyId === r.id}
+                      onClick={() => setStatus(r, "Suspended")}
+                    >
+                      <Ban className="mr-2 h-4 w-4" /> Suspend
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem disabled={busyId === r.id} onClick={() => setStatus(r, "Active")}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Reactivate
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setInvoicing(r)}>
+                    <Receipt className="mr-2 h-4 w-4" /> Raise invoice
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem asChild>
+                <Link href={`/subscriptions/${r.id}`}>
+                  <FileText className="mr-2 h-4 w-4" /> History
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+      size: 60,
+      enableSorting: false,
+    },
+  ];
+
+  if (!isStaff) return <AccessDenied resource="subscriptions" />;
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Subscriptions" />
+      <PageHeader title="Subscriptions" count={rows.length} />
 
       {error ? (
         <LoadError message="Could not load subscriptions" onRetry={() => mutate()} />
@@ -133,127 +297,94 @@ export default function SubscriptionsPage() {
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
-        <table className="w-full min-w-[860px] text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="px-4 py-3 font-medium">Agency</th>
-              <th className="px-4 py-3 font-medium">Access</th>
-              <th className="px-4 py-3 font-medium">Plan</th>
-              <th className="px-4 py-3 font-medium">Next payment</th>
-              <th className="px-4 py-3 font-medium">Unpaid</th>
-              <th className="px-4 py-3 text-right font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
-                  No agencies yet.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="border-b last:border-0">
-                  <td className="px-4 py-3 font-medium">{row.name}</td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      variant={row.hasAccess ? "default" : "destructive"}
-                      className={row.hasAccess ? "bg-green-700 hover:bg-green-700" : ""}
-                    >
-                      {row.status}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {row.subscriptionAmount > 0
-                      ? `${money(row.subscriptionAmount, row.subscriptionCurrency)} · ${row.cycle.toLowerCase()}`
-                      : "Not charged"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={
-                        row.notice === "Overdue"
-                          ? "font-medium text-red-700"
-                          : row.notice === "DueSoon" || row.notice === "DueToday"
-                            ? "font-medium text-amber-700"
-                            : "text-muted-foreground"
-                      }
-                    >
-                      {dueLabel(row)}
-                    </span>
-                    {row.nextPaymentDue ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {onDate(row.nextPaymentDue)}
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    {row.outstanding > 0 ? (
-                      <span className="font-medium text-amber-700">{row.outstanding}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap justify-end gap-1.5">
-                      {isSuperAdmin && (
-                        <>
-                          <Button size="sm" variant="outline" className="h-8" onClick={() => setEditing(row)}>
-                            Plan
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setInvoicing(row)}>
-                            <Receipt className="h-3.5 w-3.5" />
-                            Invoice
-                          </Button>
-                        </>
-                      )}
-                      <Button asChild size="sm" variant="ghost" className="h-8 gap-1.5">
-                        <Link href={`/subscriptions/${row.id}`}>
-                          <FileText className="h-3.5 w-3.5" />
-                          History
-                        </Link>
-                      </Button>
-                      {!isSuperAdmin ? null : row.hasAccess ? (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 gap-1.5 text-red-700 hover:bg-red-50 hover:text-red-800"
-                          disabled={busyId === row.id}
-                          onClick={() => setStatus(row, "Suspended")}
-                        >
-                          <Ban className="h-3.5 w-3.5" />
-                          Suspend
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 gap-1.5 text-green-700 hover:bg-green-50 hover:text-green-800"
-                          disabled={busyId === row.id}
-                          onClick={() => setStatus(row, "Active")}
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Reactivate
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <SubscriptionsTable
+          data={filtered}
+          columns={columns}
+          sorting={sorting}
+          setSorting={setSorting}
+          globalFilter={globalFilter}
+          setGlobalFilter={setGlobalFilter}
+          filters={filters}
+          setFilters={setFilters}
+          isLoading={isLoading}
+        />
       </div>
 
       <PlanDialog row={editing} onClose={() => setEditing(null)} onSaved={() => void mutate()} />
       <InvoiceDialog row={invoicing} onClose={() => setInvoicing(null)} onSaved={() => void mutate()} />
     </div>
+  );
+}
+
+/**
+ * The table itself, on its own so that its hooks sit below the page's access check rather than
+ * having to run for someone who is about to be turned away.
+ */
+function SubscriptionsTable({
+  data,
+  columns,
+  sorting,
+  setSorting,
+  globalFilter,
+  setGlobalFilter,
+  filters,
+  setFilters,
+  isLoading,
+}: {
+  data: SubscriptionTableRow[];
+  columns: ColumnDef<SubscriptionTableRow>[];
+  sorting: SortingState;
+  setSorting: React.Dispatch<React.SetStateAction<SortingState>>;
+  globalFilter: string;
+  setGlobalFilter: (value: string) => void;
+  filters: ColumnFilter[];
+  setFilters: (next: ColumnFilter[]) => void;
+  isLoading: boolean;
+}) {
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "subscriptions", columnIds: COLUMN_IDS });
+
+  const table = useReactTable({
+    data,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
+  });
+
+  return (
+    <DataTable
+      layout={layout}
+      rowClickOpensActions
+      table={table}
+      enableGlobalFilter
+      searchPlaceholder="Search agencies…"
+      paginated
+      exportFileName="subscriptions"
+      filters={filters}
+      onFiltersChange={setFilters}
+      emptyState={
+        isLoading ? (
+          <div className="py-10 text-center text-muted-foreground">
+            <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+          </div>
+        ) : undefined
+      }
+      emptyMessage="No agencies yet."
+    />
   );
 }
 

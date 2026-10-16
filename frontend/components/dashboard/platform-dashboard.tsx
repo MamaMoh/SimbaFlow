@@ -14,6 +14,20 @@ import { attentionReasons, type AgencyHealth } from "@/lib/platform/health";
 
 type AgencyHealthRow = AgencyHealth & { id: string; name: string };
 
+/**
+ * The agencies, whichever shape the cache holds them in.
+ *
+ * SWR keeps one value per address and keeps the first fetcher's answer. The agency switcher in the
+ * header reads this same address and stores the whole response, `{ isSuccess, data }`, so on a
+ * page where it got there first this list arrived as an object — and `.map` on it took the
+ * dashboard down with "map is not a function".
+ */
+function agencyList(value: unknown): AgencyHealthRow[] {
+  if (Array.isArray(value)) return value;
+  const data = (value as { data?: unknown } | null | undefined)?.data;
+  return Array.isArray(data) ? data : [];
+}
+
 const healthFetcher = async (url: string): Promise<AgencyHealthRow[]> => {
   const res = await fetch(url);
   if (!res.ok) throw new Error("Could not load agencies");
@@ -67,7 +81,7 @@ export function PlatformDashboard() {
   const { data: agencies } = useSWR("/api/proxy/tenants", healthFetcher, { revalidateOnFocus: false });
   const struggling = useMemo(
     () =>
-      (agencies ?? [])
+      agencyList(agencies)
         .map((a) => ({ ...a, reasons: attentionReasons(a) }))
         .filter((a) => a.reasons.length > 0),
     [agencies],

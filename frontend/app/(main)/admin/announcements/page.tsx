@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { toast } from "sonner";
-import { Megaphone, Pencil, Trash2 } from "lucide-react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Megaphone, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,6 +29,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/ui/page-header";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePlatformStaff } from "@/lib/platform/use-platform-staff";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { indexColumn } from "@/components/data-table/index-column";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
+import { useTableRows } from "@/lib/data/use-table-rows";
 
 type Level = "Info" | "Warning" | "Critical";
 
@@ -35,6 +57,9 @@ type AnnouncementRow = {
   isLive: boolean;
 };
 
+/** A row as the table reads it, with the words its funnels compare against. */
+type TableRow = AnnouncementRow & { audience: string; showing: string };
+
 type Draft = {
   id?: string;
   title: string;
@@ -46,6 +71,19 @@ type Draft = {
 };
 
 const ALL = "all";
+
+/**
+ * The agencies for the "Who sees it" list, whichever shape the cache holds them in.
+ *
+ * The agency switcher in the header reads the same address and caches the whole response,
+ * `{ isSuccess, data }`, and SWR keeps whichever answer arrived first — so opening this form
+ * after the switcher had loaded crashed the page with "map is not a function".
+ */
+function agencyList(value: unknown): { id: string; name: string }[] {
+  if (Array.isArray(value)) return value;
+  const data = (value as { data?: unknown } | null | undefined)?.data;
+  return Array.isArray(data) ? data : [];
+}
 
 const fetcher = async (url: string) => {
   const res = await fetch(url);
@@ -77,7 +115,7 @@ export default function AnnouncementsPage() {
     isStaff ? "/api/proxy/platform/announcements" : null,
     fetcher,
   );
-  const { data: agencies } = useSWR<{ id: string; name: string }[]>(
+  const { data: agencies } = useSWR<unknown>(
     isStaff ? "/api/proxy/tenants" : null,
     fetcher,
     { revalidateOnFocus: false },
@@ -85,10 +123,157 @@ export default function AnnouncementsPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [sorting, setSorting] = useState<SortingState>([]);
+  // Every announcement arrives at once, so the funnels are answered here.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
+  const all = useTableRows<AnnouncementRow>(data);
+  const rows = useMemo<TableRow[]>(
+    () =>
+      applyColumnFilters(
+        all.map((a) => ({
+          ...a,
+          audience: a.agency ?? "All agencies",
+          showing: a.isLive ? "Showing now" : "Not showing",
+        })),
+        filters,
+        { title: "text", level: "text", showing: "text", audience: "text", startsAt: "date", endsAt: "date" },
+      ),
+    [all, filters],
+  );
+
+  const columns: ColumnDef<TableRow>[] = useMemo(() => {
+    const edit = (a: AnnouncementRow) =>
+      setDraft({
+        id: a.id,
+        title: a.title,
+        body: a.body,
+        level: a.level,
+        tenantId: a.tenantId ?? ALL,
+        startsAt: toLocalInput(a.startsAt),
+        endsAt: toLocalInput(a.endsAt),
+      });
+
+    const remove = async (row: AnnouncementRow) => {
+      const res = await fetch(`/api/proxy/platform/announcements/${row.id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok && body?.isSuccess) {
+        toast.success("Announcement taken down");
+        void mutate();
+      } else {
+        toast.error(body?.error || "Could not take it down");
+      }
+    };
+
+    return [
+      indexColumn<TableRow>(),
+      {
+        accessorKey: "title",
+        meta: { filter: { field: "title", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Announcement" />,
+        cell: ({ row }) => (
+          <div className="max-w-[460px]">
+            <span className="font-medium">{row.original.title}</span>
+            <p className="line-clamp-2 whitespace-pre-line text-xs text-muted-foreground" title={row.original.body}>
+              {row.original.body}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "level",
+        meta: { filter: { field: "level", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Level" />,
+        cell: ({ row }) => (
+          <Badge variant={row.original.level === "Critical" ? "destructive" : "outline"}>{row.original.level}</Badge>
+        ),
+      },
+      {
+        accessorKey: "showing",
+        meta: { filter: { field: "showing", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        cell: ({ row }) =>
+          row.original.isLive ? (
+            <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Showing now</Badge>
+          ) : (
+            <Badge variant="outline" className="text-muted-foreground">Not showing</Badge>
+          ),
+      },
+      {
+        accessorKey: "audience",
+        meta: { filter: { field: "audience", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Who sees it" />,
+      },
+      {
+        accessorKey: "startsAt",
+        meta: { filter: { field: "startsAt", kind: "date" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Starts" />,
+        cell: ({ row }) => <span className="whitespace-nowrap text-muted-foreground">{when(row.original.startsAt)}</span>,
+      },
+      {
+        accessorKey: "endsAt",
+        meta: { filter: { field: "endsAt", kind: "date" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Ends" />,
+        cell: ({ row }) => (
+          <span className="whitespace-nowrap text-muted-foreground">
+            {row.original.endsAt ? when(row.original.endsAt) : "Until taken down"}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            {/* Edit and the destructive item together, the shape every row menu in the app uses. */}
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => edit(row.original)}>
+                <Pencil className="mr-2 h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive" onClick={() => remove(row.original)}>
+                <Trash2 className="mr-2 h-4 w-4" /> Take down
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        size: 60,
+        enableSorting: false,
+      },
+    ];
+  }, [mutate]);
+
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "platform-announcements", columnIds });
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
+  });
+
   if (!isLoading && !isStaff) return <AccessDenied resource="announcements" />;
   if (error) return <LoadError message={error.message} onRetry={() => mutate()} />;
-
-  const rows = data ?? [];
 
   const save = async () => {
     if (!draft) return;
@@ -122,90 +307,33 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const remove = async (row: AnnouncementRow) => {
-    const res = await fetch(`/api/proxy/platform/announcements/${row.id}`, { method: "DELETE" });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok && body?.isSuccess) {
-      toast.success("Announcement taken down");
-      void mutate();
-    } else {
-      toast.error(body?.error || "Could not take it down");
-    }
-  };
-
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Announcements"
-        count={rows.length}
-        actions={
-          <Button
-            size="sm"
-            className="h-8 bg-green-800 text-white hover:bg-green-900"
-            onClick={() => setDraft({ ...EMPTY })}
-          >
-            <Megaphone className="mr-1.5 h-3.5 w-3.5" /> New announcement
-          </Button>
-        }
-      />
+      <PageHeader title="Announcements" count={all.length} />
 
-      {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
-          Nothing posted. An announcement shows as a banner to the agencies you choose.
-        </div>
-      ) : (
-        <ul className="divide-y rounded-lg border bg-card shadow-sm">
-          {rows.map((a) => (
-            <li key={a.id} className="flex flex-wrap items-start gap-4 p-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium">{a.title}</span>
-                  <Badge variant={a.level === "Critical" ? "destructive" : "outline"}>{a.level}</Badge>
-                  {a.isLive ? (
-                    <Badge className="bg-green-100 text-green-800">Showing now</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">Not showing</Badge>
-                  )}
-                </div>
-                <p className="mt-1 line-clamp-2 whitespace-pre-line text-sm text-muted-foreground">{a.body}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {a.agency ?? "All agencies"} · from {when(a.startsAt)}
-                  {a.endsAt ? ` to ${when(a.endsAt)}` : ", until taken down"}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() =>
-                    setDraft({
-                      id: a.id,
-                      title: a.title,
-                      body: a.body,
-                      level: a.level,
-                      tenantId: a.tenantId ?? ALL,
-                      startsAt: toLocalInput(a.startsAt),
-                      endsAt: toLocalInput(a.endsAt),
-                    })
-                  }
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 text-muted-foreground hover:text-red-700"
-                  onClick={() => remove(a)}
-                  aria-label="Take down"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="rounded-lg border bg-card p-4 shadow-sm">
+        <DataTable
+          layout={layout}
+          rowClickOpensActions
+          table={table}
+          enableGlobalFilter
+          searchPlaceholder="Search announcements…"
+          paginated
+          exportFileName="announcements"
+          filters={filters}
+          onFiltersChange={setFilters}
+          emptyMessage="Nothing posted. An announcement shows as a banner to the agencies you choose."
+          createAction={
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 bg-green-800 text-white hover:bg-green-900"
+              onClick={() => setDraft({ ...EMPTY })}
+            >
+              <Megaphone className="h-3.5 w-3.5" /> New announcement
+            </Button>
+          }
+        />
+      </div>
 
       <Dialog open={!!draft} onOpenChange={(open) => { if (!open) setDraft(null); }}>
         <DialogContent className="sm:max-w-lg">
@@ -241,7 +369,7 @@ export default function AnnouncementsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={ALL}>All agencies</SelectItem>
-                      {(agencies ?? []).map((t) => (
+                      {agencyList(agencies).map((t) => (
                         <SelectItem key={t.id} value={t.id}>
                           {t.name}
                         </SelectItem>
