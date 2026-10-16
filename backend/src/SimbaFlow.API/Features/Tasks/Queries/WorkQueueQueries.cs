@@ -24,7 +24,9 @@ public record WorkQueueRowDto(
     bool Overdue,
     /// <summary>A problem outside this desk's step that still belongs at the top: an expired passport, an open case.</summary>
     string? Warning,
-    string Href);
+    string Href,
+    /// <summary>Which of the stage's tracks this row is on now — what it is waiting for, not where it has been.</summary>
+    IReadOnlyList<string> Tracks);
 
 public record WorkQueueDto(
     string Key,
@@ -203,7 +205,7 @@ public class GetMyWorkQueuesHandler : IRequestHandler<GetMyWorkQueuesQuery, Resu
                 new WorkQueueRowDto(
                     rowId ?? p.Id, p.Id, p.FullName, p.PassportNumber, p.PartnerName,
                     p.OfficeId is { } o && officeNames.TryGetValue(o, out var name) ? name : null,
-                    step.Text, step.NeedsAction, inStage, overdue, warning, href),
+                    step.Text, step.NeedsAction, inStage, overdue, warning, href, step.Tracks),
                 overdue || warning is not null);
         }
 
@@ -223,7 +225,9 @@ public class GetMyWorkQueuesHandler : IRequestHandler<GetMyWorkQueuesQuery, Resu
                             byId[e.CandidateId],
                             e.Status == ExceptionStatus.Open
                                 ? new WorkQueueSteps.Step($"{e.Type}: start the investigation", true)
-                                : new WorkQueueSteps.Step($"{e.Type}: resolve the case", true),
+                                    { Tracks = [e.Type.ToString()] }
+                                : new WorkQueueSteps.Step($"{e.Type}: resolve the case", true)
+                                    { Tracks = [e.Type.ToString()] },
                             $"/workflow/exceptions/{e.Id}",
                             WorkQueueRules.DaysInStage(e.OpenedAt, now),
                             e.Id))
@@ -303,12 +307,16 @@ public class GetMyWorkQueuesHandler : IRequestHandler<GetMyWorkQueuesQuery, Resu
             {
                 var step = c.Status == CommissionStatus.Disputed
                     ? new WorkQueueSteps.Step("Resolve the dispute", true)
+                        { Tracks = [WorkQueueSteps.Tracks.Dispute] }
                     : c.TotalFeesAmount <= 0
                         ? new WorkQueueSteps.Step("Add the fees", true)
+                            { Tracks = [WorkQueueSteps.Tracks.Fees] }
                         : c.BalanceAmount > 0
                             ? new WorkQueueSteps.Step(
                                 $"Waiting for {c.BalanceAmount.ToString("N0", CultureInfo.InvariantCulture)} ETB", false)
-                            : new WorkQueueSteps.Step("Paid in full: settle", true);
+                                { Tracks = [WorkQueueSteps.Tracks.Payment] }
+                            : new WorkQueueSteps.Step("Paid in full: settle", true)
+                                { Tracks = [WorkQueueSteps.Tracks.Payment] };
                 return row(byId[c.CandidateId], step, $"/workflow/commissions/{c.Id}",
                     WorkQueueRules.DaysInStage(c.OpenedAt, now), c.Id);
             })

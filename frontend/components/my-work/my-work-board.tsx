@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   useReactTable,
@@ -267,6 +267,111 @@ function QueueTabs({
   );
 }
 
+/**
+ * The order the tracks are offered in, which is the order the work happens in.
+ *
+ * Sorting them by name would put Visa before Tasheer on the Embassy board, and sorting by how
+ * many rows each holds would move them about as the day went on. A track nobody named here is
+ * still offered, after these, in the order it turned up.
+ */
+const TRACK_ORDER = [
+  "Review",
+  "Contract",
+  "Medical",
+  "Tasheer",
+  "Visa",
+  "Insurance",
+  "Milestone",
+  "Ticket",
+  "Flight",
+  "Notification",
+  "Arrival",
+  "Commission",
+  "Dispute",
+  "Fees",
+  "Payment",
+];
+
+const ALL_TRACKS = "__all";
+
+/**
+ * The tracks on this tab, in order, with what each holds.
+ *
+ * Only the ones actually on the board: an Embassy board with no medicals left to book should
+ * not offer a Medical switch that leads to an empty table.
+ */
+function tracksOf(rows: WorkQueueRow[]) {
+  const seen = new Map<string, { toDo: number; waiting: number }>();
+  for (const row of rows) {
+    for (const track of row.tracks ?? []) {
+      const tally = seen.get(track) ?? { toDo: 0, waiting: 0 };
+      if (row.needsAction) tally.toDo += 1;
+      else tally.waiting += 1;
+      seen.set(track, tally);
+    }
+  }
+
+  return [...seen.entries()]
+    .sort((a, b) => {
+      const ai = TRACK_ORDER.indexOf(a[0]);
+      const bi = TRACK_ORDER.indexOf(b[0]);
+      return (ai < 0 ? TRACK_ORDER.length : ai) - (bi < 0 ? TRACK_ORDER.length : bi);
+    })
+    .map(([name, tally]) => ({ name, ...tally }));
+}
+
+/**
+ * Which part of this stage to look at: everything, or one track of it.
+ *
+ * Embassy runs medical, Tasheer and the visa side by side, and the person booking medicals this
+ * morning does not want the Tasheer rows between them. One switch rather than three more tables
+ * because the two tables below already answer the other question — whose turn it is — and a
+ * stage split both ways at once is six lists to read.
+ */
+function TrackSwitch({
+  tracks,
+  active,
+  onSelect,
+}: {
+  tracks: ReturnType<typeof tracksOf>;
+  active: string;
+  onSelect: (track: string) => void;
+}) {
+  const total = tracks.reduce((sum, t) => sum + t.toDo + t.waiting, 0);
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Part of this stage">
+      <span className="mr-0.5 text-xs text-muted-foreground">Showing</span>
+      {[{ name: ALL_TRACKS, label: "Everything", count: total }, ...tracks.map((t) => ({
+        name: t.name,
+        label: t.name,
+        count: t.toDo + t.waiting,
+        title: `${t.toDo} to do, ${t.waiting} waiting`,
+      }))].map((chip) => {
+        const selected = chip.name === active;
+        return (
+          <button
+            key={chip.name}
+            type="button"
+            aria-pressed={selected}
+            title={"title" in chip ? (chip.title as string) : undefined}
+            onClick={() => onSelect(chip.name)}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition",
+              selected
+                ? "border-green-800 bg-green-800/10 text-green-900 dark:text-green-300"
+                : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            {chip.label}
+            <span className="tabular-nums opacity-70">{chip.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export type MyWorkBoardProps = {
   queues: WorkQueue[];
   active: WorkQueue;
@@ -303,8 +408,24 @@ export function MyWorkBoard({
   onOffice,
   refreshing,
 }: MyWorkBoardProps) {
-  const toDo = useMemo(() => active.items.filter((r) => r.needsAction), [active]);
-  const waiting = useMemo(() => active.items.filter((r) => !r.needsAction), [active]);
+  const [track, setTrack] = useState(ALL_TRACKS);
+
+  const tracks = useMemo(() => tracksOf(active.items), [active]);
+  // Held rather than reset when the tab changes: Medical means nothing on Tickets, and a switch
+  // the new tab does not have is simply everything. Switching back to Embassy finds Medical
+  // still chosen, which is where the person left it.
+  const showing = tracks.some((t) => t.name === track) ? track : ALL_TRACKS;
+
+  const rows = useMemo(
+    () =>
+      showing === ALL_TRACKS
+        ? active.items
+        : active.items.filter((r) => (r.tracks ?? []).includes(showing)),
+    [active, showing]
+  );
+
+  const toDo = useMemo(() => rows.filter((r) => r.needsAction), [rows]);
+  const waiting = useMemo(() => rows.filter((r) => !r.needsAction), [rows]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -348,6 +469,14 @@ export function MyWorkBoard({
             </Select>
           )}
         </div>
+
+        {/* Only when there is more than one part to this stage: a single chip naming what the
+            board already is would be a switch with nothing to switch to. */}
+        {tracks.length > 1 && (
+          <div className="w-full border-t pt-2">
+            <TrackSwitch tracks={tracks} active={showing} onSelect={setTrack} />
+          </div>
+        )}
       </div>
 
       <QueueBoard

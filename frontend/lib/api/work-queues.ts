@@ -16,6 +16,11 @@ export type WorkQueueRow = {
   overdue: boolean;
   warning?: string | null;
   href: string;
+  /**
+   * Which of the stage's parallel tracks this row is on now — Medical, Tasheer, Visa and so on.
+   * More than one when the desk owes the same candidate two things at once.
+   */
+  tracks: string[];
 };
 
 export type WorkQueue = {

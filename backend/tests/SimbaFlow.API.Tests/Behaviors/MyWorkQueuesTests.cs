@@ -231,6 +231,19 @@ public class WorkQueueStepsTests
     private static Dictionary<string, string> S(params (string Key, string Value)[] values) =>
         values.ToDictionary(v => v.Key, v => v.Value, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// What the step says and whose turn it is, which is what these tests are about.
+    ///
+    /// Not the whole record: a step also carries the tracks it belongs to, and those are lists,
+    /// which a record compares by reference. Comparing whole steps passed only because every
+    /// step had the same empty list.
+    /// </summary>
+    private static void Says(WorkQueueSteps.Step step, string text, bool needsAction)
+    {
+        step.Text.Should().Be(text);
+        step.NeedsAction.Should().Be(needsAction);
+    }
+
     [Theory]
     [InlineData("", "", "", "Book medical · Book Tasheer", true)]
     [InlineData("Fit", "Book Done", "", "Mark visa Ready", true)]
@@ -243,7 +256,7 @@ public class WorkQueueStepsTests
     {
         var step = WorkQueueSteps.Embassy(S(("medical", medical), ("tasheer", tasheer), ("visa", visa)), Today);
 
-        step.Should().Be(new WorkQueueSteps.Step(text, action));
+        Says(step, text, action);
     }
 
     [Fact]
@@ -254,8 +267,8 @@ public class WorkQueueStepsTests
         var past = WorkQueueSteps.Embassy(
             S(("medical", "Fit"), ("tasheer", "Booked"), ("tasheer_appointment_date", "2026-10-15")), Today);
 
-        future.Should().Be(new WorkQueueSteps.Step("Tasheer tomorrow", false));
-        past.Should().Be(new WorkQueueSteps.Step("Record Tasheer result", true));
+        Says(future, "Tasheer tomorrow", false);
+        Says(past, "Record Tasheer result", true);
     }
 
     [Theory]
@@ -265,8 +278,7 @@ public class WorkQueueStepsTests
     [InlineData("Available", "Issued", "Send to Ticket", true)]
     public void LmisWaitsOnTheMinistryAfterTheUpload(string insurance, string milestone, string text, bool action)
     {
-        WorkQueueSteps.Lmis(S(("insurance", insurance), ("milestone", milestone)))
-            .Should().Be(new WorkQueueSteps.Step(text, action));
+        Says(WorkQueueSteps.Lmis(S(("insurance", insurance), ("milestone", milestone))), text, action);
     }
 
     [Fact]
@@ -283,12 +295,12 @@ public class WorkQueueStepsTests
     [Fact]
     public void ADepartureWaitsForTheFlightOnceTheCandidateIsTold()
     {
-        WorkQueueSteps.Departure(S(("flight_date", "2026-10-20")), Today)
-            .Should().Be(new WorkQueueSteps.Step("Notify candidate, flies in 4 days", true));
-        WorkQueueSteps.Departure(S(("notification_status", "Notified"), ("flight_date", "2026-10-20")), Today)
-            .Should().Be(new WorkQueueSteps.Step("Notified, flies in 4 days", false));
-        WorkQueueSteps.Departure(S(("notification_status", "Notified"), ("flight_date", "2026-10-16")), Today)
-            .Should().Be(new WorkQueueSteps.Step("Confirm departure", true));
+        Says(WorkQueueSteps.Departure(S(("flight_date", "2026-10-20")), Today),
+            "Notify candidate, flies in 4 days", true);
+        Says(WorkQueueSteps.Departure(S(("notification_status", "Notified"), ("flight_date", "2026-10-20")), Today),
+            "Notified, flies in 4 days", false);
+        Says(WorkQueueSteps.Departure(S(("notification_status", "Notified"), ("flight_date", "2026-10-16")), Today),
+            "Confirm departure", true);
         WorkQueueSteps.Departure(S(("departure_status", "Not Departed")), Today).Text
             .Should().Be("Did not fly: send back to Ticket");
     }
@@ -296,9 +308,62 @@ public class WorkQueueStepsTests
     [Fact]
     public void ASubmittedVisaIsWaitingOnTheEmbassy()
     {
-        WorkQueueSteps.CaseExecutive(S(("visa", "Ready")), Today)
-            .Should().Be(new WorkQueueSteps.Step("Submit visa documents", true));
-        WorkQueueSteps.CaseExecutive(S(("visa", "Submitted"), ("visa_submission_date", "2026-10-10")), Today)
-            .Should().Be(new WorkQueueSteps.Step("Submitted 6 days ago, waiting for the embassy", false));
+        Says(WorkQueueSteps.CaseExecutive(S(("visa", "Ready")), Today), "Submit visa documents", true);
+        Says(WorkQueueSteps.CaseExecutive(S(("visa", "Submitted"), ("visa_submission_date", "2026-10-10")), Today),
+            "Submitted 6 days ago, waiting for the embassy", false);
+    }
+
+    [Fact]
+    public void ARowIsOnTheTrackOfWhatItIsWaitingFor_TEST92()
+    {
+        // A desk owing two things at once is on both: filtering Embassy by Medical and by
+        // Tasheer both have to find this candidate.
+        var both = WorkQueueSteps.Embassy(S(("medical", ""), ("tasheer", "")), Today);
+        both.Tracks.Should().BeEquivalentTo([WorkQueueSteps.Tracks.Medical, WorkQueueSteps.Tracks.Tasheer]);
+
+        var visa = WorkQueueSteps.Embassy(S(("medical", "Fit"), ("tasheer", "Book Done")), Today);
+        visa.Tracks.Should().BeEquivalentTo([WorkQueueSteps.Tracks.Visa]);
+    }
+
+    [Fact]
+    public void TheTracksAreWhatIsOwedNowAndNotWhatWasOwedBefore_TEST92()
+    {
+        // Medical and Tasheer are both done; the row is about the visa and nothing else, so
+        // the medical filter must not keep showing it.
+        var step = WorkQueueSteps.Embassy(
+            S(("medical", "Fit"), ("tasheer", "Book Done"), ("visa", "Submitted")), Today);
+
+        step.NeedsAction.Should().BeFalse();
+        step.Tracks.Should().BeEquivalentTo([WorkQueueSteps.Tracks.Visa]);
+    }
+
+    [Fact]
+    public void AWaitingAppointmentStaysOnItsOwnTrack_TEST92()
+    {
+        var step = WorkQueueSteps.Embassy(
+            S(("medical", "Fit"), ("tasheer", "Booked"), ("tasheer_appointment_date", "2026-10-17")), Today);
+
+        step.Tracks.Should().BeEquivalentTo([WorkQueueSteps.Tracks.Tasheer]);
+    }
+
+    [Fact]
+    public void EveryBoardNamesATrackForItsStep_TEST92()
+    {
+        WorkQueueSteps.Intake().Tracks.Should().NotBeEmpty();
+        WorkQueueSteps.NewContracts(S()).Tracks.Should().NotBeEmpty();
+        WorkQueueSteps.CaseExecutive(S(), Today).Tracks.Should().NotBeEmpty();
+        WorkQueueSteps.Lmis(S()).Tracks.Should().NotBeEmpty();
+        WorkQueueSteps.Ticket(S()).Tracks.Should().NotBeEmpty();
+        WorkQueueSteps.Departure(S(), Today).Tracks.Should().NotBeEmpty();
+        WorkQueueSteps.Arrival(S()).Tracks.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void LmisSeparatesTheInsuranceFromTheMinistry_TEST92()
+    {
+        WorkQueueSteps.Lmis(S(("insurance", "Insurance Unpaid"))).Tracks
+            .Should().BeEquivalentTo([WorkQueueSteps.Tracks.Insurance]);
+        WorkQueueSteps.Lmis(S(("insurance", "Available"))).Tracks
+            .Should().BeEquivalentTo([WorkQueueSteps.Tracks.Milestone]);
     }
 }
