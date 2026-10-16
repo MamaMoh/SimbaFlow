@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { EPRO_CANDIDATE, EPRO_SPONSOR, type SiteManifest } from "./manifest";
-import { bestRead, readFromText, tidyPhone, toIsoDate } from "./read";
+import { EPRO_CANDIDATE, EPRO_SPONSOR, SITE_MANIFESTS, type SiteManifest } from "./manifest";
+import { bestRead, readFromText, tidyPhone, toDestinationPhone, toIsoDate } from "./read";
 
 /**
  * Every value in this file is invented. The pages these maps were written against hold real
@@ -369,4 +369,73 @@ test("the contract block beats the candidate page on a paste of the contract blo
   const best = bestRead(block, [EPRO_CANDIDATE, EPRO_SPONSOR]);
   assert.equal(best?.manifest.id, "epro-sponsor");
   assert.equal(best?.result.values.sponsorName, "SAMPLE EMPLOYER NAME");
+});
+
+test("a sponsor number printed the way Saudi Arabia writes it becomes one a box can dial", () => {
+  // The trunk zero is not part of the number; a box already on +966 took it for one.
+  assert.equal(toDestinationPhone("0500000000"), "+966500000000");
+  assert.equal(toDestinationPhone("05 00 00 00 00"), "+966500000000");
+});
+
+test("a sponsor number that already names its country is left alone", () => {
+  assert.equal(toDestinationPhone("+966500000000"), "+966500000000");
+  assert.equal(toDestinationPhone("966500000000"), "+966500000000");
+});
+
+test("a sponsor number with neither a trunk zero nor a country code gets the code", () => {
+  assert.equal(toDestinationPhone("500000000"), "+966500000000");
+});
+
+test("nothing pasted stays nothing", () => {
+  assert.equal(toDestinationPhone(""), "");
+  assert.equal(toDestinationPhone("   "), "");
+});
+
+test("a contract block copied out of a table deals its values across the row", () => {
+  // The page prints Location, Visa Number and Mobile Number side by side. Copied, the labels
+  // arrive together and the values after them.
+  const copied = [
+    "Contract parties",
+    "EMPLOYER INFO",
+    "SAMPLE TEST EMPLOYER",
+    "LOCATION:",
+    "VISA NUMBER:",
+    "MOBILE NUMBER:",
+    "Sample Street, Test District 10000",
+    "1900000001",
+    "966500000000",
+  ].join("\n");
+
+  const read = bestRead(copied, SITE_MANIFESTS);
+  assert.ok(read);
+  assert.equal(read.result.values.sponsorAddress, "Sample Street, Test District 10000");
+  assert.equal(read.result.values.visaNumber, "1900000001");
+  assert.equal(read.result.values.sponsorPhone, "966500000000");
+  assert.equal(read.result.values.sponsorName, "SAMPLE TEST EMPLOYER");
+});
+
+test("the same block printed down the page still reads the same", () => {
+  const copied = [
+    "EMPLOYER INFO",
+    "SAMPLE TEST EMPLOYER",
+    "LOCATION:",
+    "Sample Street, Test District 10000",
+    "VISA NUMBER:",
+    "1900000001",
+    "MOBILE NUMBER:",
+    "966500000000",
+  ].join("\n");
+
+  const read = bestRead(copied, SITE_MANIFESTS);
+  assert.ok(read);
+  assert.equal(read.result.values.sponsorAddress, "Sample Street, Test District 10000");
+  assert.equal(read.result.values.visaNumber, "1900000001");
+  assert.equal(read.result.values.sponsorPhone, "966500000000");
+});
+
+test("an address that landed in the mobile box is not read as a number", () => {
+  // Without the guard this arrives as a phone number of the digits in a street address.
+  const copied = ["MOBILE NUMBER:", "Sample Street, Test District"].join("\n");
+  const read = readFromText(copied, EPRO_SPONSOR);
+  assert.equal(read.values.sponsorPhone, undefined);
 });

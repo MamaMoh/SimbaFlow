@@ -159,6 +159,26 @@ export const tidyPhone = (raw: string) => {
   return kept.startsWith("+") ? `+${kept.slice(1).replace(/\+/g, "")}` : kept.replace(/\+/g, "");
 };
 
+/**
+ * A number the portal printed the way the country writes it, in the form a phone box reads.
+ *
+ * Musaned prints a Saudi mobile as 0500000000 — the national form, with the trunk zero and no
+ * country code. A phone box already set to Saudi Arabia is handed those digits and takes them
+ * for the whole number, so that one arrived in the form as +050 000 000 0, which is not a
+ * number anybody can ring. The leading zero is the trunk prefix and the rest is the number:
+ * dropping it and putting the dialling code in front is the whole of the rule.
+ *
+ * Anything that already carries a country code is left exactly as it is.
+ */
+export function toDestinationPhone(raw: string, dialCode = "966"): string {
+  const digits = tidyPhone(raw);
+  if (!digits) return digits;
+  if (digits.startsWith("+")) return digits;
+  if (digits.startsWith(dialCode)) return `+${digits}`;
+  if (digits.startsWith("0")) return `+${dialCode}${digits.slice(1)}`;
+  return `+${dialCode}${digits}`;
+}
+
 function normalise(value: string, kind?: ValueKind): string {
   const clean = tidy(value);
   if (kind === "date") return toIsoDate(clean);
@@ -237,6 +257,54 @@ function readLead(source: string, lead: LeadField, firstLabelAt: (from: number) 
   return line;
 }
 
+/** Every line with something on it, in order. */
+const lines = (slice: string) =>
+  slice.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+
+/**
+ * The values for a row of labels printed across the page rather than down it.
+ *
+ * The contract block prints Location, Visa Number and Mobile Number side by side: three labels
+ * on one line and their three values on the next. Copied out of a table that comes back as all
+ * three labels and then all three values, so every label but the last has nothing after it and
+ * the last one has everything — which, read a line at a time, puts the address into the mobile
+ * number.
+ *
+ * A run of labels with nothing between them, ended by one carrying at least as many lines as
+ * the run is long, is that shape and nothing else is. Those lines are dealt out to those
+ * labels in order. Anything short of that is left alone: a label with a genuinely empty value
+ * is common, and guessing there would invent a value rather than report a gap.
+ */
+function columnar(source: string, hits: Hit[]): Map<number, string> {
+  const paired = new Map<number, string>();
+  const after = (i: number) => source.slice(hits[i].end, hits[i + 1]?.start ?? source.length);
+
+  for (let i = 0; i < hits.length; i++) {
+    if (firstLine(after(i)) !== "") continue;
+
+    let end = i;
+    while (end + 1 < hits.length && firstLine(after(end + 1)) === "") end++;
+
+    const last = end + 1;
+    if (last >= hits.length) break;
+
+    const values = lines(after(last));
+    const run = last - i + 1;
+    if (values.length < run) {
+      i = end;
+      continue;
+    }
+
+    for (let k = 0; k < run; k++) paired.set(i + k, values[k]);
+    i = last;
+  }
+
+  return paired;
+}
+
+/** Digits enough to ring. An address that landed in a phone box is not a phone number. */
+const looksLikeAPhone = (value: string) => value.replace(/\D/g, "").length >= 7;
+
 export function readFromText(text: string, manifest: SiteManifest): ReadResult {
   const fields = manifest.fields as ReadField[];
   const source = text.replace(/\r\n?/g, "\n").replace(/ /g, " ");
@@ -247,9 +315,11 @@ export function readFromText(text: string, manifest: SiteManifest): ReadResult {
   const unrecognised: ReadResult["unrecognised"] = [];
   const seen = new Set<FieldKey>();
 
+  const paired = columnar(source, hits);
+
   hits.forEach((hit, i) => {
     const until = hits[i + 1]?.start ?? source.length;
-    const raw = firstLine(source.slice(hit.end, until));
+    const raw = paired.get(i) ?? firstLine(source.slice(hit.end, until));
     if (!hit.field) {
       const value = tidy(raw);
       if (value) unrecognised.push({ label: hit.label, value });
@@ -260,6 +330,10 @@ export function readFromText(text: string, manifest: SiteManifest): ReadResult {
     // A label printed twice — once in a summary and once in detail — keeps its first value.
     // Later ones are usually the emptier of the two.
     if (!value || seen.has(hit.field.key)) return;
+    // A phone box is the one that quietly accepts something that is not its value: every
+    // other field shows what it got, while an address stripped to its digits reads as a
+    // number somebody could believe.
+    if (hit.field.kind === "phone" && !looksLikeAPhone(value)) return;
 
     seen.add(hit.field.key);
     expand(hit.field.key, value, values);

@@ -18,6 +18,7 @@ import { ClipboardPaste, Loader2, TriangleAlert } from "lucide-react";
 import { setVisaDetails, type VisaFormGap } from "@/lib/api/candidates";
 import { PasteFromPortal } from "@/components/site-bridge/paste-from-portal";
 import type { FieldKey } from "@/lib/site-bridge/manifest";
+import { toDestinationPhone } from "@/lib/site-bridge/read";
 
 /** The boxes that are dates rather than text, so the browser offers a picker. */
 const DATE_FIELDS = new Set(["passportIssueDate", "passportExpiryDate"]);
@@ -99,7 +100,10 @@ export function VisaDetailsDialog({
     const filled: Record<string, string> = {};
     for (const field of wanted) {
       const value = values[field.key as FieldKey];
-      if (value) filled[field.key] = value;
+      if (!value) continue;
+      // The portal prints the sponsor's mobile the way Saudi Arabia writes it — a trunk zero
+      // and no country code — and the box it lands in is already set to Saudi Arabia.
+      filled[field.key] = field.key === "sponsorPhone" ? toDestinationPhone(value) : value;
     }
 
     const count = Object.keys(filled).length;

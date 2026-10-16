@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInputField } from "@/components/ui/phone-input";
-import { FileText, Loader2, Upload } from "lucide-react";
+import { ClipboardPaste, FileText, Loader2, Upload } from "lucide-react";
 import {
   generateCandidateContract,
   generateCandidateVisaForm,
@@ -23,6 +23,9 @@ import {
   uploadCandidateDocument,
 } from "@/lib/api/candidates";
 import { updateWorkflowStatus } from "@/lib/api/workflow";
+import { PasteFromPortal } from "@/components/site-bridge/paste-from-portal";
+import type { FieldKey } from "@/lib/site-bridge/manifest";
+import { toDestinationPhone } from "@/lib/site-bridge/read";
 
 /** Saudi placements run on a contract the parties sign; elsewhere we produce one. */
 function isSaudi(country?: string | null) {
@@ -83,6 +86,8 @@ export function MarkReadyDialog({
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [sponsorKind, setSponsorKind] = useState<SponsorKind>("unknown");
   const [reading, setReading] = useState(false);
+  /** Whether the portal paste is open. Nothing is being read from a file while it is. */
+  const [pasting, setPasting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<string | null>(null);
 
@@ -93,7 +98,58 @@ export function MarkReadyDialog({
     setForm(blank);
     setContractFile(null);
     setSponsorKind("unknown");
+    setPasting(false);
     setStep(null);
+  };
+
+  /**
+   * The same details off the portal, for the contract nobody has yet.
+   *
+   * The signed contract is what this dialog would rather read, but it arrives days after the
+   * employer and the visa are known — and until it does, the desk had the contract parties page
+   * open in another tab and was retyping an Arabic address out of it. Pasting that page fills
+   * the same boxes the contract would have.
+   *
+   * Filled the same way as the contract reader: only boxes still empty, nothing typed is
+   * overwritten, and every box stays editable afterwards. The contract number is not on that
+   * block, so it stays for whoever has it.
+   */
+  const fillFromPortal = (values: Partial<Record<FieldKey, string>>) => {
+    const found = [
+      ["visaNumber", values.visaNumber],
+      ["sponsorName", values.sponsorName],
+      ["sponsorIdNumber", values.sponsorIdNumber],
+      // The portal prints the sponsor's mobile the way Saudi Arabia writes it — a trunk zero
+      // and no country code — and the box below is already set to Saudi Arabia.
+      ["sponsorPhone", values.sponsorPhone ? toDestinationPhone(values.sponsorPhone) : undefined],
+      ["sponsorAddress", values.sponsorAddress],
+    ] as const;
+
+    let filled = 0;
+    setForm((f) => {
+      const next = { ...f };
+      for (const [field, value] of found) {
+        if (value && !next[field]) {
+          next[field] = value;
+          filled += 1;
+        }
+      }
+      return next;
+    });
+
+    // Counted from what the page carried rather than from what went in: a page pasted against
+    // a form already filled in by hand reads as "nothing to fill" instead of looking like it
+    // failed.
+    const carried = found.filter(([, v]) => v).length;
+    if (carried === 0) {
+      toast.warning("Nothing on that page matches these boxes — copy the contract parties block");
+      return;
+    }
+    if (filled === 0) {
+      toast.info("Everything that page carries is already filled in");
+      return;
+    }
+    toast.success(`Filled ${filled} ${filled === 1 ? "field" : "fields"} — check them before saving`);
   };
 
   const close = (next: boolean) => {
@@ -258,6 +314,26 @@ export function MarkReadyDialog({
                 className="hidden"
                 onChange={(e) => choose(e.target.files?.[0] ?? null)}
               />
+
+              {/* The contract is signed days after the employer and the visa are known, and
+                  until then this dialog asked for details nobody could read off anything. The
+                  portal has them in the meantime. */}
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md border border-dashed p-2">
+                <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+                  No signed contract yet? Copy the contract parties page on Musaned instead.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 shrink-0 gap-1.5 text-xs"
+                  onClick={() => setPasting(true)}
+                  disabled={reading || busy}
+                >
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                  Fill from Musaned
+                </Button>
+              </div>
             </div>
           ) : (
             <p className="flex items-center gap-2 text-sm">
@@ -320,6 +396,17 @@ export function MarkReadyDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Outside the content, so closing it comes back to this form rather than taking it
+          with it. A page that is not the employer block fills nothing, which it says. */}
+      <PasteFromPortal
+        open={pasting}
+        onOpenChange={setPasting}
+        onApply={(values) => {
+          fillFromPortal(values);
+          setPasting(false);
+        }}
+      />
     </Dialog>
   );
 }
