@@ -64,9 +64,19 @@ export default function SettingsPage() {
             <div>
               <h2 className="text-sm font-semibold">Branding</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Printed on this agency&apos;s own documents. PNG or JPEG, up to 2MB.
+                Printed on {branding?.agencyName ? `${branding.agencyName}'s` : "this agency's"} own
+                documents. PNG or JPEG, up to 2MB.
               </p>
             </div>
+
+            {/* Said outright rather than left as two empty boxes: with no agency behind the page,
+                "Nothing uploaded" reads as a fact about the agency when it is not one. */}
+            {branding && !branding.agencyName && !error ? (
+              <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                This page is not reading any agency&apos;s branding. Choose the agency in the top
+                bar, then come back here.
+              </p>
+            ) : null}
 
             {error ? (
               <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">

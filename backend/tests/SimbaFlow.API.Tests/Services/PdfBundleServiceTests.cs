@@ -192,4 +192,54 @@ public class PdfBundleServiceTests
         Directory.GetDirectories(Path.GetTempPath(), "simbaflow-bundle-*").Length
             .Should().Be(before);
     }
+
+    // ──── Photos and passports at their own size ────
+    //
+    // A photo used to be stretched to fill the A4 page, so a 600-pixel phone picture printed at
+    // about 80 dpi and came out blurred.
+
+    [Fact]
+    public void ImageSizeIsReadFromThePngAndJpegHeaders()
+    {
+        PdfBundleService.PixelSize(Png()).Should().Be((120, 160));
+        PdfBundleService.PixelSize(Jpeg()).Should().Be((160, 120));
+        PdfBundleService.PixelSize([0x50, 0x4B, 0x03, 0x04]).Should().Be((0, 0));
+    }
+
+    [Fact]
+    public void ASmallPhotoPrintsAtItsOwnResolution_NotStretched()
+    {
+        // 600 × 800 pixels at 150 dpi is 288 × 384 points: well inside the snapshot box, so left alone.
+        var (width, height) = PdfBundleService.PrintSize(600, 800, 400, 460);
+
+        width.Should().BeApproximately(288, 0.01f);
+        height.Should().BeApproximately(384, 0.01f);
+    }
+
+    [Fact]
+    public void ALargePhotoIsHeldToTheBox_KeepingItsShape()
+    {
+        // A 12-megapixel phone shot of a passport, landscape.
+        var (width, height) = PdfBundleService.PrintSize(4000, 3000, 400, 460);
+
+        width.Should().BeApproximately(400, 0.01f);
+        height.Should().BeApproximately(300, 0.01f);
+    }
+
+    [Fact]
+    public async Task ABigPassportPhotoStillMakesOnePage()
+    {
+        using var image = new Image<Rgba32>(4000, 3000);
+        image.Mutate(c => c.BackgroundColor(Color.Khaki));
+        using var buffer = new MemoryStream();
+        image.SaveAsJpeg(buffer);
+
+        var result = await _service.MergeAsync([
+            PdfBundleItem.Document("SEADA MEKONNEN · Passport", buffer.ToArray(), isSnapshot: true),
+            PdfBundleItem.Document("SEADA MEKONNEN · Photo", Png(), isSnapshot: true),
+        ]);
+
+        result.Should().NotBeNull();
+        PageCount(result!).Should().Be(2);
+    }
 }

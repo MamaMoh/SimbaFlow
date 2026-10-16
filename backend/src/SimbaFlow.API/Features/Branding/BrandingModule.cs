@@ -28,18 +28,31 @@ public class BrandingModule : ICarterModule
             ICurrentUserService user,
             CancellationToken ct) =>
         {
+            // The agency's name comes back with the paths. Without it "no agency in scope", "an
+            // agency id that no longer exists" and "an agency that has uploaded nothing" all came
+            // back as the same two nulls, and the settings page read "Nothing uploaded" for an
+            // agency whose letterhead was printing on every CV.
             if (user.TenantId is not Guid tenantId)
-                return Results.Ok(new { isSuccess = true, data = new { logoPath = (string?)null, letterheadPath = (string?)null } });
+                return Results.Ok(new
+                {
+                    isSuccess = true,
+                    data = new { agencyName = (string?)null, logoPath = (string?)null, letterheadPath = (string?)null },
+                });
 
-            var paths = await context.Tenants.AsNoTracking()
+            var agency = await context.Tenants.AsNoTracking()
                 .Where(t => t.Id == tenantId && !t.IsDeleted)
-                .Select(t => new { t.LogoPath, t.LetterheadPath })
+                .Select(t => new { t.Name, t.LogoPath, t.LetterheadPath })
                 .FirstOrDefaultAsync(ct);
 
             return Results.Ok(new
             {
                 isSuccess = true,
-                data = new { logoPath = paths?.LogoPath, letterheadPath = paths?.LetterheadPath },
+                data = new
+                {
+                    agencyName = agency?.Name,
+                    logoPath = agency?.LogoPath,
+                    letterheadPath = agency?.LetterheadPath,
+                },
             });
         });
 

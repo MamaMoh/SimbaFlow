@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { ImagePlus, Trash2, Loader2 } from "lucide-react";
 import { ImageLightbox } from "@/components/candidates/candidate-image";
 import { toast } from "sonner";
-import { logoUrl } from "@/lib/api/branding";
+import { brandingHeaders, logoUrl } from "@/lib/api/branding";
 
 export { logoUrl };
 
@@ -56,7 +56,7 @@ export function LogoUpload({
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch(endpoint, { method: "POST", body: form });
+      const res = await fetch(endpoint, { method: "POST", body: form, headers: brandingHeaders() });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || body?.isSuccess === false) {
         toast.error(body?.error || "That logo could not be saved.");
@@ -75,7 +75,7 @@ export function LogoUpload({
   const remove = async () => {
     setBusy(true);
     try {
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await fetch(endpoint, { method: "DELETE", headers: brandingHeaders() });
       if (!res.ok) {
         toast.error("That logo could not be removed.");
         return;
@@ -290,7 +290,7 @@ export async function uploadBranding(
   try {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(endpoint, { method: "POST", body: form });
+    const res = await fetch(endpoint, { method: "POST", body: form, headers: brandingHeaders() });
     return res.ok;
   } catch {
     return false;
