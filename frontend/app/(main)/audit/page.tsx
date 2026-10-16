@@ -1,8 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Loader2, ScrollText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type PaginationState,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Copy, Filter, Loader2, MoreHorizontal, UserRound, UserSearch } from "lucide-react";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { PageHeader } from "@/components/ui/page-header";
 import { AgencyAccessLog } from "@/components/platform/agency-access-log";
@@ -25,9 +36,23 @@ import {
   type AuditTrailKind,
 } from "@/lib/api/audit";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { indexColumn } from "@/components/data-table/index-column";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 
-const PAGE_SIZE = 50;
 const ANY = "all";
+
+/** A row as the table reads it, with the words its funnels compare against. */
+type AuditRow = AuditTrailEntry & { on: string; result: string };
 
 function When({ iso }: { iso: string }) {
   const d = new Date(iso);
@@ -79,7 +104,14 @@ function Details({ json }: { json?: string | null }) {
   );
 }
 
+/**
+ * The agency's audit trail. It is too long to send whole, so the API pages it: the tabs, person,
+ * action, dates and failed-only switch travel with each request and narrow the whole trail, and
+ * sit above the table for that reason. The search box and the funnels narrow the page in hand,
+ * which is why the box says so.
+ */
 export default function AuditTrailPage() {
+  const router = useRouter();
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canRead = hasPermission("audit.read") || hasPermission("system.admin");
 
@@ -89,13 +121,15 @@ export default function AuditTrailPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [failedOnly, setFailedOnly] = useState(false);
-  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 50 });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
 
   const { data, error, isLoading, isValidating, mutate } = useAuditTrail(
     {
       kind,
-      page,
-      pageSize: PAGE_SIZE,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
       userId: userId === ANY ? undefined : userId,
       action: action === ANY ? undefined : action,
       from: from || undefined,
@@ -105,11 +139,180 @@ export default function AuditTrailPage() {
     !permsLoading && canRead
   );
 
+  const firstPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
+
   // Any change of filter starts again from the first page.
   const refilter = <T,>(set: (v: T) => void) => (v: T) => {
     set(v);
-    setPage(1);
+    firstPage();
   };
+
+  const rows = useMemo<AuditRow[]>(
+    () =>
+      applyColumnFilters(
+        (data?.items ?? []).map((e) => ({
+          ...e,
+          on: e.entityLabel ?? [e.entityType, e.entityId?.slice(0, 8)].filter(Boolean).join(" "),
+          result: e.success ? "OK" : "Failed",
+        })),
+        filters,
+        { at: "date", userName: "text", action: "text", on: "text", result: "text", ipAddress: "text" },
+      ),
+    [data, filters],
+  );
+
+  const userIds = useMemo(() => new Set((data?.users ?? []).map((u) => u.value)), [data]);
+  const actionIds = useMemo(() => new Set((data?.actions ?? []).map((a) => a.value)), [data]);
+
+  const columns: ColumnDef<AuditRow>[] = useMemo(() => {
+    const copy = async (e: AuditRow) => {
+      const text = [new Date(e.at).toLocaleString(), e.userName, e.action, e.on, e.success ? "OK" : "Failed", e.details]
+        .filter(Boolean)
+        .join(" · ");
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.success("Entry copied");
+      } catch {
+        toast.error("Could not copy");
+      }
+    };
+
+    return [
+      indexColumn<AuditRow>(),
+      {
+        accessorKey: "at",
+        meta: { filter: { field: "at", kind: "date" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="When" />,
+        cell: ({ row }) => <span className="text-muted-foreground"><When iso={row.original.at} /></span>,
+      },
+      {
+        accessorKey: "userName",
+        meta: { filter: { field: "userName", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Who" />,
+        cell: ({ row }) => (
+          <div>
+            <div className="font-medium">{row.original.userName}</div>
+            {row.original.userEmail && (
+              <div className="text-xs text-muted-foreground">{row.original.userEmail}</div>
+            )}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "action",
+        meta: { filter: { field: "action", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Action" />,
+        cell: ({ row }) => (
+          <div title={row.original.rawAction}>
+            {row.original.action}
+            <Details json={row.original.details} />
+          </div>
+        ),
+      },
+      {
+        accessorKey: "on",
+        meta: { filter: { field: "on", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="On" />,
+        cell: ({ row }) => <Subject e={row.original} />,
+      },
+      {
+        accessorKey: "result",
+        meta: { filter: { field: "result", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Result" />,
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              row.original.success
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+            )}
+          >
+            {row.original.success ? "OK" : "Failed"}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "ipAddress",
+        meta: { filter: { field: "ipAddress", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="From" />,
+        cell: ({ row }) => (
+          <span className="font-mono text-xs text-muted-foreground" title={row.original.userAgent ?? undefined}>
+            {row.original.ipAddress ?? "—"}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const e = row.original;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {e.entityType === "Candidate" && e.entityId && (
+                  <DropdownMenuItem onClick={() => router.push(`/candidates/${e.entityId}`)}>
+                    <UserSearch className="mr-2 h-4 w-4" /> Open candidate
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => copy(e)}>
+                  <Copy className="mr-2 h-4 w-4" /> Copy entry
+                </DropdownMenuItem>
+                {e.userId && userIds.has(e.userId) && (
+                  <DropdownMenuItem onClick={() => { setUserId(e.userId!); firstPage(); }}>
+                    <UserRound className="mr-2 h-4 w-4" /> Only {e.userName}
+                  </DropdownMenuItem>
+                )}
+                {actionIds.has(e.rawAction) && (
+                  <DropdownMenuItem onClick={() => { setAction(e.rawAction); firstPage(); }}>
+                    <Filter className="mr-2 h-4 w-4" /> Only &ldquo;{e.action}&rdquo;
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+        size: 60,
+        enableSorting: false,
+      },
+    ];
+  }, [router, userIds, actionIds]);
+
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "audit-trail", columnIds });
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+      pagination,
+      // Views and prints are never refused, so they have no result to show.
+      columnOrder: layout.columnOrder,
+      columnVisibility: { ...layout.columnVisibility, ...(kind === "views" ? { result: false } : {}) },
+    },
+    // The API pages this one, so the table is told how many pages there are rather than
+    // counting the rows it holds.
+    manualPagination: true,
+    pageCount: data ? Math.max(1, Math.ceil(data.total / pagination.pageSize)) : 1,
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
+  });
 
   if (permsLoading) {
     return (
@@ -122,9 +325,7 @@ export default function AuditTrailPage() {
 
   if (!canRead) return <AccessDenied resource="the audit trail" />;
 
-  const items = data?.items ?? [];
   const total = data?.total ?? 0;
-  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const filtered = userId !== ANY || action !== ANY || from || to || failedOnly;
 
   return (
@@ -133,26 +334,29 @@ export default function AuditTrailPage() {
 
       <AgencyAccessLog />
 
-      <Tabs
-        value={kind}
-        onValueChange={(v) => {
-          setKind(v as AuditTrailKind);
-          // The two logs record different actions, so an action picked in one means nothing in the other.
-          setAction(ANY);
-          setPage(1);
-        }}
-      >
-        <TabsList>
-          <TabsTrigger value="changes" className="px-4">Changes</TabsTrigger>
-          <TabsTrigger value="views" className="px-4">Views &amp; prints</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {error && <LoadError message={error.message} onRetry={() => mutate()} />}
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="audit-user" className="text-xs text-muted-foreground">Person</Label>
+      <div className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
+        <Tabs
+          value={kind}
+          onValueChange={(v) => {
+            setKind(v as AuditTrailKind);
+            // The two logs record different actions, so an action picked in one means nothing in the other.
+            setAction(ANY);
+            firstPage();
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="changes" className="px-4">Changes</TabsTrigger>
+            <TabsTrigger value="views" className="px-4">Views &amp; prints</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* These narrow the whole trail on the server, so they sit above the table rather than
+            in its toolbar, whose search and funnels only narrow the page in hand. */}
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={userId} onValueChange={refilter(setUserId)}>
-            <SelectTrigger id="audit-user" className="h-8 w-[190px]">
+            <SelectTrigger aria-label="Person" className="h-8 w-[180px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -162,11 +366,8 @@ export default function AuditTrailPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="audit-action" className="text-xs text-muted-foreground">Action</Label>
           <Select value={action} onValueChange={refilter(setAction)}>
-            <SelectTrigger id="audit-action" className="h-8 w-[220px]">
+            <SelectTrigger aria-label="Action" className="h-8 w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -176,143 +377,79 @@ export default function AuditTrailPage() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="audit-from" className="text-xs text-muted-foreground">From</Label>
           <Input
-            id="audit-from"
             type="date"
-            className="h-8 w-[150px]"
+            aria-label="From"
+            title="From"
+            className="h-8 w-[140px]"
             value={from}
             max={to || undefined}
             onChange={(e) => refilter(setFrom)(e.target.value)}
           />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="audit-to" className="text-xs text-muted-foreground">To</Label>
           <Input
-            id="audit-to"
             type="date"
-            className="h-8 w-[150px]"
+            aria-label="To"
+            title="To"
+            className="h-8 w-[140px]"
             value={to}
             min={from || undefined}
             onChange={(e) => refilter(setTo)(e.target.value)}
           />
+          {kind === "changes" && (
+            <div className="flex h-8 items-center gap-2 px-1">
+              <Switch id="audit-failed" checked={failedOnly} onCheckedChange={refilter(setFailedOnly)} />
+              <Label htmlFor="audit-failed" className="text-sm">Failed only</Label>
+            </div>
+          )}
+          {filtered && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => {
+                setUserId(ANY);
+                setAction(ANY);
+                setFrom("");
+                setTo("");
+                setFailedOnly(false);
+                firstPage();
+              }}
+            >
+              Clear
+            </Button>
+          )}
         </div>
-        {kind === "changes" && (
-          <div className="flex h-8 items-center gap-2">
-            <Switch id="audit-failed" checked={failedOnly} onCheckedChange={refilter(setFailedOnly)} />
-            <Label htmlFor="audit-failed" className="text-sm">Failed only</Label>
-          </div>
-        )}
-        {filtered && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8"
-            onClick={() => {
-              setUserId(ANY);
-              setAction(ANY);
-              setFrom("");
-              setTo("");
-              setFailedOnly(false);
-              setPage(1);
-            }}
-          >
-            Clear
-          </Button>
-        )}
-      </div>
 
-      {error && <LoadError message={error.message} onRetry={() => mutate()} />}
-
-      <div className="overflow-x-auto rounded-lg border bg-card shadow-sm">
-        {isLoading && !data ? (
-          <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading the audit trail…
-          </div>
-        ) : items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
-            <ScrollText className="h-7 w-7" />
-            {filtered ? "Nothing matches these filters." : kind === "views" ? "No views or prints recorded yet." : "No changes recorded yet."}
-          </div>
-        ) : (
-          <table className={cn("w-full text-sm", isValidating && "opacity-70")}>
-            <thead className="border-b bg-muted/40 text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">When</th>
-                <th className="px-4 py-2 font-medium">Who</th>
-                <th className="px-4 py-2 font-medium">Action</th>
-                <th className="px-4 py-2 font-medium">On</th>
-                {kind === "changes" && <th className="px-4 py-2 font-medium">Result</th>}
-                <th className="px-4 py-2 font-medium">From</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((e) => (
-                <tr key={e.id} className="border-b last:border-0 hover:bg-muted/30">
-                  <td className="px-4 py-2 text-muted-foreground"><When iso={e.at} /></td>
-                  <td className="px-4 py-2">
-                    <div className="font-medium">{e.userName}</div>
-                    {e.userEmail && <div className="text-xs text-muted-foreground">{e.userEmail}</div>}
-                  </td>
-                  <td className="px-4 py-2" title={e.rawAction}>
-                    {e.action}
-                    <Details json={e.details} />
-                  </td>
-                  <td className="px-4 py-2"><Subject e={e} /></td>
-                  {kind === "changes" && (
-                    <td className="px-4 py-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                          e.success
-                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                            : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
-                        )}
-                      >
-                        {e.success ? "OK" : "Failed"}
-                      </span>
-                    </td>
-                  )}
-                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground" title={e.userAgent ?? undefined}>
-                    {e.ipAddress ?? "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      {total > PAGE_SIZE && (
-        <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-          <span className="tabular-nums">
-            Page {page} of {pages}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            disabled={page >= pages}
-            onClick={() => setPage((p) => p + 1)}
-            aria-label="Next page"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+        <div className={cn(isValidating && "opacity-70")}>
+          <DataTable
+            layout={layout}
+            rowClickOpensActions
+            table={table}
+            enableGlobalFilter
+            searchPlaceholder="Search this page…"
+            paginated
+            paginationProps={{ pageSizeOptions: [20, 50, 100] }}
+            exportFileName={kind === "views" ? "audit-views" : "audit-changes"}
+            filters={filters}
+            onFiltersChange={setFilters}
+            emptyState={
+              isLoading && !data ? (
+                <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading the audit trail…
+                </div>
+              ) : undefined
+            }
+            emptyMessage={
+              filtered
+                ? "Nothing matches these filters."
+                : kind === "views"
+                  ? "No views or prints recorded yet."
+                  : "No changes recorded yet."
+            }
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }

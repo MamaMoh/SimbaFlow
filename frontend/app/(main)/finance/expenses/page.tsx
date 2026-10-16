@@ -1,8 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Loader2, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import { Ban, BookOpen, Loader2, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +41,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { indexColumn } from "@/components/data-table/index-column";
+import { useTableLayout } from "@/lib/data-table/use-table-layout";
+import { useBoardQuery } from "@/lib/data-table/use-board-query";
+import { applyColumnFilters } from "@/lib/data-table/apply-filters";
 import {
   EXPENSE_CATEGORIES,
   accountingApi,
@@ -51,6 +71,11 @@ const METHODS = [
 
 const categoryLabel = (value: string) =>
   EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+
+const methodLabel = (value: string) => METHODS.find((m) => m.value === value)?.label ?? value;
+
+/** A row as the table reads it, with the words its funnels compare against. */
+type ExpenseTableRow = ExpenseRow & { categoryName: string; methodName: string; state: string };
 
 const today = () => new Date().toISOString().slice(0, 10);
 const monthStart = () => today().slice(0, 8) + "01";
@@ -76,6 +101,164 @@ export default function ExpensesPage() {
     return { all, payouts, operating: all - payouts };
   }, [expenses]);
 
+  const router = useRouter();
+  const [sorting, setSorting] = useState<SortingState>([]);
+  // The period's expenses arrive whole, so the funnels are answered here; the dates are what
+  // the server is asked for.
+  const { globalFilter, setGlobalFilter, filters, setFilters } = useBoardQuery();
+  const rows = useMemo<ExpenseTableRow[]>(
+    () =>
+      applyColumnFilters(
+        expenses.map((e) => ({
+          ...e,
+          categoryName: categoryLabel(e.category),
+          methodName: methodLabel(e.method),
+          state: e.voidedAt ? "Void" : "Posted",
+        })),
+        filters,
+        {
+          expenseDate: "date",
+          categoryName: "text",
+          description: "text",
+          payee: "text",
+          methodName: "text",
+          amount: "number",
+          amountEtb: "number",
+          state: "text",
+        },
+      ),
+    [expenses, filters],
+  );
+
+  const columns: ColumnDef<ExpenseTableRow>[] = useMemo(
+    () => [
+      indexColumn<ExpenseTableRow>(),
+      {
+        accessorKey: "expenseDate",
+        meta: { filter: { field: "expenseDate", kind: "date" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Date" />,
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.expenseDate}</span>,
+      },
+      {
+        accessorKey: "categoryName",
+        meta: { filter: { field: "categoryName", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Category" />,
+        cell: ({ row }) => <span className="whitespace-nowrap">{row.original.categoryName}</span>,
+      },
+      {
+        accessorKey: "description",
+        meta: { filter: { field: "description", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Description" />,
+      },
+      {
+        accessorKey: "payee",
+        meta: { filter: { field: "payee", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Payee" />,
+        cell: ({ row }) => row.original.payee || "—",
+      },
+      {
+        accessorKey: "methodName",
+        meta: { filter: { field: "methodName", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Method" />,
+      },
+      {
+        accessorKey: "amount",
+        meta: { filter: { field: "amount", kind: "number" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Amount" />,
+        cell: ({ row }) => (
+          <span className={`tabular-nums ${row.original.voidedAt ? "line-through" : ""}`}>
+            {row.original.amount.toFixed(2)} {row.original.currency}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "amountEtb",
+        meta: { filter: { field: "amountEtb", kind: "number" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="ETB" />,
+        cell: ({ row }) => (
+          <span className={`tabular-nums ${row.original.voidedAt ? "line-through" : ""}`}>
+            {formatEtb(row.original.amountEtb)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: "state",
+        meta: { filter: { field: "state", kind: "text" } },
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        cell: ({ row }) =>
+          row.original.voidedAt ? (
+            <span
+              className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800"
+              title={row.original.voidReason ?? undefined}
+            >
+              Void
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Posted</span>
+          ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+          const e = row.original;
+          const canVoid = canPost && !e.voidedAt;
+          if (!e.journalEntryId && !canVoid) return null;
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {e.journalEntryId && (
+                  <DropdownMenuItem onClick={() => router.push(`/finance/journals/${e.journalEntryId}`)}>
+                    <BookOpen className="mr-2 h-4 w-4" /> Open journal entry
+                  </DropdownMenuItem>
+                )}
+                {canVoid && (
+                  <DropdownMenuItem className="text-destructive" onClick={() => setVoiding(e)}>
+                    <Ban className="mr-2 h-4 w-4" /> Void…
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+        size: 60,
+        enableSorting: false,
+      },
+    ],
+    [canPost, router],
+  );
+
+  // Memoised: a fresh array each render would rebuild the order every render.
+  const columnIds = useMemo(() => columns.map((c: any) => c.id ?? c.accessorKey), [columns]);
+
+  // How this person arranged this board, remembered on this computer.
+  const layout = useTableLayout({ table: "expenses", columnIds });
+
+  const table = useReactTable({
+    data: rows,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+      columnOrder: layout.columnOrder,
+      columnVisibility: layout.columnVisibility,
+    },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 20 } },
+    onColumnOrderChange: layout.setColumnOrder,
+    onColumnVisibilityChange: layout.setColumnVisibility,
+  });
+
   if (permsLoading) {
     return (
       <div className="flex items-center justify-center p-12 text-muted-foreground">
@@ -88,30 +271,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Expenses" />
-
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-from">From</Label>
-            <Input id="exp-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="exp-to">To</Label>
-            <Input id="exp-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-        </div>
-        {canPost ? (
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 bg-green-800 text-white hover:bg-green-900"
-            onClick={() => setOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Record expense
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader title="Expenses" count={expenses.length} />
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Tile label="Operating expenses" value={totals.operating} hint="Counts against profit" />
@@ -124,77 +284,64 @@ export default function ExpensesPage() {
           message={error instanceof Error ? error.message : "Failed to load"}
           onRetry={() => mutate()}
         />
-      ) : (
-        <div className="overflow-x-auto rounded-lg border bg-card p-4 shadow-sm">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : expenses.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No expenses in this period.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Payee</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">ETB</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenses.map((e) => (
-                  <TableRow key={e.id} className={e.voidedAt ? "text-muted-foreground" : undefined}>
-                    <TableCell className="whitespace-nowrap">{e.expenseDate}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {categoryLabel(e.category)}
-                      {e.voidedAt ? (
-                        <span
-                          className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-800"
-                          title={e.voidReason ?? undefined}
-                        >
-                          Void
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>{e.description}</TableCell>
-                    <TableCell>{e.payee || "—"}</TableCell>
-                    <TableCell>{METHODS.find((m) => m.value === e.method)?.label ?? e.method}</TableCell>
-                    <TableCell className={`text-right tabular-nums ${e.voidedAt ? "line-through" : ""}`}>
-                      {e.amount.toFixed(2)} {e.currency}
-                    </TableCell>
-                    <TableCell className={`text-right tabular-nums ${e.voidedAt ? "line-through" : ""}`}>
-                      {formatEtb(e.amountEtb)}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      {e.journalEntryId ? (
-                        <Link
-                          href={`/finance/journals/${e.journalEntryId}`}
-                          className="text-primary underline-offset-4 hover:underline"
-                        >
-                          Journal
-                        </Link>
-                      ) : null}
-                      {canPost && !e.voidedAt ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="ml-2 h-7 text-red-700 hover:text-red-800"
-                          onClick={() => setVoiding(e)}
-                        >
-                          Void
-                        </Button>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+      ) : null}
+
+      <div className="space-y-3 rounded-lg border bg-card p-4 shadow-sm">
+        {/* The period is what the server is asked for, so it sits above the table rather than in
+            its toolbar, whose search and funnels narrow the expenses already in hand. */}
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Label htmlFor="exp-from" className="text-muted-foreground">From</Label>
+          <Input
+            id="exp-from"
+            type="date"
+            className="h-8 w-[150px]"
+            value={from}
+            max={to || undefined}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+          <Label htmlFor="exp-to" className="text-muted-foreground">To</Label>
+          <Input
+            id="exp-to"
+            type="date"
+            className="h-8 w-[150px]"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => setTo(e.target.value)}
+          />
         </div>
-      )}
+        <DataTable
+          layout={layout}
+          rowClickOpensActions
+          table={table}
+          enableGlobalFilter
+          searchPlaceholder="Search expenses…"
+          paginated
+          exportFileName={`expenses-${from}-to-${to}`}
+          filters={filters}
+          onFiltersChange={setFilters}
+          emptyState={
+            isLoading ? (
+              <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading…
+              </div>
+            ) : undefined
+          }
+          emptyMessage="No expenses in this period."
+          createAction={
+            canPost ? (
+              <Button
+                size="sm"
+                className="h-8 gap-1.5 bg-green-800 text-white hover:bg-green-900"
+                onClick={() => setOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Record expense
+              </Button>
+            ) : undefined
+          }
+        />
+      </div>
 
       <RecordExpenseSheet open={open} onOpenChange={setOpen} onRecorded={() => mutate()} />
       <VoidExpenseDialog expense={voiding} onClose={() => setVoiding(null)} onVoided={() => mutate()} />
