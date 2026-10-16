@@ -42,12 +42,12 @@ test.describe("Reporting & analytics (Unit 8)", () => {
     await expect(page.locator("text=Application error")).toHaveCount(0);
   });
 
-  test("my work page renders action buckets", async ({ page }) => {
+  test("my work page renders the role's queues", async ({ page }) => {
     await page.goto("/my-work");
     await expect(
       page.getByRole("heading", { name: /my work/i })
     ).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/overdue candidates/i).first()).toBeVisible();
+    await expect(page.getByText(/needs action/i).first()).toBeVisible();
     await expect(page.locator("text=Application error")).toHaveCount(0);
   });
 

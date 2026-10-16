@@ -20,6 +20,18 @@ export function useBoardQuery(delay = 300) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<ColumnFilter[]>([]);
 
+  // A board opened from My work arrives as `?q=<passport>` and starts narrowed to that one
+  // candidate, so the row clicked there is the row in front of you here. Read once after mount:
+  // the server render has no address bar to read, and a box filled before hydration would not
+  // match the one it rendered.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (q) {
+      setGlobalFilter(q);
+      setSearch(q);
+    }
+  }, []);
+
   useEffect(() => {
     // `?? ""` is load-bearing. An empty search box means "no filter" to TanStack, which it
     // signals as undefined — and trimming undefined throws before it can clear `search`, so

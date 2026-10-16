@@ -1,5 +1,6 @@
 "use client";
 
+import { MyWorkBadge } from "@/components/layout/my-work-badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X, LogOut, Globe, ChevronRight } from "lucide-react";
@@ -359,6 +360,7 @@ function NavItemWithCollapse({
                   {item.name}
                 </span>
               )}
+              {item.href === "/my-work" && <MyWorkBadge collapsed={isCollapsed} />}
             </Button>
           </Link>
         </TooltipTrigger>

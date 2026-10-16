@@ -1,5 +1,6 @@
 import type { WorkflowStage } from "@/types/workflow";
 import { stageHref } from "@/lib/workflow/stage-slug";
+import { MY_WORK_PERMISSIONS } from "@/lib/workflow/my-work-permissions";
 
 /**
  * Which of the two jobs a link belongs to.
@@ -53,7 +54,7 @@ export const navigation: NavItem[] = [
     name: "My work",
     href: "/my-work",
     icon: require("lucide-react").ListChecks,
-    claims: ["candidate.read", "system.admin"],
+    claims: MY_WORK_PERMISSIONS,
   },
   {
     // Sat under Finance, which meant every role holding candidate.read — a data-entry clerk, a
