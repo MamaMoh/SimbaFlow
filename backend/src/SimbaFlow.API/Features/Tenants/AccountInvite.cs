@@ -4,6 +4,7 @@ using System.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
+using SimbaFlow.Application.Common.Email;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Infrastructure.Options;
@@ -42,16 +43,18 @@ public sealed class AccountInvite
         var baseUrl = _options.CurrentValue.AppBaseUrl.TrimEnd('/');
         var link = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(user.Email)}&token={encoded}";
 
-        var name = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
-        var body = $"""
-            <p>Hello {HttpUtility.HtmlEncode(name)},</p>
-            <p>Your agency, <b>{HttpUtility.HtmlEncode(agencyName)}</b>, now has a SimbaFlow account, and you
-            are its owner. Choose a password to sign in for the first time.</p>
-            <p><a href="{link}" style="background:#1B5E3F;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">Choose your password</a></p>
-            <p style="color:#555;font-size:13px">Your username is <b>{HttpUtility.HtmlEncode(user.UserName)}</b>.
-            The link works for a day; if it has run out, use "Forgot password" on the sign-in page or ask us to send a new one.</p>
-            <p style="color:#555;font-size:13px">If the button does not work, paste this into your browser:<br>{link}</p>
-            """;
+        var body = EmailLayout.Render(new EmailContent(
+            Kicker: "Welcome",
+            Title: "Your agency is on SimbaFlow",
+            Greeting: EmailLayout.Greeting(user.FirstName),
+            BodyHtml:
+                EmailLayout.Paragraph(
+                    $"Your agency, <b>{EmailLayout.Encode(agencyName)}</b>, now has a SimbaFlow account, "
+                    + "and you are its owner. Choose a password to sign in for the first time.")
+                + EmailLayout.SmallPrint($"Your username is <b>{EmailLayout.Encode(user.UserName)}</b>."),
+            Button: new EmailButton("Choose your password", link),
+            NoteHtml: "<b style=\"color:#2b3631;\">Link run out?</b> It works for a day. Use \"Forgot "
+                + "password\" on the sign-in page, or reply to this email and we'll send a new one."));
 
         return await _email.SendAsync(user.Email, $"Welcome to SimbaFlow, {agencyName}", body, ct);
     }

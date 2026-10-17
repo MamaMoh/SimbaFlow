@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text;
+using SimbaFlow.Application.Common.Email;
 using SimbaFlow.Application.Common.Models;
 
 namespace SimbaFlow.API.Features.Reports.Schedules;
@@ -24,25 +25,25 @@ public static class ScheduledReportEmail
         var e = (string? s) => WebUtility.HtmlEncode(s ?? string.Empty);
         var sb = new StringBuilder();
 
-        sb.Append("<div style=\"font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#1f2937\">");
-        sb.Append($"<h2 style=\"margin:0 0 4px;font-size:18px\">{e(report.Title)}</h2>");
         if (!string.IsNullOrWhiteSpace(agencyName))
-            sb.Append($"<div style=\"color:#6b7280;margin-bottom:4px\">{e(agencyName)}</div>");
+            sb.Append(EmailLayout.Paragraph($"Here is <b>{e(report.Title)}</b> for {e(agencyName)}."));
+        else
+            sb.Append(EmailLayout.Paragraph($"Here is <b>{e(report.Title)}</b>."));
         if (!string.IsNullOrWhiteSpace(report.Subtitle))
-            sb.Append($"<p style=\"margin:8px 0\">{e(report.Subtitle)}</p>");
+            sb.Append(EmailLayout.SmallPrint(e(report.Subtitle)));
 
         if (report.Rows.Count == 0)
         {
-            sb.Append("<p style=\"color:#6b7280\">Nothing to report this time.</p>");
+            sb.Append(EmailLayout.Paragraph("Nothing to report this time."));
         }
         else
         {
-            sb.Append("<table style=\"border-collapse:collapse;margin:12px 0;font-size:13px\">");
+            sb.Append("<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;margin:6px 0 14px;font-size:13px;font-family:Segoe UI,Helvetica,Arial,sans-serif;\">");
             sb.Append("<tr>");
             foreach (var col in report.Columns)
             {
                 var align = IsNumeric(col.Type) ? "right" : "left";
-                sb.Append($"<th style=\"text-align:{align};padding:6px 10px;border-bottom:2px solid #e5e7eb;background:#f9fafb\">{e(col.Label)}</th>");
+                sb.Append($"<th style=\"text-align:{align};padding:7px 8px;border-bottom:2px solid #d9e3dd;background:#f4f8f5;color:#2b3631;\">{e(col.Label)}</th>");
             }
             sb.Append("</tr>");
 
@@ -53,20 +54,24 @@ public static class ScheduledReportEmail
                 {
                     var align = IsNumeric(col.Type) ? "right" : "left";
                     row.TryGetValue(col.Key, out var value);
-                    sb.Append($"<td style=\"text-align:{align};padding:6px 10px;border-bottom:1px solid #f3f4f6\">{e(FormatCell(value, col.Type))}</td>");
+                    sb.Append($"<td style=\"text-align:{align};padding:7px 8px;border-bottom:1px solid #eef1ef;color:#2b3631;\">{e(FormatCell(value, col.Type))}</td>");
                 }
                 sb.Append("</tr>");
             }
             sb.Append("</table>");
 
             if (report.Rows.Count > BodyRowLimit)
-                sb.Append($"<p style=\"color:#6b7280\">Showing the first {BodyRowLimit} of {report.Rows.Count} rows. The attachment has them all.</p>");
+                sb.Append(EmailLayout.SmallPrint($"Showing the first {BodyRowLimit} of {report.Rows.Count} rows. The attachment has them all."));
         }
 
-        sb.Append($"<p>The full report is attached as <b>{e(attachmentName)}</b>.</p>");
-        sb.Append($"<p style=\"color:#9ca3af;font-size:12px;margin-top:24px\">Sent by SimbaFlow {e(scheduleText)}. Anyone with permission to manage scheduled reports can change or stop it on the Reports page.</p>");
-        sb.Append("</div>");
-        return sb.ToString();
+        sb.Append(EmailLayout.Paragraph($"The full report is attached as <b>{e(attachmentName)}</b>."));
+
+        return EmailLayout.Render(new EmailContent(
+            Kicker: "Scheduled report",
+            Title: report.Title,
+            BodyHtml: sb.ToString(),
+            NoteHtml: $"Sent by SimbaFlow {e(scheduleText)}. Anyone with permission to manage scheduled "
+                + "reports can change or stop it on the Reports page."));
     }
 
     private static bool IsNumeric(ReportColumnType type) =>

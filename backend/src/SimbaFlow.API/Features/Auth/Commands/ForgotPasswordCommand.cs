@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SimbaFlow.Application.Common.Email;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Application.Common.Models;
 using SimbaFlow.Domain.Entities.Identity;
@@ -64,15 +65,16 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, Resu
         var baseUrl = _options.CurrentValue.AppBaseUrl.TrimEnd('/');
         var link = $"{baseUrl}/reset-password?email={HttpUtility.UrlEncode(user.Email)}&token={encoded}";
 
-        var name = string.IsNullOrWhiteSpace(user.FirstName) ? "there" : user.FirstName;
-        var body = $"""
-            <p>Hello {HttpUtility.HtmlEncode(name)},</p>
-            <p>Someone asked to reset the password for your SimbaFlow account. Use the link below to
-            choose a new one. It expires in a few hours.</p>
-            <p><a href="{link}" style="background:#1B5E3F;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">Choose a new password</a></p>
-            <p style="color:#555;font-size:13px">If the button does not work, paste this into your browser:<br>{link}</p>
-            <p style="color:#555;font-size:13px">If you did not ask for this, you can ignore this email — your password will not change.</p>
-            """;
+        var body = EmailLayout.Render(new EmailContent(
+            Kicker: "Account security",
+            Title: "Reset your password",
+            Greeting: EmailLayout.Greeting(user.FirstName),
+            BodyHtml: EmailLayout.Paragraph(
+                "We received a request to reset the password for your SimbaFlow account. "
+                + "Choose a new one with the button below."),
+            Button: new EmailButton("Choose a new password", link),
+            NoteHtml: "<b style=\"color:#2b3631;\">Didn't ask for this?</b> Ignore this email — your "
+                + "password won't change. The link expires in a few hours and works once."));
 
         await _email.SendAsync(user.Email!, "Reset your SimbaFlow password", body, ct);
 

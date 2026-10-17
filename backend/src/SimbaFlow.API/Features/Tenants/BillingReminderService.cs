@@ -1,6 +1,7 @@
 using System.Web;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SimbaFlow.Application.Common.Email;
 using SimbaFlow.Application.Common.Interfaces;
 using SimbaFlow.Domain.Entities.Identity;
 using SimbaFlow.Domain.Enums;
@@ -161,31 +162,38 @@ public sealed class BillingReminderService : BackgroundService
     private static string ReminderBody(
         RenewalReminder stage, TenantInfo t, DateOnly due, DateOnly today, int graceDays, string baseUrl)
     {
-        var name = HttpUtility.HtmlEncode(t.Name);
-        var when = stage switch
+        var name = EmailLayout.Encode(t.Name);
+        var (title, when) = stage switch
         {
-            RenewalReminder.DueSoon => $"is due on <b>{due:d MMMM yyyy}</b>",
-            RenewalReminder.DueToday => "is due <b>today</b>",
-            _ => $"was due on <b>{due:d MMMM yyyy}</b> and has not been paid yet",
+            RenewalReminder.DueSoon => ("Your subscription is due soon", $"is due on <b>{due:d MMMM yyyy}</b>"),
+            RenewalReminder.DueToday => ("Your subscription is due today", "is due <b>today</b>"),
+            _ => ("Your subscription is overdue", $"was due on <b>{due:d MMMM yyyy}</b> and has not been paid yet"),
         };
         var warning = stage == RenewalReminder.Overdue && graceDays > 0
-            ? $"<p>If it is still unpaid on <b>{due.AddDays(graceDays):d MMMM yyyy}</b>, sign-in will be suspended until it is settled.</p>"
+            ? EmailLayout.Paragraph(
+                $"If it is still unpaid on <b>{due.AddDays(graceDays):d MMMM yyyy}</b>, sign-in will be "
+                + "suspended until it is settled.")
             : "";
-        var link = string.IsNullOrEmpty(baseUrl) ? "" : $"<p><a href=\"{baseUrl}/settings\">See your subscription in SimbaFlow</a></p>";
-        return $"""
-            <p>Hello,</p>
-            <p>The SimbaFlow subscription for {name} ({Money(t)}) {when}.</p>
-            {warning}
-            {link}
-            <p style="color:#555;font-size:13px">If you have already paid, thank you, and please send us the payment reference so we can record it.</p>
-            """;
+
+        return EmailLayout.Render(new EmailContent(
+            Kicker: "Billing",
+            Title: title,
+            BodyHtml: EmailLayout.Paragraph($"The SimbaFlow subscription for {name} ({Money(t)}) {when}.") + warning,
+            Button: string.IsNullOrEmpty(baseUrl) ? null : new EmailButton("See your subscription", $"{baseUrl}/settings"),
+            NoteHtml: "<b style=\"color:#2b3631;\">Already paid?</b> Thank you — reply with the payment "
+                + "reference so we can record it."));
     }
 
-    private static string SuspendedBody(TenantInfo t, DateOnly due, string baseUrl) => $"""
-        <p>Hello,</p>
-        <p>The SimbaFlow subscription for {HttpUtility.HtmlEncode(t.Name)} ({Money(t)}) was due on
-        <b>{due:d MMMM yyyy}</b> and is still unpaid, so sign-in for your agency has been suspended.
-        Your data is kept safe.</p>
-        <p>Contact the SimbaFlow team with your payment reference and access will be restored.</p>
-        """;
+    private static string SuspendedBody(TenantInfo t, DateOnly due, string baseUrl) =>
+        EmailLayout.Render(new EmailContent(
+            Kicker: "Billing",
+            Title: "Your subscription has been suspended",
+            BodyHtml:
+                EmailLayout.Paragraph(
+                    $"The SimbaFlow subscription for {EmailLayout.Encode(t.Name)} ({Money(t)}) was due on "
+                    + $"<b>{due:d MMMM yyyy}</b> and is still unpaid, so sign-in for your agency has been "
+                    + "suspended. Your data is kept safe.")
+                + EmailLayout.Paragraph("Reply with your payment reference and access will be restored."),
+            NoteHtml: "<b style=\"color:#2b3631;\">Paid already?</b> Payments can take a day to reach us. "
+                + "Send the reference and we'll restore access as soon as it's matched."));
 }
