@@ -285,10 +285,15 @@ public record MirrorViewRuleDto(
     bool IsActive);
 
 public record GetWorkflowDefinitionQuery
-    : IRequest<Result<WorkflowDefinitionDto>>, IRequirePermission
+    : IRequest<Result<WorkflowDefinitionDto>>, IRequirePermission,
+      IAgencyScopedRead<Result<WorkflowDefinitionDto>>
 {
     // Readable by stage-board users (not only admins) so nav slugs can resolve to stage IDs
     public string RequiredPermission => "workflow.view";
+
+    // The same answer an agency with no pipeline gets, which every caller already handles.
+    public Result<WorkflowDefinitionDto> WithoutAgency() =>
+        Result<WorkflowDefinitionDto>.Failure("No agency is selected, so there is no workflow to show.", 404);
 }
 
 public class GetWorkflowDefinitionHandler : IRequestHandler<GetWorkflowDefinitionQuery, Result<WorkflowDefinitionDto>>

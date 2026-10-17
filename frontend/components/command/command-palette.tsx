@@ -19,6 +19,7 @@ import {
 } from "@/components/layout/nav-items";
 import { useWorkflowDefinition } from "@/lib/api/workflow";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { useInsideAgency } from "@/lib/platform/use-platform-staff";
 import { useCommandPalette } from "@/lib/stores/command-store";
 import { UserPlus, Search, User, ArrowRight } from "lucide-react";
 
@@ -62,8 +63,10 @@ export function CommandPalette() {
   }, [toggle]);
 
   // Same list the sidebar shows, boards an agency has added included. SWR hands back the
-  // sidebar's own copy, so this costs no second request.
-  const { stages } = useWorkflowDefinition();
+  // sidebar's own copy, so this costs no second request. Mounted in the app shell, so it must
+  // not ask while there is no agency: on "All agencies" that was a 500 on every page load.
+  const insideAgency = useInsideAgency();
+  const { stages } = useWorkflowDefinition(insideAgency === true);
 
   const destinations = useMemo(
     () =>

@@ -25,9 +25,13 @@ public record ComplianceAlertsResult(
     List<ComplianceAlertDto> Alerts);
 
 public record GetComplianceAlertsQuery
-    : IRequest<Result<ComplianceAlertsResult>>, IRequirePermission
+    : IRequest<Result<ComplianceAlertsResult>>, IRequirePermission,
+      IAgencyScopedRead<Result<ComplianceAlertsResult>>
 {
     public string RequiredPermission => "candidate.read";
+
+    public Result<ComplianceAlertsResult> WithoutAgency() =>
+        Result<ComplianceAlertsResult>.Success(new ComplianceAlertsResult(0, 0, 0, []));
 }
 
 public class GetComplianceAlertsHandler

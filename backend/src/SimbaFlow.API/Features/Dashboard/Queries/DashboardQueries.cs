@@ -19,9 +19,13 @@ public record PipelineFunnelResult(
     int UnassignedCount);
 
 public record GetPipelineFunnelQuery
-    : IRequest<Result<PipelineFunnelResult>>, IRequirePermission
+    : IRequest<Result<PipelineFunnelResult>>, IRequirePermission,
+      IAgencyScopedRead<Result<PipelineFunnelResult>>
 {
     public string RequiredPermission => "candidate.read";
+
+    public Result<PipelineFunnelResult> WithoutAgency() =>
+        Result<PipelineFunnelResult>.Success(new PipelineFunnelResult([], 0, 0));
 }
 
 public class GetPipelineFunnelHandler
@@ -90,9 +94,13 @@ public record DashboardMetricsResult(
     int OverdueCandidates);
 
 public record GetDashboardMetricsQuery
-    : IRequest<Result<DashboardMetricsResult>>, IRequirePermission
+    : IRequest<Result<DashboardMetricsResult>>, IRequirePermission,
+      IAgencyScopedRead<Result<DashboardMetricsResult>>
 {
     public string RequiredPermission => "candidate.read";
+
+    public Result<DashboardMetricsResult> WithoutAgency() =>
+        Result<DashboardMetricsResult>.Success(new DashboardMetricsResult(0, 0, 0m, 0, 0));
 }
 
 public class GetDashboardMetricsHandler
@@ -137,9 +145,12 @@ public class GetDashboardMetricsHandler
 public record TrendPointDto(string Month, int Registered, int Commissions, int Exceptions);
 
 public record GetDashboardTrendsQuery
-    : IRequest<Result<List<TrendPointDto>>>, IRequirePermission
+    : IRequest<Result<List<TrendPointDto>>>, IRequirePermission,
+      IAgencyScopedRead<Result<List<TrendPointDto>>>
 {
     public string RequiredPermission => "candidate.read";
+
+    public Result<List<TrendPointDto>> WithoutAgency() => Result<List<TrendPointDto>>.Success([]);
 }
 
 public class GetDashboardTrendsHandler

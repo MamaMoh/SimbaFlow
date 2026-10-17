@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useActingTenantId } from "@/lib/tenant/acting-tenant";
+import { useInsideAgency } from "@/lib/platform/use-platform-staff";
 // import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -395,8 +396,10 @@ export function Sidebar({ className }: SidebarProps) {
 
   // The Workflow section is the agency's own pipeline, so it is read from the pipeline rather
   // than written down here. Not fetched in platform mode: there is no agency to ask about, and
-  // the whole section is filtered out of that sidebar anyway.
-  const { stages } = useWorkflowDefinition(navMode === "agency");
+  // the whole section is filtered out of that sidebar anyway. Nor before the agency choice has been
+  // read: navMode guesses "agency" until then, and that guess used to send the request.
+  const insideAgency = useInsideAgency();
+  const { stages } = useWorkflowDefinition(navMode === "agency" && insideAgency === true);
 
   const navItems = useMemo(
     () =>

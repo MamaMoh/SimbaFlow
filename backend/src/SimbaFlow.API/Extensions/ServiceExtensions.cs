@@ -26,6 +26,8 @@ public static class ServiceExtensions
             // Before authorization, so an attempt a missing permission refused is on the trail too.
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuditBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
+            // After authorization: agency-only reads answer empty for a caller outside any agency.
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(AgencyScopeBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(PerformanceLogBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ReadAuditBehavior<,>));
         });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import { AccessDenied, LoadError } from "@/components/ui/page-alert";
 import { usePermissions } from "@/lib/tenant/tenant-provider";
+import { useInsideAgency } from "@/lib/platform/use-platform-staff";
 import { useComplianceAlerts, type ComplianceAlert } from "@/lib/api/insights";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -62,8 +63,10 @@ export default function CompliancePage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canRead =
     hasPermission("candidate.read") || hasPermission("system.admin");
+  // Alerts are an agency's; a platform administrator on "All agencies" is not inside one.
+  const insideAgency = useInsideAgency();
   const { data, error, isLoading, mutate } = useComplianceAlerts(
-    !permsLoading && canRead
+    !permsLoading && canRead && insideAgency === true
   );
 
   if (permsLoading) {
@@ -76,6 +79,19 @@ export default function CompliancePage() {
   }
 
   if (!canRead) return <AccessDenied resource="compliance alerts" />;
+
+  // Without this the page drew three zeros and "All clear", which says an agency has no
+  // expiries when the truth is that no agency was asked.
+  if (insideAgency === false) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Compliance" />
+        <div className="rounded-lg border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
+          Choose an agency in the switcher above to see its compliance alerts.
+        </div>
+      </div>
+    );
+  }
 
   const tiles = [
     { key: "expired", value: data?.expiredCount ?? 0, tone: "bad" as const, ...BUCKET_META.expired },

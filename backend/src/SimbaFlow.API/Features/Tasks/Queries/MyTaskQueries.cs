@@ -21,9 +21,13 @@ public record MyTasksResult(
     int OpenExceptionCount,
     List<MyTaskItemDto> Items);
 
-public record GetMyTasksQuery : IRequest<Result<MyTasksResult>>, IRequirePermission
+public record GetMyTasksQuery
+    : IRequest<Result<MyTasksResult>>, IRequirePermission, IAgencyScopedRead<Result<MyTasksResult>>
 {
     public string RequiredPermission => "candidate.read";
+
+    public Result<MyTasksResult> WithoutAgency() =>
+        Result<MyTasksResult>.Success(new MyTasksResult(0, 0, 0, []));
 }
 
 public class GetMyTasksHandler : IRequestHandler<GetMyTasksQuery, Result<MyTasksResult>>
