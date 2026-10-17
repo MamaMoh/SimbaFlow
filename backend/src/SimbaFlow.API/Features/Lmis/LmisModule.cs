@@ -2,6 +2,8 @@ using Carter;
 using MediatR;
 using SimbaFlow.API.Features.Lmis.Commands;
 using SimbaFlow.API.Features.Lmis.Queries;
+using SimbaFlow.API.Features.Workflow;
+using SimbaFlow.Application.Common.Interfaces;
 
 namespace SimbaFlow.API.Features.Lmis;
 
@@ -33,6 +35,18 @@ public class LmisModule : ICarterModule
                 mirrorOnly));
             return result.IsSuccess ? Results.Ok(result) : Results.Json(result, statusCode: result.StatusCode);
         });
+
+        // Insurance for many candidates at once — the Actions menu on the board. Each candidate goes
+        // through the row's own command; see BulkCandidateAction.
+        group.MapPost("/bulk/insurance/paid", async (
+            BulkCandidatesRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new RecordInsurancePaidCommand(id, Notes: body.Notes), sender, context, ct)));
+
+        group.MapPost("/bulk/insurance/unpaid", async (
+            BulkCandidatesRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new RecordInsuranceUnpaidCommand(id, body.Notes), sender, context, ct)));
 
         group.MapPost("/candidates/{id:guid}/insurance/paid", async (
             Guid id, InsurancePaidRequest? body, ISender sender) =>

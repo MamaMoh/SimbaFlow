@@ -32,6 +32,8 @@ import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
 import { identityColumns } from "@/components/data-table/identity-columns";
 import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkActionsMenu } from "@/components/workflow/bulk-actions-menu";
+import { LMIS_BULK_ACTIONS } from "@/components/workflow/board-bulk-actions";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 
 export default function LmisBoardPage() {
@@ -40,7 +42,9 @@ export default function LmisBoardPage() {
   // Ticking rows is only worth anything if something can be done with the selection, and the one
   // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
   // is a different permission, so without it the column is dead weight in every row.
-  const canSelect = hasPermission("candidate.read");
+  // Insurance for many rows at once is the row menu's own action, under the same permission.
+  const canBulk = hasPermission("lmis.update") || hasPermission("system.admin");
+  const canSelect = hasPermission("candidate.read") || canBulk;
   // The search box in the toolbar and the funnels under the headings. Both are answered by
   // the API: narrowing the page the browser happens to be holding would answer a different
   // question from the one being asked.
@@ -213,8 +217,9 @@ export default function LmisBoardPage() {
               /* Insurance and Milestone are status tracks and Source is about how a row got
                  here, so none of the three is a column the database can be asked about. They
                  are the board's own switches, which is why they sit here rather than under a
-                 heading. */
-              <div className="flex flex-wrap items-center gap-2">
+                 heading. A fragment, not a box: each control wraps on its own, so the Actions
+                 menu at the end stays beside Export instead of dropping a line with the filters. */
+              <>
                 <Select value={insurance} onValueChange={setInsurance}>
                   <SelectTrigger className="h-8 w-[125px]" aria-label="Insurance">
                     <SelectValue />
@@ -246,7 +251,23 @@ export default function LmisBoardPage() {
                     <SelectItem value="mirror">Mirror only</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+                {/* Last, so it sits beside Export: the row menu's actions for every ticked row. */}
+                {canBulk ? (
+                  <BulkActionsMenu
+                    selected={candidates.filter((c) => rowSelection[c.id])}
+                    actions={LMIS_BULK_ACTIONS}
+                    onClear={() => setRowSelection({})}
+                    onDone={(done) => {
+                      setRowSelection((s) => {
+                        const next = { ...s };
+                        for (const id of done) delete next[id];
+                        return next;
+                      });
+                      void mutate();
+                    }}
+                  />
+                ) : null}
+              </>
             }
             emptyMessage="No candidates on the LMIS board yet — mirror rows appear when Medical=Fit and Tasheer=Book Done; primary rows after “To LMIS”."
           />

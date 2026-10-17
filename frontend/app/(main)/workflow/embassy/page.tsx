@@ -31,16 +31,19 @@ import { NameCell } from "@/components/data-table/name-cell";
 import { indexColumn } from "@/components/data-table/index-column";
 import { identityColumns } from "@/components/data-table/identity-columns";
 import { selectionColumn } from "@/components/data-table/selection-column";
+import { BulkActionsMenu } from "@/components/workflow/bulk-actions-menu";
+import { EMBASSY_BULK_ACTIONS } from "@/components/workflow/board-bulk-actions";
 import { BulkDownloadButton } from "@/components/workflow/bulk-download-button";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
 export default function EmbassyBoardPage() {
   const { hasPermission, isLoading: permsLoading } = usePermissions();
   const canView = hasPermission("embassy.read") || hasPermission("system.admin");
-  // Ticking rows is only worth anything if something can be done with the selection, and the one
-  // batch action — downloading their paperwork — is read under candidate.read. Reaching this board
-  // is a different permission, so without it the column is dead weight in every row.
-  const canSelect = hasPermission("candidate.read");
+  // Ticking rows is only worth anything if something can be done with the selection: downloading
+  // their paperwork, read under candidate.read, or the Actions menu, under embassy.update. Reaching
+  // this board is a different permission, so without either the column is dead weight in every row.
+  const canBulk = hasPermission("embassy.update") || hasPermission("system.admin");
+  const canSelect = hasPermission("candidate.read") || canBulk;
   // The search box in the toolbar and the funnels under the headings. Both are answered by
   // the API: narrowing the page the browser happens to be holding would answer a different
   // question from the one being asked.
@@ -367,6 +370,24 @@ export default function EmbassyBoardPage() {
                   onDownloaded={() => setRowSelection({})}
                 />
               </>
+            }
+            toolbarEndActions={
+              // Beside Export: the row menu's medical and Tasheer steps for every ticked row.
+              canBulk ? (
+                <BulkActionsMenu
+                  selected={candidates.filter((c) => rowSelection[c.id])}
+                  actions={EMBASSY_BULK_ACTIONS}
+                  onClear={() => setRowSelection({})}
+                  onDone={(done) => {
+                    setRowSelection((s) => {
+                      const next = { ...s };
+                      for (const id of done) delete next[id];
+                      return next;
+                    });
+                    void mutate();
+                  }}
+                />
+              ) : undefined
             }
             enableGlobalFilter
             searchPlaceholder="Search name, passport or labour ID…"

@@ -34,6 +34,13 @@ import {
   Stethoscope,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  bookMedicalBlock,
+  bookTasheerBlock,
+  recordMedicalResultBlock,
+  recordTasheerResultBlock,
+  unbookMedicalBlock,
+} from "@/lib/workflow/board-action-rules";
 
 type Mode =
   | "medical-result"
@@ -188,7 +195,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
               {canUpdate && (
                 <>
                   <DropdownMenuSeparator />
-                  {(medical === "Pending" || medical === "" || medical === "Expired") && (
+                  {bookMedicalBlock(medical) === null && (
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
@@ -199,7 +206,7 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                       Book medical
                     </DropdownMenuItem>
                   )}
-                  {medical === "Booked" && (
+                  {unbookMedicalBlock(medical) === null && (
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
@@ -210,19 +217,19 @@ export function EmbassyRowActions({ candidate, onMutate, stageId, variant = "emb
                       Mark unbooked
                     </DropdownMenuItem>
                   )}
-                  {medical === "Booked" && (
+                  {recordMedicalResultBlock(medical) === null && (
                     <DropdownMenuItem onClick={() => setMode("medical-result")}>
                       <ClipboardCheck className="mr-2 h-4 w-4" />
                       Record medical result
                     </DropdownMenuItem>
                   )}
-                  {(tasheer === "Pending" || tasheer === "" || tasheer === "Expired") && (
+                  {bookTasheerBlock(tasheer) === null && (
                     <DropdownMenuItem onClick={() => setMode("book-tasheer")}>
                       <CalendarClock className="mr-2 h-4 w-4" />
                       Book tasheer
                     </DropdownMenuItem>
                   )}
-                  {tasheer === "Booked" && (
+                  {recordTasheerResultBlock(tasheer) === null && (
                     <DropdownMenuItem onClick={() => setMode("tasheer-result")}>
                       <ClipboardCheck className="mr-2 h-4 w-4" />
                       Record tasheer result

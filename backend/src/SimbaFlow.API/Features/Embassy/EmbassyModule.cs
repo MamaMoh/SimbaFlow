@@ -2,6 +2,8 @@ using Carter;
 using MediatR;
 using SimbaFlow.API.Features.Embassy.Commands;
 using SimbaFlow.API.Features.Embassy.Queries;
+using SimbaFlow.API.Features.Workflow;
+using SimbaFlow.Application.Common.Interfaces;
 
 namespace SimbaFlow.API.Features.Embassy;
 
@@ -41,6 +43,33 @@ public class EmbassyModule : ICarterModule
                     $"tasheer-list-{DateTime.UtcNow:yyyyMMdd}.xlsx")
                 : Results.Json(result, statusCode: result.StatusCode);
         });
+
+        // The same five actions for many candidates at once — the Actions menu on the board. Each
+        // candidate goes through the row's own command; see BulkCandidateAction.
+        group.MapPost("/bulk/medical/book", async (
+            BulkCandidatesRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new BookMedicalCommand(id, Notes: body.Notes), sender, context, ct)));
+
+        group.MapPost("/bulk/medical/unbook", async (
+            BulkCandidatesRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new UnbookMedicalCommand(id, body.Notes), sender, context, ct)));
+
+        group.MapPost("/bulk/medical/result", async (
+            BulkResultRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new RecordMedicalResultCommand(id, body.Result, body.Notes), sender, context, ct)));
+
+        group.MapPost("/bulk/tasheer/book", async (
+            BulkTasheerBookRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new BookTasheerCommand(id, body.AppointmentDate, body.Notes), sender, context, ct)));
+
+        group.MapPost("/bulk/tasheer/result", async (
+            BulkResultRequest body, ISender sender, ITenantDbContext context, CancellationToken ct) =>
+            BulkCandidateAction.ToHttp(await BulkCandidateAction.RunAsync(
+                body.CandidateIds, id => new RecordTasheerResultCommand(id, body.Result, body.Notes), sender, context, ct)));
 
         group.MapPost("/candidates/{id:guid}/medical/book", async (
             Guid id, BookMedicalRequest body, ISender sender) =>
@@ -115,5 +144,7 @@ public record MedicalResultRequest(string Result, string? Notes);
 public record BookTasheerRequest(DateOnly AppointmentDate, string? Notes);
 public record TasheerResultRequest(string Result, string? Notes);
 public record NotesRequest(string? Notes);
+public record BulkResultRequest(List<Guid> CandidateIds, string Result, string? Notes = null);
+public record BulkTasheerBookRequest(List<Guid> CandidateIds, DateOnly AppointmentDate, string? Notes = null);
 public record SubmitVisaRequest(DateOnly? SubmissionDate, string? ReferenceNumber, string? Notes);
 public record VisaOutcomeRequest(string Outcome, string? RejectionReason, string? Notes);

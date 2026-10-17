@@ -27,6 +27,7 @@ import {
   MoreHorizontal,
   Pencil,
 } from "lucide-react";
+import { markInsurancePaidBlock, markInsuranceUnpaidBlock } from "@/lib/workflow/board-action-rules";
 
 type Props = {
   candidate: LmisBoardRow;
@@ -115,7 +116,7 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                     click. This one used to open a form asking for a payment date and a note
                     that nobody filled in — two more steps to say a thing that has two
                     possible values. */}
-                {(insurance === "Insurance Unpaid" || !insurance) && (
+                {markInsurancePaidBlock(insurance) === null && (
                   <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
@@ -129,7 +130,7 @@ export function LmisRowActions({ candidate, onMutate, stageId }: Props) {
                     Mark insurance paid
                   </DropdownMenuItem>
                 )}
-                {insurance && insurance !== "Insurance Unpaid" && (
+                {markInsuranceUnpaidBlock(insurance) === null && (
                   <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
